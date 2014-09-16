@@ -1,0 +1,15 @@
+#!/home/xyh/cicada/play/cicada
+
+:" [2J"
+: TerminalSequence,clearScreen ; defineConstString
+: terminal,clearScreen (* -- *)
+    'escape' writeChar
+    TerminalSequence,clearScreen printString
+    Exit
+; defineFunction
+
+terminal,clearScreen
+
+ok
+cr
+bye

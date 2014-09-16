@@ -1,0 +1,4602 @@
+(* magic check *)
+: defineVar,byString
+  (* initial-value, String[address, length] -- *)
+  create-word-header
+  Variable-explainer append-number-to-here
+  swap (* leave wordHeader *)
+  append-number-to-here (* the initial-value of Var *)
+  add-new-word-to-dictionary
+  Exit
+; define-function
+
+: defineVar (* byWordList *)
+  (* initial-value, WordList[address, the number of words] -- *)
+  head-of-word-list
+  defineVar,byString
+  Exit
+; define-function
+
+: defineConst,byString
+  (* initial-value, WordList[address, the number of words] -- *)
+  create-word-header
+  Constant-explainer append-number-to-here
+  swap (* leave wordHeader *)
+  append-number-to-here (* the initial-value of Const *)
+  add-new-word-to-dictionary
+  Exit
+; define-function
+
+: defineConst (* byWordList *)
+  (* initial-value, WordList[address, the number of words] -- *)
+  head-of-word-list
+  defineConst,byString
+  Exit
+; define-function
+: /mod (* a, b -- quotient, a mod b *)
+  mod/ swap
+  Exit
+; define-function
+
+: / (* a, b -- quotient *)
+  /mod drop
+  Exit
+; define-function
+
+: mod (* a, b -- a mod b *)
+  mod/ drop
+  Exit
+; define-function
+
+: negate (* n --  -n *)
+  Zero swap -
+  Exit
+; define-function
+9   : 'tab'      ; defineConst
+10  : 'linefeed' ; defineConst
+10  : 'newline'  ; defineConst
+27  : 'esc'      ; defineConst
+27  : 'escape'   ; defineConst
+32  : 'space'    ; defineConst
+127 : 'delete'   ; defineConst
+
+33 : '!' ; defineConst
+34 : '"' ; defineConst
+35 : '#' ; defineConst
+36 : '$' ; defineConst
+37 : '%' ; defineConst
+38 : '&' ; defineConst
+39 : ''' ; defineConst
+40 : '(' ; defineConst
+41 : ')' ; defineConst
+42 : '*' ; defineConst
+43 : '+' ; defineConst
+44 : ',' ; defineConst
+45 : '-' ; defineConst
+46 : '.' ; defineConst
+47 : '/' ; defineConst
+
+48 : '0' ; defineConst
+49 : '1' ; defineConst
+50 : '2' ; defineConst
+51 : '3' ; defineConst
+52 : '4' ; defineConst
+53 : '5' ; defineConst
+54 : '6' ; defineConst
+55 : '7' ; defineConst
+56 : '8' ; defineConst
+57 : '9' ; defineConst
+
+58 : ':' ; defineConst
+59 : ';' ; defineConst
+60 : '<' ; defineConst
+61 : '=' ; defineConst
+62 : '>' ; defineConst
+63 : '?' ; defineConst
+64 : '@' ; defineConst
+
+65 : 'A' ; defineConst
+66 : 'B' ; defineConst
+67 : 'C' ; defineConst
+68 : 'D' ; defineConst
+69 : 'E' ; defineConst
+70 : 'F' ; defineConst
+71 : 'G' ; defineConst
+72 : 'H' ; defineConst
+73 : 'I' ; defineConst
+74 : 'J' ; defineConst
+75 : 'K' ; defineConst
+76 : 'L' ; defineConst
+77 : 'M' ; defineConst
+78 : 'N' ; defineConst
+79 : 'O' ; defineConst
+80 : 'P' ; defineConst
+81 : 'Q' ; defineConst
+82 : 'R' ; defineConst
+83 : 'S' ; defineConst
+84 : 'T' ; defineConst
+85 : 'U' ; defineConst
+86 : 'V' ; defineConst
+87 : 'W' ; defineConst
+88 : 'X' ; defineConst
+89 : 'Y' ; defineConst
+90 : 'Z' ; defineConst
+
+91 : '[' ; defineConst
+92 : '\' ; defineConst
+93 : ']' ; defineConst
+94 : '^' ; defineConst
+95 : '_' ; defineConst
+96 : '`' ; defineConst
+
+97  : 'a' ; defineConst
+98  : 'b' ; defineConst
+99  : 'c' ; defineConst
+100 : 'd' ; defineConst
+101 : 'e' ; defineConst
+102 : 'f' ; defineConst
+103 : 'g' ; defineConst
+104 : 'h' ; defineConst
+105 : 'i' ; defineConst
+106 : 'j' ; defineConst
+107 : 'k' ; defineConst
+108 : 'l' ; defineConst
+109 : 'm' ; defineConst
+110 : 'n' ; defineConst
+111 : 'o' ; defineConst
+112 : 'p' ; defineConst
+113 : 'q' ; defineConst
+114 : 'r' ; defineConst
+115 : 's' ; defineConst
+116 : 't' ; defineConst
+117 : 'u' ; defineConst
+118 : 'v' ; defineConst
+119 : 'w' ; defineConst
+120 : 'x' ; defineConst
+121 : 'y' ; defineConst
+122 : 'z' ; defineConst
+
+123 : '{' ; defineConst
+124 : '|' ; defineConst
+125 : '}' ; defineConst
+126 : '~' ; defineConst
+(* ><><>< string of 0 length is a not handled  error *)
+: headOfString (* string[address, length] -- first char *)
+  drop fetch-byte
+  Exit
+; define-function
+
+: tailOfString (* string[address, length] -- string[address + 1, length - 1] *)
+  sub1 swap add1 swap
+  Exit
+; define-function
+
+: tailAndHeadOfString
+  (* string[address, length] --
+     string[address + 1, length - 1], first char *)
+  dup2 tailOfString xx|swap|xx headOfString
+  Exit
+; define-function
+
+: :" (* -- string[address of Basic-string-buffer, length] *)
+  read-string-into-buffer
+  Exit
+; define-function
+
+: ." (* -- string[address of Basic-string-buffer, length] *)
+  read-string-into-buffer print-string
+  Exit
+; define-function
+
+: defineConstString,byString
+  (* initial-string[address, length],
+     string[address, length], the number of words] -- *)
+  create-word-header
+  Constant-string-explainer append-number-to-here
+  xx|swap|x (* leave wordHeader *)
+  append-string-to-here (* initial-string *)
+  add-new-word-to-dictionary
+  Exit
+; define-function
+
+: defineConstString (* byWordList *)
+  (* string[address, length],
+     wordList[address, the number of words] -- *)
+  head-of-word-list
+  defineConstString,byString
+  Exit
+; define-function
+: defineRecursiveFunction (* wordList[address, the number of words] -- *)
+  tail-and-head-of-word-list
+  create-word-header-for-function
+  set-size-of-function-body
+  add-new-word-to-dictionary
+  Function-body-explainer append-number-to-here
+  append-word-description-to-here
+  Exit
+; define-function
+
+:" if"    : String,KeyWord,if   ; defineConstString
+:" else"  : String,KeyWord,else ; defineConstString
+:" then"  : String,KeyWord,then ; defineConstString
+
+: append-word-description-to-here,with-if&then
+  (* wordList[address, the number of words] -- *)
+    dup zero? false?branch 3
+      drop2 Exit
+
+    tail-and-head-of-word-list
+
+    dup2 String,KeyWord,if equal-string? false?branch 12
+      drop2
+      literal false?branch append-number-to-here
+      Here fetch xx|swap|x
+      Zero append-number-to-here (* leave a place *)
+      append-word-description-to-here,with-if&then Exit
+
+    dup2 String,KeyWord,then equal-string? false?branch 13
+      drop2
+      x|swap|xx
+      Here fetch over -  Cell-width /
+      swap save
+      append-word-description-to-here,with-if&then Exit
+
+    dup2 string-denote-number? false?branch 6
+      number drop append-number-to-here
+      append-word-description-to-here,with-if&then Exit
+
+      find word-link->word-explainer append-number-to-here
+      append-word-description-to-here,with-if&then Exit
+; defineRecursiveFunction
+
+: defineRecursiveFunctionWith:if&then
+  (* wordList[address, the number of words] -- *)
+    tail-and-head-of-word-list
+    create-word-header-for-function
+    set-size-of-function-body
+    add-new-word-to-dictionary
+    Function-body-explainer append-number-to-here
+    append-word-description-to-here,with-if&then
+    Exit
+; define-function
+
+
+(* redefine append-word-description-to-here add `else' *)
+
+: append-word-description-to-here
+  (* wordList[address, the number of words] -- *)
+    dup zero? if
+      drop2 Exit
+    then
+    tail-and-head-of-word-list
+    dup2 String,KeyWord,if equal-string? if
+      drop2
+      literal false?branch append-number-to-here
+      Here fetch xx|swap|x
+      Zero append-number-to-here (* leave a place *)
+      append-word-description-to-here Exit
+    then
+    dup2 String,KeyWord,else equal-string? if
+      drop2
+      literal branch append-number-to-here
+      Here fetch xxx|swap|x
+      Zero append-number-to-here (* leave a place *)
+      x|swap|xx
+      Here fetch over -  Cell-width /
+      swap save
+      append-word-description-to-here Exit
+    then
+    dup2 String,KeyWord,then equal-string? if
+      drop2
+      x|swap|xx
+      Here fetch over -  Cell-width /
+      swap save
+      append-word-description-to-here Exit
+    then
+    dup2 string-denote-number? if
+      number drop append-number-to-here
+      append-word-description-to-here Exit
+    then
+      find word-link->word-explainer append-number-to-here
+      append-word-description-to-here Exit
+; defineRecursiveFunctionWith:if&then
+
+
+(* redefine defineRecursiveFunction & define-function *)
+
+: define-function
+  (* wordList[address, the number of words] -- *)
+    tail-and-head-of-word-list
+    create-word-header-for-function
+    set-size-of-function-body
+    xx|swap|x
+    Function-body-explainer append-number-to-here
+    append-word-description-to-here
+    add-new-word-to-dictionary
+    Exit
+; define-function
+
+: defineRecursiveFunction
+  (* wordList[address, the number of words] -- *)
+    tail-and-head-of-word-list
+    create-word-header-for-function
+    set-size-of-function-body
+    add-new-word-to-dictionary
+    Function-body-explainer append-number-to-here
+    append-word-description-to-here
+    Exit
+; define-function
+: specialKeyWord? (* word[explainer] -- True or False *)
+  dup literal literal           == if drop True Exit then
+  dup literal branch            == if drop True Exit then
+  dup literal zero?branch       == if drop True Exit then
+  dup literal false?branch      == if drop True Exit then
+  dup literal not-false?branch  == if drop True Exit then
+  drop False
+  Exit
+; define-function
+: writeDecNumberChar (* byte -- *)
+  '0' + write-char
+  Exit
+; define-function
+
+: help,writeDecNumber,pushChars
+  (* ... , number of small DecNumbers, fixnum --
+     ... , number of small DecNumbers *)
+  Dec-base mod/
+  dup zero? if
+    drop swap add1 Exit
+  then
+  xx|swap|x xx|swap|x add1 swap
+  help,writeDecNumber,pushChars
+  Exit
+; defineRecursiveFunction
+
+: help,writeDecNumber,write-chars
+  (* ... , number of small DecNumbers -- *)
+  dup zero? if drop Exit
+  then
+  sub1 swap writeDecNumberChar
+  help,writeDecNumber,write-chars
+  Exit
+; defineRecursiveFunction
+
+: writeDecNumber (* fixnum -- *)
+  Zero swap
+  help,writeDecNumber,pushChars
+  help,writeDecNumber,write-chars
+  Exit
+; define-function
+
+: writeDecNumber,signed (* fixnum -- *)
+  dup Zero < if
+    '-' write-char
+    negate
+  then
+  writeDecNumber
+  Exit
+; define-function
+: writeBinNumberChar (* byte -- *)
+  '0' + write-char
+  Exit
+; define-function
+
+: help,writeBinNumber,pushChars
+  (* ... , number of small BinNumbers, fixnum --
+     ... , number of small BinNumbers *)
+  Bin-base mod/
+  dup zero? if
+    drop swap add1 Exit
+  then
+  xx|swap|x xx|swap|x add1 swap
+  help,writeBinNumber,pushChars
+  Exit
+; defineRecursiveFunction
+
+: help,writeBinNumber,write-chars
+  (* ... , number of small BinNumbers -- *)
+  dup zero? if drop Exit
+  then
+  sub1 swap writeBinNumberChar
+  help,writeBinNumber,write-chars
+  Exit
+; defineRecursiveFunction
+
+: writeBinNumber (* fixnum -- *)
+  Zero swap
+  help,writeBinNumber,pushChars
+  help,writeBinNumber,write-chars
+  Exit
+; define-function
+
+: writeBinNumber,signed (* fixnum -- *)
+  dup Zero < if
+    '-' write-char
+    negate
+  then
+  writeBinNumber
+  Exit
+; define-function
+: writeOctNumberChar (* byte -- *)
+  '0' + write-char
+  Exit
+; define-function
+
+: help,writeOctNumber,pushChars
+  (* ... , number of small OctNumbers, fixnum --
+     ... , number of small OctNumbers *)
+  Oct-base mod/
+  dup zero? if
+    drop swap add1 Exit
+  then
+  xx|swap|x xx|swap|x add1 swap
+  help,writeOctNumber,pushChars
+  Exit
+; defineRecursiveFunction
+
+: help,writeOctNumber,write-chars
+  (* ... , number of small OctNumbers -- *)
+  dup zero? if drop Exit
+  then
+  sub1 swap writeOctNumberChar
+  help,writeOctNumber,write-chars
+  Exit
+; defineRecursiveFunction
+
+: writeOctNumber (* fixnum -- *)
+  Zero swap
+  help,writeOctNumber,pushChars
+  help,writeOctNumber,write-chars
+  Exit
+; define-function
+
+: writeOctNumber,signed (* fixnum -- *)
+  dup Zero < if
+    '-' write-char
+    negate
+  then
+  writeOctNumber
+  Exit
+; define-function
+: writeHexNumberChar (* byte -- *)
+  dup Ten < if
+    '0' + write-char Exit
+  then
+  Ten -
+  'a' + write-char
+  Exit
+; define-function
+
+: writeHexNumberChar,capital (* byte -- *)
+  dup Ten < if
+    '0' + write-char Exit
+  then
+  Ten -
+  'A' + write-char
+  Exit
+; define-function
+
+: help,writeHexNumber,pushChars
+  (* ... , number of small HexNumbers, fixnum --
+     ... , number of small HexNumbers *)
+  Hex-base mod/
+  dup zero? if
+    drop swap add1 Exit
+  then
+  xx|swap|x xx|swap|x add1 swap
+  help,writeHexNumber,pushChars
+  Exit
+; defineRecursiveFunction
+
+: help,writeHexNumber,write-chars
+  (* ... , number of small HexNumbers -- *)
+  dup zero? if drop Exit
+  then
+  sub1 swap writeHexNumberChar
+  help,writeHexNumber,write-chars
+  Exit
+; defineRecursiveFunction
+
+: help,writeHexNumber,write-chars,capital
+  (* ... , number of small HexNumbers -- *)
+  dup zero? if drop Exit
+  then
+  sub1 swap writeHexNumberChar,capital
+  help,writeHexNumber,write-chars,capital
+  Exit
+; defineRecursiveFunction
+
+: writeHexNumber (* fixnum -- *)
+  Zero swap
+  help,writeHexNumber,pushChars
+  help,writeHexNumber,write-chars
+  Exit
+; define-function
+
+: writeHexNumber,capital (* fixnum -- *)
+  Zero swap
+  help,writeHexNumber,pushChars
+  help,writeHexNumber,write-chars,capital
+  Exit
+; define-function
+
+: writeHexNumber,signed (* fixnum -- *)
+  dup Zero < if
+    '-' write-char
+    negate
+  then
+  writeHexNumber
+  Exit
+; define-function
+
+: writeHexNumber,signed,capital (* fixnum -- *)
+  dup Zero < if
+    '-' write-char
+    negate
+  then
+  writeHexNumber,capital
+  Exit
+; define-function
+: writeAphNumberChar (* byte -- *)
+  dup Ten < if
+    '0' + write-char Exit
+  then
+  Ten -
+  'a' + write-char
+  Exit
+; define-function
+
+: writeAphNumberChar,capital (* byte -- *)
+  dup Ten < if
+    '0' + write-char Exit
+  then
+  Ten -
+  'A' + write-char
+  Exit
+; define-function
+
+: help,writeAphNumber,pushChars
+  (* ... , number of small AphNumbers, fixnum --
+     ... , number of small AphNumbers *)
+  Aph-base mod/
+  dup zero? if
+    drop swap add1 Exit
+  then
+  xx|swap|x xx|swap|x add1 swap
+  help,writeAphNumber,pushChars
+  Exit
+; defineRecursiveFunction
+
+: help,writeAphNumber,write-chars
+  (* ... , number of small AphNumbers -- *)
+  dup zero? if drop Exit
+  then
+  sub1 swap writeAphNumberChar
+  help,writeAphNumber,write-chars
+  Exit
+; defineRecursiveFunction
+
+: help,writeAphNumber,write-chars,capital
+  (* ... , number of small AphNumbers -- *)
+  dup zero? if drop Exit
+  then
+  sub1 swap writeAphNumberChar,capital
+  help,writeAphNumber,write-chars,capital
+  Exit
+; defineRecursiveFunction
+
+: writeAphNumber (* fixnum -- *)
+  Zero swap
+  help,writeAphNumber,pushChars
+  help,writeAphNumber,write-chars
+  Exit
+; define-function
+
+: writeAphNumber,capital (* fixnum -- *)
+  Zero swap
+  help,writeAphNumber,pushChars
+  help,writeAphNumber,write-chars,capital
+  Exit
+; define-function
+
+: writeAphNumber,signed (* fixnum -- *)
+  dup Zero < if
+    '-' write-char
+    negate
+  then
+  writeAphNumber
+  Exit
+; define-function
+
+: writeAphNumber,signed,capital (* fixnum -- *)
+  dup Zero < if
+    '-' write-char
+    negate
+  then
+  writeAphNumber,capital
+  Exit
+; define-function
+: .unsigned (* fixnum -- *)
+  writeDecNumber
+  'space' write-char
+  Exit
+; define-function
+
+: .signed (* fixnum -- *)
+  writeDecNumber,signed
+  'space' write-char
+  Exit
+; define-function
+
+
+: . .signed Exit ; define-function
+
+
+: .bin (* fixnum -- *)
+  writeBinNumber
+  'space' write-char
+  Exit
+; define-function
+
+: .bin,signed (* fixnum -- *)
+  writeBinNumber,signed
+  'space' write-char
+  Exit
+; define-function
+
+: .oct (* fixnum -- *)
+  writeOctNumber
+  'space' write-char
+  Exit
+; define-function
+
+: .oct,signed (* fixnum -- *)
+  writeOctNumber,signed
+  'space' write-char
+  Exit
+; define-function
+
+: .hex (* fixnum -- *)
+  writeHexNumber
+  'space' write-char
+  Exit
+; define-function
+
+: .hex,signed (* fixnum -- *)
+  writeHexNumber,signed
+  'space' write-char
+  Exit
+; define-function
+
+: .hex,capital (* fixnum -- *)
+  writeHexNumber,capital
+  'space' write-char
+  Exit
+; define-function
+
+: .hex,signed,capital (* fixnum -- *)
+  writeHexNumber,signed,capital
+  'space' write-char
+  Exit
+; define-function
+
+
+: .aph (* fixnum -- *)
+  writeAphNumber
+  'space' write-char
+  Exit
+; define-function
+
+: .aph,signed (* fixnum -- *)
+  writeAphNumber,signed
+  'space' write-char
+  Exit
+; define-function
+
+: .aph,capital (* fixnum -- *)
+  writeAphNumber,capital
+  'space' write-char
+  Exit
+; define-function
+
+: .aph,signed,capital (* fixnum -- *)
+  writeAphNumber,signed,capital
+  'space' write-char
+  Exit
+; define-function
+
+: cr (* -- *)
+  'newline' write-char Exit
+; define-function
+
+
+: writeSpace (* -- *)
+  'space' write-char Exit
+; define-function
+
+: writeSomeSpace (* n -- *)
+  dup zero? if
+    drop Exit
+  then
+  sub1
+  writeSpace
+  writeSomeSpace
+  Exit
+; defineRecursiveFunction
+: countReturnStack (* -- the length of ReturnStack *)
+  Return-stack-top fetch-return-stack-pointer -
+  Eight /
+  sub1 (* for we are in this function call *)
+  Exit
+; define-function
+
+: countArgumentStack (* -- the length of ArgumentStack *)
+  Argument-stack-top fetch-argument-stack-pointer -
+  Eight /
+  Exit
+; define-function
+
+
+0 : ReturnStackPosition ; defineVar
+0 : ArgumentStackPosition ; defineVar
+
+(* the following two function are as interface *)
+: debuger,fetchFromReturnStack (* n -- *)
+  sub1 Eight *
+  ReturnStackPosition fetch +
+  fetch
+  Exit
+; define-function
+
+: debuger,fetchFromArgumentStack (* n -- *)
+  sub1 Eight *
+  ArgumentStackPosition fetch +
+  fetch
+  Exit
+; define-function
+
+
+:" bye"
+: String,bye ; defineConstString
+
+: execute-word (* string[address, length] -- unknown *)
+  dup2
+  string-denote-number? if
+    number drop 
+    Exit
+  then
+  dup2 find dup not-zero? if
+    xx|swap|x drop2
+    word-link->word-explainer execute 
+    Exit
+  then
+  drop 
+  String,undefined-word print-string
+  print-string cr
+  Exit
+; define-function
+
+: debugerREPL (* unknown -- unknown *)
+  read-word-for-runtime
+  dup2
+  String,bye equal-string? if
+    drop2
+    Exit
+  then
+  execute-word
+  debugerREPL
+  Exit
+; defineRecursiveFunction
+
+:" debuger said: ``Welcome! Hope you find what's wrong.''"
+: String,debuger,Welcome ; defineConstString
+
+:" the length of ReturnStack is: "
+: String,debuger,theLengthOfReturnStack ; defineConstString
+
+:" the length of ArgumentStack is: "
+: String,debuger,theLengthOfArgumentStack ; defineConstString
+
+:" debuger said: ``Good bye! The computation will go on!''"
+: String,debuger,Goodbye ; defineConstString
+
+: debuger (* unknown -- unknown *)
+  String,debuger,Welcome print-string cr
+  Three writeSomeSpace String,debuger,theLengthOfReturnStack print-string
+    countReturnStack writeDecNumber cr
+  Three writeSomeSpace String,debuger,theLengthOfArgumentStack print-string
+    countArgumentStack writeDecNumber cr
+  fetch-return-stack-pointer ReturnStackPosition save
+  fetch-argument-stack-pointer ArgumentStackPosition save
+  Input-buffer Current-reading save
+  Input-buffer Reading-boundary save
+  debugerREPL
+  String,debuger,Goodbye print-string cr
+  Exit
+; define-function
+
+(* ><><>< bug ><><>< *)
+(* ``1 fetch'' will cause core dump *)
+: identificationOfWord? (* an address in a word -- *)
+  dup fetch ==
+  Exit
+; define-function
+
+(* ||  1 : name-string-header-which-contains-the-length-of-name-string  ||
+ * || m(bytes) : name-string  ||
+ * ||  1 : size of function body  ||
+ * ||  1 : identification  ||
+ * ||  1 : link  ||
+ * ||  1 : type  ||
+ * ||  1 : address-of-name-string-header  ||
+ * ||  1 : address-of-explainer  ||
+ * ||  n : body  ||
+ *)
+
+: word,body->id
+  (* [an address of a cell in a word] -- word[identification] *)
+  dup
+  identificationOfWord? if
+    Exit
+  then
+  Cell-width -
+  word,body->id
+  Exit
+; defineRecursiveFunction
+
+: word,id->name
+  (* word[identification] -- string[address, length] *)
+  Cell-width Three * +
+  fetch dup
+  add8 swap
+  fetch
+  Exit
+; define-function
+
+: word,id->explainer
+  (* word[identification] -- explainer *)
+  Cell-width Four * +
+  fetch
+  Exit
+; define-function
+
+: word,id->body-size
+  (* word[identification] -- body-size *)
+  Cell-width -
+  fetch
+  Exit
+; define-function
+
+: word,id->body-list
+  (* word[identification] -- body-list[address, length] *)
+  dup
+    Cell-width Five * +
+  swap
+  word,id->body-size
+  Exit
+; define-function
+
+: printNameOfExplainer (* explainer -- *)
+  dup Function-body-explainer == if
+    literal Function-body-explainer
+    word,body->id
+    word,id->name
+    print-string
+    drop Exit
+  then
+  dup Variable-explainer == if
+    literal Variable-explainer
+    word,body->id
+    word,id->name
+    print-string
+    drop Exit
+  then
+  dup Constant-explainer == if
+    literal Constant-explainer
+    word,body->id
+    word,id->name
+    print-string
+    drop Exit
+  then
+  dup Constant-string-explainer == if
+    literal Constant-string-explainer
+    word,body->id
+    word,id->name
+    print-string
+    drop Exit
+  then
+  drop
+  Exit
+; define-function
+
+: printFunctionBodyList (* body-list[address, length] -- *)
+  dup zero? if
+    drop2 Exit
+  then
+  Six writeSomeSpace
+  over fetch word,body->id word,id->name print-string cr
+  sub1 swap
+  Cell-width + swap
+  printFunctionBodyList
+  Exit
+; defineRecursiveFunction
+
+:"  -->  "
+: String,_-->__ ; defineConstString
+
+(* the following function is the first function
+   on which I must use ``if,else,then'' *)
+: withPointer,printFunctionBodyList
+  (* [an address of a cell in a word], body-list[address, length] -- *)
+  dup zero? if
+    drop2 drop Exit
+  then
+  x|over|xx x|over|xx == if
+    String,_-->__ print-string
+  else
+    Six writeSomeSpace
+  then
+  over
+  dup fetch specialKeyWord? if
+    fetch word,body->id word,id->name print-string cr
+    sub2 swap
+    dup
+    Six writeSomeSpace
+    Cell-width + fetch writeDecNumber cr
+    Cell-width Two * + swap
+    withPointer,printFunctionBodyList
+    Exit
+  then
+  fetch word,body->id word,id->name print-string cr
+  sub1 swap
+  Cell-width + swap
+  withPointer,printFunctionBodyList
+  Exit
+; defineRecursiveFunction
+
+
+:" traceFunction said: ``Ya! Let's trace a function!''"
+: String,traceFunction,Welcome ; defineConstString
+
+:" The function we use to trace is:"
+: String,traceFunction,FunctionToTrace ; defineConstString
+
+:" The function be traced to is:"
+: String,traceFunction,FunctionBeTracedTo ; defineConstString
+
+:" The size of the body of this function is:"
+: String,traceFunction,FunctionBodySize ; defineConstString
+
+:" The body of this function is:"
+: String,traceFunction,FunctionBody ; defineConstString
+
+:" traceFunction said: ``The end of a tracing.''"
+: String,traceFunction,Goodbye ; defineConstString
+
+: traceFunction
+  (* [an address of a cell in a word] -- *)
+  String,traceFunction,Welcome print-string cr
+  dup
+    Three writeSomeSpace String,traceFunction,FunctionToTrace print-string cr
+    Six writeSomeSpace fetch word,body->id word,id->name print-string cr
+  dup (* withPointer,printFunctionBodyList still uses original arg *)
+  word,body->id
+    dup
+      Three writeSomeSpace String,traceFunction,FunctionBeTracedTo print-string cr
+      Six writeSomeSpace word,id->name print-string cr
+    dup
+      Three writeSomeSpace String,traceFunction,FunctionBodySize print-string cr
+      Six writeSomeSpace word,id->body-size writeDecNumber cr
+    Three writeSomeSpace String,traceFunction,FunctionBody print-string cr
+    word,id->body-list withPointer,printFunctionBodyList
+  String,traceFunction,Goodbye print-string cr
+  Exit
+; define-function
+: trace (* n -- *)
+  debuger,fetchFromReturnStack
+  traceFunction
+  Exit
+; define-function
+: printWordList (* WordList[address, the number of words] -- *)
+  dup zero? if
+    drop2
+    cr Exit
+  then
+  Three writeSomeSpace
+  tail-and-head-of-word-list print-string cr
+  printWordList
+  Exit
+; defineRecursiveFunction
+
+
+:" an error occurs!
+append-word-description-to-here said:
+   ``I am a tail-recursive-function.
+     My function-type is (* WordList[address, the number of words] -- *)
+     `defineRecursiveFunction' and `define-function' call me.
+     The following word is undefined.
+     I will print the rest of the WordList and call debuger.''
+   --> "
+: String,append-word-description-to-here,meetUndefinedWord
+; defineConstString
+
+:" The length of the rest of the WordList is: "
+: String,append-word-description-to-here,LengthOfTheRestOfTheWordList
+; defineConstString
+
+:" The rest of the WordList is: "
+: String,append-word-description-to-here,TheRestOfTheWordList
+; defineConstString
+
+
+: append-word-description-to-here
+  (* WordList[address, the number of words] -- *)
+  dup zero? if
+    drop2 Exit
+  then
+  tail-and-head-of-word-list
+    dup2 String,KeyWord,if equal-string? if
+      drop2
+      literal false?branch append-number-to-here
+      Here fetch xx|swap|x
+      Zero append-number-to-here (* leave a place *)
+      append-word-description-to-here Exit
+    then
+    dup2 String,KeyWord,else equal-string? if
+      drop2
+      literal branch append-number-to-here
+      Here fetch xxx|swap|x
+      Zero append-number-to-here (* leave a place *)
+      x|swap|xx
+      Here fetch over -  Cell-width /
+      swap save
+      append-word-description-to-here Exit
+    then
+    dup2 String,KeyWord,then equal-string? if
+      drop2
+      x|swap|xx
+      Here fetch over -  Cell-width /
+      swap save
+      append-word-description-to-here Exit
+    then
+    dup2 string-denote-number? if
+      number drop append-number-to-here
+      append-word-description-to-here Exit
+    then
+    dup2
+    find dup not-zero? if
+      word-link->word-explainer append-number-to-here
+      drop2 (* drop the string[address, length], which is for debuger *)
+      append-word-description-to-here
+      Exit
+    then
+    drop (* drop the Zero *)
+  String,append-word-description-to-here,meetUndefinedWord print-string
+  print-string cr
+  String,append-word-description-to-here,LengthOfTheRestOfTheWordList
+  print-string dup writeDecNumber cr
+  String,append-word-description-to-here,TheRestOfTheWordList print-string cr
+  printWordList
+  debuger
+  Exit
+; defineRecursiveFunction
+
+
+: define-function
+  (* wordList[address, the number of words] -- *)
+  tail-and-head-of-word-list
+  create-word-header-for-function
+  set-size-of-function-body
+  xx|swap|x
+  Function-body-explainer append-number-to-here
+  append-word-description-to-here
+  add-new-word-to-dictionary
+  Exit
+; define-function
+
+: defineRecursiveFunction
+  (* wordList[address, the number of words] -- *)
+  tail-and-head-of-word-list
+  create-word-header-for-function
+  set-size-of-function-body
+  add-new-word-to-dictionary
+  Function-body-explainer append-number-to-here
+  append-word-description-to-here
+  Exit
+; define-function
+
+(*
+ * (\* wordy version for testing *\)
+ * : define-function
+ *   (\* wordList[address, the number of words] -- *\)
+ *   tail-and-head-of-word-list
+ *     dup2 print-string
+ *     'newline' write-char
+ *   create-word-header-for-function
+ *   set-size-of-function-body
+ *   xx|swap|x
+ *   Function-body-explainer append-number-to-here
+ *   append-word-description-to-here
+ *   add-new-word-to-dictionary
+ *   Exit
+ * ; define-function
+ *
+ * : defineRecursiveFunction
+ *   (\* wordList[address, the number of words] -- *\)
+ *   tail-and-head-of-word-list
+ *     dup2 print-string
+ *     'newline' write-char
+ *   create-word-header-for-function
+ *   set-size-of-function-body
+ *   add-new-word-to-dictionary
+ *   Function-body-explainer append-number-to-here
+ *   append-word-description-to-here
+ *   Exit
+ * ; define-function
+ *)
+(* a SymbolEntry [unit : byte]
+ * ==========================
+ *  ||   8 : SymbolValue   ||
+ * --------------------------
+ *  ||   1 : SymbolLength  ||
+ * --------------------------
+ *  || 56+ : SymbolString  ||
+ * ==========================
+ * where Symbol-max-length = 56 *)
+
+:" an error occurs!
+index->address said:
+   ``My function-type is (* index -- address *)
+     The following unsign-number is not a index of the hash-table
+     I will not touch it and call debuger.''
+   --> "
+: String,index->address,error ; defineConstString
+
+: index->address (* index -- address *)
+  dup Number-of-symbol-entrys >= if
+    String,index->address,error print-string
+    dup writeDecNumber cr
+    debuger Exit
+  then
+  dup Zero < if
+    String,index->address,error print-string
+    dup writeDecNumber cr
+    debuger Exit
+  then
+  Symbol-entry-bytes-size *
+  First-symbol-entry +
+  Exit
+; define-function
+
+: index-hashback->string
+  (* index -- string[address, length] *)
+  index->address Eight +
+  dup add1 swap
+  fetch-byte
+  Exit
+; define-function
+
+
+: help,string-hash->index,sum-up
+  (* sum-up , string[address, length] -- sum-up *)
+  dup zero? if
+    drop2 Exit
+  then
+  tailAndHeadOfString
+  over shift-left
+  x|swap|xxx  +  xx|swap|x
+  help,string-hash->index,sum-up
+  Exit
+; defineRecursiveFunction
+
+: help,string-hash->index,find-old-or-creat-new
+  (* string[address, length], index -- index *)
+  xx|tuck|x
+  index-hashback->string
+  (* index, string[address, length], string-2[address, length] *)
+  dup zero? if  (* creat-new *)
+    drop
+    (* index, string[address, length], destination-address *)
+    over over
+    (* index, string[address, length], destination-address, length, address *)
+    sub1 save-byte
+    swap
+    (* index,, source-address, destination-address, length *)
+    copy-byte-string
+    Exit
+  then
+  (* index, string[address, length], string-2[address, length] *)
+  xx|over|xx equal-string? if (* found old *)
+    drop2 Exit
+  then
+  x|swap|xx (* to get next-index *)
+  (* string[address, length], index *)
+  dup index->address Last-symbol-entry == if
+    drop
+    Zero
+    help,string-hash->index,find-old-or-creat-new
+    Exit
+  then
+  add1
+  help,string-hash->index,find-old-or-creat-new
+  Exit
+; defineRecursiveFunction
+
+: help,string-hash->index,sum-up->index
+  (* sum-up -- index *)
+  Number-of-symbol-entrys mod
+  Exit
+; define-function
+
+: string-hash->index
+  (* string[address, length] -- index *)
+  dup2
+    dup Symbol-max-length > if
+      drop Symbol-max-length
+      (* this means only first Symbol-max-length of the string is used by the hash-function *)
+    then
+    Zero xx|swap|x
+    help,string-hash->index,sum-up
+    help,string-hash->index,sum-up->index
+  help,string-hash->index,find-old-or-creat-new
+  Exit
+; define-function
+(* if 1 is setted to a symbol, this symbol is a fixnum like data type
+   if 2 is setted to a symbol, this symbol is a pair like data type *)
+
+: defineDataType
+  (* wordList[address, the number of words] -- *)
+  dup2
+    head-of-word-list
+    string-hash->index
+    dup
+      index->address One swap save
+    xx|swap|x
+  defineConst
+  Exit
+; define-function
+
+: definePairLikeDataType
+  (* wordList[address, the number of words] -- *)
+  dup2
+    head-of-word-list
+    string-hash->index
+    dup
+      index->address Two swap save
+    xx|swap|x
+  defineConst
+  Exit
+; define-function
+
+
+(* every word can be used as a name of a data type
+   the following are my convention *)
+
+: <fixnum>    ; defineDataType
+: <bool>      ; defineDataType
+: <type>      ; defineDataType
+: <char>      ; defineDataType
+: <symbol>    ; defineDataType
+: <substring> ; defineDataType
+: <null>      ; defineDataType
+
+
+: <fixnum-like>? (* type -- True or False *)
+    index->address fetch One ==
+    Exit
+; define-function
+
+
+0 : Null ; defineConst
+
+: null Null <null> Exit ; define-function
+
+: null? (* [value, type] -- True or False *)
+  <null> == if
+    Null == if
+      True Exit
+    then
+    False Exit
+  then
+  drop False Exit
+; define-function
+
+
+
+
+: True-Bool  True  <bool> Exit ; define-function
+: False-Bool False <bool> Exit ; define-function
+
+
+
+: <pair>    ; definePairLikeDataType
+: <string>  ; definePairLikeDataType
+: <list>    ; definePairLikeDataType
+
+: <dalin>   ; definePairLikeDataType
+
+: <wody>           ; definePairLikeDataType
+: <bound-variable> ; definePairLikeDataType
+: <wodyli>         ; definePairLikeDataType
+
+
+: <pair-like>? (* type -- True or False *)
+    index->address fetch Two ==
+    Exit
+; define-function
+
+: <not-pair-like>? (* type -- True or False *)
+    index->address fetch Two =/=
+    Exit
+; define-function
+
+
+: <dalin-like>? (* type -- True or False *)
+  dup <dalin> == if
+    drop True Exit
+  then
+  dup <wodyli> == if
+    drop True Exit
+  then
+  drop False Exit
+; define-function
+
+
+: <not-dalin-like>? (* type -- True or False *)
+  dup <dalin> == if
+    drop False Exit
+  then
+  dup <wodyli> == if
+    drop False Exit
+  then
+  drop True Exit
+; define-function
+
+
+
+
+:" an error occurs!
+printTypeTag said:
+   ``My function-type is (* type-tag[index of hash-table] -- *)
+     The following index is not a type-tag
+     I will not touch it and call debuger.''
+   --> "
+: String,printTypeTag,error ; defineConstString
+
+: printTypeTag
+  (* type-tag[index of hash-table] -- *)
+  dup
+  index->address fetch One == if
+    index-hashback->string print-string Exit
+  then
+  dup
+  index->address fetch Two == if
+    index-hashback->string print-string Exit
+  then
+  String,printTypeTag,error print-string
+  writeDecNumber cr
+  debuger Exit
+; define-function
+
+
+: eq? (* [value, type], [value, type] -- True or False *)
+  x|over|xx =/= if
+    drop drop2 False Exit
+  then
+  x|over|xx =/= if
+    drop2 False Exit
+  then
+  drop2 True Exit
+; define-function
+(*
+ * a word in the dictionary [unit : Cell-width = 8 bytes]
+ *   ||  1 : name-string-header-which-contains-the-length-of-name-string  ||
+ *   ||  m : name-string  ||
+ *   ||  1 : SizeOfFunctionBody ||
+ *   ||  1 : identification  ||
+ *   ||  1 : link  ||
+ *   ||  1 : type  ||
+ *   ||  1 : address-of-name-string-header  ||
+ *   ||  1 : address-of-explainer  ||
+ *   ||  n : body  ||
+ * where
+ *   ||  1 : type  ||
+ * ==
+ *   | type-bit-63 | ... | type-bit-1 | type-bit-0 |
+ * type-bit-0 is for HiddenWord
+ * type-bit-1 is for VariableOfTypedValue [DynamicVar]
+ *)
+
+: lastWordInTheDictionary? (* word[address of link] -- True or False *)
+    zero? Exit
+; define-function
+
+: nextWordInTheDictionary
+  (* word[address of link] -- next-word[address of link] *)
+    fetch Exit
+; define-function
+
+: fetchWordType (* word[address of link] -- WordType *)
+    add8 fetch
+    Exit
+; define-function
+
+: saveWordType (* word[address of link], WordType -- *)
+    swap add8 save
+    Exit
+; define-function
+
+
+0 : offsetForHiddenWord          ; defineConst
+1 : offsetForDynamicVariableWord ; defineConst
+
+: dynamicVariableWord? (* word[address of link] -- True or False *)
+    fetchWordType offsetForDynamicVariableWord fetch-bit one?
+    Exit
+; define-function
+Lambda-stack-top : LambdaStackPointer ; defineVar
+
+: pushLambdaStack
+  (* ArgumentStack::  value -->
+     LambdaStack::  value *)
+  Cell-width LambdaStackPointer add-save
+  LambdaStackPointer fetch save
+  Exit
+; define-function
+
+: popLambdaStack
+  (* LambdaStack::  value -->
+     ArgumentStack::  value *)
+  LambdaStackPointer fetch fetch
+  Cell-width LambdaStackPointer sub-save
+  Exit
+; define-function
+
+
+: ready (* or twoPushLambdaStack *)
+  (* ArgumentStack::  value-a, value-b -->
+     LambdaStack::  value-a, value-b *)
+  swap pushLambdaStack pushLambdaStack
+  Exit
+; define-function
+
+: getBack (* or twoPopLambdaStack *)
+  (* LambdaStack::  value-a, value-b -->
+     ArgumentStack::  value-a, value-b *)
+  popLambdaStack popLambdaStack swap
+  Exit
+; define-function
+(* example of a substring stored in StringHeap :
+   || 4 : length of substring  ||
+   || n : substring  ||
+ *)
+
+String-heap-1 : Variable,StringHeap,from ; defineVar
+String-heap-2 : Variable,StringHeap,to   ; defineVar
+
+String-heap-1 : CurrFreeStringAddress,from ; defineVar
+String-heap-2 : CurrFreeStringAddress,to   ; defineVar
+
+(*
+ * little experiment:
+ *   Hex-base Base save
+ *     10_10_00_00 fetch-argument-stack-pointer
+ *     dup
+ *       1 swap save-byte
+ *     dup
+ *       1 swap add1 save-byte
+ *     fetch .hex .hex
+ *   Dec-base Base save
+ *)
+
+: fetchFourBytes (* address -- value *)
+  Zero fetch-argument-stack-pointer
+  x|over|xx swap
+  Four copy-byte-string
+  swap drop
+  Exit
+; define-function
+
+: saveFourBytes (* value, address -- *)
+  swap fetch-argument-stack-pointer
+  x|over|xx
+  Four copy-byte-string
+  drop2
+  Exit
+; define-function
+
+(*
+ * test:
+ *   Hex-base Base save
+ *    10__10_10_00_00 fetch-argument-stack-pointer
+ *    dup
+ *      1 swap save-byte
+ *    dup
+ *      1 swap add1 save-byte
+ *    fetchFourBytes .hex .hex
+ *    10__10_10_00_00 fetch-argument-stack-pointer
+ *    dup
+ *      22_22_22_22 swap saveFourBytes
+ *    fetchFourBytes .hex .hex
+ *   Dec-base Base save
+ *)
+
+: getLengthOfString (* string[address] -- length *)
+  sub4 fetchFourBytes
+  Exit
+; define-function
+
+: stringIn?StringHeap,from (* string[address] -- True or False *)
+  Variable,StringHeap,from fetch
+  over over
+  Size-of-string-heap +  <
+  xx|swap|x  >=
+  bitwise-and
+  Exit
+; define-function
+
+: stringIn?StringHeap,to (* string[address] -- True or False *)
+  Variable,StringHeap,to fetch
+  over over
+  Size-of-string-heap +  <
+  xx|swap|x  >=
+  bitwise-and
+  Exit
+; define-function
+
+: withLength,copy-byte-string
+  (* source address, destination address, length -- *)
+  dup x|over|xx saveFourBytes
+  swap add4 swap
+  copy-byte-string
+  Exit
+; define-function
+
+: try,copy-substring,from->to
+  (* [address, <substring>] -- [address, <substring>] *)
+  (*
+   * dup <substring> =/= if
+   *   Exit
+   * then
+   *)
+  over dup
+  stringIn?StringHeap,to if
+    drop Exit
+  then
+  CurrFreeStringAddress,to fetch
+  over getLengthOfString
+  withLength,copy-byte-string
+  (* set return value *)
+  CurrFreeStringAddress,to fetch add4
+  |123->321|
+  (* update CurrFreeStringAddress,to *)
+  getLengthOfString add4
+  CurrFreeStringAddress,to add-save
+  Exit
+; define-function
+
+(* test: *)
+(*
+ * CurrFreeStringAddress,to fetch
+ *   s" xxx " dup2 print-string (\* xxx *\)
+ *   drop <substring>
+ *   try,copy-substring,from->to
+ *   drop2
+ * add4 dup
+ * getLengthOfString
+ * print-string (\* xxx *\)
+ *)
+
+
+: try,copy-substring,from->to,forCar
+  (* [address, <pair-like>] -- [address, <pair-like>] *)
+  over fetch2 (* this line is as car *)
+  dup <substring> =/= if
+    drop2 (* drop car *)
+    Exit
+  then
+  try,copy-substring,from->to
+  x|over|xxx save2 (* this line is as set-car! *)
+  Exit
+; define-function
+
+: try,copy-substring,from->to,forCdr
+  (* [address, <pair-like>] -- [address, <pair-like>] *)
+  over Car-bytes-size + fetch2 (* this line is as cdr *)
+  dup <substring> =/= if
+    drop2 (* drop cdr *)
+    Exit
+  then
+  try,copy-substring,from->to
+  x|over|xxx Car-bytes-size + save2 (* this line is as set-cdr! *)
+  Exit
+; define-function
+
+
+(*
+ * {* s" xxx" drop <substring>
+ *    s" ppp" drop <substring> *}
+ *
+ * dup2
+ *   car printTypeTag cr (\* <substring> *\)
+ *   dup getLengthOfString
+ *   print-string cr (\* xxx *\)
+ * dup2
+ *   cdr printTypeTag cr (\* <substring> *\)
+ *   dup getLengthOfString
+ *   print-string cr (\* ppp *\)
+ *
+ * dup2
+ *   car drop .hex cr (\* >< *\)
+ * dup2
+ *   cdr drop .hex cr (\* >< *\)
+ *
+ * dup2
+ *   try,copy-substring,from->to,forCar
+ *   try,copy-substring,from->to,forCdr
+ *
+ * dup2
+ *   car printTypeTag cr (\* <substring> *\)
+ *   dup getLengthOfString
+ *   print-string cr (\* xxx *\)
+ * dup2
+ *   cdr printTypeTag cr (\* <substring> *\)
+ *   dup getLengthOfString
+ *   print-string cr (\* ppp *\)
+ *
+ * (\* the two hex numbers must be different *\)
+ * dup2
+ *   car drop .hex cr (\* >< *\)
+ * dup2
+ *   cdr drop .hex cr (\* >< *\)
+ *
+ * drop2
+ *)
+: readNonStringEndingChar (* -- FirstNonBlankChar or Zero *)
+  read-char
+  dup '"' == if
+    drop Zero
+  then Exit
+; define-function
+
+: help,readString,loop (* begin-address -- end-address *)
+  readNonStringEndingChar
+  dup zero? if
+    drop Exit
+  then
+  over save-byte
+  add1
+  help,readString,loop
+  Exit
+; defineRecursiveFunction
+
+: readString (* -- string[address, length] *)
+  CurrFreeStringAddress,from fetch add4
+  dup (* leave begin-address *)
+    help,readString,loop
+  dup (* leave end-address *)
+    CurrFreeStringAddress,from save
+  over -
+  dup (* return: length *)
+  x|over|xx (* return: address *)
+  sub4 saveFourBytes
+  Exit
+; define-function
+
+: s" (* -- string[address, length] *)
+  readString Exit
+; define-function
+
+(* test: *)
+(* s" 123 xxx aaa !!! @@@ ###" print-string *)
+(* the construction of pair : [unit : byte]
+ * clr:
+ *     ||  1 : color     ||
+ * car:
+ *     ||  8 : type tag  ||
+ *     ||  8 : value     ||
+ * cdr:
+ *     ||  8 : type tag  ||
+ *     ||  8 : value     ||
+ *)
+
+(* the following constants are defined in assembler:
+ * Cons-bytes-size == 33
+ * Clr-bytes-size  ==  1
+ * Car-bytes-size  == 16
+ * Cdr-bytes-size  == 16
+ *)
+
+:" clr said:
+   ``My function-type is (* [address, <pair-like>] -- color-byte *)
+     But the type I received is the following,
+     I will not touch it and call debuger.''
+   --> "
+: String,clr,type-error ; defineConstString
+: clr (* [address, <pair-like>] -- color-byte *)
+  dup <not-pair-like>? if
+    String,clr,type-error print-string
+    dup printTypeTag cr
+    debuger Exit
+  then
+  drop (* drop the type-tag *)
+  sub1 fetch-byte Exit
+; define-function
+
+
+:" car said:
+   ``My function-type is (* [address, <pair-like>] -- [value, type] *)
+     But the type I received is the following,
+     I will not touch it and call debuger.''
+   --> "
+: String,car,type-error ; defineConstString
+: car (* [address, <pair-like>] -- [value, type] *)
+  dup <not-pair-like>? if
+    String,car,type-error print-string
+    dup printTypeTag cr
+    debuger Exit
+  then
+  drop (* drop the type-tag *)
+  fetch2 Exit
+; define-function
+
+
+:" cdr said:
+   ``My function-type is (* [address, <pair-like>] -- [value, type] *)
+     But the type I received is the following,
+     I will not touch it and call debuger.''
+   --> "
+: String,cdr,type-error ; defineConstString
+: cdr (* [address, <pair-like>] -- [value, type] *)
+  dup <not-pair-like>? if
+    String,cdr,type-error print-string
+    dup printTypeTag cr
+    debuger Exit
+  then
+  drop (* drop the type-tag *)
+  Car-bytes-size + fetch2 Exit
+; define-function
+0 : White ; defineConst
+1 : Black ; defineConst
+
+(* set three offsets used by fetch-byte, set-bit, clear-bit *)
+0 : VariableColorOffsetForFinding  ; defineVar
+1 : VariableColorOffsetForMarking  ; defineVar
+2 : VariableColorOffsetForCleaning ; defineVar
+: ColorOffsetForFinding  VariableColorOffsetForFinding  fetch Exit ; define-function
+: ColorOffsetForMarking  VariableColorOffsetForMarking  fetch Exit ; define-function
+: ColorOffsetForCleaning VariableColorOffsetForCleaning fetch Exit ; define-function
+
+:" set-clr! said:
+   ``My function-type is (* [address, <pair-like>], color-byte -- [address, <pair-like>] *)
+     If I view the second argument as a type-tag,
+     it will be as the following,
+     I will not touch it and call debuger.''
+   --> "
+: String,set-clr!,type-error ; defineConstString
+: set-clr! (* [address, <pair-like>], color-byte -- [address, <pair-like>] *)
+  over dup  <not-pair-like>? if
+    String,set-clr!,type-error print-string
+    printTypeTag cr
+    debuger Exit
+  then
+  drop (* drop the type-tag *)
+  x|over|xx sub1 save-byte Exit
+; define-function
+: whiteColorForMarking? (* color-byte -- True or False *)
+  ColorOffsetForMarking fetch-bit White == Exit
+; define-function
+
+: blackColorForMarking? (* color-byte -- True or False *)
+  ColorOffsetForMarking fetch-bit Black == Exit
+; define-function
+
+: black-<pair>? (* [address, <pair-like>] -- True or False *)
+  clr blackColorForMarking? Exit
+; define-function
+
+
+(* the following function is the only function who push-grey-pair-stack
+ * and this function is called by one,grey->black and so on *)
+:" try,white->grey said:
+   ``My function-type is (* [address, <pair-like>] -- [address, <pair-like>] *)
+     But the type I received is the following,
+     I will not touch it and call debuger.''
+   --> "
+: String,try,white->grey,type-error ; defineConstString
+: try,white->grey (* [address, <pair-like>] -- [address, <pair-like>] *)
+  dup <not-pair-like>? if
+    String,try,white->grey,type-error print-string
+    dup printTypeTag cr
+    debuger
+    Exit
+  then
+  dup2 clr
+  dup
+  whiteColorForMarking? if
+    ColorOffsetForMarking set-bit set-clr!
+
+    try,copy-substring,from->to,forCar
+    try,copy-substring,from->to,forCdr
+    over push-grey-pair-stack
+    Exit
+  then
+  drop (* drop the color-byte *) Exit
+; define-function
+
+
+: one,try,grey->black (* -- *)
+  empty-grey-pair-stack? if
+    Exit
+  then
+  pop-grey-pair-stack dup
+    fetch2 dup <pair-like>? if
+      try,white->grey
+    then drop2
+    Car-bytes-size +
+    fetch2 dup <pair-like>? if
+      try,white->grey
+    then drop2
+  Exit
+; define-function
+
+
+(* the following is a help-function of all,grey->black
+ * the GreyPairStack must not be empty when it is called *)
+
+: one,grey->black (* -- *)
+  pop-grey-pair-stack dup
+    fetch2 dup <pair-like>? if
+      try,white->grey
+    then drop2
+    Car-bytes-size +
+    fetch2 dup <pair-like>? if
+      try,white->grey
+    then drop2
+  Exit
+; define-function
+
+: all,grey->black (* -- *)
+  empty-grey-pair-stack? if
+    Exit
+  then
+  one,grey->black
+  all,grey->black Exit
+; defineRecursiveFunction
+: set!
+  (* VarForTypedValue[address], [value, type] -- VarForTypedValue[address] *)
+  dup <pair-like>? if
+    all,grey->black (* to be incremental-gc is to call this function here *)
+    try,white->grey
+  then
+  x|over|xx save2
+  Exit
+; define-function
+
+
+: help,set-car!&set-cdr!,for-black-<pair>
+  (* [valus, type] -- [valus, type] *)
+  dup <pair-like>? if
+    all,grey->black (* to be incremental-gc is to call this function here *)
+    try,white->grey
+  then
+  Exit
+; define-function
+
+
+:" set-car! said:
+   ``My function-type is (* [address, <pair-like>], [valus, type] -- [address, <pair-like>] *)
+     If I view the third argument as a type-tag,
+     it will be as the following,
+     I will not touch it and call debuger.''
+   --> "
+: String,set-car!,type-error ; defineConstString
+
+: set-car!
+  (* [address, <pair-like>], [valus, type] -- [address, <pair-like>] *)
+  x|over|xx dup  <not-pair-like>? if
+    String,set-car!,type-error print-string
+    printTypeTag cr
+    debuger Exit
+  then
+  drop (* drop the type-tag overed *)
+  xx|over|xx black-<pair>? if
+    help,set-car!&set-cdr!,for-black-<pair>
+  then
+  x|over|xxx save2
+  Exit
+; define-function
+
+
+:" set-cdr! said:
+   ``My function-type is (* [address, <pair-like>], [valus, type] -- [address, <pair-like>] *)
+     If I view the third argument as a type-tag,
+     it will be as the following,
+     I will not touch it and call debuger.''
+   --> "
+: String,set-cdr!,type-error ; defineConstString
+
+: set-cdr!
+  (* [address, <pair-like>], [valus, type] -- [address, <pair-like>] *)
+  x|over|xx dup  <not-pair-like>? if
+    String,set-cdr!,type-error print-string
+    printTypeTag cr
+    debuger Exit
+  then
+  drop (* drop the type-tag overed *)
+  xx|over|xx black-<pair>? if
+    help,set-car!&set-cdr!,for-black-<pair>
+  then
+  x|over|xxx Car-bytes-size + save2
+  Exit
+; define-function
+
+
+(* ------------------------------------------------- *)
+
+
+:" [cons,car]! said:
+   ``My function-type is (* [address, <pair-like>], [valus, type] -- [address, <pair-like>] *)
+     If I view the third argument as a type-tag,
+     it will be as the following,
+     I will not touch it and call debuger.''
+   --> "
+: String,[cons,car]!,type-error ; defineConstString
+
+: [cons,car]!
+  (* [address, <pair-like>], [valus, type] -- [address, <pair-like>] *)
+  x|over|xx dup  <not-pair-like>? if
+    String,[cons,car]!,type-error print-string
+    printTypeTag cr
+    debuger Exit
+  then
+  drop (* drop the type-tag overed *)
+  xx|over|xx black-<pair>? if
+    help,set-car!&set-cdr!,for-black-<pair>
+  then
+  x|over|xxx save2
+  Exit
+; define-function
+
+
+:" [cons,cdr]! said:
+   ``My function-type is (* [address, <pair-like>], [valus, type] -- [address, <pair-like>] *)
+     If I view the third argument as a type-tag,
+     it will be as the following,
+     I will not touch it and call debuger.''
+   --> "
+: String,[cons,cdr]!,type-error ; defineConstString
+
+: [cons,cdr]!
+  (* [address, <pair-like>], [valus, type] -- [address, <pair-like>] *)
+  x|over|xx dup  <not-pair-like>? if
+    String,[cons,cdr]!,type-error print-string
+    printTypeTag cr
+    debuger Exit
+  then
+  drop (* drop the type-tag overed *)
+  xx|over|xx black-<pair>? if
+    help,set-car!&set-cdr!,for-black-<pair>
+  then
+  x|over|xxx Car-bytes-size + save2
+  Exit
+; define-function
+
+
+(* ------------------------------------------------- *)
+
+
+:" [car,cons]! said:
+   ``My function-type is (* [value, type], [address, <pair-like>] -- [address, <pair-like>] *)
+     If I view the first argument as a type-tag,
+     it will be as the following,
+     I will not touch it and call debuger.''
+   --> "
+: String,[car,cons]!,type-error ; defineConstString
+
+: [car,cons]!
+  (* [value, type], [address, <pair-like>] -- [address, <pair-like>] *)
+  (* you can read this as ``car-cons-set'' *)
+  dup <not-pair-like>? if
+    String,[car,cons]!,type-error print-string
+    dup printTypeTag cr
+    debuger Exit
+  then
+  dup2 black-<pair>? if
+    xx|swap|xx help,set-car!&set-cdr!,for-black-<pair> xx|swap|xx
+  then
+  xx|tuck|xx
+  drop save2
+  Exit
+; define-function
+
+
+:" [cdr,cons]! said:
+   ``My function-type is (* [value, type], [address, <pair-like>] -- [address, <pair-like>] *)
+     If I view the first argument as a type-tag,
+     it will be as the following,
+     I will not touch it and call debuger.''
+   --> "
+: String,[cdr,cons]!,type-error ; defineConstString
+
+: [cdr,cons]!
+  (* [value, type], [address, <pair-like>] -- [address, <pair-like>] *)
+  (* you can read this as ``cdr-cons-set'' *)
+  dup <not-pair-like>? if
+    String,[cdr,cons]!,type-error print-string
+    dup printTypeTag cr
+    debuger Exit
+  then
+  dup2 black-<pair>? if
+    xx|swap|xx help,set-car!&set-cdr!,for-black-<pair> xx|swap|xx
+  then
+  xx|tuck|xx
+  drop Car-bytes-size + save2
+  Exit
+; define-function
+(* recall
+ * a word in the dictionary [unit : Cell-width = 8 bytes]
+ *   ||  1 : name-string-header-which-contains-the-length-of-name-string  ||
+ *   ||  m : name-string  ||
+ *   ||  1 : SizeOfFunctionBody  ||
+ *   ||  1 : identification  ||
+ *   ||  1 : link  ||
+ *   ||  1 : type  ||
+ *   ||  1 : address-of-name-string-header  ||
+ *   ||  1 : address-of-explainer  ||
+ *   ||  n : body  ||
+ * where
+ *   ||  1 : type  ||
+ * ==
+ *   | type-bit-63 | ... | type-bit-1 | type-bit-0 |
+ * type-bit-0 is for HiddenWord
+ * type-bit-1 is for VariableOfTypedValue
+ *)
+
+: create-word-header-for-typed-value
+  (* string[address, length] -- word[address of link] *)
+  Here fetch xx|swap|x (* address-of-name-string-header *)
+  append-string-to-here
+  Here fetch append-number-to-here (* identification *)
+  Here fetch (* leave the word[link] *)
+  Zero append-number-to-here (* link *)
+  Two append-number-to-here  (* type *)
+  swap
+  append-number-to-here (* address-of-name-string-header *)
+  Exit
+; define-function
+
+: define,byString
+  (* [value, type], string[address, length] -- *)
+  create-word-header-for-typed-value
+  Variable-explainer append-number-to-here
+  xx|swap|x  (* leave wordHeader *)
+  dup <pair-like>? if
+    try,white->grey
+  then
+  append-number-to-here append-number-to-here
+  add-new-word-to-dictionary
+  Exit
+; define-function
+
+: define
+  (* [value, type], wordList[address, the number of words] -- *)
+  head-of-word-list
+  define,byString
+  Exit
+; define-function
+(* the following functions are helping cons *)
+
+: clearColorBitOfPairForCleaning (* pair[address] -- pair[address] *)
+    <pair>
+    dup2 clr
+    ColorOffsetForCleaning clear-bit
+    set-clr!
+    drop
+    Exit
+; define-function
+
+: whiteColorForFinding? (* color-byte -- True or False *)
+    ColorOffsetForFinding fetch-bit White ==
+    Exit
+; define-function
+
+: findNextFreePairConstruction
+  (* pair[address] -- Zero or NextFreePairConstruction[address] *)
+    dup Last-pair-construction == if
+      drop Zero Exit
+    then
+    Cons-bytes-size +
+    clearColorBitOfPairForCleaning
+    dup <pair> clr
+    whiteColorForFinding? if
+      Exit
+    then
+    findNextFreePairConstruction
+    Exit
+; defineRecursiveFunction
+
+
+
+(* a cyclic permutation
+ * of the two three period cyclic permutation
+ * in the third-order permutation group
+ VariableColorOffsetForFinding  --> VariableColorOffsetForCleaning
+ VariableColorOffsetForMarking  --> VariableColorOffsetForFinding
+ VariableColorOffsetForCleaning --> VariableColorOffsetForMarking
+ *)
+: resetColorOffsets (* -- *)
+    VariableColorOffsetForFinding  fetch
+    VariableColorOffsetForMarking  fetch
+    VariableColorOffsetForCleaning fetch
+    VariableColorOffsetForMarking  save
+    VariableColorOffsetForFinding  save
+    VariableColorOffsetForCleaning save
+    Exit
+; define-function
+
+
+: dynamicVariableWordFor<pair-like>? (* word[address of link] -- True or False *)
+    dup dynamicVariableWord? if
+    word-link->word-explainer execute fetch2
+    swap drop
+    <pair-like>?
+    Exit
+    then
+    drop False Exit
+; define-function
+
+: help,pushAllRootNodeIntoGreyPairStack (* word[address of link] -- *)
+    dup lastWordInTheDictionary? if
+      drop Exit
+    then
+    dup dynamicVariableWordFor<pair-like>? if
+    dup word-link->word-explainer execute fetch2
+    try,white->grey drop2
+    then
+    nextWordInTheDictionary
+    help,pushAllRootNodeIntoGreyPairStack
+    Exit
+; defineRecursiveFunction
+
+: pushAllRootNodeIntoGreyPairStack (* -- *)
+    first-word-in-dictionary fetch
+    help,pushAllRootNodeIntoGreyPairStack
+    Exit
+; define-function
+
+
+
+(* the following function is not intrinsic
+   but I have to use it this way *)
+
+(* a value meet the following three conditions is an AddressOfPair
+ *  (the following is infix notations)
+ * 1. Value >= First-pair-construction
+ * 2. Value <= Last-pair-construction
+ * 3. [Value - First-pair-construction] mod Cons-bytes-size == 0
+ *)
+
+: addressOfPair? (* value -- True or False *)
+    dup First-pair-construction < if
+      drop False Exit
+    then
+    dup Last-pair-construction > if
+      drop False Exit
+    then
+    First-pair-construction - Cons-bytes-size mod zero?
+    Exit
+; define-function
+
+
+
+: help,allPairsInArgumentStack,try,white->grey
+  (* address of a Cell in ArgumentStack -- *)
+    dup Argument-stack-top > if
+      drop Exit
+    then
+    dup fetch addressOfPair? if
+      dup fetch
+      <pair> try,white->grey
+      drop2
+    then
+    Cell-width +
+    help,allPairsInArgumentStack,try,white->grey
+    Exit
+; defineRecursiveFunction
+: allPairsInArgumentStack,try,white->grey (* -- *)
+    fetch-argument-stack-pointer
+    help,allPairsInArgumentStack,try,white->grey
+    Exit
+; define-function
+
+
+: help,allPairsInLambdaStack,try,white->grey
+  (* address of a Cell in LambdaStack -- *)
+    dup Lambda-stack-top > if
+      drop Exit
+    then
+    dup fetch addressOfPair? if
+      dup fetch
+      <pair> try,white->grey
+      drop2
+    then
+    Cell-width +
+    help,allPairsInLambdaStack,try,white->grey
+    Exit
+; defineRecursiveFunction
+: allPairsInLambdaStack,try,white->grey (* -- *)
+    LambdaStackPointer fetch
+    help,allPairsInLambdaStack,try,white->grey
+    Exit
+; define-function
+
+
+
+: resetVariablesAboutString (* -- *)
+  CurrFreeStringAddress,to fetch CurrFreeStringAddress,from save
+  Variable,StringHeap,from fetch CurrFreeStringAddress,to   save
+  Variable,StringHeap,to   fetch Variable,StringHeap,from   save
+  CurrFreeStringAddress,to fetch Variable,StringHeap,to     save
+  Exit
+; define-function
+
+
+:"  :gc: "
+: String,gc ; defineConstString
+
+:" cons said: ``Memory for cons is used up! No value is returned!''"
+: String,cons,MemoryIsUsedUp ; defineConstString
+
+: cons (* -- [address, <pair>] *)
+    Current-free-pair-construction fetch <pair> (* leave the return <value> *)
+    Current-free-pair-construction fetch findNextFreePairConstruction
+    dup not-zero? (* Zero denotes fail to find *) if
+      Current-free-pair-construction save
+      Exit
+    then drop (* drop the Zero, which denotes fail to find, need gc *)
+    allPairsInArgumentStack,try,white->grey
+    all,grey->black
+    resetColorOffsets resetVariablesAboutString (* note the timing to reset *)
+    pushAllRootNodeIntoGreyPairStack
+    In-front-of-the-first-pair-construction findNextFreePairConstruction
+    dup not-zero? if
+      Current-free-pair-construction save
+      String,gc print-string
+      Exit
+    then drop
+    (* if after gc still fail to find, we know the memory is used up *)
+    drop2
+    String,cons,MemoryIsUsedUp print-string cr
+    debuger
+    Exit
+; define-function
+: read-string (* -- [address, <string>] *)
+  cons drop (* drop <pair> *) <string>
+  s" drop (* drop length *) <substring>
+  set-car!
+  null set-cdr!
+  Exit
+; define-function
+
+: ::" (* -- [address, <string>] *)
+  read-string Exit
+; define-function
+
+
+:" write-string said:
+   ``My function-type is ( [address, <string>] -- ).
+     But the type I received is the following,
+     I will not touch it and call debuger.''
+   --> "
+: String,write-string,type-error ; defineConstString
+
+: write-string (* [address, <string>] -- *)
+  dup <string> =/= if
+    String,write-string,type-error print-string
+    dup printTypeTag cr
+    debuger Exit
+  then
+  car drop (* drop <substring> *)
+  dup getLengthOfString print-string
+  Exit
+; define-function
+
+: substring (* length -- address *)
+  (* allocate a substring of the given length *)
+  CurrFreeStringAddress,from fetch add4 swap (* leave begin-address *)
+  dup CurrFreeStringAddress,from fetch saveFourBytes
+  Four + CurrFreeStringAddress,from add-save
+  Exit
+; define-function
+
+: string (* length -- [address, <string>] *)
+  (* allocate a string of the given length *)
+  substring <substring>
+  null
+  cons drop <string>
+  [cdr,cons]!
+  [car,cons]!
+  Exit
+; define-function
+(* for test *)
+: printTypeOfIt (* type -- *)
+  printTypeTag ':' write-char writeSpace Exit
+; define-function
+
+(* test: gc *)
+: ask-for-lots-of-cons (* n -- *)
+    dup zero? if drop Exit
+    then
+    sub1
+    cons
+      literal 555 <fixnum> set-car!
+      literal 666 <fixnum> set-cdr!
+    drop2
+    ask-for-lots-of-cons
+    Exit
+; defineRecursiveFunction
+
+: ask-for-lots-of-cons,leave-them-on-the-ArgumentStack (* n -- *)
+    dup zero? if drop Exit
+    then
+    sub1
+    cons
+      literal 555 <fixnum> set-car!
+      literal 666 <fixnum> set-cdr!
+    x|swap|xx
+    ask-for-lots-of-cons,leave-them-on-the-ArgumentStack
+    Exit
+; defineRecursiveFunction
+:" {" : String,begining-list ; defineConstString
+:" }" : String,ending-list   ; defineConstString
+
+:" ." : String,dot           ; defineConstString
+
+:" (esc" : String,begining-list-escape ; defineConstString
+:" )"    : String,ending-list-escape   ; defineConstString
+
+:" [" : String,begining-*dalin ; defineConstString
+:" ]" : String,ending-*dalin   ; defineConstString
+
+:" (" : String,begining-wodyli ; defineConstString
+:" )" : String,ending-wodyli   ; defineConstString
+:" write-list"    : String,write-list   ; defineConstString
+:" write-*dalin"  : String,write-*dalin ; defineConstString
+:" write-wodyli"  : String,write-wodyli ; defineConstString
+:" write-wody-or-bound-variable"
+: String,write-wody-or-bound-variable ; defineConstString
+
+:" null"  : String,null ; defineConstString
+
+:" write said:
+   ``I do not know how to write the following type of value,
+     I will not touch it and call debuger.''
+   --> "
+: String,write,type-error ; defineConstString
+
+: write (* [value, type] -- *)
+  dup <fixnum> == if drop (* drop type-tag *)
+    writeDecNumber  writeSpace
+    Exit
+  then
+  dup <symbol> == if drop (* drop type-tag *)
+    index-hashback->string print-string  writeSpace
+    Exit
+  then
+  dup <null> == if drop (* drop type-tag *)
+    drop
+    String,null print-string writeSpace
+    Exit
+  then
+  dup <list> == if
+    String,write-list find word-link->word-explainer execute
+    Exit
+  then
+  dup <dalin> == if
+    String,write-*dalin find word-link->word-explainer execute
+    Exit
+  then
+  dup <wody> ==
+  over <bound-variable> ==
+  bitwise-or if
+    String,write-wody-or-bound-variable find word-link->word-explainer execute
+    Exit
+  then
+  dup <wodyli> == if
+    String,write-wodyli find word-link->word-explainer execute
+    Exit
+  then
+  String,write,type-error print-string
+  dup printTypeTag cr
+  debuger Exit
+; define-function
+: stringDenoteListReader?
+  (* string[address, length] -- True or False *)
+  dup2 String,begining-list equal-string? if
+    drop2 True Exit
+  then
+  dup2 String,begining-list-escape equal-string? if
+    drop2 True Exit
+  then
+  dup2 String,begining-*dalin equal-string? if
+    drop2 True Exit
+  then
+  dup2 String,begining-wodyli equal-string? if
+    drop2 True Exit
+  then
+  drop2 False Exit
+; define-function
+
+(* then we need mutually recursive call *)
+: execute-word,for-list-reader
+  (* string[address, length] -- [value, type] *)
+  dup2 stringDenoteListReader? if
+    find word-link->word-explainer execute
+    Exit
+  then
+  dup2 string-denote-number? if
+    number drop <fixnum>
+    Exit
+  then
+  dup2 String,null equal-string? if
+    drop2 null
+    Exit
+  then
+  string-hash->index <symbol>
+  Exit
+; define-function
+: list-escape-REPL
+  (* could  be: unknown -- unknown *)
+  (* should be:  -- [value, type] *)
+  read-word-for-runtime
+  dup2
+  string-denote-number? if
+    number drop
+    list-escape-REPL
+    Exit
+  then
+  dup2
+  String,ending-list-escape equal-string? if
+    drop2
+    Exit
+  then
+  dup2 find dup not-zero? if
+    xx|swap|x drop2
+    word-link->word-explainer execute
+    list-escape-REPL
+    Exit
+  then
+  drop
+  String,undefined-word print-string
+  print-string cr
+  list-escape-REPL
+  Exit
+; defineRecursiveFunction
+
+: (esc list-escape-REPL Exit ; define-function
+: read-list (* -- [address, <list>] *)
+  read-word
+  dup2 String,ending-list equal-string? if
+    drop2
+    null Exit
+  then
+  dup2 String,dot equal-string? if
+    drop2
+    read-list car
+    (* this means { 1 . 2 3 } will be read as { 1 . 2 } *)
+    Exit
+  then
+  execute-word,for-list-reader
+  cons drop <list>
+    xx|swap|xx  set-car!
+    read-list   set-cdr!
+  Exit
+; defineRecursiveFunction
+
+: { read-list Exit ; define-function
+: help,write-list (* [address, <list>] or [Null, <null>] -- *)
+  dup <null> == if
+    drop2 Exit
+  then
+  dup <pair-like>? if
+    dup2
+    car write
+    cdr help,write-list
+    Exit
+  then
+  String,dot print-string writeSpace
+  write
+  Exit
+; defineRecursiveFunction
+
+
+:" write-list said:
+   ``My function-type is (* [address, <list>] -- *)
+     But the 1st argument is the following
+     I will not touch it and call debuger.''
+   --> "
+: String,write-list,type-error ; defineConstString
+
+: write-list (* [address, <list>] -- *)
+  dup <list> =/= if
+    String,write-list,type-error print-string
+    dup printTypeTag cr
+    debuger Exit
+  then
+  String,begining-list print-string writeSpace
+  help,write-list
+  String,ending-list print-string writeSpace
+  Exit
+; define-function
+:" set-car-to-{car}! said:
+   ``My function-type is (* [address, <pair-like>] -- [address, <pair-like>] *)
+     But the type I received is the following,
+     I will not touch it and call debuger.''
+   --> "
+: String,set-car-to-{car}!,type-error ; defineConstString
+(* [car.cdr]->[[car].cdr] *)
+: set-car-to-{car}!
+  (* [address, <pair-like>] -- [address, <pair-like>] *)
+  dup <not-pair-like>? if
+    String,set-car-to-{car}!,type-error print-string
+    dup printTypeTag cr
+    debuger Exit
+  then
+  dup2
+  car cons
+    xx|swap|xx set-car!
+    null set-cdr!
+  set-car!
+  Exit
+; define-function
+
+
+:" set-car-to-{cdr}! said:
+   ``My function-type is (* [address, <pair-like>] -- [address, <pair-like>] *)
+     But the type I received is the following,
+     I will not touch it and call debuger.''
+   --> "
+: String,set-car-to-{cdr}!,type-error ; defineConstString
+(* [car.cdr]->[car.[cdr]] *)
+: set-cdr-to-{cdr}!
+  (* [address, <pair-like>] -- [address, <pair-like>] *)
+  dup <not-pair-like>? if
+    String,set-car-to-{cdr}!,type-error print-string
+    dup printTypeTag cr
+    debuger Exit
+  then
+  dup2
+  cdr cons
+    xx|swap|xx set-car!
+    null set-cdr!
+  set-cdr!
+  Exit
+; define-function
+
+
+
+
+:" set-car-to-{car.x}! said:
+   ``My function-type is
+    (* [address, <pair-like>], [value, type] -- [address, <pair-like>] *)
+     If I view the second argument as a type-tag,
+     It will be the following,
+     I will not touch it and call debuger.''
+   --> "
+: String,set-car-to-{car.x}!,type-error ; defineConstString
+
+: set-car-to-{car.x}!
+  (* [address, <pair-like>], [value, type] -- [address, <pair-like>] *)
+  x|over|xx <not-pair-like>? if
+    String,set-car-to-{car.x}!,type-error print-string
+    x|over|xx printTypeTag cr
+    debuger Exit
+  then
+  xx|over|xx
+  car cons
+    xx|swap|xx set-car!
+    xx|swap|xx set-cdr!
+  set-car!
+  Exit
+; define-function
+
+
+:" set-car-to-{cdr.x}! said:
+   ``My function-type is
+    (* [address, <pair-like>], [value, type] -- [address, <pair-like>] *)
+     If I view the second argument as a type-tag,
+     It will be the following,
+     I will not touch it and call debuger.''
+   --> "
+: String,set-car-to-{cdr.x}!,type-error ; defineConstString
+
+(* [car.cdr],x->[car.[cdr.x]]! *)
+: set-cdr-to-{cdr.x}!
+  (* [address, <pair-like>], [value, type] -- [address, <pair-like>] *)
+  x|over|xx <not-pair-like>? if
+    String,set-car-to-{cdr.x}!,type-error print-string
+    x|over|xx printTypeTag cr
+    debuger Exit
+  then
+  xx|over|xx
+  cdr cons
+    xx|swap|xx set-car!
+    xx|swap|xx set-cdr!
+  set-cdr!
+  Exit
+; define-function
+
+
+:" set-car-to-{x.car}! said:
+   ``My function-type is
+    (* [address, <pair-like>], [value, type] -- [address, <pair-like>] *)
+     If I view the second argument as a type-tag,
+     It will be the following,
+     I will not touch it and call debuger.''
+   --> "
+: String,set-car-to-{x.car}!,type-error ; defineConstString
+
+: set-car-to-{x.car}!
+  (* [address, <pair-like>], [value, type] -- [address, <pair-like>] *)
+  x|over|xx <not-pair-like>? if
+    String,set-car-to-{x.car}!,type-error print-string
+    x|over|xx printTypeTag cr
+    debuger Exit
+  then
+  xx|over|xx
+  car cons
+    xx|swap|xx set-cdr!
+    xx|swap|xx set-car!
+  set-car!
+  Exit
+; define-function
+
+
+:" set-car-to-{x.cdr}! said:
+   ``My function-type is
+    (* [address, <pair-like>], [value, type] -- [address, <pair-like>] *)
+     If I view the second argument as a type-tag,
+     It will be the following,
+     I will not touch it and call debuger.''
+   --> "
+: String,set-car-to-{x.cdr}!,type-error ; defineConstString
+
+: set-cdr-to-{x.cdr}!
+  (* [address, <pair-like>], [value, type] -- [address, <pair-like>] *)
+  x|over|xx <not-pair-like>? if
+    String,set-car-to-{x.cdr}!,type-error print-string
+    x|over|xx printTypeTag cr
+    debuger Exit
+  then
+  xx|over|xx
+  cdr cons
+    xx|swap|xx set-cdr!
+    xx|swap|xx set-car!
+  set-cdr!
+  Exit
+; define-function
+:" <- said:
+   ``My function-type is (* [address, <dalin-like>] -- [address, <dalin>] *)
+     But the type I received is the following,
+     I will not touch it and call debuger.''
+   --> "
+: String,<-,type-error ; defineConstString
+
+: <- (* [address, <dalin-like>] -- [address, <dalin>] *)
+  dup <not-dalin-like>? if
+    String,<-,type-error print-string
+    dup printTypeTag cr
+    debuger Exit
+  then
+  cdr car Exit
+; define-function
+
+
+:" -> said:
+   ``My function-type is (* [address, <dalin-like>] -- [address, <dalin>] *)
+     But the type I received is the following,
+     I will not touch it and call debuger.''
+   --> "
+: String,->,type-error ; defineConstString
+
+: -> (* [address, <dalin-like>] -- [address, <dalin>] *)
+  dup <not-dalin-like>? if
+    String,->,type-error print-string
+    dup printTypeTag cr
+    debuger Exit
+  then
+  cdr cdr Exit
+; define-function
+(* note that:
+   in the following, I am using side-effect to change a existed list
+   but NOT to form a new dalin from scratch *)
+
+: help,list->dalin
+  (* [address, <dalin>], left[address, <dalin>] -- [address, <dalin>] *)
+  (* or *)
+  (* [address, <dalin>], [value, <non-dalin>] -- [address, <dalin>] *)
+  set-cdr-to-{x.cdr}! (* set the ``left'' *)
+  dup2 cdr
+    dup2 cdr <not-pair-like>? if
+      drop (* drop the non-pair-value *)
+      null set-cdr!
+      (* this means the 3 in { 1 2 . 3 } will be droped *)
+      drop2 Exit
+    then
+    (* change the type-tag of the cdr of the old list, from <list> to <dalin> *)
+    (* the pair-like-value is still here *) <dalin> set-cdr!
+    cdr
+  (* [address, <dalin>], [address, <pair-like>] *)
+  xx|swap|xx
+  help,list->dalin
+  Exit
+; defineRecursiveFunction
+
+
+:" list->*dalin* said:
+   ``My function-type is
+     (* [address, <list>] -- head[address, <dalin>], tail[address, <dalin>] *)
+     But the type I received is the following,
+     I will not touch it and call debuger.''
+   --> "
+: String,list->*dalin*,type-error ; defineConstString
+
+: list->*dalin*
+  (* [address, <list>] -- head[address, <dalin>], tail[address, <dalin>] *)
+  dup <list> =/= if
+    String,list->*dalin*,type-error print-string
+    dup printTypeTag cr
+    debuger Exit
+  then
+  drop <dalin>
+  dup2 (* leave the return value *)
+  null
+  help,list->dalin
+  Exit
+; define-function
+
+
+:" list->dalin* said:
+   ``My function-type is (* [address, <list>] -- tail[address, <dalin>] *)
+     But the type I received is the following,
+     I will not touch it and call debuger.''
+   --> "
+: String,list->dalin*,type-error ; defineConstString
+
+: list->dalin*
+  (* [address, <list>] -- tail[address, <dalin>] *)
+  dup <list> =/= if
+    String,list->dalin*,type-error print-string
+    dup printTypeTag cr
+    debuger Exit
+  then
+  drop <dalin>
+  null
+  help,list->dalin
+  Exit
+; define-function
+
+
+:" list->*dalin said:
+   ``My function-type is (* [address, <list>] -- head[address, <dalin>] *)
+     But the type I received is the following,
+     I will not touch it and call debuger.''
+   --> "
+: String,list->*dalin,type-error ; defineConstString
+
+: list->*dalin
+  (* [address, <list>] -- head[address, <dalin>] *)
+  dup <list> =/= if
+    String,list->*dalin,type-error print-string
+    dup printTypeTag cr
+    debuger Exit
+  then
+  drop <dalin>
+  dup2 (* leave the return value *)
+  null
+  help,list->dalin
+  drop2
+  Exit
+; define-function
+: *dalin? (* [address, <dalin>] -- True or False *)
+  <- null? if
+    True Exit
+  then
+  False Exit
+; define-function
+
+: dalin*? (* [address, <dalin>] -- True or False *)
+  -> null? if
+    True Exit
+  then
+  False Exit
+; define-function
+: help,nested-list->dalin
+  (* [address, <dalin>], left[address, <dalin>] -- [address, <dalin>] *)
+  (* or *)
+  (* [address, <dalin>], [value, <non-dalin>] -- [address, <dalin>] *)
+  set-cdr-to-{x.cdr}! (* set the ``left'' *)
+  dup2 car dup <list> == if
+    list->*dalin set-car!
+  else
+    drop2
+  then
+  dup2 cdr
+    dup2 cdr <not-pair-like>? if
+      drop (* drop the non-pair-value *)
+      null set-cdr!
+      (* this means the 3 in { 1 2 . 3 } will be droped *)
+      drop2 Exit
+    then
+    (* change the type-tag of the cdr of the old list, from <list> to <dalin> *)
+    (* the pair-like-value is still here *) <dalin> set-cdr!
+    cdr
+  (* [address, <dalin>], [address, <pair-like>] *)
+  xx|swap|xx
+  help,nested-list->dalin
+  Exit
+; defineRecursiveFunction
+
+
+:" nested-list->*dalin said:
+   ``My function-type is (* [address, <list>] -- head[address, <dalin>] *)
+     But the type I received is the following,
+     I will not touch it and call debuger.''
+   --> "
+: String,nested-list->*dalin,type-error ; defineConstString
+
+: nested-list->*dalin
+  (* [address, <list>] -- head[address, <dalin>] *)
+  dup <list> =/= if
+    String,nested-list->*dalin,type-error print-string
+    dup printTypeTag cr
+    debuger Exit
+  then
+  drop <dalin>
+  dup2 (* leave the return value *)
+  null
+  help,nested-list->dalin
+  drop2
+  Exit
+; define-function
+:" dalin->tail said:
+   ``My function-type is
+     (* [address, <dalin-like>] -- tail[address, <dalin-like>] *)
+     But the type I received is the following,
+     I will not touch it and call debuger.''
+   --> "
+: String,dalin->tail,type-error ; defineConstString
+
+: dalin->tail
+  (* [address, <dalin-like>] -- tail[address, <dalin-like>] *)
+  dup <not-dalin-like>? if
+    String,dalin->tail,type-error print-string
+    dup printTypeTag cr
+    debuger Exit
+  then
+  dup2 dalin*? if
+    Exit
+  then
+  ->  dalin->tail
+  Exit
+; defineRecursiveFunction
+
+
+:" head<-dalin said:
+   ``My function-type is
+     (* [address, <dalin-like>] -- head[address, <dalin-like>] *)
+     But the type I received is the following,
+     I will not touch it and call debuger.''
+   --> "
+: String,head<-dalin,type-error ; defineConstString
+
+: head<-dalin
+  (* [address, <dalin-like>] -- head[address, <dalin-like>] *)
+  dup <not-dalin-like>? if
+    String,head<-dalin,type-error print-string
+    dup printTypeTag cr
+    debuger Exit
+  then
+  dup2 *dalin? if
+    Exit
+  then
+  <-  head<-dalin
+  Exit
+; defineRecursiveFunction
+:" [value,dalin]-associate said:
+   ``My function-type is
+     (* [value, type], head[address, <dalin-like>] --
+        associate-pair[address, <pair-like>] or [Null, <null>] *)
+     But the type I received is the following,
+     I will not touch it and call debuger.''
+   --> "
+: String,[value,dalin]-associate,type-error,at-first
+; defineConstString
+
+:" [value,dalin]-associate said:
+   ``My function-type is
+     (* [value, type], head[address, <dalin-like>] --
+        associate-pair[address, <pair-like>] or [Null, <null>] *)
+     But in the middle of recursion
+     I found the dalin is not an associated-dalin
+     the following is what I found
+     I will not touch it and call debuger''
+   --> "
+: String,[value,dalin]-associate,type-error,in-the-middle
+; defineConstString
+
+: help,[value,dalin]-associate
+  (* [value, type], head[address, <dalin-like>], or [Null, <null>] --
+     associate-pair[address, <pair-like>] or [Null, <null>] *)
+  dup <null> == if
+    (* if associate fail, return null *)
+    xx|swap|xx drop2 Exit
+  then
+  dup2
+  car dup <not-pair-like>? if
+    String,[value,dalin]-associate,type-error,in-the-middle print-string
+    dup printTypeTag cr
+    debuger Exit
+  then
+  car
+  (* [value, type], head[address, <dalin-like>], car-car[value, type] *)
+  xx|over|xxxx eq? if
+    xx|swap|xx drop2
+    car Exit
+  then
+  ->  help,[value,dalin]-associate
+  Exit
+; defineRecursiveFunction
+
+: [value,dalin]-associate
+  (* [value, type], head[address, <dalin-like>] --
+     associate-pair[address, <pair-like>] or [Null, <null>] *)
+  dup <not-dalin-like>? if
+    String,[value,dalin]-associate,type-error,at-first print-string
+    dup printTypeTag cr
+    debuger Exit
+  then
+  help,[value,dalin]-associate
+  Exit
+; define-function
+
+
+
+: [value,dalin]-member?
+  (* [value, type], [address, <dalin-like>] -- True or False *)
+  dup <null> == if
+    drop2 drop2 False Exit
+  then
+  dup2 car
+  xx|over|xxxx eq? if
+    drop2 drop2 True Exit
+  then
+  ->  [value,dalin]-member?
+  Exit
+; defineRecursiveFunction
+:" ^_^ said:
+   ``My function-type is
+     (*  left[address, <dalin-like>], rigth[address, <dalin-like>] --
+         rigth[address, <dalin-like>] *)
+     If I view the 1st argument as a type-tag,
+     it will be as the following,
+     I will not touch it and call debuger.''
+   --> "
+: String,^_^,1st-type-error ; defineConstString
+
+:" ^_^ said:
+   ``My function-type is
+     (*  left[address, <dalin-like>], rigth[address, <dalin-like>] --
+         rigth[address, <dalin-like>] *)
+     If I view the 3rd argument as a type-tag,
+     it will be as the following,
+     I will not touch it and call debuger.''
+   --> "
+: String,^_^,3rd-type-error ; defineConstString
+
+
+(* the following ``little-smile-face'' is ``link-dalin'' *)
+: ^_^
+  (*  left[address, <dalin-like>], rigth[address, <dalin-like>] --
+     rigth[address, <dalin-like>] *)
+  (* where: left[address, <dalin-like>] could be a null *)
+  dup <not-dalin-like>? if
+    String,^_^,1st-type-error print-string
+    dup printTypeTag cr
+    debuger Exit
+  then
+  x|over|xx <null> == if
+    xx|tuck|xx (* leave the return value *)
+    cdr xx|over|xx set-car! drop2
+    drop2
+    Exit
+  then
+  x|over|xx <not-dalin-like>? if
+    String,^_^,3rd-type-error print-string
+    x|over|xx printTypeTag cr
+    debuger Exit
+  then
+  xx|tuck|xx (* leave the return value *)
+  cdr xx|over|xx set-car! drop2
+  cdr xx|over|xx set-cdr! drop2
+  Exit
+; define-function
+: help,read-*dalin
+  (* tail[address, <dalin>] -- head[address, <dalin>] *)
+  (* where:
+       the <- of ``tail'' is setted,
+       need to set the -> of ``tail'' *)
+  read-word
+  dup2 String,ending-*dalin equal-string? if
+    drop2
+    dup <null> == if
+      Exit (* so [ ] null will be read as null *)
+    then
+    dup2
+      cdr
+        null  set-cdr!
+      drop2
+    head<-dalin
+    Exit
+  then
+  execute-word,for-list-reader
+  cons drop <dalin>
+    xx|swap|xx  set-car!
+    cons        set-cdr!
+  ^_^
+  help,read-*dalin
+  Exit
+; defineRecursiveFunction
+
+
+: read-*dalin (* -- head[address, <dalin>] *)
+  null
+  help,read-*dalin
+  Exit
+; define-function
+
+: [ read-*dalin Exit ; define-function
+: help,write-*dalin
+  (* [address, <dalin>] -- *)
+  dup2 dalin*? if
+    car write Exit
+  then
+  dup2
+    car write
+  -> help,write-*dalin Exit
+; defineRecursiveFunction
+
+
+:" write-*dalin said:
+   ``My function-type is (* [address, <dalin>] -- *)
+     But the 1st argument is the following
+     I will not touch it and call debuger.''
+   --> "
+: String,write-*dalin,type-error ; defineConstString
+
+: write-*dalin (* [address, <dalin>] -- *)
+  dup <dalin> =/= if
+    String,write-*dalin,type-error print-string
+    dup printTypeTag cr
+    debuger Exit
+  then
+  String,begining-*dalin print-string writeSpace
+  help,write-*dalin
+  String,ending-*dalin print-string writeSpace
+  Exit
+; define-function
+: help,stack-LIAF->list
+  (* ..., number --  *)
+  (* LambdaStack::
+     [address, <list>] -- *)
+  dup zero? if
+    drop (* drop Zero *)
+    getBack null set-cdr!
+    drop2 Exit
+  then
+  sub1
+  swap <fixnum>  cons drop <list>  [car,cons]!
+  dup2
+    getBack [cdr,cons]! drop2
+  ready
+  help,stack-LIAF->list
+  Exit
+; defineRecursiveFunction
+
+: stack-LIAF->list
+  (* ..., number -- [address, <list>] *)
+  dup zero? if
+    drop null Exit
+  then
+  sub1
+  swap <fixnum>  cons drop <list>  [car,cons]!
+  dup2 ready (* leave the return *)
+  ready
+    help,stack-LIAF->list
+  getBack Exit
+; define-function
+
+
+: help,stack-FIAF->list
+  (* ..., number -- *)
+  (* LambdaStack::
+     [address, <list>] -- [address, <list>] *)
+  dup zero? if
+    drop (* drop Zero *)
+    Exit
+  then
+  sub1
+  swap <fixnum>  cons drop <list>  [car,cons]!
+  getBack [cons,cdr]! ready
+  help,stack-FIAF->list
+  Exit
+; defineRecursiveFunction
+
+: stack-FIAF->list
+  (* ..., number -- [address, <list>] *)
+  dup zero? if
+    drop null Exit
+  then
+  null
+  ready
+    help,stack-FIAF->list
+  getBack
+  Exit
+; define-function
+: help,stack-LIAF->dalin
+  (* ..., number -- [address, <list>] *)
+  (* LambdaStack::
+     [address, <list>] -- *)
+  dup zero? if
+    drop (* drop Zero *)
+    getBack
+    dup2 cdr
+    null set-cdr!
+    drop2
+    head<-dalin
+    Exit
+  then
+  sub1
+  swap <fixnum>  cons drop <dalin>  [car,cons]!
+  cons  [cons,cdr]!
+  getBack
+    xx|swap|xx ^_^
+  ready
+  help,stack-LIAF->dalin
+  Exit
+; defineRecursiveFunction
+
+: stack-LIAF->dalin
+  (* ..., number -- [address, <dalin>] *)
+  dup zero? if
+    drop null Exit
+  then
+  null
+  ready
+  help,stack-LIAF->dalin
+  Exit
+; define-function
+
+
+: help,stack-FIAF->dalin
+  (* ..., number -- [address, <list>] *)
+  (* LambdaStack::
+     [address, <list>] -- *)
+  dup zero? if
+    drop (* drop Zero *)
+    getBack
+    dup2 cdr
+    null set-car!
+    drop2 Exit
+  then
+  sub1
+  swap <fixnum>  cons drop <dalin>  [car,cons]!
+  cons  [cons,cdr]!
+  getBack
+    ^_^ <-
+  ready
+  help,stack-FIAF->dalin
+  Exit
+; defineRecursiveFunction
+
+: stack-FIAF->dalin
+  (* ..., number -- [address, <dalin>] *)
+  (* ..., number -- [address, <dalin>] *)
+  dup zero? if
+    drop null Exit
+  then
+  sub1
+  swap <fixnum>  cons drop <dalin>
+  [car,cons]!
+    null set-cdr-to-{cdr.x}!
+  ready
+  help,stack-FIAF->dalin
+  Exit
+; define-function
+:" stack<-FIAF-list said:
+   ``My function type is (* [address, <list>] -- ... *)
+     the list should be a list of <not-pair-like> value
+     But in the middle of recursion
+     the following is what I found
+     I will not touch it and call debuger''
+   --> "
+: String,stack<-FIAF-list,error ; defineConstString
+
+:" stack<-FIAF-list said:
+   ``My function type is (* [address, <list>] -- ... *)
+     But the type I received is the following,
+     I will not touch it and call debuger.''
+   --> "
+: String,stack<-FIAF-list,type-error ; defineConstString
+
+: help,stack<-FIAF-list
+  (* -- ... *)
+  (* LambdaStack::
+     [address, <list>] -- *)
+  getBack
+  dup <null> == if
+    drop2 Exit
+  then
+  dup2
+    cdr ready
+  car
+  dup <pair-like>? if
+    String,stack<-FIAF-list,error print-string
+    dup printTypeTag cr
+    debuger Exit
+  then
+  drop (* drop a <not-pair-like> type-tag *)
+  (* leave the value of the [value, <not-pair-like>] *)
+  help,stack<-FIAF-list
+  Exit
+; defineRecursiveFunction
+
+: stack<-FIAF-list
+  (* [address, <list>] -- ... *)
+  dup <list> =/= if
+    String,stack<-FIAF-list,type-error print-string
+    dup printTypeTag cr
+    debuger Exit
+  then
+  ready
+  help,stack<-FIAF-list
+  Exit
+; define-function
+: charDenoteNumberOrAlphabetOrOutOfAscii?
+  (* char -- True of False *)
+  dup literal 48 < if     drop False Exit
+  then
+  dup literal 57 <= if    drop True Exit
+  then
+  dup literal 65 < if     drop False Exit
+  then
+  dup literal 90 <= if    drop True Exit
+  then
+  dup literal 97 < if     drop False Exit
+  then
+  dup literal 122 <= if   drop True Exit
+  then
+  dup literal 128 < if    drop False Exit
+  then
+  drop True Exit
+; define-function
+(* `:' followed by a number or alphabet is a symbolDenoteBoundVariable
+   ascii: 48 -- 57, 65 -- 90, 97 -- 122, 128 -- ...
+   this set maybe change in the future *)
+
+: stringDenoteBoundVariableOne?
+  (* [address, length] -- True or False *)
+  tailAndHeadOfString
+  ':' =/= if
+    drop2 False (* Exit *)
+  else
+    dup Zero == if
+      drop2 False (* Exit *)
+    else
+      tailAndHeadOfString
+      charDenoteNumberOrAlphabetOrOutOfAscii? if
+        drop2 True (* Exit *)
+      else
+        drop2 False (* Exit *)
+      then
+    then
+  then
+  Exit
+; define-function
+
+:" an error occurs!
+symbolDenoteBoundVariableOne? said:
+   ``My function-type is (* [index, <symbol>] -- True or False *)
+     But the type I received is the following,
+     I will not touch it and call debuger.''
+   --> "
+: String,symbolDenoteBoundVariableOne?,type-error ; defineConstString
+: symbolDenoteBoundVariableOne?
+  (* [index, <symbol>] -- True or False *)
+  dup <symbol> =/= if
+    String,symbolDenoteBoundVariableOne?,type-error print-string
+    dup printTypeTag cr
+    debuger Exit
+  then
+  drop (* drop the type-tag *)
+  index-hashback->string
+  stringDenoteBoundVariableOne?
+  Exit
+; define-function
+
+
+
+: stringDenoteBoundVariableTwo?
+  (* [address, length] -- True or False *)
+  dup Two <= if
+    drop2 False Exit
+  then
+  tailAndHeadOfString ':' =/= if
+    drop2 False Exit
+  then
+  stringDenoteBoundVariableOne? Exit
+  Exit
+; define-function
+
+:" an error occurs!
+symbolDenoteBoundVariableTwo? said:
+   ``My function-type is (* [index, <symbol>] -- True or False *)
+     But the type I received is the following,
+     I will not touch it and call debuger.''
+   --> "
+: String,symbolDenoteBoundVariableTwo?,type-error ; defineConstString
+: symbolDenoteBoundVariableTwo?
+  (* [index, <symbol>] -- True or False *)
+  dup <symbol> =/= if
+    String,symbolDenoteBoundVariableTwo?,type-error print-string
+    dup printTypeTag cr
+    debuger Exit
+  then
+  drop (* drop the type-tag *)
+  index-hashback->string
+  stringDenoteBoundVariableTwo?
+  Exit
+; define-function
+
+
+
+
+: stringDenoteBoundVariableThree?
+  (* [address, length] -- True or False *)
+  dup Three <= if
+    drop2 False Exit
+  then
+  tailAndHeadOfString ':' =/= if
+    drop2 False Exit
+  then
+  stringDenoteBoundVariableTwo? Exit
+  Exit
+; define-function
+
+:" an error occurs!
+symbolDenoteBoundVariableThree? said:
+   ``My function-type is (* [index, <symbol>] -- True or False *)
+     But the type I received is the following,
+     I will not touch it and call debuger.''
+   --> "
+: String,symbolDenoteBoundVariableThree?,type-error ; defineConstString
+: symbolDenoteBoundVariableThree?
+  (* [index, <symbol>] -- True or False *)
+  dup <symbol> =/= if
+    String,symbolDenoteBoundVariableThree?,type-error print-string
+    dup printTypeTag cr
+    debuger Exit
+  then
+  drop (* drop the type-tag *)
+  index-hashback->string
+  stringDenoteBoundVariableThree?
+  Exit
+; define-function
+
+
+
+: stringDenoteBoundVariableFour?
+  (* [address, length] -- True or False *)
+  dup Four <= if
+    drop2 False Exit
+  then
+  tailAndHeadOfString ':' =/= if
+    drop2 False Exit
+  then
+  stringDenoteBoundVariableThree? Exit
+  Exit
+; define-function
+
+:" an error occurs!
+symbolDenoteBoundVariableFour? said:
+   ``My function-type is (* [index, <symbol>] -- True or False *)
+     But the type I received is the following,
+     I will not touch it and call debuger.''
+   --> "
+: String,symbolDenoteBoundVariableFour?,type-error ; defineConstString
+: symbolDenoteBoundVariableFour?
+  (* [index, <symbol>] -- True or False *)
+  dup <symbol> =/= if
+    String,symbolDenoteBoundVariableFour?,type-error print-string
+    dup printTypeTag cr
+    debuger Exit
+  then
+  drop (* drop the type-tag *)
+  index-hashback->string
+  stringDenoteBoundVariableFour?
+  Exit
+; define-function
+
+
+
+
+: stringDenoteBoundVariable?
+  (* [address, length] -- True or False *)
+  dup2 stringDenoteBoundVariableOne? if
+    drop2 True Exit
+  then
+  dup2 stringDenoteBoundVariableTwo? if
+    drop2 True Exit
+  then
+  dup2 stringDenoteBoundVariableThree? if
+    drop2 True Exit
+  then
+  dup2 stringDenoteBoundVariableFour? if
+    drop2 True Exit
+  then
+  drop2 False Exit
+; define-function
+
+:" an error occurs!
+symbolDenoteBoundVariable? said:
+   ``My function-type is (* [index, <symbol>] -- True or False *)
+     But the type I received is the following,
+     I will not touch it and call debuger.''
+   --> "
+: String,symbolDenoteBoundVariable?,type-error ; defineConstString
+: symbolDenoteBoundVariable?
+  (* [index, <symbol>] -- True or False *)
+  dup <symbol> =/= if
+    String,symbolDenoteBoundVariable?,type-error print-string
+    dup printTypeTag cr
+    debuger Exit
+  then
+  drop (* drop the type-tag *)
+  index-hashback->string
+  stringDenoteBoundVariable?
+  Exit
+; define-function
+(* string begin with a number or alphabet
+   and end with `:' following a number or alphabet
+   is a symbolDenoteWody *)
+
+: stringDenoteWody?
+  (* [address, length] -- True or False *)
+  dup Two < if
+    drop2 False Exit
+  then
+  dup2 headOfString
+  charDenoteNumberOrAlphabetOrOutOfAscii? false? if
+    drop2 False Exit
+  then
+  dup2  sub1 +  fetch-byte ':' =/= if
+    drop2 False Exit
+  then
+  dup2  sub2 +  fetch-byte
+  charDenoteNumberOrAlphabetOrOutOfAscii? false? if
+    drop2 False Exit
+  then
+  drop2 True Exit
+; define-function
+
+:" an error occurs!
+symbolDenoteWody? said:
+   ``My function-type is (* [index, <symbol>] -- True or False *)
+     But the type I received is the following,
+     I will not touch it and call debuger.''
+   --> "
+: String,symbolDenoteWody?,type-error ; defineConstString
+: symbolDenoteWody?
+  (* [index, <symbol>] -- True or False *)
+  dup <symbol> =/= if
+    String,symbolDenoteWody?,type-error print-string
+    dup printTypeTag cr
+    debuger Exit
+  then
+  drop (* drop the type-tag *)
+  index-hashback->string
+  stringDenoteWody?
+  Exit
+; define-function
+(* `<' plus a stringDenoteBoundVariableOne *)
+: stringDenoteLambdaArgumentOne?
+  (* [address, length] -- True or False *)
+  dup Two <= if
+    drop2 False Exit
+  then
+  tailAndHeadOfString '<' =/= if
+    drop2 False Exit
+  then
+  stringDenoteBoundVariableOne? Exit
+; define-function
+
+:" an error occurs!
+symbolDenoteLambdaArgumentOne? said:
+   ``My function-type is (* [index, <symbol>] -- True or False *)
+     But the type I received is the following,
+     I will not touch it and call debuger.''
+   --> "
+: String,symbolDenoteLambdaArgumentOne?,type-error ; defineConstString
+: symbolDenoteLambdaArgumentOne?
+  (* [index, <symbol>] -- True or False *)
+  dup <symbol> =/= if
+    String,symbolDenoteLambdaArgumentOne?,type-error print-string
+    dup printTypeTag cr
+    debuger Exit
+  then
+  drop (* drop the type-tag *)
+  index-hashback->string
+  stringDenoteLambdaArgumentOne?
+  Exit
+; define-function
+
+
+
+(* `<' plus a stringDenoteBoundVariableTwo *)
+: stringDenoteLambdaArgumentTwo?
+  (* [address, length] -- True or False *)
+  dup Three <= if
+    drop2 False Exit
+  then
+  tailAndHeadOfString '<' =/= if
+    drop2 False Exit
+  then
+  stringDenoteBoundVariableTwo? Exit
+; define-function
+
+:" an error occurs!
+symbolDenoteLambdaArgumentTwo? said:
+   ``My function-type is (* [index, <symbol>] -- True or False *)
+     But the type I received is the following,
+     I will not touch it and call debuger.''
+   --> "
+: String,symbolDenoteLambdaArgumentTwo?,type-error ; defineConstString
+: symbolDenoteLambdaArgumentTwo?
+  (* [index, <symbol>] -- True or False *)
+  dup <symbol> =/= if
+    String,symbolDenoteLambdaArgumentTwo?,type-error print-string
+    dup printTypeTag cr
+    debuger Exit
+  then
+  drop (* drop the type-tag *)
+  index-hashback->string
+  stringDenoteLambdaArgumentTwo?
+  Exit
+; define-function
+
+
+
+
+(* `<' plus a stringDenoteBoundVariableThree *)
+: stringDenoteLambdaArgumentThree?
+  (* [address, length] -- True or False *)
+  dup Four <= if
+    drop2 False Exit
+  then
+  tailAndHeadOfString '<' =/= if
+    drop2 False Exit
+  then
+  stringDenoteBoundVariableThree? Exit
+; define-function
+
+:" an error occurs!
+symbolDenoteLambdaArgumentThree? said:
+   ``My function-type is (* [index, <symbol>] -- True or False *)
+     But the type I received is the following,
+     I will not touch it and call debuger.''
+   --> "
+: String,symbolDenoteLambdaArgumentThree?,type-error ; defineConstString
+: symbolDenoteLambdaArgumentThree?
+  (* [index, <symbol>] -- True or False *)
+  dup <symbol> =/= if
+    String,symbolDenoteLambdaArgumentThree?,type-error print-string
+    dup printTypeTag cr
+    debuger Exit
+  then
+  drop (* drop the type-tag *)
+  index-hashback->string
+  stringDenoteLambdaArgumentThree?
+  Exit
+; define-function
+
+
+
+
+(* `<' plus a stringDenoteBoundVariableFour *)
+: stringDenoteLambdaArgumentFour?
+  (* [address, length] -- True or False *)
+  dup Five <= if
+    drop2 False Exit
+  then
+  tailAndHeadOfString '<' =/= if
+    drop2 False Exit
+  then
+  stringDenoteBoundVariableFour? Exit
+; define-function
+
+:" an error occurs!
+symbolDenoteLambdaArgumentFour? said:
+   ``My function-type is (* [index, <symbol>] -- True or False *)
+     But the type I received is the following,
+     I will not touch it and call debuger.''
+   --> "
+: String,symbolDenoteLambdaArgumentFour?,type-error ; defineConstString
+: symbolDenoteLambdaArgumentFour?
+  (* [index, <symbol>] -- True or False *)
+  dup <symbol> =/= if
+    String,symbolDenoteLambdaArgumentFour?,type-error print-string
+    dup printTypeTag cr
+    debuger Exit
+  then
+  drop (* drop the type-tag *)
+  index-hashback->string
+  stringDenoteLambdaArgumentFour?
+  Exit
+; define-function
+
+
+
+: stringDenoteLambdaArgument?
+  (* [address, length] -- True or False *)
+  dup2 stringDenoteLambdaArgumentOne? if
+    drop2 True Exit
+  then
+  dup2 stringDenoteLambdaArgumentTwo? if
+    drop2 True Exit
+  then
+  dup2 stringDenoteLambdaArgumentThree? if
+    drop2 True Exit
+  then
+  dup2 stringDenoteLambdaArgumentFour? if
+    drop2 True Exit
+  then
+  drop2 False Exit
+; define-function
+
+:" an error occurs!
+symbolDenoteLambdaArgument? said:
+   ``My function-type is (* [index, <symbol>] -- True or False *)
+     But the type I received is the following,
+     I will not touch it and call debuger.''
+   --> "
+: String,symbolDenoteLambdaArgument?,type-error ; defineConstString
+: symbolDenoteLambdaArgument?
+  (* [index, <symbol>] -- True or False *)
+  dup <symbol> =/= if
+    String,symbolDenoteLambdaArgument?,type-error print-string
+    dup printTypeTag cr
+    debuger Exit
+  then
+  drop (* drop the type-tag *)
+  index-hashback->string
+  stringDenoteLambdaArgument?
+  Exit
+; define-function
+: help,with-word,read-wody-or-bound-variable
+  (* -- [address, <list>] *)
+  (* LambdaStack::
+     -- wody[address, length] *)
+  read-word
+  dup2 stringDenoteWody? if
+    ready
+    null Exit
+  then
+  dup2 stringDenoteBoundVariable? if
+    ready
+    null Exit
+  then
+  dup2 String,ending-wodyli equal-string? if
+    ready
+    null Exit
+  then
+  dup2 String,dot equal-string? if
+    drop2
+    help,with-word,read-wody-or-bound-variable car
+    (* this means { 1 . 2 3 } will be read as { 1 . 2 } *)
+    Exit
+  then
+  execute-word,for-list-reader
+  cons drop <list>
+    xx|swap|xx  set-car!
+      help,with-word,read-wody-or-bound-variable
+    set-cdr!
+  Exit
+; defineRecursiveFunction
+
+
+: with-word,read-wody-or-bound-variable
+  (* word[address, length] -- [address, <wody>], word[address, length] *)
+  (* LambdaStack:: <wody> -- *)
+  (* or *)
+  (* word[address, length] -- [address, <bound-variable>], word[address, length] *)
+  (* LambdaStack:: <bound-variable> -- *)
+  string-hash->index <symbol>
+  cons drop popLambdaStack
+    [car,cons]!
+      help,with-word,read-wody-or-bound-variable
+    [cons,cdr]!
+  getBack
+  (* return the next ``wody'' word
+     it must be handled in help,read-wodyli *)
+  Exit
+; define-function
+
+
+
+:" help,read-wodyli said:
+   ``My function type is
+     (* [address, <wodyli>], word[address, length] -- head[address, <wodyli>] *)
+     the `word' must be `)' or denotes `wody' or denotes `bound-variable'
+     But the following is what I meet
+     I will not touch it and call debuger''
+   --> "
+: String,help,read-wodyli,error ; defineConstString
+
+(* a ``with-word'' reader *)
+: help,read-wodyli
+  (* [address, <wodyli>], word[address, length] -- head[address, <wodyli>] *)
+  (* where:
+       the <- of [address, <wodyli>] is setted,
+       need to set the -> of [address, <wodyli>] *)
+  dup2 String,ending-wodyli equal-string? if
+    drop2
+    dup2
+      cdr
+        null  set-cdr!
+      drop2
+    head<-dalin
+    Exit
+  then
+  dup2 stringDenoteWody? if
+    <wody> pushLambdaStack
+  else
+    dup2 stringDenoteBoundVariable? if
+      <bound-variable> pushLambdaStack
+    else
+      String,help,read-wodyli,error print-string
+      print-string cr
+      debuger Exit
+    then
+  then
+  with-word,read-wody-or-bound-variable
+  (* [address, <wodyli>], [address, <wody>], word[address, length] *)
+  (* or *)
+  (* [address, <wodyli>], [address, <bound-variable>], word[address, length] *)
+  xxxx|swap|xx
+  cons drop <wodyli>
+    xx|swap|xx  set-car!
+    cons        set-cdr!
+  ^_^
+  xx|swap|xx
+  help,read-wodyli
+  Exit
+; defineRecursiveFunction
+
+
+
+: read-wodyli (* -- head[address, <wodyli>] *)
+  null
+  read-word
+  dup2 String,ending-wodyli equal-string? if
+    (* return ``null'' on ( ) *)
+    drop2 Exit
+  then
+  help,read-wodyli
+  Exit
+; define-function
+
+: ( read-wodyli Exit ; define-function
+:" write-wody-or-bound-variable said:
+   ``My function-type is (* [address, <wody> or <bound-variable>] -- *)
+     But the 1st argument is the following
+     I will not touch it and call debuger.''
+   --> "
+: String,write-wody-or-bound-variable,type-error ; defineConstString
+
+: write-wody-or-bound-variable
+  (* [address, <wody> or <bound-variable>] -- *)
+  dup <wody> =/=
+  over <bound-variable> =/=
+  bitwise-and if
+    String,write-wody-or-bound-variable,type-error print-string
+    dup printTypeTag cr
+    debuger Exit
+  then
+  dup2
+    car write
+  cdr help,write-list
+  Exit
+; define-function
+
+
+
+: help,write-wodyli
+  (* [address, <wodyli>] -- *)
+  dup <null> == if
+    drop2 Exit
+  then
+  dup2
+    car write
+  -> help,write-wodyli Exit
+; defineRecursiveFunction
+
+
+:" write-wodyli said:
+   ``My function-type is (* [address, <wodyli>] -- *)
+     But the 1st argument is the following
+     I will not touch it and call debuger.''
+   --> "
+: String,write-wodyli,type-error ; defineConstString
+
+: write-wodyli
+  (* [address, <wodyli>] -- *)
+  dup <wodyli> =/= if
+    String,write-wodyli,type-error print-string
+    dup printTypeTag cr
+    debuger Exit
+  then
+  String,begining-wodyli print-string writeSpace
+  help,write-wodyli
+  String,ending-wodyli print-string writeSpace
+  Exit
+; define-function
+: <lambda-argument-one>   ; definePairLikeDataType
+: <lambda-argument-two>   ; definePairLikeDataType
+: <lambda-argument-three> ; definePairLikeDataType
+: <lambda-argument-four>  ; definePairLikeDataType
+
+: <lambda-argument>?
+  (* type-tag -- True or False *)
+  dup <lambda-argument-one> == if
+    drop True Exit
+  then
+  dup <lambda-argument-two> == if
+    drop True Exit
+  then
+  dup <lambda-argument-three> == if
+    drop True Exit
+  then
+  dup <lambda-argument-four> == if
+    drop True Exit
+  then
+  drop False Exit
+; define-function
+
+(* ><><>< the following comment should be rewritten *)
+(* redefine execute-word to handle the following symbols
+   <:x   ::    value       -- [{ :x  . { ... } }, <lambda-argument-one>]
+   <::x  ::  [value, type] -- [{ ::x . { ... } }, <lambda-argument-two>]
+   ...
+   examples:
+   [{ :x       . { 1 } },             <lambda-argument-one>]
+   [{ ::null   . { Null <null> } },   <lambda-argument-two>]
+   [{ ::number . { 666 <fixnum> } },  <lambda-argument-two>]
+   note that:
+     every value in list must have a type
+     so in every list above, type of a car is setted to <fixnum>
+ *)
+
+: execute-word (* string[address, length] -- unknown *)
+  dup2
+  string-denote-number? if
+    number drop Exit
+  then
+
+  dup2 stringDenoteBoundVariableOne? if
+    string-hash->index <symbol> Exit
+  then
+  dup2 stringDenoteBoundVariableTwo? if
+    string-hash->index <symbol> Exit
+  then
+  dup2 stringDenoteBoundVariableThree? if
+    string-hash->index <symbol> Exit
+  then
+  dup2 stringDenoteBoundVariableFour? if
+    string-hash->index <symbol> Exit
+  then
+
+  dup2 stringDenoteLambdaArgumentOne? if
+    tailOfString
+    string-hash->index <symbol>
+    cons drop <lambda-argument-one>
+      xx|swap|xx set-car!
+      ready
+        One stack-FIAF->list
+      getBack
+      xx|swap|xx set-cdr!
+    Exit
+  then
+  dup2 stringDenoteLambdaArgumentTwo? if
+    tailOfString
+    string-hash->index <symbol>
+    cons drop <lambda-argument-two>
+      xx|swap|xx set-car!
+      ready
+        Two stack-FIAF->list
+      getBack
+      xx|swap|xx set-cdr!
+    Exit
+  then
+  dup2 stringDenoteLambdaArgumentThree? if
+    tailOfString
+    string-hash->index <symbol>
+    cons drop <lambda-argument-three>
+      xx|swap|xx set-car!
+      ready
+        Three stack-FIAF->list
+      getBack
+      xx|swap|xx set-cdr!
+    Exit
+  then
+  dup2 stringDenoteLambdaArgumentFour? if
+    tailOfString
+    string-hash->index <symbol>
+    cons drop <lambda-argument-four>
+      xx|swap|xx set-car!
+      ready
+        Four stack-FIAF->list
+      getBack
+      xx|swap|xx set-cdr!
+    Exit
+  then
+  dup2 find dup not-zero? if
+    xx|swap|x drop2
+    word-link->word-explainer execute Exit
+  then
+  drop (* drop the Zero that denotes finding-error *)
+  String,undefined-word print-string
+  print-string (* print the word *) cr
+  Exit
+; define-function
+
+(* if wished
+ *   one needs to use help,symbolREPL to do the recursive
+ *   and reset the two pointers in symbolREPL
+ * Return-stack-top reset-return-stack-pointer
+ * Argument-stack-top reset-argument-stack-pointer *)
+
+: symbolREPL (* unknown -- unknown *)
+  read-word-for-runtime
+  execute-word
+  symbolREPL
+  Exit
+; defineRecursiveFunction
+symbolREPL
+: <lambda>               ; definePairLikeDataType
+: <explainer-pair>       ; definePairLikeDataType
+: <explainer>            ; defineDataType
+: bound-variable-wodyli?
+  (* head[address, <wodyli>] -- True or False *)
+  dup <wodyli> =/= if
+    drop2 False Exit
+  then
+  dup2 car  swap drop
+  <bound-variable> =/= if
+    drop2 False Exit
+  then
+  dup2 dalin*? if
+    drop2 True Exit
+  then
+  ->  bound-variable-wodyli?
+  Exit
+; defineRecursiveFunction
+
+
+(*
+ * the following function return `True'
+ * on the following dalin as a tail
+ *   [ [address, <dalin>]
+ *     bound-variable-wodyli[address, <wodyli>]
+ *    ]
+ * and
+ *   [ [address, <dalin>]
+ *     null
+ *    ]
+ *)
+
+: meet-lambda-abstraction-in-lambda-body-dalin?
+  (* tail[address, <dalin>] -- True or False *)
+  dup <dalin> =/= if
+    drop2 False Exit
+  then
+  dup2 car
+  dup2       bound-variable-wodyli?
+  xx|swap|x  null?
+  bitwise-or if
+    <- dup <dalin> =/= if
+      drop2 False Exit
+    then
+      car <dalin> =/= if
+        drop False Exit
+      then
+        drop True Exit
+  then
+  drop2 False Exit
+; define-function
+
+(*
+ * test:
+ *
+ * [ [ 1 ] ( :x ) ] dalin->tail
+ * meet-lambda-abstraction-in-lambda-body-dalin? . (\* 1 *\) cr
+ * [ [ 1 ] null ] dalin->tail
+ * meet-lambda-abstraction-in-lambda-body-dalin? . (\* 1 *\) cr
+ * [ [ 1 ] ( ) ] dalin->tail
+ * meet-lambda-abstraction-in-lambda-body-dalin? . (\* 1 *\) cr
+ * cr
+ * [ [ 1 ] ( x: ) ] dalin->tail
+ * meet-lambda-abstraction-in-lambda-body-dalin? . (\* 0 *\) cr
+ *)
+: help,bound-variable-wodyli-subtraction
+  (* LambdaStack::
+     (a-b) [address, <wodyli>] -- *)
+  (* b [address, <wodyli>], a [address, <wodyli>] --
+     (a-b) [address, <wodyli>] *)
+  dup <null> == if
+    drop2 drop2
+    getBack
+    dup <null> == if
+      Exit
+    then
+    dup2 cdr null [cons,cdr]! drop2
+    head<-dalin
+    Exit
+  then
+  dup2
+    car car   xx|over|xxxx
+    [value,dalin]-associate
+    dup <null> =/= if
+    (* if this bound-variable is ``blocked'',
+       it should not be ``cons'' to the new bound-variable-wodyli *)
+    drop2 (* drop the associate-pair *)
+    ->  help,bound-variable-wodyli-subtraction Exit
+  then
+  drop2 (* drop the associate-pair *)
+  (* b [address, <wodyli>], a [address, <wodyli>] *)
+  dup2 car
+  (* a wody as a whole is ``cons''ed to the new bound-variable-wodyli *)
+  cons drop <wodyli>
+    [car,cons]!
+    cons [cons,cdr]!
+  getBack
+    xx|swap|xx  ^_^
+    (* so the order of bound-variable-wodyli will be preserved *)
+  ready
+  ->  help,bound-variable-wodyli-subtraction Exit
+; defineRecursiveFunction
+
+
+(* the following function will creat a new wodyli, maybe ``null'' *)
+: bound-variable-wodyli-subtraction
+  (* a [address, <wodyli>], b [address, <wodyli>] --
+     (a-b) [address, <wodyli>] *)
+  x|over|xx <null> == if
+    (* a == null, (a-b) == a == null *)
+    drop2 Exit
+  then
+  dup <null> == if
+    (* b == null, (a-b) == a *)
+    drop2 Exit
+  then
+  null ready
+  xx|swap|xx
+  (* b [address, <wodyli>], a [address, <wodyli>] *)
+  (* LambdaStack::  [Null, <null>] *)
+  help,bound-variable-wodyli-subtraction
+  Exit
+; define-function
+
+
+(*
+ *  test:
+ *
+ * 666
+ * ( ::a ::b ::c )
+ * ( ::a ::c ::x )
+ * bound-variable-wodyli-subtraction
+ * write (\* ( ::b )  *\)
+ *
+ * . (\* 666 *\)
+ *)
+:" lambda" string-hash->index
+: SymbolIndex,lambda ; defineConst
+
+:" λ" string-hash->index
+: SymbolIndex,λ ; defineConst
+
+
+(* the following two functions are side-effects through a dalin
+ * in the direction of ``<-''
+
+ * some special-types of elements in the lambda-body
+ * should be setted for ``apply''
+
+ * note that: (currently)
+ *   <fixnum> <list> <dalin> <wodyli> <symbol>
+ *   are the only types of value
+ *   that could be readed into a dalin
+
+ *   only all <symbol> in this dalin
+ *   and some <symbol> that denote-bound-variable nestedly existed in this dalin
+ *   will be handled by the following functions
+
+ *   while
+ *   in the ``apply''
+ *   when meet [666, <fixnum>]
+ *     666 ( ONLY ONE VALUE ) will be push to ArgumentStack
+ *   when meet [address, <list>]
+ *     [address, <list>] will be push to ArgumentStack
+ *   when meet [address, <dalin>]
+ *     [address, <dalin>] will be push to ArgumentStack
+ *   when meet [address, <wodyli>]
+ *     [address, <wodyli>] will be push to ArgumentStack
+ *)
+
+
+: help,lambda,set-bound-variables (* calculating lambda-scope *)
+  (* [address, <wodyli>], [address, <dalin>] -- *)
+  dup <null> == if
+    (* drop all the arguments here *)
+    drop2 drop2 Exit
+  then
+  dup2 car
+
+  (* [address, <wodyli>], [address, <dalin>], car[value, type] *)
+  dup <symbol> =/= if
+    (* types of value other then <symbol>
+       will be leaved in the lambda-body as they are *)
+    drop2
+    <-  help,lambda,set-bound-variables Exit
+  then
+
+  (* [address, <wodyli>], [address, <dalin>], [index, <symbol>] *)
+  dup2 symbolDenoteBoundVariable? if
+    xx|over|xxxx
+    dup <null> == if
+      (* when bound-variable-wodyli is null
+         symbolDenoteBoundVariable can not be bound by this lambda
+         just leave them in the lambda-body as they are *)
+      drop2 (* drop [Null, <null>] *)
+      drop2 (* drop [index, <symbol>] *)
+      <-  help,lambda,set-bound-variables Exit
+    then
+    [value,dalin]-associate
+    dup <null> == if
+      (* symbolDenoteBoundVariable that can not be bound by this lambda
+         will be leaved in the lambda-body as they are *)
+      drop2
+      <-  help,lambda,set-bound-variables Exit
+    then
+    (* [address, <wodyli>], [address, <dalin>], [address, <bound-variable>] *)
+    [cons,car]!
+    <-  help,lambda,set-bound-variables Exit
+  then
+
+  (* [address, <wodyli>], [address, <dalin>], [index, <symbol>] *)
+  dup2 drop
+    dup   SymbolIndex,lambda ==
+    swap  SymbolIndex,λ ==
+  bitwise-or if
+    drop2
+    <-
+    (* make a special treatment only when
+       ``meet-lambda-abstraction-in-lambda-body-dalin'' *)
+    dup2
+    meet-lambda-abstraction-in-lambda-body-dalin?
+    false? if
+      help,lambda,set-bound-variables Exit
+    then
+    (* [address, <wodyli>], [address, <dalin>] *)
+      (* prepare the arguments for a non-tail-recursive call of help,lambda,set-bound-variables *)
+      xx|over|xx xx|over|xx
+        car bound-variable-wodyli-subtraction
+      xx|over|xx
+        (* note that: the 2ed arg of help,lambda,set-bound-variables is a tail-dalin *)
+        <-  car  dalin->tail
+      help,lambda,set-bound-variables
+      (* after then : *)
+      <- <-  help,lambda,set-bound-variables Exit
+  then
+
+  (* [address, <wodyli>], [address, <dalin>], [index, <symbol>] *)
+  (* here is general symbol *)
+  drop2
+  <-  help,lambda,set-bound-variables Exit
+; defineRecursiveFunction
+
+
+: help,lambda,set-function-body
+  (* [address, <wodyli>], [address, <dalin>] -- *)
+  dup <null> == if
+    (* drop all the arguments here *)
+    drop2 drop2 Exit
+  then
+  dup2 car
+  (* [address, <wodyli>], [address, <dalin>], car[value, type] *)
+  dup <symbol> =/= if
+    (* types of value other then <symbol>
+       will be leaved in the lambda-body as they are *)
+    drop2
+    <-  help,lambda,set-function-body Exit
+  then
+  (* [address, <wodyli>], [address, <dalin>], [index, <symbol>] *)
+  dup2 symbolDenoteLambdaArgument? if
+    (* i.e. symbols like ``<:x''
+       will be leaved in the lambda-body as they are
+       they will be handled by ``apply'' *)
+    drop2
+    <-  help,lambda,set-function-body Exit
+  then
+  (* [address, <wodyli>], [address, <dalin>], [index, <symbol>] *)
+  dup2 symbolDenoteBoundVariable? if
+    (* i.e. symbols like ``:x''
+       will be leaved in the lambda-body as they are
+       ``help,lambda,set-bound-variables'' take care of them
+       when ``apply'' is executed there should be none of them *)
+    drop2
+    <-  help,lambda,set-function-body Exit
+  then
+  (* [address, <wodyli>], [address, <dalin>], [index, <symbol>] *)
+  (* here is general symbol *)
+  over
+    index-hashback->string
+    find (* ><><>< error handling when not found *)
+    word-link->word-explainer
+    <explainer>
+  cons drop <explainer-pair>
+    [cdr,cons]!  [car,cons]!
+  [cons,car]!
+  <-  help,lambda,set-function-body Exit
+; defineRecursiveFunction
+
+
+
+
+: help,lambda,make-lambda-function
+  (* [address, <wodyli>], [address, <dalin>] --
+     [address, <lambda>] *)
+  cons drop <lambda>
+    xx|swap|xx set-cdr!
+    xx|swap|xx set-car!
+  Exit
+; define-function
+
+
+
+
+:" lambda said:
+   ``My function type is
+     (* [address, <dalin>], [address, <wodyli>] -- [address, <lambda>] *)
+     (* or *)
+     (* [address, <dalin>], [Null, <null>] -- [address, <lambda>] *)
+     But the 1st argument is the following
+     I will not touch it and call debuger''
+   --> "
+: String,lambda,type-error,1st ; defineConstString
+
+:" lambda said:
+   ``My function type is
+     (* [address, <dalin>], [address, <wodyli>] -- [address, <lambda>] *)
+     (* or *)
+     (* [address, <dalin>], [Null, <null>] -- [address, <lambda>] *)
+     The 1st argument is a wodyli but not a bound-variable-wodyli
+     I will not touch it and call debuger''"
+: String,lambda,type-error,1st,not-bound-variable-wodyli
+; defineConstString
+
+:" lambda said:
+   ``My function type is
+     (* [address, <dalin>], [address, <wodyli>] -- [address, <lambda>] *)
+     (* or *)
+     (* [address, <dalin>], [Null, <null>] -- [address, <lambda>] *)
+     But the 3rd argument is the following
+     I will not touch it and call debuger''
+   --> "
+: String,lambda,type-error,3rd ; defineConstString
+
+: lambda
+  (* [address, <dalin>], [address, <wodyli>] -- [address, <lambda>] *)
+  (* or *)
+  (* [address, <dalin>], [Null, <null>] -- [address, <lambda>] *)
+  dup <wodyli> =/=
+  over <null> =/=
+  bitwise-and if
+    String,lambda,type-error,1st print-string
+    dup printTypeTag cr
+    debuger Exit
+  then
+  dup <wodyli> ==
+  xx|over|x bound-variable-wodyli? false?
+  bitwise-and if
+    String,lambda,type-error,1st,not-bound-variable-wodyli
+    print-string cr
+    debuger Exit
+  then
+  x|over|xx <dalin> =/= if
+    String,lambda,type-error,3rd print-string
+    x|over|xx printTypeTag cr
+    debuger Exit
+  then
+  xx|tuck|xx  xx|over|xx
+  dalin->tail
+  (* [address, <wodyli>], [address, <dalin>],
+     [address, <wodyli>], tail[address, <dalin>] *)
+  xx|over|xx  xx|over|xx
+  help,lambda,set-bound-variables
+  (* multi-pass *)
+  help,lambda,set-function-body
+  (* [address, <wodyli>], [address, <dalin>] *)
+  help,lambda,make-lambda-function
+  Exit
+; define-function
+
+: λ lambda Exit ; define-function
+(* note that:
+     when a explainer is been executed
+     only the arguments of the word to be explained
+     should be in the ArgumentStack or LambdaStack *)
+
+(* a stack as list
+   list of dalin
+   in which a dalin denotes a lambda-body *)
+null : lambda-body-stack ; define
+
+: push,lambda-body-stack
+  (* [address, <wodyli>] -- *)
+  cons drop <list>  [car,cons]!
+  lambda-body-stack fetch2
+  [cons,cdr]!
+  lambda-body-stack save2
+  Exit
+; define-function
+
+: drop,lambda-body-stack
+  (* -- *)
+  lambda-body-stack fetch2
+  cdr
+  lambda-body-stack save2
+  Exit
+; define-function
+(* the following function
+   do side-effect to the car of the lambda-body-stack *)
+
+: <end-of-one-lambda-body> ; defineDataType
+: <end-of-all-lambda-body> ; defineDataType
+
+: lambda-forth
+  (* -- [value, type] or <end-of-lambda-body> or <>] *)
+  lambda-body-stack fetch2
+  dup <null> == if
+    drop2
+    <end-of-all-lambda-body>
+    Exit
+  then
+  dup2 car
+    (* [address, <list>], [address, <dalin>] or null *)
+    dup <null> == if
+    drop2 drop2
+    <end-of-one-lambda-body>
+    drop,lambda-body-stack
+    Exit
+  then
+  (* [address, <list>], [address, <dalin>] *)
+  xx|tuck|xx
+  (* [address, <dalin>],
+     [address, <list>], [address, <dalin>] *)
+  ->  (* up date the 1st lambda-body in lambda-body-stack *)
+  [cons,car]! drop2
+  car
+  Exit
+; define-function
+
+
+:" help,apply,eval-lambda-body said:
+   ``My function type is (* unknow -- unknow *)
+     I call `lambda-forth' to do side-effect on lambda-body-stack
+     The symbol I meet should always DenoteLambdaArgument
+     But I meet the following symbol
+     I will not touch it and call debuger''
+   --> "
+: String,help,apply,eval-lambda-body,error,symbol
+; defineConstString
+
+: help,apply,eval-lambda-body
+  (* unknow -- unknow *)
+  lambda-forth
+  dup <end-of-one-lambda-body> == if
+    drop Exit
+  then
+
+  (* examples:
+       [{ :x  . { 100 } }, <bound-variable>]
+       [{ ::x . { 666 <fixnum> } }, <bound-variable>] *)
+  dup <bound-variable> == if
+    cdr
+    stack<-FIAF-list
+    help,apply,eval-lambda-body
+    Exit
+  then
+
+  (* example:
+       [{ word-name . word-explainer }, <explainer-pair>] *)
+  dup <explainer-pair> == if
+    cdr
+    drop (* drop type-tag: <explainer> *)
+    execute
+    help,apply,eval-lambda-body
+    Exit
+  then
+
+  (* example:
+       [index, <symbol>] *)
+  dup <symbol> == if
+    dup2 symbolDenoteLambdaArgument? if
+      drop (* drop <symbol> *)
+      index-hashback->string
+      execute-word
+      help,apply,eval-lambda-body
+      Exit
+    then
+    String,help,apply,eval-lambda-body,error,symbol print-string
+    dup2 write cr
+    debuger
+    Exit
+  then
+
+  (* example:
+       [666, <fixnum>] *)
+  dup <fixnum> == if
+    drop (* drop type-tag: <fixnum> *)
+    help,apply,eval-lambda-body
+    Exit
+  then
+
+  (* examples:
+       [address, <list>]
+       [address, <dalin>]
+       [address, <wodyli>]
+     and all other types
+     leave the value and the type in the stack *)
+  help,apply,eval-lambda-body
+  Exit
+; defineRecursiveFunction
+(* examples of <lambda-argument>:
+     { :x       . { 1 } }
+     { ::null   . { Null <null> } }
+     { ::number . { 666 <fixnum> } }
+   example of bound-variable-wodyli
+     ( :a ::b :::c )
+     [ { :a    . ... }
+       { ::b   . ... }
+       { ::::c . ... } ]
+ *)
+
+
+: help-to-rec,help,apply,set-variables
+  (* ArgumentStack::
+     ..., [address, <lambda-argument-N>] -- *)
+  (* LambdaStack::
+     [address, <wodyli>] -- [address, <wodyli>] *)
+  dup <lambda-argument>? false? if
+    Exit
+  then
+  dup2   car    getBack dup2 ready
+  (* [address, <lambda-argument-N>], [index, <symbol>], [address, <wodyli>] *)
+  [value,dalin]-associate
+  dup <null> == if
+    drop2 Exit
+  then
+  (* [address, <lambda-argument-N>], [..., <bound-variable>] *)
+  xx|swap|xx   cdr
+  [cons,cdr]!  drop2
+  help-to-rec,help,apply,set-variables
+  Exit
+; defineRecursiveFunction
+
+
+: help,apply,set-variables
+  (* ..., [address, <lambda-argument>], [address, <wodyli>] -- *)
+  ready
+    help-to-rec,help,apply,set-variables
+  getBack drop2 Exit
+; define-function
+
+
+
+:" apply said:
+   ``My function type is
+     (* LambdaStack::  [address, <lambda>] -- unknow *)
+     (* ArgumentStack::  ..., [address, <lambda-argument>] -- unknow *)
+     But the value in the LambdaStack is of the following type
+     I will not touch it and call debuger''
+   --> "
+: String,apply,type-error ; defineConstString
+: apply
+  (* LambdaStack::  [address, <lambda>] -- unknow *)
+  (* ArgumentStack::  ..., [address, <lambda-argument>] -- unknow *)
+  getBack dup2 ready
+  dup <lambda> == if
+    car dup <null> == if
+      drop2
+    else
+      help,apply,set-variables
+    then
+    getBack  cdr
+    push,lambda-body-stack
+    help,apply,eval-lambda-body
+    Exit
+  then
+  String,apply,type-error print-string
+  printTypeTag cr
+  drop (* drop the the value been getted back *)
+  debuger Exit
+; define-function
+: @
+  (* ...,
+     [address, <lambda-argument>],
+     [address, <lambda>]
+     ---------------------------
+     unknow *)
+  ready apply Exit
+; define-function
+:" yes"
+: String,yes ; defineConstString
+: ok (* -- *)
+  String,yes print-string
+  writeSpace
+  Exit
+; define-function
+
+:" byebye ^_^"
+: String,byebye ; defineConstString
+(*
+ * : bye (\* -- THE END *\)
+ *   writeSpace
+ *   String,byebye print-string
+ *   ><><><
+ *   Exit
+ * ; define-function
+ *)
+:"    welcome to cicada ^_^"
+: String,welcome ; defineConstString
+: welcome (* -- *)
+  String,welcome print-string cr
+  Exit
+; define-function
+
+cr
+
+welcome
+
+cr
+
+(* report the User-data-area size *)
+."  the size of User-data-area is: " cr
+writeSpace
+End-of-user-data-area  User-data-area  -  writeDecNumber
+."  bytes" cr
+
+writeSpace
+End-of-user-data-area  Here fetch  -  writeDecNumber
+."  bytes free" cr
+
+writeSpace
+Here fetch  User-data-area  -  writeDecNumber
+."  bytes used" cr
+
+cr
+
+."  you are in symbolREPL
+ in this REPL some types of symbol will be processed specially" cr
+
+cr

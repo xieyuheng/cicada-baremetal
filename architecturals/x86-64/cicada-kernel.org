@@ -1,0 +1,4020 @@
+#+TITLE: cicada kernel
+#+AUTHOR: XIE Yuheng
+#+EMAIL: xyheme@gmail.com
+
+
+* ==================================================
+* TODO
+  1. in lmode, how to set up the "attributes-and-type" field in an entry of IDT ?
+  1. SMP support
+  2. learn more from baremetal-OS
+  3. convert the code about storage & BMFS from old-asm to forth-like-asm
+	 to examine the bug of "readsectors"
+  4. fix "bye"
+  5. fix the IO of baremetal-OS
+  6. design game-like UI in text mode
+  7. add GPT support
+	 to let cicada-OS to be able to installed along with linux
+	 this support must be added to the kernelloader
+	 but not in cicada
+  8. rewrite cicada to make it standard and portable
+	 (this will always be TODO)
+* ==================================================
+* *preface*
+** note
+   this chapter contains ``macro'' ``='' ``equ''
+** about the size of and kernel
+   #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+   SizeOfKernel = 512 ;; unit :: k
+   LocationOfKernel = 32*1024
+   MagicNumberOfKernel = 26881h
+
+   SizeOfEnglishCore = 512 ;; unit :: k
+   LocationOfEnglishCore = 4*1024*1024
+   MagicNumberOfEnglishCore = "(* m"
+   #+end_src
+** equ
+   #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+   ;; in fasm, ``dup'' is a reserved word
+   dup equ duplicate
+
+   ;; 64-bits
+   xx equ dq
+   CellWidth equ 8
+   #+end_src
+** memory map
+   #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+   ;; all unit are byte
+   ;; LowestMemoryAddress always can not be use to save value
+
+   ;; ==========================================
+   LowestMemoryAddress = 100*1024*1024
+   FirstLowestMemoryAddress = LowestMemoryAddress
+
+   labeling equ = LowestMemoryAddress
+   preserve equ LowestMemoryAddress = LowestMemoryAddress +
+   mayData  equ LowestMemoryAddress = LowestMemoryAddress + (16 - (LowestMemoryAddress mod 16))
+
+
+   mayData
+   ;; ------------------------------------------
+   ;; should be big enough, for no size error check
+   SizeOfScancodeQueue = 1024
+
+   ScancodeQueue labeling
+	   preserve SizeOfScancodeQueue
+
+
+   mayData
+   ;; ------------------------------------------
+   SizeOfInputBuffer = 3*1024*1024
+
+   InputBuffer labeling
+	   preserve SizeOfInputBuffer
+   EndOfInputBuffer labeling
+
+
+   mayData
+   ;; ------------------------------------------
+   ;; the size of a ScreenBuffer is equal to the size of the screen
+   ;; which is 80*25*2 bytes
+   ;; and cursor and ScreenBuffer are in the same structure
+   ;; the size of its cursor is 2 bytes
+   SizeOfScreenBuffer = 80*25*2
+   SizeOfCursor = 8
+
+   Cursor0_InAssembly labeling
+	   preserve SizeOfCursor
+   ScreenBuffer0_InAssembly labeling
+	   preserve SizeOfScreenBuffer
+
+
+   mayData
+   ;; ------------------------------------------
+   ;; note that, Subsequent calls will overwrite BufferForReadWord
+   ;; this is why there is another function ``readWordForRuntime''
+   MaxWordLength = 1024
+
+   BufferForReadWord labeling
+	   preserve MaxWordLength
+
+   BufferForReadWordForRuntime labeling
+	   preserve MaxWordLength
+
+
+   mayData
+   ;; ------------------------------------------
+   ;; note that, Subsequent calls will overwrite BasicStringBuffer
+   MaxStringLength = 1024*1024
+
+   BasicStringBuffer labeling
+	   preserve MaxStringLength
+
+
+   mayData
+   ;; ------------------------------------------
+   ;; note that, Subsequent calls will overwrite BufferForReadWordListForLexicographer
+   SizeOfBufferForReadWordListForLexicographer = 2*1024*1024
+
+   BufferForReadWordListForLexicographer labeling
+	   preserve SizeOfBufferForReadWordListForLexicographer
+
+
+   mayData
+   ;; ------------------------------------------
+   ;; PairConstructionsArray
+   ;;   (unit : byte)
+   ;; ========================
+   ;;   ||  1 : color     ||
+   ;; ------------------------
+   ;;   ||  8 : type tag  ||
+   ;;   ||  8 : value     ||
+   ;; ------------------------
+   ;;   ||  8 : type tag  ||
+   ;;   ||  8 : value     ||
+   ;; ========================
+   mayData
+   ClrBytesSize = 1
+   CarBytesSize = 16
+   CdrBytesSize = 16
+   ConsBytesSize = ClrBytesSize + CarBytesSize + CdrBytesSize
+   NumberOfPairConstructions = 100 * 1024
+
+   ;;         rb ClrBytesSize
+   ;; InFrontOfTheFirstPairConstruction:
+   ;;         rb (CarBytesSize + CdrBytesSize)
+
+   ;;         rb ClrBytesSize
+   ;; FirstPairConstruction:
+   ;;         rb (CarBytesSize + CdrBytesSize)
+
+
+
+   ;;         rb ClrBytesSize
+   ;; LastPairConstruction:
+   ;;         rb (CarBytesSize + CdrBytesSize)
+
+	   preserve ClrBytesSize
+   InFrontOfTheFirstPairConstruction labeling
+	   preserve (CarBytesSize + CdrBytesSize)
+
+	   preserve ClrBytesSize
+   FirstPairConstruction labeling
+	   preserve (CarBytesSize + CdrBytesSize)
+
+	   ;; ==========================
+	   preserve ((NumberOfPairConstructions - 2) * ConsBytesSize)
+	   ;; ==========================
+
+	   preserve ClrBytesSize
+   LastPairConstruction labeling
+	   preserve (CarBytesSize + CdrBytesSize)
+
+
+   mayData
+   ;; ------------------------------------------
+   ;; HashTableForSymbol
+
+   ;; a SymbolEntry (unit : byte)
+   ;; ===========================
+   ;;  ||   8 : SymbolValue   ||
+   ;; ---------------------------
+   ;;  ||   1 : SymbolLength  ||
+   ;; ---------------------------
+   ;;  || 56+ : SymbolString  ||
+   ;; ===========================
+
+   SymbolLengthBytesSize = 1
+   SymbolValueBytesSize  = 8
+   SymbolStringBytesSize = 56+0
+   SymbolMaxLength       = 56
+   SymbolEntryBytesSize = SymbolValueBytesSize + SymbolLengthBytesSize + SymbolStringBytesSize
+   ;; NumberOfSymbolEntrys = 1000003
+   ;; NumberOfSymbolEntrys = 1000033
+   ;; NumberOfSymbolEntrys = 1000333
+   ;; NumberOfSymbolEntrys = 100003
+   NumberOfSymbolEntrys = 100333
+   ;; NumberOfSymbolEntrys = 997
+   ;; NumberOfSymbolEntrys = 499
+   ;; NumberOfSymbolEntrys = 230 ;; for a special test
+
+   FirstSymbolEntry labeling
+	   preserve SymbolEntryBytesSize
+
+	   ;; ========================
+	   preserve ((NumberOfSymbolEntrys - 2) * SymbolEntryBytesSize)
+	   ;; ========================
+
+   LastSymbolEntry labeling
+	   preserve SymbolEntryBytesSize
+
+
+   mayData
+   ;; ------------------------------------------
+   ;; two StringHeaps
+   SizeOfStringHeap = 5*1024*1024
+
+   StringHeap1 labeling
+	   preserve SizeOfStringHeap
+   EndOfStringHeap1 labeling
+
+   StringHeap2 labeling
+	   preserve SizeOfStringHeap
+   EndOfStringHeap2 labeling
+
+
+   mayData
+   ;; ------------------------------------------
+   SizeOfBufferForLoadFile = 1024*1024
+
+   BufferForLoadFile labeling
+		preserve SizeOfBufferForLoadFile
+
+
+   ;; ------------------------------------------
+   ;; ------------------------------------------
+
+   mayData
+   ;; ReturnStack
+   SizeOfReturnStack = 100*1024*8
+
+   ReturnStackBottom labeling
+	   preserve SizeOfReturnStack
+   ReturnStackTop labeling
+	   preserve 100*8
+
+   mayData
+   ;; ArgumentStack
+   SizeOfArgumentStack = 100*1024*8
+
+   ArgumentStackBottom labeling
+	   preserve SizeOfArgumentStack
+   ArgumentStackTop labeling
+	   preserve 100*8
+
+   mayData
+   ;; GreyPairStack
+   SizeOfGreyPairStack = 100*1024*8
+
+   GreyPairStackBottom labeling
+	   preserve SizeOfGreyPairStack
+   GreyPairStackTop labeling
+	   preserve 100*8
+
+   mayData
+   ;; LambdaStack
+   SizeOfLambdaStack = 100*1024*8
+
+   LambdaStackBottom labeling
+	   preserve SizeOfLambdaStack
+   LambdaStackTop labeling
+	   preserve 100*8
+
+   mayData
+   ;; StackForEvalString
+   SizeOfStackForEvalString = 1024*8
+
+   StackForEvalStringBottom labeling
+	   preserve SizeOfStackForEvalString
+   StackForEvalStringTop labeling
+	   preserve 100*8
+
+   mayData
+   ;; ------------------------------------------
+   UserDataArea labeling
+   EndOfUserDataArea = 1*1024*1024*1024
+   ;; ==========================================
+   #+end_src
+** macro about registers & pop & push
+   #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+   ;; if you want to extend cicada in assembly,
+   ;; the following four registers must not be used
+   ;; =================================
+   define NextWordPointer      r15
+   define ReturnStackPointer   r14
+   define ArgumentStackPointer   r13
+   define GreyPairStackPointer r12
+   ;; =================================
+
+   define ExplainerPointer     rax
+   define TemporaryRegister    r11
+   define TemporaryRegister2   r10
+
+
+   macro pushReturnStack Register {
+	  sub ReturnStackPointer, CellWidth
+	  mov [ReturnStackPointer], Register
+	  }
+   macro popReturnStack Register {
+	  mov Register, [ReturnStackPointer]
+	  add ReturnStackPointer, CellWidth
+	  }
+
+   macro pushArgumentStack Register {
+	  sub ArgumentStackPointer, CellWidth
+	  mov [ArgumentStackPointer], Register
+	  }
+   macro popArgumentStack Register {
+	  mov Register, [ArgumentStackPointer]
+	  add ArgumentStackPointer, CellWidth
+	  }
+
+
+   ;; macro pushReturnStack Register {
+   ;;    lea ReturnStackPointer, [ReturnStackPointer - CellWidth]
+   ;;    mov [ReturnStackPointer], Register
+   ;;    }
+   ;; macro popReturnStack Register {
+   ;;    mov Register, [ReturnStackPointer]
+   ;;    lea ReturnStackPointer, [ReturnStackPointer + CellWidth]
+   ;;    }
+
+   ;; macro pushArgumentStack Register {
+   ;;    lea ArgumentStackPointer, [ArgumentStackPointer - CellWidth]
+   ;;    mov [ArgumentStackPointer], Register
+   ;;    }
+   ;; macro popArgumentStack Register {
+   ;;    mov Register, [ArgumentStackPointer]
+   ;;    lea ArgumentStackPointer, [ArgumentStackPointer + CellWidth]
+   ;;    }
+   #+end_src
+** macro about word-types & next
+   1. every word-type needs a explainer (or elucidator)
+   2. a explainer may explain more then one word-types
+   #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+   ;; notations :
+   ;; 1. ``the dictionary'' as a datastructure is a single-linked-list
+   ;; 2. an entry in ``the dictionary'' is ``a word''
+   ;; 3. ``a word'' as a datastructure looks like the following :
+   ;;       (unit : CellWidth)
+   ;;    ||  1 : name-string-header-which-contains-the-length-of-name-string  ||
+   ;;    ||  m : name-string  ||
+   ;;    ||  1 : SizeOfFunctionBody  ||
+   ;;    ||  1 : identification  ||
+   ;;    ||  1 : link  ||
+   ;;    ||  1 : type  ||
+   ;;    ||  1 : address-of-name-string-header  ||
+   ;;    ||  1 : address-of-explainer  ||
+   ;;    ||  n : body  ||
+   ;; 4. so, I adopt two notations to represent ``a word'' :
+   ;;    word[link]      == address in a word where the link is stored
+   ;;    word[explainer] == address in a word where the address-of-explainer is stored
+   ;;    word[explainer] == address in a word before the function-body
+   ;;    word[explainer] == address in a word as the head of a function-body
+
+
+   ;; note that:
+   ;;   there are only two ways to jump to a explainer
+   ;;   1. next
+   ;;   2. execute
+
+
+   ;; not matter what way you use to set :
+   ;;   [ExplainerPointer] == address-of-explainer (of a word you want to jump to)
+   ;; then :
+   ;;   jmp qword[ExplainerPointer]
+   ;; it will works just well !!!
+
+   ;; specially, about ``next'',
+   ;; the way we use to set :
+   ;;   [ExplainerPointer] == address-of-explainer (of a word you want to jump to)
+   ;; is to find the address-of-explainer by :
+   ;;    NextWordPointer  == an address in a function-body
+   ;;   [NextWordPointer] == word-to-jump[explainer]
+   ;; so, NextWordPointer is all that ``next'' needed
+   ;; set [NextWordPointer] == word-to-jump[explainer]  correctly
+   ;; then call ``next''
+   ;; it will works just well !!!
+
+
+   ;; 1. this ``next'' do tail-call-optimization
+   ;; 2. in the following FASM marco, anonymous label of FASM is used
+   ;;    (of course, label in marco must be anonymous !)
+   ;;    hence, when using anonymous labels in assembly,
+   ;;    they can not across ``next'' !
+
+
+   macro next {
+	  local not_at_the_end_of_function_body
+
+	  mov ExplainerPointer, [NextWordPointer]
+	  add NextWordPointer, CellWidth
+	  cmp qword[NextWordPointer], Exit
+	  jne not_at_the_end_of_function_body
+	  popReturnStack NextWordPointer
+   not_at_the_end_of_function_body:
+	  jmp qword[ExplainerPointer]
+	  }
+	  ;; maybe need more optimization,
+	  ;; for the above ``popReturnStack NextWordPointer'' may be
+	  ;; followed by ``pushReturnStack NextWordPointer'' (in explainFunctionBody)
+
+
+
+   ;; initial Link to point to NULL
+   Link = 0
+
+
+
+   macro defWord WordString, Word {
+   ;;--------------------------------------
+   WordStringHeaderOf#Word:
+	   xx (EndOfWordStringOf#Word - WordStringOf#Word)
+   ;;--------------------------------------
+   WordStringOf#Word:
+	   db WordString
+   EndOfWordStringOf#Word:
+   ;;--------------------------------------
+   SizeOfFunctionBodyOf#Word:
+	   xx (EndOfFunctionBodyOf#Word - Word)/8 - 1
+   ;;--------------------------------------
+   IdentificationOf#Word:
+	   xx IdentificationOf#Word
+   ;;--------------------------------------
+   LinkOf#Word:
+	   xx Link
+	   Link = LinkOf#Word
+   ;;--------------------------------------
+   TypeOf#Word:
+	   xx 0
+   ;;--------------------------------------
+   AddressOfWordStringHeaderOf#Word:
+	   xx WordStringHeaderOf#Word
+   ;;======================================
+   Word:   xx explainFunctionBody
+   ;;--------------------------------------
+	   ;; here follows a list of word[explainer]
+	   }
+   macro defWordEnd Word {
+   EndOfFunctionBodyOf#Word:
+   }
+
+
+   ;; 1. if ``next'' meet ``Exit'',
+   ;;    ``next'' will ``popReturnStack NextWordPointer''
+   ;; 2. on the other hand,
+   ;;    explainFunctionBody is the only explainer
+   ;;    who ``pushReturnStack NextWordPointer''
+   ;; 3. so, it is these two functions, ``next'' and ``explainFunctionBody'',
+   ;;    which handle the nested function calls
+
+
+
+   ;; assembly code have no explainer
+   macro defCode WordString, Word {
+   ;;--------------------------------------
+   WordStringHeaderOf#Word:
+	   xx (EndOfWordStringOf#Word - WordStringOf#Word)
+   ;;--------------------------------------
+   WordStringOf#Word:
+	   db WordString
+   EndOfWordStringOf#Word:
+   ;;--------------------------------------
+   IdentificationOf#Word:
+	   xx IdentificationOf#Word
+   ;;--------------------------------------
+   LinkOf#Word:
+	   xx Link
+	   Link = LinkOf#Word
+   ;;--------------------------------------
+   TypeOf#Word:
+	   xx 0
+   ;;--------------------------------------
+   AddressOfWordStringHeaderOf#Word:
+	   xx WordStringHeaderOf#Word
+   ;;======================================
+   Word:   xx AssemblerCodeOf#Word
+   ;;--------------------------------------
+   AssemblerCodeOf#Word:
+	   ;; here follows the assembly code
+	   }
+
+
+
+
+
+
+   macro defVar WordString, InitialValue, Word {
+
+   ;;--------------------------------------
+   WordStringHeaderOf#Word:
+	   xx (EndOfWordStringOf#Word - WordStringOf#Word)
+   ;;--------------------------------------
+   WordStringOf#Word:
+	   db WordString
+   EndOfWordStringOf#Word:
+   ;;--------------------------------------
+   IdentificationOf#Word:
+	   xx IdentificationOf#Word
+   ;;--------------------------------------
+   LinkOf#Word:
+	   xx Link
+	   Link = LinkOf#Word
+   ;;--------------------------------------
+   TypeOf#Word:
+	   xx 0
+   ;;--------------------------------------
+   AddressOfWordStringHeaderOf#Word:
+	   xx WordStringHeaderOf#Word
+   ;;======================================
+   Word:   xx explainVar
+   ;;--------------------------------------
+	   xx InitialValue
+   ;;--------------------------------------
+	   }
+
+
+
+
+
+   macro defConst WordString, InitialValue, Word {
+   ;;--------------------------------------
+   WordStringHeaderOf#Word:
+	   xx (EndOfWordStringOf#Word - WordStringOf#Word)
+   ;;--------------------------------------
+   WordStringOf#Word:
+	   db WordString
+   EndOfWordStringOf#Word:
+   ;;--------------------------------------
+   IdentificationOf#Word:
+	   xx IdentificationOf#Word
+   ;;--------------------------------------
+   LinkOf#Word:
+	   xx Link
+	   Link = LinkOf#Word
+   ;;--------------------------------------
+   TypeOf#Word:
+	   xx 0
+   ;;--------------------------------------
+   AddressOfWordStringHeaderOf#Word:
+	   xx WordStringHeaderOf#Word
+   ;;======================================
+   Word:   xx explainConst
+   ;;--------------------------------------
+	   xx InitialValue
+   ;;--------------------------------------
+	   }
+
+
+
+
+
+   ;; in stack:
+   ;;   string[address, length]
+   ;; in memory:
+   ;;   ||  1 : length  ||
+   ;;   ||  n : string  ||
+   macro defConstString WordString, ConstStringValue, Word {
+   ;;--------------------------------------
+   WordStringHeaderOf#Word:
+	   xx (EndOfWordStringOf#Word - WordStringOf#Word)
+   ;;--------------------------------------
+   WordStringOf#Word:
+	   db WordString
+   EndOfWordStringOf#Word:
+   ;;--------------------------------------
+   IdentificationOf#Word:
+	   xx IdentificationOf#Word
+   ;;--------------------------------------
+   LinkOf#Word:
+	   xx Link
+	   Link = LinkOf#Word
+   ;;--------------------------------------
+   TypeOf#Word:
+	   xx 0
+   ;;--------------------------------------
+   AddressOfWordStringHeaderOf#Word:
+	   xx WordStringHeaderOf#Word
+   ;;======================================
+   Word:   xx explainConstString
+   ;;--------------------------------------
+	   xx (EndOfConstStringValueOf#Word - ConstStringValueOf#Word)
+   ;;--------------------------------------
+   ConstStringValueOf#Word:
+	   db ConstStringValue
+   EndOfConstStringValueOf#Word:
+   ;;--------------------------------------
+	   }
+   #+end_src
+* ==================================================
+* *chapter 1*
+** note
+   this chapter contains code and data
+   the things that really get compiled by fasm
+   to the machine code must start from the following
+   not ``jmp'' is used
+** TEN COMMANDMENTS OF ASSEMBLY
+   1. you can break any commandment when necessary
+   2. when you want to use a ``Const'' or a ``Var'' in assembly
+	  use it as the following example:
+	  - define a Const:
+	defConst "LinuxProgramHeaderAddress", 0, LinuxProgramHeaderAddress
+	  - use a Const:
+	mov [LinuxProgramHeaderAddress + CellWidth], rsp
+	  - define a Var:
+	defVar "Here",  0, Here
+	  - use a Var:
+	mov [Here + CellWidth], TemporaryRegister
+   3. when you want to expose a label defined in assembly to cicada
+	  do it as the following example:
+	  defConst "UserDataArea", UserDataArea, TheUserDataArea
+   4. in assembly every cicada function should be defined only once
+	  the order of function definition can be arbitrary
+** --------------------------------------
+** start16
+*** note
+	1. set up GDT in 16 bits mode
+*** implementation
+	#+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	use16
+	org LocationOfKernel
+
+	start16:
+		cli
+
+		xor ax, ax
+		mov ds, ax
+		mov es, ax
+		mov fs, ax
+		mov gs, ax
+		mov ss, ax
+		mov sp, LocationOfKernel
+
+		;; Make sure the screen is set to 80*25 text mode
+		mov ax, 3
+		int 0x10
+
+		;; Disable blinking
+		mov ax, 0x1003
+		mov bx, 0x0000
+		int 0x10
+
+		;; hide the hardware cursor
+		mov ax, 0x0200                  ; VIDEO - SET CURSOR POSITION
+		mov bx, 0x0000                  ; Page number
+		mov dx, 0x2000                  ; Row / Column
+		int 0x10
+
+		;; enable the A20 gate
+		set_A20:
+		   in al, 0x64
+		   test al, 0x02
+		   jnz set_A20
+		   mov al, 0xD1
+		   out 0x64, al
+		check_A20:
+		   in al, 0x64
+		   test al, 0x02
+		   jnz check_A20
+		   mov al, 0xDF
+		   out 0x60, al
+
+		lgdt    [cs:GDTR]
+
+		;; switch to protected mode
+		mov     eax, cr0
+		bts     eax, 0                   ; bit-index-0 set
+		mov     cr0, eax
+
+		jmp     CODE_SELECTOR_32:start32
+	#+end_src
+*** GDT
+	#+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	align 16
+	GDTR:
+	   dw GDT_END - GDT - 1                  ;; index of the last byte in table
+	   dq GDT                                ;; linear address of GDT
+
+	   ;; ;; base-address is a 32 bit value containing the linear address where the segment begins.
+	   ;; ;; limit is a 20 bit value tells the maximum addressable unit (either in 1 byte units, or in pages)
+	   ;; ;;   Hence, if you choose page granularity (4 KiB) in the flags
+	   ;; ;;   and set the limit value to 0fffffh the segment will span the full 4 GiB address space
+	   ;; ;; example :
+	   ;; ;; base-address [32 bits] :: 2,3,4,7 == 0
+	   ;; ;; limit        [20 bits] :: 0,1,l6  == 0fffffh
+	   ;; ;; flags        [ 4 bits] :: h6      == 1100b
+	   ;; ;; access       [ 8 bits] :: 5       == 10010010b
+	   ;; ;  0     1     2  3  4  5          6          7
+	   ;; db 0ffh, 0ffh, 0, 0, 0, 10010010b, 11001111b, 0
+
+	   ;; for all of the following desciptors :
+	   ;;  limit = 0fffffh,  base = 0h
+
+	align 16
+	GDT:
+	   ;; descriptor-0 is always unused
+	   dq 0
+	   ;; descriptor-1
+	   ;; flat data desciptor
+	   ;;  flags = 1000b,  access = 10010010b ;; most accessible for data desciptor
+	   db 0ffh, 0ffh, 0, 0, 0, 10010010b, 10001111b, 0
+	   ;; descriptor-2
+	   ;; 32 bits code desciptor
+	   ;;  flags = 1100b,  access = 10011010b ;; most accessible for code desciptor
+	   db 0ffh, 0ffh, 0, 0, 0, 10011010b, 11001111b, 0
+	   ;; descriptor-3
+	   ;; 64 bits code desciptor
+	   ;; for long mode
+	   ;; bit-index-1 of the flags of the GDT code desciptor must be set
+	   ;; bit-index-2 of the flags of the GDT code desciptor must be clear (as it would be for a 16-bit code segment)
+	   ;; so we have the following
+	   ;;  flags = 0010b,  access = 10011010b ;; most accessible for code desciptor
+	   db 0, 0, 0, 0, 0, 10011010b, 00100000b, 0
+	   db 0, 0, 0, 0, 0, 10010010b, 00100000b, 0
+	GDT_END:
+
+	NULL_SELECTOR = 0
+	DATA_SELECTOR_32 = (1 shl 3)    ; flat data selector (ring 0)
+	CODE_SELECTOR_32 = (2 shl 3)    ; 32-bit code selector (ring 0)
+	CODE_SELECTOR_64 = (3 shl 3)    ; 64-bit code selector (ring 0)
+	DATA_SELECTOR_64 = (4 shl 3)    ; 64-bit code selector (ring 0)
+	#+end_src
+** start32
+*** note
+	1. set up paging in 32 bits mode
+*** note about paging
+	3. paging :: page translation
+	4. paging in pmode :
+	   2 level 4k-table
+	   1024 4-bytes-entries in a table
+	   paging in lmode :
+	   4 level 4k-table
+	   512 8-bytes-entries in a table
+	5. for lmode from higher level to lower level we have :
+	   PageTable4 -> PageTable3 -> PageTable2 -> PageTable1
+	   [one address stored in a higher level table's entry]
+	   is used to find [one address of a lower level table]
+	   but the lowest 12 bits of [one address stored in a higher level table's entry]
+	   are used as flags
+	   for [one address of a lower level table's entry] must be align to 4k
+	6. according to the indexes of these tables
+	   and the address stored under the entries of the indexes of these tables
+	   MMU of processor calculates virtual address --> physical address
+	   MMU :: memory management unit
+	   so [one address stored in a PageTable1's entry]
+	   is the final offset of the physical address
+	7. pmode :
+	   1024 == 2 ^ 10
+	   2 * 10 + 12 = 32
+	   so, the physical address is 32 bits
+	   lmode :
+	   512 == 2 ^ 9
+	   4 * 9 + 12 = 48
+	   so, the physical address is 48 bits
+	8. in lmode :
+	   |---------------------------+--------------------------------------|
+	   |                           | the size of memory can be addressed  |
+	   |---------------------------+--------------------------------------|
+	   | one entry in a PageTable1 | 4K == 4 * 2^10 == 2 ^ 12             |
+	   |---------------------------+--------------------------------------|
+	   | one PageTable1            | 2M == 2 * 2^20 == 2 ^ (12 + 1*9)     |
+	   | use 4K                    |                                      |
+	   |---------------------------+--------------------------------------|
+	   | one PageTable2            | 1G == 1 * 2^30 == 2 ^ (12 + 2*9)     |
+	   | use 4K*4K                 |                                      |
+	   |---------------------------+--------------------------------------|
+	   | one PageTable3            | 512G == 521 * 2^30 == 2 ^ (12 + 3*9) |
+	   |                           |                                      |
+	   |---------------------------+--------------------------------------|
+	   | one PageTable4            | 256T == 256 * 2^40 == 2 ^ (12 + 4*9) |
+	   |                           |                                      |
+	   |---------------------------+--------------------------------------|
+	9. one can enable 2M size page
+	   by set the bit-index-7 of PageTable2
+	   to make it becomes the lowest level of page table
+	   how it works is easy to see
+*** implementation
+	#+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	align 16
+	use32
+
+	start32:
+		;; load 4 GB data descriptor to all data segment registers
+		mov     ax, DATA_SELECTOR_32
+		mov     ds, ax
+		mov     es, ax
+		mov     fs, ax
+		mov     gs, ax
+		mov     ss, ax
+
+		;; about paging :
+		;; make 4G identity page
+		;; by setting up :
+		;; 1 PageTable4 with 1 entries
+		;; 1 PageTable3 with 4 entries
+		;; 4 PageTable2 with 512 entries each
+		;; 6*4K == 24K of memory are needed to set up these tables
+
+		SizeOfPageTable = 4*1024
+		SizeOfPage = 2*1024*1024
+		PageTable4 = 1*1024*1024
+		PageTable3 = PageTable4 + SizeOfPageTable
+		PageTable2 = PageTable3 + SizeOfPageTable
+
+		;; clear 6*4k for paging tables
+		mov     edi, PageTable4
+		mov     ecx, (6*4*1024)/4     ; 4*1024 for one table
+		xor     eax, eax
+		rep     stosd
+
+		;; make 1 PageTable4 with 1 entry
+		mov dword [PageTable4], PageTable3 + 00000111b
+
+		;; make 1 PageTable3 with 4 entries
+		mov     edi, PageTable3
+		mov     eax, PageTable2 + 111b
+		mov     ecx, 4 ; number of entries
+	make_PageTable3_entries:
+		stosd
+		add     edi, 4
+		add     eax, SizeOfPageTable
+		loop    make_PageTable3_entries
+
+		;; make 4 PageTable2 with 512 entries each
+		mov     edi, PageTable2
+		mov     eax, 0 + 10000111b
+		mov     ecx, 4*512 ; number of entries
+	make_PageTable2_entries:
+		stosd
+		add     edi, 4
+		add     eax, SizeOfPage
+		loop    make_PageTable2_entries
+
+		;; load PageTable4 to cr3
+		mov     eax, PageTable4
+		mov     cr3, eax
+
+		;; enable PAE :: physical address extensions
+		mov     eax, cr4
+		bts     eax, 5
+		mov     cr4, eax
+
+		;; enable long mode by setting EFER MSR
+		;; MSR :: model specific register
+		mov     ecx, 0C0000080h
+		rdmsr
+		bts     eax, 8
+		wrmsr
+
+		;; enable paging
+		mov     eax, cr0
+		bts     eax, 31
+		mov     cr0, eax
+
+		;; and then we are in 32 bits compatibility mode (which is part of lmode)
+		;; must load a SELECTOR with which the flags are setted for lmode
+		;; as the following "jmp" do :
+		mov     ax, CODE_SELECTOR_64
+		mov     ds, ax
+		mov     es, ax
+		mov     fs, ax
+		mov     gs, ax
+		mov     ax, DATA_SELECTOR_64
+		mov     ss, ax
+		jmp     CODE_SELECTOR_64:start64
+	#+end_src
+** start64
+*** note
+	1. set up IDT in 64 bits mode
+*** implementation
+	#+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	align 16
+	use64
+
+	start64:
+		;; Flush Cache
+		wbinvd
+
+		;; Enable Cache
+		mov rax, cr0
+		btr rax, 29                     ; resets (i.e. clear) No Write Thru (Bit 29)
+		btr rax, 30                     ; resets (i.e. clear) CD (Bit 30)
+		mov cr0, rax
+
+		;; about PIC and IRQ
+		;; ICW :: initialization command word (actually byte)
+
+		;; ICW1
+		mov     al, 10001b
+		out     20h, al
+		mov     al, 10001b
+		out     0A0h, al
+
+		;; ICW2
+		;; IRQ 0-7: from interrupts 32
+		mov     al, 32
+		out     21h, al
+		;; IRQ 8-15: from interrupts 32 + 8
+		mov     al, 32 + 8
+		out     0A1h, al
+
+		;; ICW3
+		;; connected PIC1 with PIC2
+		mov     al, 100b
+		out     21h, al
+		mov     al, 10b
+		out     0A1h, al
+
+		;; ICW4
+		;; x86 environment and manual EOI
+		mov     al, 1
+		out     21h, al
+		out     0A1h, al
+
+		;; OCW :: operation control word (actually byte)
+		;; OCW is used to enable/disable IRQ and to signal an interrupt is over
+
+		;; enable IRQ 1:keyboard
+		in      al, 21h
+		mov     al, 11111101b
+		out     21h, al
+		in      al, 0A1h
+		mov     al, 11111111b
+		out     0A1h, al
+
+		;; create IDT (at linear address 0)
+		;; not like the GDT, the IDT is created by code at address 0
+		;; an IDT entry is called a gate
+
+		;; at first placeholder is used
+		;; then one should call create_gate to creat each gate
+
+		xor     edi, edi
+
+		mov     ecx, 32
+	make_exception_gate_placeholders:
+		mov     esi, exception_gate_placeholder
+		movsq
+		movsq
+		loop    make_exception_gate_placeholders
+
+		mov     ecx, 256 - 32
+	make_interrupt_gate_placeholders:
+		mov     esi, interrupt_gate_placeholder
+		movsq
+		movsq
+		loop    make_interrupt_gate_placeholders
+
+		lidt    [IDTR]
+
+		jmp cicada
+	#+end_src
+*** create_gate
+	#+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	align 16
+	; create_gate
+	; rax = address of handler
+	; rdi = gate # to configure
+	create_gate:
+		push rdi
+		push rax
+
+		shl rdi, 4                      ; quickly multiply rdi by 16
+		stosw                           ; store the low word (15..0)
+		shr rax, 16
+		add rdi, 4                      ; skip the gate marker
+		stosw                           ; store the high word (31..16)
+		shr rax, 16
+		stosd                           ; store the high dword (63..32)
+
+		pop rax
+		pop rdi
+		ret
+	#+end_src
+*** IDT
+	#+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	align 16
+	IDTR:
+	  dw 256*16 - 1 ;; index of the last byte in table
+	  dq 0          ;; linear address of IDT
+
+	;; not like the GDT, the IDT is created by code at address 0
+	;; an IDT entry is called a gate
+	;; the size of a gate in 64 bits mode is 16 bytes
+	;; offset                [64 bits] :: 0,1,6,7,8,9,10,11 ==
+	;; code-segment-selector [16 bits] :: 2,3 ==
+	;; reserved              [ 8 bits] :: 4 == 0
+	;; attributes-and-type   [ 8 bits] :: 5 ==
+	;; reserved              [32 bits] :: 12,13,14,15,16 == 0
+
+	align 16
+	exception_gate_placeholder:
+	  dw exception_placeholder and 0ffffh ;; 0,1
+	  dw CODE_SELECTOR_64                 ;; 2,3
+	  db 0                                ;; 4
+	  ;db 10001110b                        ;; 5
+	  db 10001111b                        ;; 5
+	  dw exception_placeholder shr (2*8)  ;; 6,7,8,9
+	  dd exception_placeholder shr (6*8)  ;; 10,11
+
+	align 16
+	interrupt_gate_placeholder:
+	  dw interrupt_placeholder and 0ffffh ;; 0,1
+	  dw CODE_SELECTOR_64                 ;; 2,3
+	  db 0                                ;; 4
+	  ;db 10001111b                        ;; 5
+	  db 10001110b                        ;; 5
+	  dw interrupt_placeholder shr (2*8)  ;; 6,7,8,9
+	  dd interrupt_placeholder shr (6*8)  ;; 10,11
+
+	;; ISR :: Interrupt Service Routine
+
+	align 16
+	exception_placeholder:
+		cli
+		hlt
+
+	align 16
+	interrupt_placeholder:
+		iretq
+	#+end_src
+** --------------------------------------
+** cicada
+   #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+   align 16
+   cicada:
+
+	  cli
+
+	  cld ;; set DF = 0, then rsi and rdi are incremented
+
+	  ;; to clear memory range FirstLowestMemoryAddress - UserDataArea
+	  mov rdi, FirstLowestMemoryAddress
+	  mov rcx, (UserDataArea - FirstLowestMemoryAddress)/8
+	  xor rax, rax
+	  ;; Store rax to [rdi], rcx - 1, rdi + 8, if rcx > 0 then do it again
+	  rep stosq
+
+	  mov ArgumentStackPointer,   ArgumentStackTop
+	  mov GreyPairStackPointer, GreyPairStackTop
+	  mov ReturnStackPointer,   ReturnStackTop
+
+	  ;; initialize the variable ``Here''
+	  ;; to point at beginning of DataSegment
+	  mov TemporaryRegister, UserDataArea
+	  mov [Here + CellWidth], TemporaryRegister
+	  mov NextWordPointer, cicada_begin_thread
+
+	  next
+
+
+   cicada_begin_thread:
+	  xx initialize
+
+	  xx magicCheckCoreFile
+	  xx loadCoreFile
+
+	  xx basicREPL
+   #+end_src
+** initialize
+   #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+   defWord "initialize", initialize
+	  ;; (* -- *)
+	  xx closeInterrupt
+
+	  xx createBarekeyboard
+
+	  ;; text mode is configured by kernelloader
+	  ;; it is ok to just use it
+	  xx configureColorPalette
+	  xx clearScreen
+	  xx resetCurrentCursor
+
+	  xx openInterrupt
+
+	  xx Exit
+   defWordEnd initialize
+
+
+   Palette:
+   ;; These colors are in RGB format
+   ;; Each color byte is actually 6 bits (0x00 - 0x3F)
+   db 0x00, 0x00, 0x00     ;;  0 Black
+   db 0x33, 0x00, 0x00     ;;  1 Red
+   db 0x0F, 0x26, 0x01     ;;  2 Green
+   db 0x0D, 0x19, 0x29     ;;  3 Blue
+   db 0x31, 0x28, 0x00     ;;  4 Orange
+   db 0x1D, 0x14, 0x1E     ;;  5 Purple
+   db 0x01, 0x26, 0x26     ;;  6 Teal
+   db 0x2A, 0x2A, 0x2A     ;;  7 Light Gray
+   db 0x15, 0x15, 0x15     ;;  8 Dark Gray
+   db 0x3B, 0x0A, 0x0A     ;;  9 Bright Red
+   db 0x22, 0x38, 0x0D     ;; 10 Bright Green
+   db 0x1C, 0x27, 0x33     ;; 11 Bright Blue
+   db 0x3F, 0x3A, 0x13     ;; 12 Yellow
+   db 0x2B, 0x1F, 0x2A     ;; 13 Bright Purple
+   db 0x0D, 0x38, 0x38     ;; 14 Bright Teal
+   db 0x3F, 0x3F, 0x3F     ;; 15 White
+
+
+   defCode "configure-color-palette", configureColorPalette
+	  ;; (* -- *)
+	  xor eax, eax
+	  mov dx, 0x03C8                  ; DAC Address Write Mode Register
+	  out dx, al
+	  mov dx, 0x03C9                  ; DAC Data Register
+	  mov rbx, 16                     ; 16 lines
+   .nextline:
+	  mov rcx, 16                     ; 16 colors
+	  mov rsi, Palette
+   .nexttritone:
+	  lodsb
+	  out dx, al
+	  lodsb
+	  out dx, al
+	  lodsb
+	  out dx, al
+	  dec rcx
+	  cmp rcx, 0
+	  jne .nexttritone
+	  dec rbx
+	  cmp rbx, 0
+	  jne .nextline                    ; Set the next 16 colors to the same
+	  mov eax, 0x14                   ; Fix for color 6
+	  mov dx, 0x03c8                  ; DAC Address Write Mode Register
+	  out dx, al
+	  mov dx, 0x03c9                  ; DAC Data Register
+	  mov rsi, Palette
+	  add rsi, 18
+	  lodsb
+	  out dx, al
+	  lodsb
+	  out dx, al
+	  lodsb
+	  out dx, al
+	  next
+   #+end_src
+** the dictionary metaphor
+*** note
+	1. there are many lexicographers,
+	   they work together to define words into the dictionary
+	2. to create a new word is to use some words to describe the new word,
+	   and set an explainer to explain the description of the new word.
+	3. to define a new word,
+	   we just need to add the new created word to the dictionary.
+	4. when someone try to find a word in the dictionary,
+	   the explainer of that word explains the word for him
+	5. due to the constrain of fasm's syntax,
+	   the ``names'' of some words varys between fasm and forth
+	   here are some warnings:
+	   1 for syntax) sugar :
+	  defWord ":", readWordListForLexicographer
+	  defCode "x|swap|xx", xswapxx
+	  defWord ".", printLittleNumber
+	   2) for already used label-name :
+	  defConst "ReturnStackTop", ReturnStackTop, TheReturnStackTop
+*** explainers & execute & Exit
+	#+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	align 16
+	explainVar:
+	   ;; ( -- address )
+	   add ExplainerPointer, CellWidth
+	   pushArgumentStack ExplainerPointer
+	   next
+
+	align 16
+	explainConst:
+	   ;; ( -- value )
+	   add ExplainerPointer, CellWidth
+	   mov TemporaryRegister, [ExplainerPointer]
+	   pushArgumentStack TemporaryRegister
+	   next
+
+	align 16
+	explainFunctionBody:
+	   pushReturnStack NextWordPointer
+	   ;; to calculate the address in a word where the function-body is stored
+	   ;; this address is as an ``argumt'' of explainFunctionBody
+	   add ExplainerPointer, CellWidth
+	   mov NextWordPointer, ExplainerPointer
+	   next
+
+	align 16
+	explainConstString:
+	   ;; ( -- string[address, length] )
+	   add ExplainerPointer, CellWidth
+	   mov TemporaryRegister, [ExplainerPointer]
+	   add ExplainerPointer, CellWidth
+	   pushArgumentStack ExplainerPointer
+	   pushArgumentStack TemporaryRegister
+	   next
+
+
+
+	defCode "execute", execute
+	  ;; ( word[address of explainer] -- )
+	  popArgumentStack ExplainerPointer
+	  jmp qword[ExplainerPointer]
+
+	;; not matter what way you use to set :
+	;;   [ExplainerPointer] == address-of-explainer (of a word you want to jump to)
+	;; then :
+	;;   jmp qword[ExplainerPointer]
+	;; it will works just well !!!
+
+
+
+
+	;; the following Exit helps tail-call-optimization
+	;; it just let you decide where is the end of FunctionBody
+	;; in a FunctionBody, the ``Exit'' as a word will never be called
+	defConst "Exit", Exit, Exit
+	;; (* so, the following numbers are the same :
+	;;   Exit
+	;;   readWord Exit find wordLinkToWordExplainer
+	;;   *)
+
+	defConst "Function-body-explainer",   explainFunctionBody, FunctionBodyExplainer
+	defConst "Variable-explainer",        explainVar,          VarExplainer
+	defConst "Constant-explainer",        explainConst,        ConstExplainer
+	defConst "Constant-string-explainer", explainConstString,  ConstStringExplainer
+	#+end_src
+*** find (dictionary look up)
+	#+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	;; recall
+	;; a word in the dictionary (unit : CellWidth = 8 bytes)
+	;; ==
+	;;    ||  1 : name-string-header-which-contains-the-length-of-name-string  ||
+	;;    ||  m : name-string  ||
+	;;    ||  1 : SizeOfFunctionBody  ||
+	;;    ||  1 : identification  ||
+	;;    ||  1 : link  ||
+	;;    ||  1 : type  ||
+	;;    ||  1 : address-of-name-string-header  ||
+	;;    ||  1 : address-of-explainer  ||
+	;;    ||  n : body  ||
+	;; where
+	;;   ||  1 : type  ||
+	;; ==
+	;;   | type-bit-63 | ... | type-bit-1 | type-bit-0 |
+	;; type-bit-0 is for HiddenWord
+
+	define WordType_HiddenMask 00000001h
+
+
+	defWord "word-link->word-string", wordLinkToWordString
+	   ;; (* link[address] -- string[address, length] *)
+	   xx literal, CellWidth
+	   xx Two, multiple
+	   xx addition
+	   xx fetch
+	   xx dup, literal, CellWidth, addition
+	   xx swap, fetch
+	   xx Exit
+	defWordEnd wordLinkToWordString
+
+	defWord "help,find", help_find
+	   ;; (* wordString[address, length], link[address] -- word[address of link] or Zero *)
+	   xx dup, zero?, false?branch, 4
+	   xx   xxswapx, drop2
+	   xx   Exit
+	   xx xxtuckx, wordLinkToWordString, xxoverxx, equalString?, false?branch, 3
+	   xx   drop2
+	   xx   Exit
+	   xx xswapxx, fetch
+	   xx help_find
+	   xx Exit
+	defWordEnd help_find
+
+	defWord "find", find
+	   ;; (* wordString[address, length] -- word[address of link] or Zero *)
+	   xx FirstWordInDictionary, fetch
+	   xx help_find
+	   xx Exit
+	defWordEnd find
+
+
+	;; usage;
+	;; 1 2 readWord + find wordLinkToWordExplainer execute . (* 3 *)
+	defWord "word-link->word-explainer", wordLinkToWordExplainer
+	   ;; (* word[address of link] -- word[address of explainer] or Zero *)
+	   xx literal, CellWidth
+	   xx Three, multiple
+	   xx addition
+	   xx Exit
+	defWordEnd wordLinkToWordExplainer
+	#+end_src
+*** the basic lexicographer
+	#+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	defWord "append-number-to-here", appendNumberToHere
+	   ;; (* a 64 bits number -- *)
+	   ;; reset ``Here'', which points next free memory
+	   xx Here, fetch
+	   xx save
+	   xx Here, fetch
+	   xx literal, CellWidth, addition
+	   xx Here ,save
+	   xx Exit
+	defWordEnd appendNumberToHere
+
+	;; note that:
+	;; a string in stack is string[address, length]
+	;; a string in memory is ||  1 : length  ||  n : string  ||
+	defWord "append-string-to-here", appendStringToHere
+	   ;; (* string[address, length] -- *)
+	   ;; leave a length behind, for update Here
+	   xx dup, xxswapx
+	   ;;   ||  1 : length  ||
+	   xx dup, appendNumberToHere
+	   ;;   ||  n : string  ||
+	   xx Here, fetch, swap, copyByteString
+	   ;; update Here
+	   xx Here, fetch, addition, Here, save
+	   xx Exit
+	defWordEnd appendStringToHere
+
+	;; test: appendNumberToHere
+	;; 6 , Here fetch sub8 fetch .
+
+
+	defWord "create-word-header", createWordHeader
+	   ;; (* byString *)
+	   ;; (* string[address, length] -- word[address of link] *)
+	   xx Here, fetch, xxswapx ;; for address-of-name-string-header
+	   xx appendStringToHere
+	   xx Here, fetch, appendNumberToHere ;; (* identification *)
+	   xx Here, fetch ;; (* leave the word[link] *)
+	   xx Zero, appendNumberToHere ;; (* link *)
+	   xx Zero, appendNumberToHere ;; (* type *)
+	   xx swap
+	   xx appendNumberToHere ;; address-of-name-string-header
+	   xx Exit
+	defWordEnd createWordHeader
+
+
+	defWord "create-word-header-for-function", createWordHeaderForFunction
+	   ;; (* string[address, length] -- word[address of link] *)
+	   xx Here, fetch, xxswapx ;; for address-of-name-string-header
+	   xx appendStringToHere
+	   xx Zero, appendNumberToHere ;; (* SizeOfFunctionBody *)
+	   xx Here, fetch, appendNumberToHere ;; (* identification *)
+	   xx Here, fetch ;; (* leave the word[link] *)
+	   xx Zero, appendNumberToHere ;; (* link *)
+	   xx Zero, appendNumberToHere ;; (* type *)
+	   xx swap
+	   xx appendNumberToHere ;; address-of-name-string-header
+	   xx Exit
+	defWordEnd createWordHeaderForFunction
+
+
+
+	defWord "append-word-description-to-here", appendWordDescriptionToHere
+	   ;; (* wordList[address, the number of words] -- *)
+	   xx dup, zero?branch, 16;-- GOTO: drop2
+	   xx tailAndHeadOfWordList
+	   xx dup2, stringDenoteNumber?
+	   xx false?branch, 6;-- GOTO: find
+	   ;; reading-error reported by ``number'' is not handled
+	   xx number, drop, appendNumberToHere
+	   xx branch, -12;-- GOTO: the beginning
+
+	   xx find, wordLinkToWordExplainer, appendNumberToHere
+	   xx branch, -17;-- GOTO: the beginning
+
+	   xx drop2
+	   xx Exit
+	defWordEnd appendWordDescriptionToHere
+
+	defWord "add-new-word-to-dictionary", addNewWordToDictionary
+	   ;; reset FirstWordInDictionary to point to the newly defined word
+	   ;; (* word[address of link] -- *)
+	   xx dup
+	   xx FirstWordInDictionary, fetch
+	   xx swap
+	   xx save
+	   xx FirstWordInDictionary, save
+	   xx Exit
+	defWordEnd addNewWordToDictionary
+
+	defWord "set-size-of-function-body", setSizeOfFunctionBody
+	   ;; (* wordList[address, the number of words], word[address of link] --
+	   ;;    wordList[address, the number of words], word[address of link] *)
+	   xx dup
+	   xx literal, CellWidth, subtraction
+	   xx literal, CellWidth, subtraction
+	   xx xoverxx
+	   xx swap
+	   xx save
+	   xx Exit
+	defWordEnd setSizeOfFunctionBody
+
+	defWord "define-function", defineFunction
+	   ;; (* wordList[address, the number of words] -- *)
+	   ;; to create a new word
+	   ;; is to use some words to describe the new word,
+	   ;; and let an explainer to explain the description of the new word.
+	   ;; to define a new word
+	   ;; is to add the new created word to the dictionary.
+	   xx tailAndHeadOfWordList
+	   xx createWordHeaderForFunction
+	   xx FunctionBodyExplainer, appendNumberToHere
+	   xx setSizeOfFunctionBody
+	   xx xxswapx
+	   xx appendWordDescriptionToHere
+	   xx addNewWordToDictionary
+	   xx Exit
+	defWordEnd defineFunction
+	#+end_src
+** Var & Const
+   #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+   defVar "Base", 10, Base
+   defVar "Here",  0, Here
+
+   defVar "first-word-in-dictionary", LinkOfTheLatestWordInAssembly , FirstWordInDictionary
+   ;; note that:
+   ;;   the above is LinkOfTheLatestWordInThisFile
+   ;;   NOT TheLatestWordInThisFile
+
+   ;; ------------------------------------------
+   defConst "Cell-width", CellWidth, TheCellWidth
+
+   defConst "Zero",  0, Zero
+   defConst "One",   1, One
+   defConst "Two",   2, Two
+   defConst "Three", 3, Three
+   defConst "Four",  4, Four
+   defConst "Five",  5, Five
+   defConst "Six",   6, Six
+   defConst "Seven", 7, Seven
+   defConst "Eight", 8, Eight
+   defConst "Nine",  9, Nine
+   defConst "Ten",  10, Ten
+
+   defConst "False", 0, False
+   defConst "True",  1, True
+
+   defConst "Bin-base", 2,  BinBase
+   defConst "Oct-base", 8,  OctBase
+   defConst "Dec-base", 10, DecBase
+   defConst "Hex-base", 16, HexBase
+   defConst "Aph-base", 36, AphBase
+   #+end_src
+** primitive functions
+*** stack processing
+**** drop & dup
+	 #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	 defCode "drop", drop
+	;; (* a -- *)
+	popArgumentStack rax
+	next
+
+	 defCode "drop2", drop2
+	;; (* a b -- *)
+	popArgumentStack rax
+	popArgumentStack rax
+	next
+
+	 defCode "dup", dup
+	;; (* a -- a a *)
+	mov  rax, [ArgumentStackPointer]
+	pushArgumentStack rax
+	next
+
+	 defCode "dup2", dup2
+	;; (* a b -- a b a b *)
+	mov  rbx, [ArgumentStackPointer]
+	mov  rax, [ArgumentStackPointer + CellWidth]
+	pushArgumentStack rax
+	pushArgumentStack rbx
+	next
+	 #+end_src
+**** over
+	 #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	 defCode "over", over
+	;; (* a b -- a b | a *)
+	mov  rax, [ArgumentStackPointer + CellWidth]
+	pushArgumentStack rax
+	next
+
+	 defCode "x|over|xx", xoverxx
+	;; (* a | b c -- a | b c | a *)
+	mov  rax, [ArgumentStackPointer + (2 * CellWidth)]
+	pushArgumentStack rax
+	next
+
+	 defCode "xx|over|x", xxoverx
+	;; (* a b | c -- a b | c | a b *)
+	mov  rax, [ArgumentStackPointer + (2 * CellWidth)]
+	pushArgumentStack rax
+	mov  rax, [ArgumentStackPointer + (2 * CellWidth)] ;; not (1 * CellWidth)
+	pushArgumentStack rax
+	next
+
+	 defCode "xx|over|xx", xxoverxx
+	;; (* a b | c d -- a b | c d | a b *)
+	mov  rax, [ArgumentStackPointer + (3 * CellWidth)]
+	pushArgumentStack rax
+	mov  rax, [ArgumentStackPointer + (3 * CellWidth)] ;; not (2 * CellWidth)
+	pushArgumentStack rax
+	next
+
+	 defCode "x|over|xxx", xoverxxx
+	;; (* a | b c d -- a | b c d | a *)
+	mov  rax, [ArgumentStackPointer + (3 * CellWidth)]
+	pushArgumentStack rax
+	next
+
+	 defCode "xx|over|xxxx", xxoverxxxx
+	;; (* a b | c d e f -- a b | c d e f | a b *)
+	mov  rax, [ArgumentStackPointer + (5 * CellWidth)]
+	pushArgumentStack rax
+	mov  rax, [ArgumentStackPointer + (5 * CellWidth)] ;; not (4 * CellWidth)
+	pushArgumentStack rax
+	next
+	 #+end_src
+**** tuck
+	 #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	 defCode "tuck", tuck
+	;; (* a b -- b | a b *)
+	popArgumentStack rbx
+	popArgumentStack rax
+	pushArgumentStack rbx
+	pushArgumentStack rax
+	pushArgumentStack rbx
+	next
+
+	 defCode "x|tuck|xx", xtuckxx
+	;; (* a | b c -- b c | a | b c *)
+	popArgumentStack rcx
+	popArgumentStack rbx
+	popArgumentStack rax
+	pushArgumentStack rbx
+	pushArgumentStack rcx
+	pushArgumentStack rax
+	pushArgumentStack rbx
+	pushArgumentStack rcx
+	next
+
+	 defCode "xx|tuck|x", xxtuckx
+	;; (* a b | c -- c | a b | c *)
+	popArgumentStack rcx
+	popArgumentStack rbx
+	popArgumentStack rax
+	pushArgumentStack rcx
+	pushArgumentStack rax
+	pushArgumentStack rbx
+	pushArgumentStack rcx
+	next
+
+	 defCode "xx|tuck|xx", xxtuckxx
+	;; (* a b | c d -- c d | a b | c d *)
+	popArgumentStack rdx
+	popArgumentStack rcx
+	popArgumentStack rbx
+	popArgumentStack rax
+	pushArgumentStack rcx
+	pushArgumentStack rdx
+	pushArgumentStack rax
+	pushArgumentStack rbx
+	pushArgumentStack rcx
+	pushArgumentStack rdx
+	next
+
+	 defCode "xxx|tuck|x", xxxtuckx
+	;; (* a b c | d -- d | a b c | d *)
+	popArgumentStack rdx
+	popArgumentStack rcx
+	popArgumentStack rbx
+	popArgumentStack rax
+	pushArgumentStack rdx
+	pushArgumentStack rax
+	pushArgumentStack rbx
+	pushArgumentStack rcx
+	pushArgumentStack rdx
+	next
+	 #+end_src
+**** swap
+	 #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	 defCode "swap", swap
+	;; (* a b -- b a *)
+	popArgumentStack rbx
+	popArgumentStack rax
+	pushArgumentStack rbx
+	pushArgumentStack rax
+	next
+
+	 defCode "x|swap|xx", xswapxx
+	;; (* a | b c -- b c | a *)
+	popArgumentStack rcx
+	popArgumentStack rbx
+	popArgumentStack rax
+	pushArgumentStack rbx
+	pushArgumentStack rcx
+	pushArgumentStack rax
+	next
+
+	 defCode "xx|swap|x", xxswapx
+	;; (* a b | c -- c | a b *)
+	popArgumentStack rcx
+	popArgumentStack rbx
+	popArgumentStack rax
+	pushArgumentStack rcx
+	pushArgumentStack rax
+	pushArgumentStack rbx
+	next
+
+	 defCode "x|swap|xxx", xswapxxx
+	;; (* a | b c d -- b c d | a *)
+	popArgumentStack rdx
+	popArgumentStack rcx
+	popArgumentStack rbx
+	popArgumentStack rax
+	pushArgumentStack rbx
+	pushArgumentStack rcx
+	pushArgumentStack rdx
+	pushArgumentStack rax
+	next
+
+	 defCode "xxx|swap|x", xxxswapx
+	;; (* a b c | d -- d | a b c *)
+	popArgumentStack rdx
+	popArgumentStack rcx
+	popArgumentStack rbx
+	popArgumentStack rax
+	pushArgumentStack rdx
+	pushArgumentStack rax
+	pushArgumentStack rbx
+	pushArgumentStack rcx
+	next
+
+	 defCode "xx|swap|xx", xxswapxx
+	;; (* a b | c d -- c d | a b *)
+	popArgumentStack rdx
+	popArgumentStack rcx
+	popArgumentStack rbx
+	popArgumentStack rax
+	pushArgumentStack rcx
+	pushArgumentStack rdx
+	pushArgumentStack rax
+	pushArgumentStack rbx
+	next
+
+
+	 defCode "x|swap|xxxx", xswapxxxx
+	;; (* a | b c d e -- b c d e | a *)
+	popArgumentStack r8 ;; e
+	popArgumentStack rdx
+	popArgumentStack rcx
+	popArgumentStack rbx
+	popArgumentStack rax
+	pushArgumentStack rbx
+	pushArgumentStack rcx
+	pushArgumentStack rdx
+	pushArgumentStack r8 ;; e
+	pushArgumentStack rax
+	next
+
+	 defCode "xxxx|swap|x", xxxxswapx
+	;; (* a b c d | e --  e | a b c d *)
+	popArgumentStack r8 ;; e
+	popArgumentStack rdx
+	popArgumentStack rcx
+	popArgumentStack rbx
+	popArgumentStack rax
+	pushArgumentStack r8 ;; e
+	pushArgumentStack rax
+	pushArgumentStack rbx
+	pushArgumentStack rcx
+	pushArgumentStack rdx
+	next
+
+
+	 defCode "xx|swap|xxxx", xxswapxxxx
+	;; (* a b | c d e f -- c d e f | a b *)
+	popArgumentStack r9 ;; f
+	popArgumentStack r8 ;; e
+	popArgumentStack rdx
+	popArgumentStack rcx
+	popArgumentStack rbx
+	popArgumentStack rax
+	pushArgumentStack rcx
+	pushArgumentStack rdx
+	pushArgumentStack r8 ;; e
+	pushArgumentStack r9 ;; f
+	pushArgumentStack rax
+	pushArgumentStack rbx
+	next
+
+	 defCode "xxxx|swap|xx", xxxxswapxx
+	;; (* a b c d | e f --  e f | a b c d *)
+	popArgumentStack r9 ;; f
+	popArgumentStack r8 ;; e
+	popArgumentStack rdx
+	popArgumentStack rcx
+	popArgumentStack rbx
+	popArgumentStack rax
+	pushArgumentStack r8 ;; e
+	pushArgumentStack r9 ;; f
+	pushArgumentStack rax
+	pushArgumentStack rbx
+	pushArgumentStack rcx
+	pushArgumentStack rdx
+	next
+	 #+end_src
+**** ohters
+	 #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	 defCode "|123->321|", abcTOcba
+	popArgumentStack rax
+	popArgumentStack rbx
+	popArgumentStack rcx
+	pushArgumentStack rax
+	pushArgumentStack rbx
+	pushArgumentStack rcx
+	next
+	 #+end_src
+*** fixnum
+	#+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	defCode "add1", add1
+	   ;; (* n -- n+1 *)
+	   inc qword[ArgumentStackPointer]
+	   next
+
+	defCode "add2", add2
+	   ;; (* n -- n+1 *)
+	   add qword[ArgumentStackPointer], 2
+	   next
+
+	defCode "add3", add3
+	   ;; (* n -- n+1 *)
+	   add qword[ArgumentStackPointer], 3
+	   next
+
+	defCode "add4", add4
+	   ;; (* n -- n+4 *)
+	   add qword[ArgumentStackPointer], 4
+	   next
+
+	defCode "add8", add8
+	   ;; (* n -- n+8 *)
+	   add qword[ArgumentStackPointer], 8
+	   next
+
+
+	defCode "sub1", sub1
+	   ;; (* n -- n-1 *)
+	   dec qword[ArgumentStackPointer]
+	   next
+
+	defCode "sub2", sub2
+	   ;; (* n -- n-1 *)
+	   sub qword[ArgumentStackPointer], 2
+	   next
+
+	defCode "sub3", sub3
+	   ;; (* n -- n-1 *)
+	   sub qword[ArgumentStackPointer], 3
+	   next
+
+	defCode "sub4", sub4
+	   ;; (* n -- n-4 *)
+	   sub qword[ArgumentStackPointer], 4
+	   next
+
+	defCode "sub8", sub8
+	   ;; (* n -- n-8 *)
+	   sub qword[ArgumentStackPointer], 8
+	   next
+
+
+	defCode "+", addition
+	   ;; (* a b -- a+b *)
+	   popArgumentStack rax
+	   add qword[ArgumentStackPointer], rax
+	   next
+
+	defCode "-", subtraction
+	   ;; (* a b -- a-b *)
+	   popArgumentStack rax
+	   sub qword[ArgumentStackPointer], rax
+	   next
+
+	defCode "*", multiple
+	   ;; (* a b -- a*b *)
+	   popArgumentStack  rbx ;; 2ed arg
+	   popArgumentStack  rax ;; 1st arg
+	   imul rbx, rax
+	   ;; imul will ignore overflow
+	   ;; when there are two registers as arg
+	   ;; imul will save the result into the first register
+	   pushArgumentStack rbx
+	   next
+
+	defCode "mod/", moddiv
+	   ;; (* a, b -- a mod b, quotient *)
+	   ;; (* dividend, divisor -- remainder, quotient *)
+	   ;; the arg of idiv is divisor
+	   ;; the lower half of dividend is taken from rax
+	   ;; the upper half of dividend is taken from rdx
+	   xor  rdx, rdx   ;; high-part of dividend is not used
+	   popArgumentStack  rbx ;; 2ed arg
+	   popArgumentStack  rax ;; 1st arg
+	   idiv rbx
+	   ;; the remainder is stored in rdx
+	   ;; the quotient  is stored in rax
+	   pushArgumentStack rdx ;; remainder
+	   pushArgumentStack rax ;; quotient
+	   next
+	#+end_src
+*** memory
+	#+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	;; ``save'' and ``fetch'' default to a CellWidth (== 8 bytes)
+	;; the rule of ``fetch2'' and so on are:
+	;;   in memory:
+	;;     ||  1 : value-1  ||
+	;;     ||  1 : value-2  ||
+	;;     ||  1 : value-3  ||
+	;;     ...
+	;;   on stack:
+	;;     [ ... , value-3, value-2, value-1]
+	;; of course we have:
+	;;   fetch2 : memory=copy=>stack
+	;;   save2  : stack->memory
+
+	defCode "save", save
+	   ;; ( value, address -- )
+	   popArgumentStack rbx
+	   popArgumentStack rax
+	   mov qword[rbx], rax
+	   next
+
+	defCode "save2", save2
+	   ;; ( value-2, value-1, address -- )
+	   popArgumentStack rbx
+	   popArgumentStack rax
+	   mov qword[rbx], rax
+	   popArgumentStack rax
+	   mov qword[rbx + CellWidth], rax
+	   next
+
+
+
+	defCode "fetch", fetch
+	   ;; ( address -- value )
+	   popArgumentStack  rbx
+	   mov rax, qword[rbx]
+	   pushArgumentStack rax
+	   next
+
+	defCode "fetch2", fetch2
+	   ;; ( address -- value-1, value-2 )
+	   popArgumentStack  rbx
+	   mov rax, qword[rbx + CellWidth]
+	   pushArgumentStack rax
+	   mov rax, qword[rbx]
+	   pushArgumentStack rax
+	   next
+
+
+
+	defCode "add-save", addSave
+	   ;; ( number to add, address -- )
+	   popArgumentStack rbx
+	   popArgumentStack rax
+	   add qword[rbx], rax
+	   next
+
+	defCode "sub-save", subSave
+	   ;; ( number to add, address -- )
+	   popArgumentStack rbx
+	   popArgumentStack rax
+	   sub qword[rbx], rax
+	   next
+
+
+	defCode "save-byte", saveByte
+	   ;; ( value, address -- )
+	   popArgumentStack rbx
+	   popArgumentStack rax
+	   mov byte[rbx], al
+	   next
+
+	defCode "fetch-byte", fetchByte
+	   ;; ( address -- value )
+	   popArgumentStack rbx
+	   xor rax, rax
+	   mov al, byte[rbx]
+	   pushArgumentStack rax
+	   next
+
+
+
+
+	defCode "copy-byte", copyByte
+	   ;; ( source address, destination address --
+	   ;;   source address + 1, destination address + 1 )
+	   mov rbx, [ArgumentStackPointer + CellWidth] ;; source address
+	   mov al,  byte[rbx]                        ;; get a char from source address
+	   popArgumentStack rdi                        ;; destination address
+	   stosb                                     ;; copy to destination
+	   pushArgumentStack rdi                       ;; destination address is incremented by stosb
+	   inc qword[ArgumentStackPointer + CellWidth] ;; increment source address
+	   next
+
+	defCode "copy-byte-string", copyByteString
+	   ;; ( source address, destination address, length -- )
+	   popArgumentStack rcx
+	   popArgumentStack rdi
+	   popArgumentStack rsi
+	   rep movsb
+	   next
+	#+end_src
+*** string
+	#+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	;; return false when length == 0
+	defCode "compare-string?", compareString?
+	   ;; (* address of string-1, address of string-2, length -- True or False *)
+	   popArgumentStack rcx
+	   popArgumentStack rdi
+	   popArgumentStack rsi
+	   repe cmpsb
+	   sete al
+	   movzx rax, al
+	   pushArgumentStack rax
+	   next
+
+	defWord "equal-string?", equalString?
+	   ;; (* string-1[address-1, length-1], string-2[address-2, length-2]
+	   ;;   -- True or False *)
+	   xx xoverxx, equal?, false?branch, 4
+	   xx swap, compareString?, Exit
+	   xx drop, drop, drop, False
+	   xx Exit
+	defWordEnd equalString?
+	#+end_src
+*** predicates
+	1. 0 as False
+	   1 as True
+	2. there can not be bool-type in low-level forth-like-language
+	3. ``notFalse?'' is NOT ``true?''
+	4. ``false?'' is ``zero?''
+	   ``true?'' is ``one?''
+	#+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	defCode "==", equal?
+	   popArgumentStack rbx
+	   popArgumentStack rax
+	   cmp   rbx, rax
+	   sete  al
+	   movzx rax, al
+	   pushArgumentStack rax
+	   next
+
+	defCode "=/=", notEqual?
+	   popArgumentStack rbx
+	   popArgumentStack rax
+	   cmp   rbx, rax
+	   setne al
+	   movzx rax, al
+	   pushArgumentStack rax
+	   next
+
+	defCode "<", lessThan?
+	   popArgumentStack rbx
+	   popArgumentStack rax
+	   cmp   rax, rbx
+	   setl  al
+	   movzx rax, al
+	   pushArgumentStack rax
+	   next
+
+	defCode ">", greaterThan?
+	   popArgumentStack   rbx
+	   popArgumentStack   rax
+	   cmp   rax, rbx
+	   setg  al
+	   movzx rax, al
+	   pushArgumentStack  rax
+	   next
+
+	defCode "<=", lessOrEqual?
+	   popArgumentStack rbx
+	   popArgumentStack rax
+	   cmp   rax, rbx
+	   setle al
+	   movzx rax, al
+	   pushArgumentStack rax
+	   next
+
+	defCode ">=", greaterOrEqual?
+	   popArgumentStack rbx
+	   popArgumentStack rax
+	   cmp   rax, rbx
+	   setge al
+	   movzx rax, al
+	   pushArgumentStack rax
+	   next
+
+	defCode "zero?", zero?
+	   popArgumentStack rax
+	   test  rax,rax
+	   setz  al
+	   movzx rax, al
+	   pushArgumentStack rax
+	   next
+
+	defCode "not-zero?", notZero?
+	   popArgumentStack rax
+	   test  rax,rax
+	   setnz al
+	   movzx rax, al
+	   pushArgumentStack rax
+	   next
+
+
+	defWord "one?", one?
+	   xx One, equal?
+	   xx Exit
+	defWordEnd one?
+
+	defWord "true?", true?
+	   xx one?
+	   xx Exit
+	defWordEnd true?
+
+	defWord "false?", false?
+	   xx zero?
+	   xx Exit
+	defWordEnd false?
+	#+end_src
+*** bitwise operations
+	1. ``bitwiseAnd'' and ``bitwiseOr'' handle 64 bits value
+	2. x y bitwiseAnd
+	   ==
+	   x bitwiseInvert y bitwiseInvert bitwiseOr bitwiseInvert
+	#+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	defCode "bitwise-and", bitwiseAnd
+	   ;; ( a, b -- a and b )
+	   popArgumentStack rbx
+	   and [ArgumentStackPointer], rbx
+	   next
+
+	defCode "bitwise-or", bitwiseOr
+	   ;; ( a, b -- a or b )
+	   popArgumentStack rbx
+	   or  [ArgumentStackPointer], rbx
+	   next
+
+	defCode "bitwise-xor", bitwiseXor
+	   ;; ( a, b -- a xor b )
+	   popArgumentStack rbx
+	   xor [ArgumentStackPointer], rbx
+	   next
+
+	defCode "bitwise-invert", bitwiseInvert
+	   ;; ( a -- invert a )
+	   not qword[ArgumentStackPointer]
+	   next
+	#+end_src
+*** single bit operations
+	1. offset is of LSB
+	2. offset in [0, ..., 63]
+	3. step   in [1, ..., 64]
+	#+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	;; BT copies a bit from a given register to the carry flag
+	defCode "fetch-bit", fetchBit
+	   ;; ( fixnum, offset -- bit )
+	   popArgumentStack rbx
+	   popArgumentStack rax
+	   bt rax, rbx
+	   setc al
+	   movzx rax, al
+	   pushArgumentStack rax
+	   next
+
+	defCode "set-bit", setBit
+	   ;; ( fixnum, offset -- fixnum )
+	   popArgumentStack rbx
+	   popArgumentStack rax
+	   bts rax, rbx
+	   pushArgumentStack rax
+	   next
+
+	defCode "clear-bit", clearBit
+	   ;; ( fixnum, offset -- fixnum )
+	   popArgumentStack rbx
+	   popArgumentStack rax
+	   btr rax, rbx
+	   pushArgumentStack rax
+	   next
+
+	defCode "invert-bit", invertBit
+	   ;; ( fixnum, offset -- fixnum )
+	   popArgumentStack rbx
+	   popArgumentStack rax
+	   btc rax, rbx
+	   pushArgumentStack rax
+	   next
+
+
+
+	;; "bsf" "bsr"
+	;; instructions scan a word or double word for first set bit
+	;; and store the index of this bit into destination operand
+	;; which must be general register
+	;; The bit string being scanned is specified by source operand
+	;; it may be either general register or memory
+	;; The ZF flag is set if the entire string is zero (no set bits are found)
+	;; otherwise it is cleared
+
+	;; If no set bit is found
+	;; the value of the destination register is undefined
+	;; "bsf" scans from low order to high order (starting from bit index zero)
+	;; "bsr" scans from high order to low order
+
+
+	;; note that:
+	;; if can not find ``SetBit''
+	;; the following functions will return -1
+
+	defCode "find-lowest-set-bit", findLowestSetBit
+	   ;; ( fixnum -- offset )
+	   popArgumentStack rax
+	   bsf rax, rax
+	   jz tryToFindLowestSetBit_But_NoSetBitIsFound
+	   pushArgumentStack rax
+	   next
+	tryToFindLowestSetBit_But_NoSetBitIsFound:
+	   mov rax, -1
+	   pushArgumentStack rax
+	   next
+
+	defCode "find-highest-set-bit", findHighestSetBit
+	   ;; ( fixnum -- offset )
+	   popArgumentStack rax
+	   bsr rax, rax
+	   jz tryToFindHighestSetBit_But_NoSetBitIsFound
+	   pushArgumentStack rax
+	   next
+	tryToFindHighestSetBit_But_NoSetBitIsFound:
+	   mov rax, -1
+	   pushArgumentStack rax
+	   next
+	#+end_src
+*** bits shift & rotate
+	#+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	;; "shl"
+	;; shifts the destination operand left
+	;; by the number of bits specified in the second operand
+	;; The destination operand can be general register or memory
+	;; The second operand can be an immediate value or the CL register
+	;; as bits exit from the left, zeros in from the right
+	;; The last bit that exited is stored in CF
+	;; "sal" is a synonym for "shl"
+	defCode "shift-left", shiftLeft
+	   ;; ( fixnum, step -- fixnum * 2^step )
+	   popArgumentStack rcx
+	   shl qword[ArgumentStackPointer], cl
+	   next
+
+	defCode "shift-right", shiftRight
+	   ;; ( fixnum, step -- fixnum / 2^step )
+	   popArgumentStack rcx
+	   shr qword[ArgumentStackPointer], cl
+	   next
+
+	defCode "shift-right-preserve-sign", shiftRightPreserveSign
+	   ;; ( fixnum, step -- new fixnum )
+	   popArgumentStack rcx
+	   sar qword[ArgumentStackPointer], cl
+	   next
+
+
+
+	;; note that:
+	;; ``double'' is 128 bit value here
+
+	;; "shld"
+	;; shifts bits of the destination operand to the left
+	;; by the number of bits specified in third operand,
+	;; while shifting
+	;; move high order bits from the source operand
+	;; into the destination operand on the right.
+	;; The source operand remains unmodified.
+	;; The destination operand can be a word or double word general register or memory,
+	;; the source operand must be a general register,
+	;; third operand can be an immediate value or the CL register.
+	defCode "double-shift-left", doubleShiftLeft
+	   ;; ( fixnum-1, fixnum-2, step --
+	   ;;   new fixnum-1, new fixnum-2 )
+	   popArgumentStack rcx
+	   popArgumentStack rax
+	   shld qword[ArgumentStackPointer], rax, cl
+	   shl rax, cl
+	   pushArgumentStack rax
+	   next
+
+
+	;; "shrd"
+	;; shifts bits of the destination operand to the right,
+	;; while shifting
+	;; move low order bits from the source operand
+	;; into the destination operand on the left.
+	;; The source operand remains unmodified.
+	;; Rules for operands are the same as for the "shld" instruction.
+	defCode "double-shift-right", doubleShiftRight
+	   ;; ( fixnum-1, fixnum-2, step --
+	   ;;   new fixnum-1, new fixnum-2 )
+	   popArgumentStack rcx
+	   popArgumentStack rbx
+	   popArgumentStack rax
+	   shrd rbx, rax, cl
+	   shr rax, cl
+	   pushArgumentStack rax
+	   pushArgumentStack rbx
+	   next
+
+	defCode "double-shift-right-preserve-sign", doubleShiftRightPreserveSign
+	   ;; ( fixnum-1, fixnum-2, step --
+	   ;;   new fixnum-1, new fixnum-2 )
+	   popArgumentStack rcx
+	   popArgumentStack rbx
+	   popArgumentStack rax
+	   shrd rbx, rax, cl
+	   sar rax, cl
+	   pushArgumentStack rax
+	   pushArgumentStack rbx
+	   next
+
+
+
+
+	defCode "rotate-left", rotateLeft
+	   ;; ( fixnum, step -- new fixnum )
+	   popArgumentStack rcx
+	   rol qword[ArgumentStackPointer], cl
+	   next
+
+	defCode "rotate-right", rotateRight
+	   ;; ( fixnum, step -- new fixnum )
+	   popArgumentStack rcx
+	   ror qword[ArgumentStackPointer], cl
+	   next
+	#+end_src
+*** about ReturnStack
+	#+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	defCode "push-return-stack", toPushReturnStack
+	   ;; (* address --> ReturnStack: address *)
+	   popArgumentStack  rax
+	   pushReturnStack rax
+	   next
+
+	defCode "pop-return-stack", toPopReturnStack
+	   ;; (* ReturnStack: address --> address *)
+	   popReturnStack  rax
+	   pushArgumentStack rax
+	   next
+
+	;; up to now
+	;; the above two class classic forth words
+	;; have not been used by cicada yet
+
+
+	defCode "fetch-return-stack-pointer", fetchReturnStackPointer
+	   ;; (* -- an address in the ReturnStack *)
+	   pushArgumentStack ReturnStackPointer
+	   next
+
+	defCode "reset-return-stack-pointer", resetReturnStackPointer
+	   ;; (* an address in the ReturnStack -- *)
+	   popArgumentStack ReturnStackPointer
+	   next
+
+	defCode "drop-return-stack", dropReturnStack
+	   ;; (* -- *)
+	   add ReturnStackPointer, CellWidth
+	   next
+	#+end_src
+*** about ArgumentStack
+	#+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	;; to know why the following funny thing happens,
+	;; see the definition of the macro ``pushArgumentStack'',
+	defCode "make-self-reference-value", makeSelfReferenceValue
+	   ;; ( -- address )
+	   pushArgumentStack ArgumentStackPointer
+	   next
+
+	defWord "fetch-argument-stack-pointer", fetchArgumentStackPointer
+	   xx makeSelfReferenceValue, add8, Exit
+	defWordEnd fetchArgumentStackPointer
+
+	defCode "reset-argument-stack-pointer", resetArgumentStackPointer
+	   ;; ( address -- )
+	   popArgumentStack ArgumentStackPointer
+	   next
+	#+end_src
+*** about GreyPairStack
+	#+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	defCode "push-grey-pair-stack", pushGreyPairStack
+	   ;; (* pair[address] --> GreyPairStack: pair[address] *)
+	   popArgumentStack rax
+	   lea GreyPairStackPointer, [GreyPairStackPointer - CellWidth]
+	   mov [GreyPairStackPointer], rax
+	   next
+
+	defCode "pop-grey-pair-stack", popGreyPairStack
+	   ;; (* GreyPairStack: pair[address] --> pair[address] *)
+	   mov rax, [GreyPairStackPointer]
+	   lea GreyPairStackPointer, [GreyPairStackPointer + CellWidth]
+	   pushArgumentStack rax
+	   next
+
+	defCode "empty-grey-pair-stack?", emptyGreyPairStack?
+	   ;; (* -- True or False *)
+	   mov rax, GreyPairStackTop
+	   cmp GreyPairStackPointer, rax
+	   ;; note that:
+	   ;; GreyPairStackPointer >= GreyPairStackTop
+	   ;; means stack over flow
+	   setge al
+	   movzx rax, al
+	   pushArgumentStack rax
+	   next
+	#+end_src
+*** WordList
+	WordList is returned by readWordListForLexicographer
+	#+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	defCode "tail-of-word-list", tailOfWordList
+	   ;; (* wordList[address, the number of words] --
+	   ;;    wordList[new address, number - 1] *)
+	   popArgumentStack rcx
+	   popArgumentStack rsi
+	   lodsq
+	   add rsi, rax
+	   pushArgumentStack rsi
+	   dec rcx
+	   pushArgumentStack rcx
+	   next
+
+	defCode "head-of-word-list", headOfWordList
+	   ;; (* wordList[address, the number of words] --
+	   ;;    wordString[address, length] *)
+	   popArgumentStack rbx ;; do not need this arg
+	   popArgumentStack rsi
+	   mov rcx, qword[rsi]
+	   add rsi, CellWidth
+	   pushArgumentStack rsi
+	   pushArgumentStack rcx
+	   next
+
+	defWord "tail-and-head-of-word-list", tailAndHeadOfWordList
+	   ;; (* wordList[address, the number of words] --
+	   ;;    wordList[new address, number - 1], wordString[address, length] *)
+	   xx dup2
+	   xx tailOfWordList
+	   xx xxswapxx
+	   xx headOfWordList
+	   xx Exit
+	defWordEnd tailAndHeadOfWordList
+	#+end_src
+** special key words
+   special key words are not functions
+   but all about defineFunction is to use old functions to make new function
+   so, more appropriately,
+   when using ``literal'' or ``branch''
+   we are making new functions,
+   in a way, which is different from function-composition.
+   hence :
+   1. ``literal'' is a set of function,
+	  ``literal 666'' is a function in this set.
+	  or ``literal'' is a function
+	  which takes ``666'' as an argumt, and returns a function.
+   2. ``branch'' by itself has no function-semantic.
+   3. it is obvious that,
+	  how ``== false?branch 6 ... ...'' is a means
+	  to make new function out of old functions.
+   4. note that to achieve the function-semantic,
+	  we have to constrain ourself when using these special key words,
+	  for example, ``infinite-loop'' built by ``branch''
+	  is definitely has no function-semantic.
+   #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+   defCode "literal", literal
+	  mov  rax, [NextWordPointer]
+	  add  NextWordPointer, CellWidth
+	  pushArgumentStack rax
+	  cmp qword[NextWordPointer], Exit
+	  jne @f
+	  popReturnStack NextWordPointer
+   @@:
+	  next
+
+
+   defCode "branch", branch
+	  ;; usage(in assembly): xx branch, number
+	  ;; the number denotes an offset
+	  ;; the base point of the offset is the place where the number stored
+	  ;; note that: in the function branch, [NextWordPointer] = offset
+	  mov  TemporaryRegister, [NextWordPointer]
+	  imul TemporaryRegister, CellWidth
+	  add  NextWordPointer, TemporaryRegister
+
+	  ;; why not: cmp qword[NextWordPointer], Exit  ???
+	  cmp qword[NextWordPointer], Exit
+	  ;-- IF: [NextWordPointer] =/= Exit
+	  jne @f
+	  ;-- EL: [NextWordPointer] == Exit
+	  popReturnStack NextWordPointer
+   @@:
+
+	  next
+
+
+   defCode "zero?branch", zero?branch
+	  ;; ( n -- )
+	  popArgumentStack rax
+	  test rax, rax
+	  jnz zero?branch_toBranch
+	  mov  TemporaryRegister, [NextWordPointer]
+	  imul TemporaryRegister, CellWidth
+	  add  NextWordPointer, TemporaryRegister
+	  jmp zero?branch_help_toBranch
+   zero?branch_toBranch:
+	  add NextWordPointer, CellWidth
+   zero?branch_help_toBranch:
+
+	  ;; why not: cmp qword[NextWordPointer], Exit  ???
+	  cmp qword[NextWordPointer], Exit
+	  ;-- IF: [NextWordPointer] =/= Exit
+	  jne @f
+	  ;-- EL: [NextWordPointer] == Exit
+	  popReturnStack NextWordPointer
+   @@:
+
+	  next
+
+   defCode "false?branch", false?branch
+	  ;; ( n -- )
+	  ;; false?branch is identical to zero?branch
+	  ;; but we can not use defWord to define false?branch by false?branch
+	  ;; for it is a special key word
+	  popArgumentStack rax
+	  test rax, rax
+	  jnz false?branch_toBranch
+	  mov  TemporaryRegister, [NextWordPointer]
+	  imul TemporaryRegister, CellWidth
+	  add  NextWordPointer, TemporaryRegister
+	  jmp false?branch_help_toBranch
+   false?branch_toBranch:
+	  add NextWordPointer, CellWidth
+   false?branch_help_toBranch:
+
+	  ;; why not: cmp qword[NextWordPointer], Exit  ???
+	  cmp qword[NextWordPointer], Exit
+	  ;-- IF: [NextWordPointer] =/= Exit
+	  jne @f
+	  ;-- EL: [NextWordPointer] == Exit
+	  popReturnStack NextWordPointer
+   @@:
+
+	  next
+
+   defCode "not-false?branch", notFalse?branch
+	  ;; ( n -- )
+	  popArgumentStack rax
+	  test rax, rax
+	  jz notFalse?branch_toBranch
+	  mov  TemporaryRegister, [NextWordPointer]
+	  imul TemporaryRegister, CellWidth
+	  add  NextWordPointer, TemporaryRegister
+	  jmp notFalse?branch_help_toBranch
+   notFalse?branch_toBranch:
+	  add NextWordPointer, CellWidth
+   notFalse?branch_help_toBranch:
+
+	  ;; why not: cmp qword[NextWordPointer], Exit  ???
+	  cmp qword[NextWordPointer], Exit
+	  ;-- IF: [NextWordPointer] =/= Exit
+	  jne @f
+	  ;-- EL: [NextWordPointer] == Exit
+	  popReturnStack NextWordPointer
+   @@:
+
+	  next
+   #+end_src
+** interrupt
+*** closeInterrupt & openInterrupt
+	#+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	defCode "close-interrupt", closeInterrupt
+	   ;; (* -- *)
+	   cli
+	   next
+
+	defCode "open-interrupt", openInterrupt
+	   ;; (* -- *)
+	   sti
+	   next
+	#+end_src
+*** createGate
+	#+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	defCode "create-gate", createGate
+	   ;; (* gate number to configure, address of handler -- *)
+	   popArgumentStack rax
+	   popArgumentStack rdi
+	   shl rdi, 4     ; quickly multiply rdi by 16
+	   stosw          ; store the low word (15..0)
+	   shr rax, 16
+	   add rdi, 4     ; skip the gate marker
+	   stosw          ; store the high word (31..16)
+	   shr rax, 16
+	   stosd          ; store the high dword (63..32)
+	   next
+	#+end_src
+*** barekeyboard & createBarekeyboard
+	#+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	; -----------------------------------------------------------------------------
+	; keyboard interrupt. IRQ 0x01, INT 0x21
+	; This IRQ runs whenever there is input on the keyboard
+
+	;; SizeOfScancodeQueue = 1024 ; unit : byte
+
+	align 16
+	barekeyboard:
+		push rax
+		push rcx
+
+		xor rax, rax
+		in al, 0x60
+
+		mov rcx, [FrontOfScancodeQueue]
+		mov byte [ScancodeQueue + rcx], al
+		inc rcx
+		cmp rcx, SizeOfScancodeQueue
+		jne @f
+		xor rcx, rcx
+	@@:
+		mov [FrontOfScancodeQueue], rcx
+
+		;; the interrupt is over
+		mov al, 20h
+		out 20h, al
+		;call os_smp_wakeup_all          ; A terrible hack
+
+		pop rcx
+		pop rax
+
+		iretq
+
+	;; ScancodeQueue:
+	;;      rb SizeOfScancodeQueue
+
+	;; two indexes of the array as pointers
+	;; Rear < Front
+	align 16
+	RearOfScancodeQueue:  dq 0
+	FrontOfScancodeQueue: dq 1
+
+	defWord "create-barekeyboard", createBarekeyboard
+	   ;; (* -- *)
+	   ;; create the function to handle keyboard interrupt
+	   xx literal, 32+1
+	   xx literal, barekeyboard
+	   xx createGate
+	   xx Exit
+	defWordEnd createBarekeyboard
+	#+end_src
+** IO
+*** readChar
+**** note
+	 - 尽可能详尽地 不做转换地 用 keyboard scan code 记录用户的击键
+	   形成一层抽象 将具体的转码工作交给另一层次的函数去做
+	 - barekeyboard
+	   每一次 按键 和 释键 都会调用这个 子程
+	   并且相应的 keyboard scan code 被保存到 ScancodeQueue
+	   这里还没有 char 的语义
+	 - inputKey
+	   从 ScancodeQueue 中取出一个 被缓冲的 Scancode
+	 - inputChar
+	   利用 ScancodeQueue 里保存的信息 形成 char 的语义的
+	   这样做之后 对从键盘输入的信息的处理就能变得非常灵活
+	   对 keyboard layout 的更换非常灵活
+	   非常的 baremetal
+	   形成某种 char 的语义 只是更高层的函数所能完成的任务之一而已
+	 - inputLine
+	   这里是基本的输入接口
+	   需要 echo
+	   并且 包含一些编辑功能
+	 - readChar
+	   这里需要一个全局变量
+	   来切换 当前被读的 buffer 的位置
+	   ScancodeQueue 已经形成了一次 buffering 了
+	   再在 readChar 中形成一次 buffering 也许不合理
+	   readChar 的特点在于
+	   这个函数所读写的地方取决于
+	   [CurrentReading + CellWidth] 和 [ReadingBoundary + CellWidth] 这两个全局变量
+	   因为 调用 readChar 的函数所看到的 readChar 是被静态编译到函数体中的
+	   所以 要想 方便的实现 evalString 这个函数
+	   就有必要 使用这两个全局变量 来控制 readChar 所读取的位置
+**** ScancodeQueue
+	 #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	 defCode "empty?scan-code-queue", empty?ScancodeQueue
+	;; (* -- True or False *)
+	mov rax, [RearOfScancodeQueue]
+	mov rbx, [FrontOfScancodeQueue]
+	inc rax
+	cmp rax, SizeOfScancodeQueue
+	jne @f
+	xor rax, rax
+	 @@:
+	xor rcx, rcx
+	cmp rax, rbx
+	jne @f
+	inc rcx
+	 @@:
+	pushArgumentStack rcx
+	next
+
+	 defCode "in-scan-code-queue", inScancodeQueue
+	;; (* Scancode -- *)
+	popArgumentStack rax
+	mov rcx, [FrontOfScancodeQueue]
+	mov byte [ScancodeQueue + rcx], al
+	inc rcx
+	cmp rcx, SizeOfScancodeQueue
+	jne @f
+	xor rcx, rcx
+	 @@:
+	mov [FrontOfScancodeQueue], rcx
+	next
+
+	 defCode "out-scan-code-queue", outScancodeQueue
+	;; (* -- Scancode *)
+	mov rcx, [RearOfScancodeQueue]
+	inc rcx
+	cmp rcx, SizeOfScancodeQueue
+	jne @f
+	xor rcx, rcx
+	 @@:
+	mov [RearOfScancodeQueue], rcx
+	xor rax, rax
+	mov al, byte [ScancodeQueue + rcx]
+	pushArgumentStack rax
+	next
+
+	 defCode "halt", halt
+	;; (* -- *)
+	hlt
+	next
+	 #+end_src
+**** inputKey
+	 #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	 defWord "input-key", inputKey
+	;; (* -- Scancode *)
+	;; when ScancodeQueue is empty
+	;; call``halt'' to wait for more keystroke
+	;; note that, when you type fast
+	;; one ``halt'' maybe breaked by many interrupt events
+	xx empty?ScancodeQueue, false?branch, 4
+	xx   halt, branch, -5
+	xx outScancodeQueue
+	xx Exit
+	 defWordEnd inputKey
+	 #+end_src
+**** inputChar
+	 #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	 ;; 1. handle special Scancode first
+	 ;;    then call scancodeToASCII
+	 ;; 2. the first special Scancode to handle
+	 ;;    is about left_shift
+	 ;; 3. when scancodeToASCII returns Zero
+	 ;;    this scancode is special
+	 ;;    call inputKey to get another scancode
+	 ;;    to escape it
+	 ;; 4. little by little
+	 ;;    handle these special scancode been escaped
+	 defWord "input-char", inputChar
+	;; (* -- ASCII char *)
+	xx inputKey
+	xx dup, scancodeIsLeftShift?, false?branch, 5
+	xx   toggleLeftShift
+	xx   drop, branch, -8  ;; inputKey
+	xx dup, literal, 128, greaterThan?, false?branch, 4
+	xx   drop, branch, -17 ;; inputKey
+	xx scancodeToASCII
+	xx dup, zero?, false?branch, 4
+	xx   drop, branch, -25 ;; inputKey
+	xx Exit
+	 defWordEnd inputChar
+
+
+	 defWord "scan-code-is-left-shift?", scancodeIsLeftShift?
+	;; (* scancode -- True or False*)
+	xx dup
+	xx literal, 42, equal?, false?branch, 4
+	xx   drop, True
+	xx   Exit
+	xx literal, 128, subtraction
+	xx literal, 42, equal?, false?branch, 3
+	xx   True
+	xx   Exit
+	xx False
+	xx Exit
+	 defWordEnd scancodeIsLeftShift?
+
+
+	 ;; 1. a global variable about left_shift
+	 ;;    is checked by the folloing function
+	 ;; 2. whether the scancode is able to convert to ASCII
+	 ;;    is not decided by ``scancodeToASCII''
+	 ;;    but by ``inputChar''
+	 defCode "scan-code->ASCII", scancodeToASCII
+	;; (* scancode -- ASCII char or Zero *)
+	popArgumentStack rax
+	mov rbx, [StateOfLeftShift + CellWidth]
+	test rbx, rbx
+	jz @f
+	xor rcx, rcx
+	mov cl, byte [BarekeyboardLayout_Upper + rax]
+	pushArgumentStack rcx
+	next
+	 @@:
+	xor rcx, rcx
+	mov cl, byte [BarekeyboardLayout_Lower + rax]
+	pushArgumentStack rcx
+	next
+
+
+	 defConst "State-of-left-shift", 0, StateOfLeftShift
+
+	 defCode "toggle-left-shift", toggleLeftShift
+	;; (* -- *)
+	mov rax, [StateOfLeftShift + CellWidth]
+	test rax, rax
+	jz @f
+	xor rax, rax
+	mov [StateOfLeftShift + CellWidth], rax
+	next
+	 @@:
+	inc rax
+	mov [StateOfLeftShift + CellWidth], rax
+	next
+
+
+	 ;; BarekeyboardLayout
+	 ;; and it will be interesting to design new layout
+
+	 ASCII_backspace = 8
+	 ASCII_tab       = 9
+	 ASCII_linefeed  = 10
+	 ASCII_newline   = 10
+	 ASCII_esc       = 27
+	 ASCII_escape    = 27
+	 ASCII_space     = 32
+	 ASCII_delete    = 127
+
+	 BarekeyboardLayout_Lower:
+	 ;;================================
+	   db 0 ;; 0:[no such scancode]
+	 ;;================================
+	 ;; 1                                                                      14
+	 db ASCII_esc, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', ASCII_backspace
+	 ;; 15                                                                     28
+	 db ASCII_tab, 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', ASCII_newline
+	 ;;================================
+	   db 0 ;; 29:[left_ctrl]
+	 ;;================================
+	 ;; 30                                                40
+	 db 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', "'"
+	 ;; 41
+	 db '`'
+	 ;;================================
+	   db 0 ;; 42:[left_shift]
+	 ;;================================
+	 ;; 43                                                53
+	 db '\', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/'
+	 ;;================================
+	   db 0 ;; 54:[right_shift]
+	   db 0 ;; 55(224):[print screen & system request]
+	   db 0 ;; 56:[left_alt]
+	 ;;================================
+	 ;; 57
+	 db ASCII_space
+	 ;;================================
+	   db 0 ;; 58:[caps_lock]
+	 ;;================================
+	   rb (128 - 58)
+	 ;;================================
+
+	 BarekeyboardLayout_Upper:
+	 ;;================================
+	   db 0 ;; 0:[no such scancode]
+	 ;;================================
+	 ;; 1                                                                      14
+	 db ASCII_esc, '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+', ASCII_backspace
+	 ;; 15                                                                     28
+	 db ASCII_tab, 'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '{', '}', ASCII_newline
+	 ;;================================
+	   db 0 ;; 29:[left_ctrl]
+	 ;;================================
+	 ;; 30                                                40
+	 db 'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ':', '"'
+	 ;; 41
+	 db '~'
+	 ;;================================
+	   db 0 ;; 42:[left_shift]
+	 ;;================================
+	 ;; 43                                                53
+	 db '|', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', '<', '>', '?'
+	 ;;================================
+	   db 0 ;; 54:[right_shift]
+	   db 0 ;; 55(224):[print screen & system request]
+	   db 0 ;; 56:[left_alt]
+	 ;;================================
+	 ;; 57
+	 db ASCII_space
+	 ;;================================
+	   db 0 ;; 58:[caps_lock]
+	 ;;================================
+	   rb (128 - 58)
+	 ;;================================
+
+
+	 ;; --------------------------------------
+	 ;; test
+
+	 ;; defWord "test_inputChar", test_inputChar
+	 ;;    xx inputChar, writeChar, branch, -3
+	 ;;    xx Exit
+	 ;; defWordEnd test_inputChar
+	 #+end_src
+**** inputLine
+	 #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	 ;; 1. this function is like a little editor
+	 ;;    with a buffer of which the size is max length
+	 ;; 2. input is echoed here, so output functions are needed
+	 ;; 3. the concept of cursor is introduced here
+	 ;; 4. some editing features are implemented
+	 ;; 5. the most important thing is that
+	 ;;    before a user meets ``max length''
+	 ;;    a ``linefeed'' must be meeted
+	 ;;    and this ``linefeed'' is counted into the length of the string
+	 ;;    that returned by ``inputLine''
+	 defWord "input-line", inputLine
+	;; (* [address, max length] -- string[address, actual length] *)
+	xx dup2 ;; leave address and to calculate actual length
+	xx literal, '_', writeChar, decrementCursor
+
+	;; (* address, max length, [address, length] *)
+	xx inputChar
+
+	;; (* address, max length, [address, length], ASCII char *)
+	xx dup, literal, ASCII_backspace
+	xx equal?, false?branch, 24
+	xx   drop
+	xx   dup, xoverxxx, equal?, false?branch, 3
+	xx     branch, -14 ;; inputChar
+	xx   literal, ' ', writeChar, decrementCursor
+	;;   clear the '_', the cursor, leaved by every writed chars
+	xx   decrementCursor
+	;;   write the new cursor
+	xx   literal, '_', writeChar, decrementCursor
+	xx   add1, swap
+	xx   sub1, swap
+	xx   branch, -29 ;; inputChar
+
+	;; (* address, max length, [address, length], ASCII char *)
+	xx over, zero?, false?branch, 4
+	;;   if really meet max length
+	;;   type any key should sent a little warn (but this is not implemented)
+	;;   even type enter key will NOT ``Exit'' this function
+	xx   drop
+	;;   (* address, max length, [address, length] *)
+	xx   branch, -36 ;; inputChar
+
+	;; (* address, max length, [address, length], ASCII char *)
+	;; ``Exit'' only on ``newline''
+	xx dup, literal, ASCII_newline
+	xx equal?, false?branch, 17
+	xx   literal, ' ', writeChar, decrementCursor
+	;;   clear the '_', the cursor, leaved by every writed chars
+	xx   dup, writeChar
+	xx   xoverxx, saveByte
+	xx   sub1, swap
+	xx   add1, swap
+	;;   (* address, max length, [address, length] *)
+	xx   swap, drop
+	xx   subtraction
+	xx   Exit
+
+	;; (* address, max length, [address, length], ASCII char *)
+	xx dup, writeChar
+	xx literal, '_', writeChar, decrementCursor
+	;; leave a '_' after every writed chars as cursor
+	xx xoverxx, saveByte
+	xx sub1, swap
+	xx add1, swap
+	;; (* address, max length, [address, length] *)
+	xx branch, -72 ;; inputChar
+
+	 defWordEnd inputLine
+	 #+end_src
+**** readChar
+	 #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	 defConst "Size-of-input-buffer",  SizeOfInputBuffer,  TheSizeOfInputBuffer
+	 defConst "Input-buffer",          InputBuffer,        TheInputBuffer
+	 defConst "End-of-input-buffer",   EndOfInputBuffer,   TheEndOfInputBuffer
+
+	 ;; SizeOfInputBuffer = 3 * 1024 * 1024 ; bytes
+
+
+	 ;; InputBuffer:
+	 ;;    rb SizeOfInputBuffer
+	 ;; EndOfInputBuffer:
+
+	 ;; 1. two global variables for reading
+	 ;;    I can easily support `evalString' by change these two variables
+	 ;; 2. note that, there is no char in the address of a ``ReadingBoundary''
+	 ;;    an example of ``ReadingBoundary'' is ``EndOfInputBuffer''
+	 ;; 3. when ``CurrentReading'' == ``ReadingBoundary''
+	 ;;    for the function ``readChar''
+	 ;;    we need to reset it to read from ``InputBuffer''
+	 ;;    and call ``inputLine'' to fetch more chars
+	 ;;    and loop back
+	 defVar "Current-reading",  InputBuffer, CurrentReading
+	 defVar "Reading-boundary", InputBuffer, ReadingBoundary
+
+
+
+	 defWord "read-char", readChar
+	;; (*  -- char *)
+	xx CurrentReading, fetch
+	xx ReadingBoundary, fetch
+	xx lessThan?, false?branch, 8
+	;;   there is still some chars in the InputBuffer
+	;;   (or any other buffer) to be processed
+	xx   CurrentReading, fetch, fetchByte
+	xx   One, CurrentReading, addSave
+	xx   Exit
+	;; all chars in InputBuffer
+	;; (or any other buffer) have been processed
+	xx notReadingFromInputBuffer?, false?branch, 5
+	;;   add blank at the end
+	;;   otherwise,  when the a string not ending with blank
+	;;   ``evalString'' will not work correctly
+	xx   literal, ASCII_linefeed
+	xx   toReadFromInputBuffer
+	xx   Exit
+	;; when ``CurrentReading'' == ``ReadingBoundary''
+	;; we need to reset it to read from ``InputBuffer''
+	;; and call ``inputLine'' to fetch more chars
+	;; and loop back
+	xx toReadFromInputBuffer
+	xx TheInputBuffer, TheSizeOfInputBuffer
+	xx openInterrupt
+	xx inputLine
+	xx closeInterrupt
+	;; set ReadingBoundary ==
+	;;     InputBuffer + length of string that was inputed
+	xx ReadingBoundary, addSave
+	xx drop
+	xx branch, -31
+	 defWordEnd readChar
+
+
+	 defWord "not-reading-from-input-buffer?", notReadingFromInputBuffer?
+	;; (* -- True of False *)
+	xx CurrentReading, fetch
+	xx TheEndOfInputBuffer, greaterThan?, false?branch, 3
+	xx   True
+	xx   Exit
+	xx CurrentReading, fetch
+	xx TheInputBuffer, lessThan?, false?branch, 3
+	xx   True
+	xx   Exit
+	xx False
+	xx Exit
+	 defWordEnd notReadingFromInputBuffer?
+
+
+	 defWord "to-read-from-input-buffer", toReadFromInputBuffer
+	;; (* -- *)
+	xx TheInputBuffer, CurrentReading, save
+	xx TheInputBuffer, ReadingBoundary, save
+	xx Exit
+	 defWordEnd toReadFromInputBuffer
+	 #+end_src
+*** Screen & ScreenBuffer & Cursor
+**** ScreenBuffer
+	 #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	 ;; the size of a ScreenBuffer is equal to the size of the screen
+	 ;; which is 80*25*2
+
+	 ;; ScreenBuffer0_InAssembly: rb 80*25*2
+
+
+	 defConst "screen-buffer-0", ScreenBuffer0_InAssembly, ScreenBuffer0
+
+	 defCode "scroll-screen-buffer", scrollScreenBuffer
+	;; (* screen buffer[address] -- *)
+	;; scrolls a screen Buffer up by one line
+	;; DefaultBackColorOfChar should be used
+	popArgumentStack rdi              ; Start of video text memory for row 1
+	mov rsi, rdi
+	add rsi, 0xA0                   ; Start of video text memory for row 2
+	cld ;; clear the direction flag as we want to increment through memory
+	xor rcx, rcx
+	mov cx, (80 * 24)
+	rep movsw                       ; Copy the Character and Attribute
+	; Clear the last line in video memory
+	mov bl, byte [DefaultBackColorOfChar + CellWidth]
+	shl bl, 4
+	mov ah, byte [DefaultForeColorOfChar + CellWidth]
+	or ah, bl
+	mov al, ' '
+	mov cx, 80
+	rep stosw                       ; Store word in AX to RDI, RCX times
+	next
+
+
+	 defCode "clear-screen-buffer", clearScreenBuffer
+	;; (* screen buffer[address] -- *)
+	popArgumentStack rdi              ; Address for start of frame buffer
+	cld ;; clear the direction flag as we want to increment through memory
+	mov bl, byte [DefaultBackColorOfChar + CellWidth]
+	shl bl, 4
+	mov ah, byte [DefaultForeColorOfChar + CellWidth]
+	or ah, bl
+	mov al, ' '
+	xor rcx, rcx
+	mov cx, (80 * 25)
+	rep stosw                       ; Clear the screen. Store word in AX to RDI, RCX times
+	next
+	 #+end_src
+**** Screen
+	 #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	 defCode "update-screen", updateScreen
+	;; (* screen buffer[address] -- *)
+	;; print a screen buffer to screen
+	popArgumentStack rsi
+	cld ;; clear the direction flag as we want to increment through memory
+	mov rdi, 0xb8000
+	mov cx, 2000                    ; 80 x 25
+	rep movsw
+	next
+
+
+	 defVar "Current-screen-buffer", ScreenBuffer0_InAssembly, CurrentScreenBuffer
+
+	 defWord "scroll-screen", scrollScreen
+	;; (* -- *)
+	;; scrolls a screen Buffer up by one line
+	;; DefaultBackColorOfChar should be used
+	xx CurrentScreenBuffer, fetch
+	xx dup, scrollScreenBuffer
+	xx updateScreen
+	xx Exit
+	 defWordEnd scrollScreen
+
+
+	 defWord "clear-screen", clearScreen
+	;; (* -- *)
+	xx CurrentScreenBuffer, fetch
+	xx dup, clearScreenBuffer
+	xx updateScreen
+	xx Exit
+	 defWordEnd clearScreen
+	 #+end_src
+**** Cursor
+	 #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	 defConst "Number-of-columns-of-screen", 80, NumberOfColumnsOfScreen
+	 defConst "Number-of-rows-of-screen", 25, NumberOfRowsOfScreen
+	 defConst "Number-of-chars-of-screen", 80*25, NumberOfCharsOfScreen
+
+	 defWord "get-current-cursor-address", getCurrentCursorAddress
+	;; (* -- CurrentCursor[address] *)
+	xx CurrentScreenBuffer, fetch
+	xx sub8
+	xx Exit
+	 defWordEnd getCurrentCursorAddress
+
+	 defWord "reset-current-cursor", resetCurrentCursor
+	;; (* -- *)
+	xx Zero, getCurrentCursorAddress, save
+	xx Exit
+	 defWordEnd resetCurrentCursor
+
+	 ;; start from 1 to 25
+	 defWord "get-current-cursor-row", getCurrentCursorRow
+	;; (* -- row *)
+	xx getCurrentCursorAddress, fetch
+	xx NumberOfColumnsOfScreen, moddiv
+	xx swap, drop, add1
+	xx Exit
+	 defWordEnd getCurrentCursorRow
+
+	 ;; start from 1 to 80
+	 defWord "get-current-cursor-column", getCurrentCursorColumn
+	;; (* -- column *)
+	xx getCurrentCursorAddress, fetch
+	xx NumberOfColumnsOfScreen, moddiv
+	xx drop, add1
+	xx Exit
+	 defWordEnd getCurrentCursorColumn
+
+
+	 defWord "increment-cursor", incrementCursor
+	;; (* -- *)
+	xx getCurrentCursorAddress, fetch, add1
+	xx NumberOfCharsOfScreen, equal?, false?branch, 6
+	xx   scrollScreen
+	xx   NumberOfColumnsOfScreen, getCurrentCursorAddress, subSave
+	xx   Exit
+	xx One, getCurrentCursorAddress, addSave
+	xx Exit
+	 defWordEnd incrementCursor
+
+	 defWord "decrement-cursor", decrementCursor
+	;; (* -- *)
+	xx getCurrentCursorAddress, fetch
+	xx zero?, false?branch, 2
+	xx   Exit
+	xx One, getCurrentCursorAddress, subSave
+	xx Exit
+	 defWordEnd decrementCursor
+	 #+end_src
+*** writeChar
+**** putCharWithColor & putChar
+	 #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	 ;; text mode (aka. mode 0) -- the most simple output
+	 ;; (one can not support UTF-8 in text mode)
+	 ;; direct memory access to a linear address start at 0xb8000
+	 ;; 80 cols * 25 rows * 2 bytes
+	 ;; - The second byte is an ASCII char
+	 ;; - The first byte of the 2 bytes is split into forecolor & backcolor
+
+	 ;; Bit 76543210
+	 ;;     ||||||||
+	 ;;     |||||^^^-fore color
+	 ;;     ||||^----fore color bright bit
+	 ;;     |^^^-----back color
+	 ;;     ^--------back color bright bit (or enables blinking text)
+
+	 ;;   0 : Black               0+8 : Dark Gray
+	 ;;   1 : Blue                1+8 : Light Blue
+	 ;;   2 : Green               2+8 : Light Green
+	 ;;   3 : Cyan                3+8 : Light Cyan
+	 ;;   4 : Red                 4+8 : Light Red
+	 ;;   5 : Magenta             5+8 : Light Magenta
+	 ;;   6 : Brown               6+8 : Yellow
+	 ;;   7 : Light Gray          7+8 : White
+
+	 defConst "Black-char",          0    ,     BlackChar
+	 defConst "Blue-char",           1    ,     BlueChar
+	 defConst "Green-char",          2    ,     GreenChar
+	 defConst "Cyan-char",           3    ,     CyanChar
+	 defConst "Red-char",            4    ,     RedChar
+	 defConst "Magenta-char",        5    ,     MagentaChar
+	 defConst "Brown-char",          6    ,     BrownChar
+	 defConst "Light-gray-char",     7    ,     LightGrayChar
+
+	 defConst "Dark-gray-char",       0+8  ,     DarkGrayChar
+	 defConst "Light-blue-char",      1+8  ,     LightBlueChar
+	 defConst "Light-green-char",     2+8  ,     LightGreenChar
+	 defConst "Light-cyan-char",      3+8  ,     LightCyanChar
+	 defConst "Light-redchar",        4+8  ,     LightRedChar
+	 defConst "Light-magenta-char",   5+8  ,     LightMagentaChar
+	 defConst "Yellow-char",          6+8  ,     YellowChar
+	 defConst "White-char",           7+8  ,     WhiteChar
+
+
+	 defCode "put-char-with-color", putCharWithColor
+	;; (* char, back color, fore color -- *)
+	;; put a ASCII char with color to the position of the cursor
+	;; but can not handle ASCII_linefeed as my wish
+	popArgumentStack rcx
+	popArgumentStack rbx
+	popArgumentStack rax
+
+	shl rbx, 4
+	or rbx, rcx
+	;; Store the color into AH so STOSW can be used later on
+	mov ah, bl
+
+	push rax
+
+
+	mov rdx, [CurrentScreenBuffer + CellWidth]
+	mov ax, [rdx - 8]
+
+	shl ax, 1                       ; multiply by 2
+
+	mov rbx, rax                    ; Save the row/col offset
+	mov rdi, rdx                    ; Address of the screen buffer
+	add rdi, rax                    ; screen buffer is needed to scroll the screen
+
+
+	pop rax
+
+	stosw                           ; Write the character and attribute to screen buffer
+
+	mov rdi, 0xb8000
+	add rdi, rbx
+	stosw                           ; Write the character and attribute to screen
+
+	next
+
+
+	 ;;   0 : Black               0+8 : Dark Gray
+	 ;;   1 : Blue                1+8 : Light Blue
+	 ;;   2 : Green               2+8 : Light Green
+	 ;;   3 : Cyan                3+8 : Light Cyan
+	 ;;   4 : Red                 4+8 : Light Red
+	 ;;   5 : Magenta             5+8 : Light Magenta
+	 ;;   6 : Brown               6+8 : Yellow
+	 ;;   7 : Light Gray          7+8 : White
+	 defVar "Default-back-color-of-char", 0+8, DefaultBackColorOfChar
+	 defVar "Default-fore-color-of-char", 7+8, DefaultForeColorOfChar
+
+	 defWord "put-char", putChar
+	;; (* char -- *)
+	xx DefaultBackColorOfChar, fetch
+	xx DefaultForeColorOfChar, fetch
+	xx putCharWithColor
+	xx Exit
+	 defWordEnd putChar
+	 #+end_src
+**** printNewline
+	 #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	 defWord "print-newline", printNewline
+	;; (* -- *)
+	xx getCurrentCursorRow
+	xx NumberOfRowsOfScreen, equal?, false?branch, 7
+	xx   scrollScreen
+	xx   getCurrentCursorColumn, sub1
+	xx   getCurrentCursorAddress, subSave
+	xx   Exit
+	xx NumberOfColumnsOfScreen
+	xx getCurrentCursorColumn, sub1, subtraction
+	xx getCurrentCursorAddress, addSave
+	xx Exit
+	 defWordEnd printNewline
+	 #+end_src
+**** writeCharWithColor & writeChar
+	 #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	 defWord "write-char-with-color", writeCharWithColor
+	;; (* char, back color, fore color --  *)
+	xx xoverxx, literal, ASCII_linefeed
+	xx equal?, false?branch, 5
+	xx   drop2, drop, printNewline
+	xx   Exit
+	xx putCharWithColor
+	xx incrementCursor
+	xx Exit
+	 defWordEnd writeCharWithColor
+
+
+	 defWord "write-char", writeChar
+	;; (* char --  *)
+	xx dup, literal, ASCII_linefeed
+	xx equal?, false?branch, 4
+	xx   drop, printNewline
+	xx   Exit
+	xx putChar
+	xx incrementCursor
+	xx Exit
+	 defWordEnd writeChar
+	 #+end_src
+*** printString
+	#+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	defWord "print-string", printString
+	   ;; (* string[address, length] -- *)
+	   xx dup, zero?, false?branch, 3
+	   xx   drop2
+	   xx   Exit
+	   xx sub1, swap
+	   xx dup, fetchByte, writeChar
+	   xx add1, swap
+	   xx branch, -14
+	defWordEnd printString
+	#+end_src
+*** ><><><><><><
+*** word
+**** readFirstNonBlankChar & readNonBlankChar
+	 #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	 defWord "read-first-non-blank-char", readFirstNonBlankChar
+	;; (* -- FirstNonBlankChar *)
+	xx readChar, dup
+	xx literal, ASCII_space
+	xx greaterThan?, false?branch, 2
+	xx   Exit
+	xx drop
+	xx branch, -10
+	 defWordEnd readFirstNonBlankChar
+
+	 defWord "read-non-blank-char", readNonBlankChar
+	;; (* -- FirstNonBlankChar or Zero *)
+	xx readChar, dup
+	xx literal, ASCII_space
+	xx greaterThan?, false?branch, 2
+	xx   Exit
+	xx drop
+	xx Zero
+	xx Exit
+	 defWordEnd readNonBlankChar
+	 #+end_src
+**** readWord
+	 #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	 ;; MaxWordLength = 1024
+
+	 ;; BufferForReadWord:
+	 ;;    ;; note that, Subsequent calls will overwrite BufferForReadWord
+	 ;;    ;; this is why there is another function ``readWordForRuntime''
+	 ;;    rb MaxWordLength
+
+	 defWord "read-word", readWord
+	;; (*  -- wordString[address, length] *)
+	;; 1. skips any blanks (spaces, tabs, newlines)
+	;; 2. calls readChar to read characters into BufferForReadWord
+	;;    until it hits a blank
+	;; 3. returns the address of BufferForReadWord and length on the stack
+
+	xx literal, BufferForReadWord ;; (* leave return one of the values *)
+	xx Zero                       ;; (* leave length counter *)
+
+	xx literal, BufferForReadWord
+	xx readFirstNonBlankChar
+	xx over, saveByte, add1
+	xx swap, add1, swap
+
+	xx readNonBlankChar, dup, zero?branch, 9
+	xx   over, saveByte, add1
+	xx   swap, add1, swap
+	xx   branch, -11
+
+	xx drop2
+	xx Exit
+	 defWordEnd readWord
+
+
+
+	 ;; BufferForReadWordForRuntime:
+	 ;;    rb MaxWordLength
+
+	 defWord "read-word-for-runtime", readWordForRuntime
+	;; (*  -- wordString[address, length] *)
+	;; 1. skips any blanks (spaces, tabs, newlines)
+	;; 2. calls readChar to read characters into BufferForReadWord
+	;;    until it hits a blank
+	;; 3. returns the address of BufferForReadWord and length on the stack
+
+	xx literal, BufferForReadWordForRuntime ;; (* leave return one of the values *)
+	xx Zero                                 ;; (* leave length counter *)
+
+	xx literal, BufferForReadWordForRuntime
+	xx readFirstNonBlankChar
+	xx over, saveByte, add1
+	xx swap, add1, swap
+
+	xx readNonBlankChar, dup, zero?branch, 9
+	xx   over, saveByte, add1
+	xx   swap, add1, swap
+	xx   branch, -11
+
+	xx drop2
+	xx Exit
+	 defWordEnd readWordForRuntime
+	 #+end_src
+**** readStringInToBuffer
+	 #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	 ;; MaxStringLength = 1024*1024 ;; unit : byte
+
+	 defConst "Basic-string-buffer", BasicStringBuffer, TheBasicStringBuffer
+
+
+	 ;; BasicStringBuffer:
+	 ;;    ;; note that, Subsequent calls will overwrite BasicStringBuffer
+	 ;;    rb MaxStringLength
+
+	 defWord "read-string-into-buffer", readStringInToBuffer
+	;; (*  -- string[address of BasicStringBuffer, length] *)
+	xx literal, BasicStringBuffer ;; (* leave return one of the values *)
+	xx Zero                         ;; (* leave length counter *)
+
+	xx literal, BasicStringBuffer
+
+	xx readChar, dup
+	xx literal, 34 ;; ASCII_doublequote
+	xx equal?, notFalse?branch, 9
+	xx   over, saveByte, add1
+	xx   swap, add1, swap
+	xx   branch, -14
+
+	xx drop2
+	xx Exit
+	 defWordEnd readStringInToBuffer
+	 #+end_src
+**** number
+	 #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	 ;; The function uses the variable BASE as the radix
+	 ;; If the word starts with a '-' character then the returned value is negative
+
+	 ;; If the string can't be parsed as a number
+	 ;; or contains characters outside the current BASE
+	 ;; then we need to return an error indication.
+	 ;; So we let NUMBER returns two items on the stack.
+
+	 defCode "number", number
+	;; ( wordString[address, length] --
+	;;   parsed number, length of unparsed string )
+	popArgumentStack  rcx        ;; length  of string
+	popArgumentStack  rdi        ;; address of string
+	call number_helperFunction
+	pushArgumentStack rax        ;; parsed number
+	pushArgumentStack rcx        ;; length of unparsed string (0 = no error)
+	next
+
+	 number_helperFunction:
+	xor  rax, rax
+	xor  rbx, rbx
+
+	test rcx, rcx
+	;-- IF: rcx == 0
+	;-- WK: trying to parse a zero-length string, it is an error
+	;-- DO: but will return 0
+	jz number_return
+	;-- EL: rcx =/= 0
+	;-- WK: we have a non-empty string to be parsed
+	;-- DO: parse this non-empty string
+	;; copy the the variable Base into dl (rdx)
+	;; the following shows how to use a forth-variable-word in assembler code
+	mov rdx, [Base + CellWidth]
+	;; fetch a char
+	mov bl,  byte[rdi]
+	inc rdi
+	;; sign-indicater
+	;; top of ArgumentStack == 0,  indicating positive
+	;; top of ArgumentStack =/= 0, indicating negative
+	;; initialize sign-indicater
+	pushArgumentStack rax     ;; top of ArgumentStack == 0, indicating positive
+	cmp bl, '-'
+	;-- IF: bl =/= '-'
+	;-- WK: maybe positive number, maybe error
+	;-- DO: try to convert the number
+	jnz number_convert
+	;-- EL: bl == '-'
+	;-- DO: reset sign-indicater
+	;--     update the counter
+	;--     go into a loop to read all the chars
+	popArgumentStack  rax
+	pushArgumentStack rbx     ;; top of ArgumentStack =/= 0, indicating negative
+	dec rcx                 ;; update the counter
+	jnz number_fetchNextDigits
+	popArgumentStack  rbx     ;; error: string is only '-'.
+	mov rcx, 1
+	ret
+
+	 number_update_the_counter_and_fetchNextDigits:
+	dec rcx
+	 number_fetchNextDigits:
+	mov bl,  byte[rdi]     ;; bl = next character in string
+	inc rdi
+
+	 number_convert:
+	cmp bl, '_'
+	je number_update_the_counter_and_fetchNextDigits
+
+	;; from low to high along the ascii
+	sub bl, '0'
+	;-- IF: char < '0'
+	jb number_endThisParse
+	cmp bl, 10
+	;-- IF: '0' <= char <= '9'
+	jb number_tryToAddDigitUp
+
+	;-- EL: '9' < char
+	sub bl, ('A' - '0')
+	;-- IF: '9'< char < 'A'
+	jb number_endThisParse
+	cmp bl, 26
+	;-- NOTE-THAT: if bl == 0, char == 'A'
+	;-- IF: 'Z' < char
+	jge @f
+	;-- EL: 'A' <= char <= 'Z'
+	add bl, 10 ;; for 'A' =Hex= 10
+	jb number_tryToAddDigitUp
+
+	 @@:;-- IF: 'Z' < char
+	sub bl, ('a' - 'A')
+	;-- IF: 'Z' < char < 'a'
+	jb number_endThisParse
+	cmp bl, 26
+	;-- NOTE-THAT: if bl == 0, char == 'a'
+	;-- IF: 'z' < char
+	jge number_endThisParse
+	;-- EL: 'a' <= char <= 'a'
+	add bl, 10 ;; for 'a' =Hex= 10
+	;; jb number_tryToAddDigitUp
+
+
+	 number_tryToAddDigitUp:
+	cmp bl, dl
+	;-- IF: bl >= dl
+	;-- WK: this digit >= Base
+	jge number_endThisParse
+	;-- EL: bl < dl
+	;-- WK: this is a good digit
+	;-- DO: so add it to rax and loop
+	imul rax, rdx   ;; (set! rax (* Base rax))
+	add  rax, rbx
+	dec  rcx
+	jnz  number_fetchNextDigits
+
+	 number_endThisParse:
+	 ;; negate the result according to the sign-indicater on the top of ArgumentStack
+	popArgumentStack rbx
+	test rbx, rbx
+	jz   number_return
+	neg  rax
+	 number_return:
+	ret
+
+
+	 ;; the following kinds of strings denote number,
+	 ;; because the function ``number'' can handle them.
+	 ;; 1. string with '0' - '9' as first char
+	 ;; 2. string with '-' as first char and with '0' - '9' as second char
+	 ;; so "-->", "_0" do not denote number.
+	 ;; under HexBase,
+	 ;; "feed" does not denote number, but "0feed", "0_feed" denote number
+
+	 defCode "string-denote-number?", stringDenoteNumber?
+	;; ( wordString[address, length] -- true or false )
+	popArgumentStack  rcx        ;; length  of string
+	popArgumentStack  rdi        ;; address of string
+	call stringDenoteNumber?_helperFunction
+	pushArgumentStack rax        ;; true or false
+	next
+
+	 stringDenoteNumber?_helperFunction:
+	xor rbx, rbx
+
+	test rcx, rcx
+	;-- IF: rcx == 0
+	;-- WK: trying to parse a zero-length string, it is an error
+	jz stringDenoteNumber?_returnFalse
+	;-- EL: rcx =/= 0
+	;-- WK: we have a non-empty string to be parsed
+	mov bl,  byte[rdi]
+	cmp bl, '-'
+	;-- IF: bl =/= '-'
+	;-- WK: maybe positive number, maybe error
+	jnz @f
+	;-- EL: bl == '-'
+	inc rdi
+	dec rcx                 ;; update the counter
+	test rcx, rcx
+	;-- IF: rcx == 0
+	;-- WK: string is only '-'
+	jz stringDenoteNumber?_returnFalse
+	;; fetch next digit
+	mov  bl,  byte[rdi]
+	inc  rdi
+
+	 @@:
+	sub bl, '0'
+	;-- IF: char < '0'
+	jb stringDenoteNumber?_returnFalse
+	cmp bl, 10
+	;-- IF: '0' <= char <= '9'
+	jb stringDenoteNumber?_returnTrue
+	;-- EL: returnFalse
+
+	 stringDenoteNumber?_returnFalse:
+	xor rax, rax
+	ret
+
+	 stringDenoteNumber?_returnTrue:
+	xor rax, rax
+	mov rax, qword 1
+	ret
+	 #+end_src
+**** comment
+	 #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	 defConstString "Comment-begin-string",  "(*", CommentBeginString
+	 defConstString "Comment-ending-string", "*)", CommentEndingString
+
+	 defWord "ignore-comment", ignoreComment
+	;; (* -- *)
+	;; (* ignore a list of comment words from stdin *)
+	xx readWord
+	xx dup2, CommentBeginString, equalString?, false?branch, 5
+	xx   drop2, ignoreComment, branch, -9
+	;; beware of the tail-call-optimization
+	;; a tail-recursive-call is really a loop
+	xx CommentEndingString, equalString?, false?branch, -13
+	xx   Exit
+	 defWordEnd ignoreComment
+
+
+	 defWord "(*", comment
+	xx ignoreComment
+	xx Exit
+	 defWordEnd comment
+
+	 ;; test:
+	 ;; (* ok (* ok *) ok *) ok
+	 #+end_src
+**** readWordListForLexicographer
+	 #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	 ;; a WordList (unit : CellWidth = 8 bytes)
+	 ;;   ||  1 : length-of-Word-1     ||
+	 ;;   ||  a : Word-1--as-a-string  ||
+	 ;;   ||  1 : length-of-Word-2     ||
+	 ;;   ||  b : Word-2--as-a-string  ||
+	 ;;   ...
+
+	 ;; note that:
+	 ;;    Subsequent calls will overwrite BufferForReadWordListForLexicographer
+
+	 ;; BufferForReadWordListForLexicographer:
+	 ;;    rb 1024*1024
+
+	 defConstString "Ending-word-list", ";", EndingWordList
+	 defConstString "Chinese-ending-word-list", "者", ChineseEndingWordList
+
+	 defVar "Next-word-for-read-word-list-for-lexicographer", BufferForReadWordListForLexicographer, NextWordForReadWordListForLexicographer
+
+	 defWord "read-word-list-for-lexicographer", readWordListForLexicographer
+	;; (* read a WordList from stdin (ForLexicographer) *)
+	;; (* -- wordList[address, the number of words] *)
+
+	;; (* initialize NextWordForReadWordListForLexicographer *)
+	xx literal, BufferForReadWordListForLexicographer
+	xx NextWordForReadWordListForLexicographer
+	xx save
+
+	;; (* leave return value: [buffer-address, counter] *)
+	xx literal, BufferForReadWordListForLexicographer
+	xx Zero
+
+	xx readWord
+
+	xx dup2
+	xx CommentBeginString, equalString?, false?branch, 5
+	xx drop2, ignoreComment, branch, -9
+
+	xx dup2
+	xx EndingWordList, equalString?, false?branch, 3
+	xx drop2
+	xx Exit
+
+	xx dup2
+	xx ChineseEndingWordList, equalString?, false?branch, 3
+	xx drop2
+	xx Exit
+
+	xx addWordToListForLexicographer
+	xx add1
+	xx branch, -27
+	 defWordEnd readWordListForLexicographer
+
+	 defWord ":", BeginningWordForReadWordListForLexicographer
+	xx readWordListForLexicographer
+	xx Exit
+	 defWordEnd BeginningWordForReadWordListForLexicographer
+
+	 defWord "夫", ChineseBeginningWordForReadWordListForLexicographer
+	xx readWordListForLexicographer
+	xx Exit
+	 defWordEnd ChineseBeginningWordForReadWordListForLexicographer
+
+
+	 defWord "add-word-to-list-for-lexicographer", addWordToListForLexicographer
+	;; ( wordString[address, length] -- )
+	;; leave a length behind, for update NextWordForReadWordListForLexicographer at the end
+	xx dup, xxswapx
+	;;   ||  1 : length-of-Word-1     ||
+	xx dup, NextWordForReadWordListForLexicographer, fetch, save
+	;; update NextWordForReadWordListForLexicographer
+	xx NextWordForReadWordListForLexicographer, fetch, add8, NextWordForReadWordListForLexicographer, save
+	;;   ||  a : Word-1--as-a-string  ||
+	xx NextWordForReadWordListForLexicographer, fetch, swap, copyByteString
+	;; update NextWordForReadWordListForLexicographer again
+	xx NextWordForReadWordListForLexicographer, addSave
+	xx Exit
+	 defWordEnd addWordToListForLexicographer
+	 #+end_src
+*** >< file
+** misc
+   #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+   defCode "reboot", reboot
+	  ;; (* -- *)
+   .loop:
+	  in al, 0x64
+	  test al, 00000010b              ; Wait for an empty Input Buffer ???
+	  jne .loop
+	  mov al, 0xFE
+	  out 0x64, al                    ; Send the reboot call to the keyboard controller
+	  jmp .loop
+   #+end_src
+** loadCoreFile
+   #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+   defWord "magic-check-core-file", magicCheckCoreFile
+	  ;; (* -- *)
+	  xx literal, LocationOfEnglishCore, fetch
+	  xx literal, "(* magic"
+	  xx equal?, false?branch, 2
+	  xx   Exit
+	  xx literal, "M", writeChar
+	  xx literal, "a", writeChar
+	  xx literal, "g", writeChar
+	  xx literal, "i", writeChar
+	  xx literal, "c", writeChar
+	  xx literal, " ", writeChar
+	  xx literal, "f", writeChar
+	  xx literal, "a", writeChar
+	  xx literal, "i", writeChar
+	  xx literal, "l", writeChar
+	  xx halt
+	  xx Exit
+   defWordEnd magicCheckCoreFile
+
+
+   defCode "load-core-file", loadCoreFile
+	  ;; (* -- *)
+	  mov rsi, LocationOfEnglishCore
+	  mov rdi, InputBuffer
+	  mov rcx, (SizeOfEnglishCore*1024)
+	  rep movsb
+	  ;; reset [ReadingBoundary + CellWidth]
+	  mov [ReadingBoundary + CellWidth], rdi
+	  next
+   #+end_src
+** basicREPL
+   REPL for cicada is ``read execute (maybe print) loop''
+   #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+   defWord "basic-REPL", basicREPL
+	  ;; (* unknown -- unknown *)
+	  xx TheReturnStackTop, resetReturnStackPointer
+	  xx TheArgumentStackTop, resetArgumentStackPointer
+	  xx readWordForRuntime
+	  xx executeWord
+	  xx branch, -3
+	  ;; must not end with Exit here
+   defWordEnd basicREPL
+
+
+   ;; defWord "execute-word", executeWord
+   ;;    ;; (* string[address, length] -- unknown *)
+   ;;    xx dup2, stringDenoteNumber?, false?branch, 4
+   ;;    xx   number, drop
+   ;;    xx   Exit
+   ;;    xx find, dup, zero?branch, 4
+   ;;    xx   wordLinkToWordExplainer, execute
+   ;;    xx   Exit
+   ;;    xx drop, printErrorInfoForExecuteWord
+   ;;    xx Exit
+   ;; defWordEnd executeWord
+
+
+   defWord "execute-word", executeWord
+	  ;; (* string[address, length] -- unknown *)
+	  xx dup2, stringDenoteNumber?, false?branch, 4
+	  xx   number, drop
+	  xx   Exit
+	  xx dup2, find, dup, zero?branch, 6
+	  xx   xxswapx, drop2
+	  xx   wordLinkToWordExplainer, execute
+	  xx   Exit
+	  xx drop ;; drop zore
+	  xx String_undefined_word, printString
+	  xx printString, printNewline
+	  xx Exit
+   defWordEnd executeWord
+
+   defConstString "String,undefined-word", "   UNDEFINED WORD: ", String_undefined_word
+   #+end_src
+** assemblyDebug
+   #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+   defWord ".", printLittleNumber
+	  xx literal, '0'
+	  xx addition, writeChar
+	  xx literal, 32
+	  xx writeChar
+	  xx literal, 32
+	  xx writeChar
+	  xx Exit
+   defWordEnd printLittleNumber
+   #+end_src
+** memory allocation
+*** PairConstructionsArray
+	#+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	;;   (unit : byte)
+	;; ========================
+	;;   ||  1 : color     ||
+	;; ------------------------
+	;;   ||  8 : type tag  ||
+	;;   ||  8 : value     ||
+	;; ------------------------
+	;;   ||  8 : type tag  ||
+	;;   ||  8 : value     ||
+	;; ========================
+
+
+
+	;; ClrBytesSize = 1
+	;; CarBytesSize = 16
+	;; CdrBytesSize = 16
+	;; ConsBytesSize = ClrBytesSize + CarBytesSize + CdrBytesSize
+	;; ;; NumberOfPairConstructions = 1024
+	;; NumberOfPairConstructions = 100 * 1024 ;; about 3.3M
+
+
+	;;         rb ClrBytesSize
+	;; InFrontOfTheFirstPairConstruction:
+	;;         rb (CarBytesSize + CdrBytesSize)
+
+	;;         rb ClrBytesSize
+	;; FirstPairConstruction:
+	;;         rb (CarBytesSize + CdrBytesSize)
+
+	;;         ;; ==========================
+	;;         rb (NumberOfPairConstructions - 2) * ConsBytesSize
+	;;         ;; ==========================
+
+	;;         rb ClrBytesSize
+	;; LastPairConstruction:
+	;;         rb (CarBytesSize + CdrBytesSize)
+
+
+
+
+
+
+	defConst "Clr-bytes-size"  , ClrBytesSize  , TheClrBytesSize
+	defConst "Car-bytes-size"  , CarBytesSize  , TheCarBytesSize
+	defConst "Cdr-bytes-size"  , CdrBytesSize  , TheCdrBytesSize
+	defConst "Cons-bytes-size" , ConsBytesSize , TheConsBytesSize
+
+
+	defConst "Number-of-pair-constructions", NumberOfPairConstructions, TheNumberOfPairConstructions
+
+	defConst "In-front-of-the-first-pair-construction", InFrontOfTheFirstPairConstruction, TheInFrontOfTheFirstPairConstruction
+	defConst "First-pair-construction", FirstPairConstruction, TheFirstPairConstruction
+	defConst "Last-pair-construction",  LastPairConstruction,  TheLastPairConstruction
+
+	defVar "Current-free-pair-construction", FirstPairConstruction, CurrentFreePairConstruction
+	#+end_src
+*** HashTableForSymbol
+	using linear probing
+	so, the load factor must be lower then 0.5
+	#+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	;; ;; a SymbolEntry (unit : byte)
+	;; ;; ===========================
+	;; ;;  ||   8 : SymbolValue   ||
+	;; ;; ---------------------------
+	;; ;;  ||   1 : SymbolLength  ||
+	;; ;; ---------------------------
+	;; ;;  || 56+ : SymbolString  ||
+	;; ;; ===========================
+
+	;; SymbolLengthBytesSize = 1
+	;; SymbolValueBytesSize  = 8
+	;; SymbolStringBytesSize = 56+0
+	;; SymbolMaxLength       = 56
+	;; SymbolEntryBytesSize = SymbolValueBytesSize + SymbolLengthBytesSize + SymbolStringBytesSize
+	;; ;; NumberOfSymbolEntrys = 1000003
+	;; ;; NumberOfSymbolEntrys = 1000033
+	;; ;; NumberOfSymbolEntrys = 1000333
+	;; ;; NumberOfSymbolEntrys = 100003
+	;; NumberOfSymbolEntrys = 100333
+	;; ;; NumberOfSymbolEntrys = 997
+	;; ;; NumberOfSymbolEntrys = 499
+	;; ;; NumberOfSymbolEntrys = 230 ;; for a special test
+
+
+
+	;; FirstSymbolEntry:
+	;;         rb SymbolEntryBytesSize
+
+	;;         ;; ========================
+	;;         rb (NumberOfSymbolEntrys - 2) * SymbolEntryBytesSize
+	;;         ;; ========================
+
+	;; LastSymbolEntry:
+	;;         rb SymbolEntryBytesSize
+
+
+	defConst "Number-of-symbol-entrys",  NumberOfSymbolEntrys,  TheNumberOfSymbolEntrys
+	defConst "Symbol-value-bytes-size",  SymbolValueBytesSize,  TheSymbolValueBytesSize
+	defConst "Symbol-length-bytes-size", SymbolLengthBytesSize, TheSymbolLengthBytesSize
+	defConst "Symbol-string-bytes-size", SymbolStringBytesSize, TheSymbolStringBytesSize
+	defConst "Symbol-max-length",        SymbolMaxLength,       TheSymbolMaxLength
+	defConst "Symbol-entry-bytes-size",  SymbolEntryBytesSize,  TheSymbolEntryBytesSize
+
+
+	defConst "First-symbol-entry", FirstSymbolEntry, TheFirstSymbolEntry
+	defConst "Last-symbol-entry",  LastSymbolEntry,  TheLastSymbolEntry
+	#+end_src
+*** two StringHeaps
+	#+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	;; SizeOfStringHeap = 5 * 1024 * 1024 ;; unit: byte
+
+	;; StringHeap1:
+	;;         rb SizeOfStringHeap
+	;; EndOfStringHeap1:
+
+	;; StringHeap2:
+	;;         rb SizeOfStringHeap
+	;; EndOfStringHeap2:
+
+	defConst "Size-of-string-heap", SizeOfStringHeap, TheSizeOfStringHeap
+
+	defConst "String-heap-1", StringHeap1, TheStringHeap1
+	defConst "String-heap-2", StringHeap2, TheStringHeap2
+	#+end_src
+*** BufferForLoadFile
+	#+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	;; SizeOfBufferForLoadFile = 1024 * 1024 ;; unit : byte
+
+	;; BufferForLoadFile:
+	;;          rb SizeOfBufferForLoadFile
+
+	defConst "Buffer-for-load-file", BufferForLoadFile, TheBufferForLoadFile
+	defConst "Size-of-buffer-for-load-file", SizeOfBufferForLoadFile, TheSizeOfBufferForLoadFile
+	#+end_src
+*** ------------------------------------------
+*** Stacks
+	1. after push the first value into ArgumentStack
+	   ArgumentStackPointer will point to the address of this value
+	2. before push the first value into ArgumentStack
+	   ArgumentStackPointer point to StackTop
+	   and StackTop will never be used
+	4. beware to understand how ``StackBottom'' and ``StackTop'' work
+	#+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	;; ReturnStack
+	;; SizeOfReturnStack = 100 * 1024 ;; unit: CellWidth
+
+	;; ReturnStackBottom:
+	;;         rq SizeOfReturnStack
+	;; ReturnStackTop:
+	;;         rq 10
+
+	defConst "Return-stack-top",    ReturnStackTop,    TheReturnStackTop
+	defConst "Return-stack-bottom", ReturnStackBottom, TheReturnStackBottom
+
+
+	;; ArgumentStack
+	;; SizeOfArgumentStack = 100 * 1024 ;; unit: CellWidth
+
+	;; ArgumentStackBottom:
+	;;         rq SizeOfArgumentStack
+	;; ArgumentStackTop:
+	;;         rq 10
+
+	defConst "Argument-stack-top",    ArgumentStackTop,    TheArgumentStackTop
+	defConst "Argument-stack-bottom", ArgumentStackBottom, TheArgumentStackBottom
+
+
+	;; GreyPairStack
+	;; SizeOfGreyPairStack = 100 * 1024 ;; unit: CellWidth
+
+	;; GreyPairStackBottom:
+	;;         rq SizeOfGreyPairStack
+	;; GreyPairStackTop:
+	;;         rq 1
+
+
+	;; LambdaStack
+	;; SizeOfLambdaStack = 100 * 1024 ;; unit: CellWidth
+
+	;; LambdaStackBottom:
+	;;         rq SizeOfLambdaStack
+	;; LambdaStackTop:
+	;;         rq 1
+
+	defConst "Lambda-stack-top", LambdaStackTop, TheLambdaStackTop
+	defConst "Lambda-stack-bottom", LambdaStackBottom, TheLambdaStackBottom
+
+	;; StackForEvalString
+	;; SizeOfStackForEvalString = 1024 ;; unit: CellWidth
+
+	;; StackForEvalStringBottom:
+	;;         rq SizeOfStackForEvalString
+	;; StackForEvalStringTop:
+	;;         rq 1
+
+	defConst "Stack-for-eval-string-bottom", StackForEvalStringBottom, TheStackForEvalStringBottom
+	defConst "Stack-for-eval-string-top", StackForEvalStringTop, TheStackForEvalStringTop
+	#+end_src
+*** ------------------------------------------
+*** UserDataArea
+	#+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+	;; SizeOfUserDataArea = 100 * 1024 ;; unit: byte
+
+	;; UserDataArea:
+	;;         rb SizeOfUserDataArea
+	;; EndOfUserDataArea:
+
+	defConst "User-data-area", UserDataArea, TheUserDataArea
+	defConst "End-of-user-data-area", EndOfUserDataArea, TheEndOfUserDataArea
+	#+end_src
+** TheLatestWordInAssembly
+   #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+   ;; this word helps to initialize FirstWordInDictionary
+   defConst "The-latest-word-in-assembly", 0, TheLatestWordInAssembly
+   #+end_src
+** ------------------------------------
+** set the size & the magic number
+   #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+   times (SizeOfKernel * 1024) - ($-$$) - 4 db 0
+   dd MagicNumberOfKernel  ;; 4 bytes
+   #+end_src
+* ==================================================

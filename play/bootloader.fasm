@@ -1,0 +1,372 @@
+checkMagicNumberOfKernel equ yes
+checkMagicNumberOfEnglishCore equ yes
+
+FirstSector = 0
+
+;; for burn into sda6
+;; to test on real hardwares
+;FirstSector = 603666432   
+
+SizeOfKernel = 512 ;; unit :: k
+LocationOfKernel = 32*1024
+MagicNumberOfKernel = 26881h
+
+SizeOfEnglishCore = 512 ;; unit :: k
+LocationOfEnglishCore = 4*1024*1024
+MagicNumberOfEnglishCore = "(* m"
+
+;; ;; for old-kernel
+;; LocationOfKernel = 1*1024*1024
+;; english.ccd equ not_using
+
+;; ;; for other kernels that use pure64
+;; LocationOfKernel = 1*1024*1024
+;; checkMagicNumberOfKernel equ no
+;; checkMagicNumberOfEnglishCore equ no
+
+org 7c00h           ; add to offsets
+        cli
+        mov [DriveNumber], dl           ; BIOS passes drive number in DL
+        xor ax, ax       ; make it zero
+        mov ds, ax
+        mov es, ax
+        mov fs, ax
+        mov gs, ax
+        mov ss, ax
+        mov sp, 7c00h
+
+        ;; ;; * entering unreal mode *
+        ;;
+        ;; push ds          ; save real mode
+        ;;
+        ;; lgdt [gdtinfo]   ; load gdt register
+        ;;
+        ;; mov eax, cr0     ; switch to pmode
+        ;; or al, 00000001b
+        ;; mov cr0, eax
+        ;;
+        ;;
+        ;; ;; In protected mode
+        ;; ;; the bits 3-15 in the segment register are an index into the descriptor table
+        ;; mov bx, 1000b          ; select descriptor 1
+        ;; mov ds, bx
+        ;;
+        ;;
+        ;; and al, 11111110b      ; switch to rmode
+        ;; mov cr0, eax
+        ;;
+        ;;
+        ;; pop ds           ; get back old segment
+        ;;
+        ;; ;; * end of entering unreal mode *
+
+        sti
+
+
+        mov si, msg_Load
+        call print_string_16
+
+        ;; ; Enable the A20 gate
+        ;; set_A20:
+        ;;         in al, 0x64
+        ;;         test al, 0x02
+        ;;         jnz set_A20
+        ;;         mov al, 0xD1
+        ;;         out 0x64, al
+        ;; check_A20:
+        ;;         in al, 0x64
+        ;;         test al, 0x02
+        ;;         jnz check_A20
+        ;;         mov al, 0xDF
+        ;;         out 0x60, al
+        
+        ;; kernel is in Block-1 (offset is 2M)
+        mov ebx, (1*(2*1024))*2 + FirstSector
+        mov eax, (SizeOfKernel)*2
+        mov edi, LocationOfKernel
+        call readsectors
+
+if checkMagicNumberOfKernel eq yes
+        mov ebx, LocationOfKernel + SizeOfKernel*1024 - 4
+        mov eax, [ebx]
+        cmp eax, MagicNumberOfKernel
+        jne magic_fail
+end if
+
+if checkMagicNumberOfEnglishCore eq yes
+        ;; english.ccd in Block-2
+        mov ebx, (2*(2*1024))*2 + FirstSector
+        mov eax, (SizeOfEnglishCore)*2
+        mov edi, LocationOfEnglishCore
+        call readsectors
+
+        mov ebx, LocationOfEnglishCore
+        mov eax, [ebx]
+        cmp eax, MagicNumberOfEnglishCore
+        jne magic_fail
+end if
+
+        mov si, msg_LoadDone
+        call print_string_16
+
+
+        jmp 0x0000:LocationOfKernel
+
+
+
+
+magic_fail:
+        mov si, msg_MagicFail
+        call print_string_16
+halt:
+        cli
+        hlt
+
+
+
+
+;------------------------------------------------------------------------------
+; read sectors from a disk to RAM, using LBA
+; IN:   EBX = starting sector index to read
+;       EAX = number of sectors to read
+;       EDI = memory location to store sectors
+; OUT:  EBX = EBX + number of sectors that were read
+;       EDI = EDI + (number of sectors read * 512)
+readsectors:
+
+.more:
+        call read_one_sector_to_SectorBuffer
+        call copy_SectorBuffer_to_high_address
+
+        inc ebx
+
+        dec eax
+        cmp eax, 0
+        jne .more
+
+        ret
+;------------------------------------------------------------------------------
+
+
+
+
+;------------------------------------------------------------------------------
+; copy SectorBuffer to high address
+; IN:   EDI - high address
+; OUT:  EDI - the same EDI
+copy_SectorBuffer_to_high_address:
+        push bx
+        push dx
+
+        xor bx, bx
+.more:
+
+        mov dx, word [bx+SectorBuffer]
+        mov word [ds:edi], dx
+
+        inc bx
+        inc bx
+
+        inc edi
+        inc edi
+
+        cmp bx, 512
+        je .done
+        jmp .more
+
+.done:
+        pop dx
+        pop bx
+
+        mov si, msg_Copying
+        call print_string_16
+
+        ret
+;------------------------------------------------------------------------------
+
+
+;------------------------------------------------------------------------------
+; Read a sector from a disk to SectorBuffer, using LBA
+; IN:   EBX - Low word of 64-bit DOS sector number
+; OUT:  EBX - Low word of sector (the same one)
+read_one_sector_to_SectorBuffer:
+        push eax
+        push ebx
+        push ecx
+        push edx
+        push esi
+        push edi
+
+        ;; the following test shows that bx is enough
+        ;mov eax, ebx
+        ;xor ebx, ebx
+        ;mov bx, ax
+
+        mov di, sp                      ; remember parameter block end
+
+        ;; AH = 42h
+        ;; DL = drive number
+        ;; DS:SI -> disk address packet (see #00272)
+
+        ;; Return:
+        ;; CF clear if successful AH = 00h CF set on error AH = error code (see #00234)
+        ;; disk address packet's block count field set to number of blocks successfully transferred
+
+        ;; Format of disk address packet:
+        ;; Offset  Size    Description     (Table 00272)
+        ;; 00h    BYTE    size of packet (10h or 18h)
+        ;; 01h    BYTE    reserved (0)
+        ;; 02h    WORD    number of blocks to transfer
+        ;; 04h    DWORD   -> transfer buffer
+        ;; 08h    QWORD   starting absolute block number
+        ;; (for non-LBA devices, compute as
+        ;; (Cylinder*NumHeads + SelectedHead) * SectorPerTrack +
+        ;; SelectedSector - 1
+        ;; 10h    QWORD   (EDD-3.0, optional) 64-bit flat address of transfer buffer;
+        ;; used if DWORD at 04h is FFFFh:FFFFh
+
+        ;; push dword 0
+        ;; push dword SectorBuffer
+        push dword 0                    ; [C] sector number high 32bit
+        push ebx                        ; [8] sector number low 32bit
+        push word 0                     ; [6] buffer segment
+        push word SectorBuffer          ; [4] buffer offset
+        push word 1                     ; [2] number of blocks to transfer (max 007Fh for Phoenix EDD)1 sector
+        push word 10h                   ; [0] size of parameter block
+
+        mov si, sp
+        mov dl, [DriveNumber]
+        mov ah, 42h                     ; EXTENDED READ
+        int 0x13                        ; http://www.ctyme.com/intr/rb-0708.htm
+
+
+        mov [error_code], ah
+
+        mov sp, di                      ; remove parameter block from stack
+
+        pop edi
+        pop esi
+        pop edx
+        pop ecx
+        pop ebx
+        pop eax
+
+
+        jnc @f                          ; jump if no error
+
+        xor eax, eax
+        mov eax, [error_code]
+        mov edi, string_integer
+        call os_int_to_string
+        mov si, string_integer
+        call print_string_16
+        cli
+        hlt
+
+@@:
+        mov si, msg_Loading
+        call print_string_16
+        ret
+;------------------------------------------------------------------------------
+
+
+;------------------------------------------------------------------------------
+; 16-bit function to print a string to the screen
+; IN:   SI - Address of start of string
+print_string_16:                        ; Output string in SI to screen
+        pusha
+        mov ah, 0x0E                    ; int 0x10 teletype function
+.repeat:
+        lodsb                           ; Get char from string
+        cmp al, 0
+        je .done                        ; If char is zero, end of string
+        int 0x10                        ; Otherwise, print it
+        jmp short .repeat
+.done:
+        popa
+        ret
+;------------------------------------------------------------------------------
+
+
+;------------------------------------------------------------------------------
+; os_int_to_string -- Convert a binary interger into an string string
+;  IN:  EAX = binary integer
+;       EDI = location to store string
+; OUT:  EDI = pointer to end of string
+;       All other registers preserved
+; Min return value is 0 and max return value is 18446744073709551615 so your
+; string needs to be able to store at least 21 characters (20 for the number
+; and 1 for the string terminator).
+; Adapted from http://www.cs.usfca.edu/~cruse/cs210s09/rax2uint.s
+os_int_to_string:
+        push edx
+        push ecx
+        push ebx
+        push eax
+
+        mov ebx, 10                             ; base of the decimal system
+        xor ecx, ecx                            ; number of digits generated
+os_int_to_string_next_divide:
+        xor edx, edx                            ; eAX extended to (RDX,RAX)
+        div ebx                                 ; divide by the number-base
+        push edx                                ; save remainder on the stack
+        inc ecx                                 ; and count this remainder
+        cmp eax, 0x0                            ; was the quotient zero?
+        jne os_int_to_string_next_divide        ; no, do another division
+os_int_to_string_next_digit:
+        pop edx                                 ; else pop recent remainder
+        add dl, '0'                             ; and convert to a numeral
+        mov [edi], dl                           ; store to memory-buffer
+        inc edi
+        loop os_int_to_string_next_digit        ; again for other remainders
+        mov al, 0x00
+        stosb                                   ; Store the null terminator at the end of the string
+
+        pop eax
+        pop ebx
+        pop ecx
+        pop edx
+        ret
+;------------------------------------------------------------------------------
+
+
+;; -------------------------------------------------------
+gdtinfo:
+   dw gdt_end - gdt - 1   ;last byte in table
+   dd gdt                 ;start of table
+
+gdt:
+  ;;; descriptor-0 is always unused
+  dd 0,0
+  ;;; descriptor-1
+  ;; base-address :: 2,3,4,7 == 0
+  ;; limit        :: 0,1,l6  == 0fffffh
+  ;; flags        :: h6      == 1100b
+  ;; access       :: 5       == 10010010b
+  ;  0     1     2  3  4  5          6          7
+  db 0xff, 0xff, 0, 0, 0, 10010010b, 11001111b, 0
+gdt_end:
+
+;; ----------------------------------------------------
+error_code:     dq 0
+string_integer: db "0123456789", 0
+msg_Load:       db "loading pure64", 13, 10, 0
+msg_Loading:    db "*", 0
+msg_Copying:    db "+", 0
+msg_LoadDone:   db "done", 13, 10, "Executing", 0
+msg_MagicFail:  db "magic fail", 13, 10, 0
+DriveNumber:    db 0x00
+
+;; times 446-$+$$ db 0
+;; ;; one False partition table entry (16 bytes for one)
+;; ;; required by some BIOS vendors.
+;; db 0x80, 0x00, 0x01, 0x00
+;; db 0xEB, 0xFF, 0xFF, 0xFF
+;; db 0x00, 0x00, 0x00, 0x00
+;; db 0xFF, 0xFF, 0xFF, 0xFF
+
+times 510-($-$$) db 0
+   db 0x55
+   db 0xAA
+
+SectorBuffer: ;; 512 bytes buffer to read one sector at a time

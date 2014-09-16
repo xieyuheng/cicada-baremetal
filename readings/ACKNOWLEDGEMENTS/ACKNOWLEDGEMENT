@@ -1,0 +1,25 @@
+
+I would like to thank Dan Friedman and Matthias Felleisen,
+who introduced me to Scheme
+and to many of the concepts of functional programming
+(by their book ``the little schemer'').
+I consider myself as Dan's student,
+even he has never and never will meet me.
+
+I would like to thank Jason Hemann,
+for his invitations and encouragements.
+
+I would like to thank Richard W.M. Jones,
+for I learned how to implement a forth-like language
+from his jonesforth.
+
+I would like to thank Tomasz Grysztar,
+for his fasm assembler.
+
+I would like to thank BAO Hong-ran,
+for to design part of the main Chinese syntax.
+
+I would like to thank Ian Seyler,
+for his great BareMetal and Pure64 and BMFS,
+and I have learned a lot from his code,
+and I use his code as my kernelloader.
