@@ -66,10 +66,10 @@
    #+begin_src cicada :tangle ../play/english-core.ccd
    (* magic check *)
    #+end_src
-** defineVar & defineConst (new lexicographers)
+** define-variable & define-constant (new lexicographers)
 *** implementation
-    #+begin_src cicada :tangle ../play/english-core.ccd 
-    : defineVar,byString
+    #+begin_src cicada :tangle ../play/english-core.ccd
+    : define-variable,by-string
       (* initial-value, String[address, length] -- *)
       create-word-header
       Variable-explainer append-number-to-here
@@ -79,14 +79,14 @@
       Exit
     ; define-function
 
-    : defineVar (* byWordList *)
+    : define-variable (* byWordList *)
       (* initial-value, WordList[address, the number of words] -- *)
       head-of-word-list
-      defineVar,byString
+      define-variable,by-string
       Exit
     ; define-function
 
-    : defineConst,byString
+    : define-constant,by-string
       (* initial-value, WordList[address, the number of words] -- *)
       create-word-header
       Constant-explainer append-number-to-here
@@ -96,22 +96,22 @@
       Exit
     ; define-function
 
-    : defineConst (* byWordList *)
+    : define-constant (* byWordList *)
       (* initial-value, WordList[address, the number of words] -- *)
       head-of-word-list
-      defineConst,byString
+      define-constant,by-string
       Exit
     ; define-function
     #+end_src
 *** test
     #+begin_src cicada
-    0 : Yi ; defineVar
+    0 : Yi ; define-variable
 
     Yi fetch . (* 0 *) cr
     1 Yi save
     Yi fetch . (* 1 *) cr
 
-    7 : Qi ; defineConst
+    7 : Qi ; define-constant
     Qi . (* 7 *) cr
 
     : QiJiaYi (* -- *)
@@ -122,7 +122,7 @@
     #+end_src
 ** fixnum
 *** implementation
-    #+begin_src cicada :tangle ../play/english-core.ccd 
+    #+begin_src cicada :tangle ../play/english-core.ccd
     : /mod (* a, b -- quotient, a mod b *)
       mod/ swap
       Exit
@@ -149,134 +149,134 @@
     10 3 mod . (* 1 *)
     #+end_src
 ** ASCII chars
-   #+begin_src cicada :tangle ../play/english-core.ccd 
-   9   : 'tab'      ; defineConst
-   10  : 'linefeed' ; defineConst
-   10  : 'newline'  ; defineConst
-   27  : 'esc'      ; defineConst
-   27  : 'escape'   ; defineConst
-   32  : 'space'    ; defineConst
-   127 : 'delete'   ; defineConst
+   #+begin_src cicada :tangle ../play/english-core.ccd
+   9   : 'tab'      ; define-constant
+   10  : 'linefeed' ; define-constant
+   10  : 'newline'  ; define-constant
+   27  : 'esc'      ; define-constant
+   27  : 'escape'   ; define-constant
+   32  : 'space'    ; define-constant
+   127 : 'delete'   ; define-constant
 
-   33 : '!' ; defineConst
-   34 : '"' ; defineConst
-   35 : '#' ; defineConst
-   36 : '$' ; defineConst
-   37 : '%' ; defineConst
-   38 : '&' ; defineConst
-   39 : ''' ; defineConst
-   40 : '(' ; defineConst
-   41 : ')' ; defineConst
-   42 : '*' ; defineConst
-   43 : '+' ; defineConst
-   44 : ',' ; defineConst
-   45 : '-' ; defineConst
-   46 : '.' ; defineConst
-   47 : '/' ; defineConst
+   33 : '!' ; define-constant
+   34 : '"' ; define-constant
+   35 : '#' ; define-constant
+   36 : '$' ; define-constant
+   37 : '%' ; define-constant
+   38 : '&' ; define-constant
+   39 : ''' ; define-constant
+   40 : '(' ; define-constant
+   41 : ')' ; define-constant
+   42 : '*' ; define-constant
+   43 : '+' ; define-constant
+   44 : ',' ; define-constant
+   45 : '-' ; define-constant
+   46 : '.' ; define-constant
+   47 : '/' ; define-constant
 
-   48 : '0' ; defineConst
-   49 : '1' ; defineConst
-   50 : '2' ; defineConst
-   51 : '3' ; defineConst
-   52 : '4' ; defineConst
-   53 : '5' ; defineConst
-   54 : '6' ; defineConst
-   55 : '7' ; defineConst
-   56 : '8' ; defineConst
-   57 : '9' ; defineConst
+   48 : '0' ; define-constant
+   49 : '1' ; define-constant
+   50 : '2' ; define-constant
+   51 : '3' ; define-constant
+   52 : '4' ; define-constant
+   53 : '5' ; define-constant
+   54 : '6' ; define-constant
+   55 : '7' ; define-constant
+   56 : '8' ; define-constant
+   57 : '9' ; define-constant
 
-   58 : ':' ; defineConst
-   59 : ';' ; defineConst
-   60 : '<' ; defineConst
-   61 : '=' ; defineConst
-   62 : '>' ; defineConst
-   63 : '?' ; defineConst
-   64 : '@' ; defineConst
+   58 : ':' ; define-constant
+   59 : ';' ; define-constant
+   60 : '<' ; define-constant
+   61 : '=' ; define-constant
+   62 : '>' ; define-constant
+   63 : '?' ; define-constant
+   64 : '@' ; define-constant
 
-   65 : 'A' ; defineConst
-   66 : 'B' ; defineConst
-   67 : 'C' ; defineConst
-   68 : 'D' ; defineConst
-   69 : 'E' ; defineConst
-   70 : 'F' ; defineConst
-   71 : 'G' ; defineConst
-   72 : 'H' ; defineConst
-   73 : 'I' ; defineConst
-   74 : 'J' ; defineConst
-   75 : 'K' ; defineConst
-   76 : 'L' ; defineConst
-   77 : 'M' ; defineConst
-   78 : 'N' ; defineConst
-   79 : 'O' ; defineConst
-   80 : 'P' ; defineConst
-   81 : 'Q' ; defineConst
-   82 : 'R' ; defineConst
-   83 : 'S' ; defineConst
-   84 : 'T' ; defineConst
-   85 : 'U' ; defineConst
-   86 : 'V' ; defineConst
-   87 : 'W' ; defineConst
-   88 : 'X' ; defineConst
-   89 : 'Y' ; defineConst
-   90 : 'Z' ; defineConst
+   65 : 'A' ; define-constant
+   66 : 'B' ; define-constant
+   67 : 'C' ; define-constant
+   68 : 'D' ; define-constant
+   69 : 'E' ; define-constant
+   70 : 'F' ; define-constant
+   71 : 'G' ; define-constant
+   72 : 'H' ; define-constant
+   73 : 'I' ; define-constant
+   74 : 'J' ; define-constant
+   75 : 'K' ; define-constant
+   76 : 'L' ; define-constant
+   77 : 'M' ; define-constant
+   78 : 'N' ; define-constant
+   79 : 'O' ; define-constant
+   80 : 'P' ; define-constant
+   81 : 'Q' ; define-constant
+   82 : 'R' ; define-constant
+   83 : 'S' ; define-constant
+   84 : 'T' ; define-constant
+   85 : 'U' ; define-constant
+   86 : 'V' ; define-constant
+   87 : 'W' ; define-constant
+   88 : 'X' ; define-constant
+   89 : 'Y' ; define-constant
+   90 : 'Z' ; define-constant
 
-   91 : '[' ; defineConst
-   92 : '\' ; defineConst
-   93 : ']' ; defineConst
-   94 : '^' ; defineConst
-   95 : '_' ; defineConst
-   96 : '`' ; defineConst
+   91 : '[' ; define-constant
+   92 : '\' ; define-constant
+   93 : ']' ; define-constant
+   94 : '^' ; define-constant
+   95 : '_' ; define-constant
+   96 : '`' ; define-constant
 
-   97  : 'a' ; defineConst
-   98  : 'b' ; defineConst
-   99  : 'c' ; defineConst
-   100 : 'd' ; defineConst
-   101 : 'e' ; defineConst
-   102 : 'f' ; defineConst
-   103 : 'g' ; defineConst
-   104 : 'h' ; defineConst
-   105 : 'i' ; defineConst
-   106 : 'j' ; defineConst
-   107 : 'k' ; defineConst
-   108 : 'l' ; defineConst
-   109 : 'm' ; defineConst
-   110 : 'n' ; defineConst
-   111 : 'o' ; defineConst
-   112 : 'p' ; defineConst
-   113 : 'q' ; defineConst
-   114 : 'r' ; defineConst
-   115 : 's' ; defineConst
-   116 : 't' ; defineConst
-   117 : 'u' ; defineConst
-   118 : 'v' ; defineConst
-   119 : 'w' ; defineConst
-   120 : 'x' ; defineConst
-   121 : 'y' ; defineConst
-   122 : 'z' ; defineConst
+   97  : 'a' ; define-constant
+   98  : 'b' ; define-constant
+   99  : 'c' ; define-constant
+   100 : 'd' ; define-constant
+   101 : 'e' ; define-constant
+   102 : 'f' ; define-constant
+   103 : 'g' ; define-constant
+   104 : 'h' ; define-constant
+   105 : 'i' ; define-constant
+   106 : 'j' ; define-constant
+   107 : 'k' ; define-constant
+   108 : 'l' ; define-constant
+   109 : 'm' ; define-constant
+   110 : 'n' ; define-constant
+   111 : 'o' ; define-constant
+   112 : 'p' ; define-constant
+   113 : 'q' ; define-constant
+   114 : 'r' ; define-constant
+   115 : 's' ; define-constant
+   116 : 't' ; define-constant
+   117 : 'u' ; define-constant
+   118 : 'v' ; define-constant
+   119 : 'w' ; define-constant
+   120 : 'x' ; define-constant
+   121 : 'y' ; define-constant
+   122 : 'z' ; define-constant
 
-   123 : '{' ; defineConst
-   124 : '|' ; defineConst
-   125 : '}' ; defineConst
-   126 : '~' ; defineConst
+   123 : '{' ; define-constant
+   124 : '|' ; define-constant
+   125 : '}' ; define-constant
+   126 : '~' ; define-constant
    #+end_src
-** ><>< string & defineConstString (new lexicographer)
+** ><>< string & define-constant-string (new lexicographer)
 *** implementation
-    #+begin_src cicada :tangle ../play/english-core.ccd 
+    #+begin_src cicada :tangle ../play/english-core.ccd
     (* ><><>< string of 0 length is a not handled  error *)
-    : headOfString (* string[address, length] -- first char *)
+    : head-of-string (* string[address, length] -- first char *)
       drop fetch-byte
       Exit
     ; define-function
 
-    : tailOfString (* string[address, length] -- string[address + 1, length - 1] *)
+    : tail-of-string (* string[address, length] -- string[address + 1, length - 1] *)
       sub1 swap add1 swap
       Exit
     ; define-function
 
-    : tailAndHeadOfString
+    : tail-and-head-of-string
       (* string[address, length] --
 	 string[address + 1, length - 1], first char *)
-      dup2 tailOfString xx|swap|xx headOfString
+      dup2 tail-of-string xx|swap|xx head-of-string
       Exit
     ; define-function
 
@@ -290,7 +290,7 @@
       Exit
     ; define-function
 
-    : defineConstString,byString
+    : define-constant-string,by-string
       (* initial-string[address, length],
 	 string[address, length], the number of words] -- *)
       create-word-header
@@ -301,18 +301,18 @@
       Exit
     ; define-function
 
-    : defineConstString (* byWordList *)
+    : define-constant-string (* byWordList *)
       (* string[address, length],
 	 wordList[address, the number of words] -- *)
       head-of-word-list
-      defineConstString,byString
+      define-constant-string,by-string
       Exit
     ; define-function
     #+end_src
 *** test
     #+begin_src cicada
     :" xxx"
-    : k ; defineConstString
+    : k ; define-constant-string
     k print-string (* xxx *)
     #+end_src
 ** recursive Function & decision (new lexicographers)
@@ -325,8 +325,8 @@
     bug:
     if there is one ``if,then'' pair mismatch
     there will be crazy bug which is very hard to test !!
-    #+begin_src cicada :tangle ../play/english-core.ccd 
-    : defineRecursiveFunction (* wordList[address, the number of words] -- *)
+    #+begin_src cicada :tangle ../play/english-core.ccd
+    : define-recursive-function (* wordList[address, the number of words] -- *)
       tail-and-head-of-word-list
       create-word-header-for-function
       set-size-of-function-body
@@ -336,9 +336,9 @@
       Exit
     ; define-function
 
-    :" if"    : String,KeyWord,if   ; defineConstString
-    :" else"  : String,KeyWord,else ; defineConstString
-    :" then"  : String,KeyWord,then ; defineConstString
+    :" if"    : String,KeyWord,if   ; define-constant-string
+    :" else"  : String,KeyWord,else ; define-constant-string
+    :" then"  : String,KeyWord,then ; define-constant-string
 
     : append-word-description-to-here,with-if&then
       (* wordList[address, the number of words] -- *)
@@ -367,9 +367,9 @@
 
 	  find word-link->word-explainer append-number-to-here
 	  append-word-description-to-here,with-if&then Exit
-    ; defineRecursiveFunction
+    ; define-recursive-function
 
-    : defineRecursiveFunctionWith:if&then
+    : define-recursive-function,with-if&then
       (* wordList[address, the number of words] -- *)
 	tail-and-head-of-word-list
 	create-word-header-for-function
@@ -419,10 +419,10 @@
 	then
 	  find word-link->word-explainer append-number-to-here
 	  append-word-description-to-here Exit
-    ; defineRecursiveFunctionWith:if&then
+    ; define-recursive-function,with-if&then
 
 
-    (* redefine defineRecursiveFunction & define-function *)
+    (* redefine define-recursive-function & define-function *)
 
     : define-function
       (* wordList[address, the number of words] -- *)
@@ -436,7 +436,7 @@
 	Exit
     ; define-function
 
-    : defineRecursiveFunction
+    : define-recursive-function
       (* wordList[address, the number of words] -- *)
 	tail-and-head-of-word-list
 	create-word-header-for-function
@@ -454,7 +454,7 @@
 	Exit
       then
       dup sub1 factorial * Exit
-    ; defineRecursiveFunction
+    ; define-recursive-function
 
 
 
@@ -506,8 +506,8 @@
     6 6 .12 cr
     #+end_src
 ** predicates
-   #+begin_src cicada :tangle ../play/english-core.ccd 
-   : specialKeyWord? (* word[explainer] -- True or False *)
+   #+begin_src cicada :tangle ../play/english-core.ccd
+   : special-key-word? (* word[explainer] -- True or False *)
      dup literal literal           == if drop True Exit then
      dup literal branch            == if drop True Exit then
      dup literal zero?branch       == if drop True Exit then
@@ -534,7 +534,7 @@
        instead of just using lambda-abstraction
 *** implementation
 **** writeDecNumber
-     #+begin_src cicada :tangle ../play/english-core.ccd 
+     #+begin_src cicada :tangle ../play/english-core.ccd
      : writeDecNumberChar (* byte -- *)
        '0' + write-char
        Exit
@@ -550,7 +550,7 @@
        xx|swap|x xx|swap|x add1 swap
        help,writeDecNumber,pushChars
        Exit
-     ; defineRecursiveFunction
+     ; define-recursive-function
 
      : help,writeDecNumber,write-chars
        (* ... , number of small DecNumbers -- *)
@@ -559,7 +559,7 @@
        sub1 swap writeDecNumberChar
        help,writeDecNumber,write-chars
        Exit
-     ; defineRecursiveFunction
+     ; define-recursive-function
 
      : writeDecNumber (* fixnum -- *)
        Zero swap
@@ -578,7 +578,7 @@
      ; define-function
      #+end_src
 **** writeBinNumber
-     #+begin_src cicada :tangle ../play/english-core.ccd 
+     #+begin_src cicada :tangle ../play/english-core.ccd
      : writeBinNumberChar (* byte -- *)
        '0' + write-char
        Exit
@@ -594,7 +594,7 @@
        xx|swap|x xx|swap|x add1 swap
        help,writeBinNumber,pushChars
        Exit
-     ; defineRecursiveFunction
+     ; define-recursive-function
 
      : help,writeBinNumber,write-chars
        (* ... , number of small BinNumbers -- *)
@@ -603,7 +603,7 @@
        sub1 swap writeBinNumberChar
        help,writeBinNumber,write-chars
        Exit
-     ; defineRecursiveFunction
+     ; define-recursive-function
 
      : writeBinNumber (* fixnum -- *)
        Zero swap
@@ -622,7 +622,7 @@
      ; define-function
      #+end_src
 **** writeOctNumber
-     #+begin_src cicada :tangle ../play/english-core.ccd 
+     #+begin_src cicada :tangle ../play/english-core.ccd
      : writeOctNumberChar (* byte -- *)
        '0' + write-char
        Exit
@@ -638,7 +638,7 @@
        xx|swap|x xx|swap|x add1 swap
        help,writeOctNumber,pushChars
        Exit
-     ; defineRecursiveFunction
+     ; define-recursive-function
 
      : help,writeOctNumber,write-chars
        (* ... , number of small OctNumbers -- *)
@@ -647,7 +647,7 @@
        sub1 swap writeOctNumberChar
        help,writeOctNumber,write-chars
        Exit
-     ; defineRecursiveFunction
+     ; define-recursive-function
 
      : writeOctNumber (* fixnum -- *)
        Zero swap
@@ -666,7 +666,7 @@
      ; define-function
      #+end_src
 **** writeHexNumber
-     #+begin_src cicada :tangle ../play/english-core.ccd 
+     #+begin_src cicada :tangle ../play/english-core.ccd
      : writeHexNumberChar (* byte -- *)
        dup Ten < if
 	 '0' + write-char Exit
@@ -695,7 +695,7 @@
        xx|swap|x xx|swap|x add1 swap
        help,writeHexNumber,pushChars
        Exit
-     ; defineRecursiveFunction
+     ; define-recursive-function
 
      : help,writeHexNumber,write-chars
        (* ... , number of small HexNumbers -- *)
@@ -704,7 +704,7 @@
        sub1 swap writeHexNumberChar
        help,writeHexNumber,write-chars
        Exit
-     ; defineRecursiveFunction
+     ; define-recursive-function
 
      : help,writeHexNumber,write-chars,capital
        (* ... , number of small HexNumbers -- *)
@@ -713,7 +713,7 @@
        sub1 swap writeHexNumberChar,capital
        help,writeHexNumber,write-chars,capital
        Exit
-     ; defineRecursiveFunction
+     ; define-recursive-function
 
      : writeHexNumber (* fixnum -- *)
        Zero swap
@@ -748,7 +748,7 @@
      ; define-function
      #+end_src
 **** writeAphNumber
-     #+begin_src cicada :tangle ../play/english-core.ccd 
+     #+begin_src cicada :tangle ../play/english-core.ccd
      : writeAphNumberChar (* byte -- *)
        dup Ten < if
 	 '0' + write-char Exit
@@ -777,7 +777,7 @@
        xx|swap|x xx|swap|x add1 swap
        help,writeAphNumber,pushChars
        Exit
-     ; defineRecursiveFunction
+     ; define-recursive-function
 
      : help,writeAphNumber,write-chars
        (* ... , number of small AphNumbers -- *)
@@ -786,7 +786,7 @@
        sub1 swap writeAphNumberChar
        help,writeAphNumber,write-chars
        Exit
-     ; defineRecursiveFunction
+     ; define-recursive-function
 
      : help,writeAphNumber,write-chars,capital
        (* ... , number of small AphNumbers -- *)
@@ -795,7 +795,7 @@
        sub1 swap writeAphNumberChar,capital
        help,writeAphNumber,write-chars,capital
        Exit
-     ; defineRecursiveFunction
+     ; define-recursive-function
 
      : writeAphNumber (* fixnum -- *)
        Zero swap
@@ -830,7 +830,7 @@
      ; define-function
      #+end_src
 **** usage
-     #+begin_src cicada :tangle ../play/english-core.ccd 
+     #+begin_src cicada :tangle ../play/english-core.ccd
      : .unsigned (* fixnum -- *)
        writeDecNumber
        'space' write-char
@@ -937,7 +937,7 @@
        writeSpace
        writeSomeSpace
        Exit
-     ; defineRecursiveFunction
+     ; define-recursive-function
      #+end_src
 *** test
     #+begin_src cicada
@@ -968,24 +968,24 @@
        we should handle type error as possible as we could
     2. the ``IdentificationOf#Word'' in ``def*'' macros is for ``debuger''
 *** implementation
-    #+begin_src cicada :tangle ../play/english-core.ccd 
+    #+begin_src cicada :tangle ../play/english-core.ccd
     : countReturnStack (* -- the length of ReturnStack *)
       Return-stack-top fetch-return-stack-pointer -
       Eight /
       sub1 (* for we are in this function call *)
       Exit
     ; define-function
-    
+
     : countArgumentStack (* -- the length of ArgumentStack *)
       Argument-stack-top fetch-argument-stack-pointer -
       Eight /
       Exit
     ; define-function
-    
-    
-    0 : ReturnStackPosition ; defineVar
-    0 : ArgumentStackPosition ; defineVar
-    
+
+
+    0 : ReturnStackPosition ; define-variable
+    0 : ArgumentStackPosition ; define-variable
+
     (* the following two function are as interface *)
     : debuger,fetchFromReturnStack (* n -- *)
       sub1 Eight *
@@ -993,65 +993,65 @@
       fetch
       Exit
     ; define-function
-    
+
     : debuger,fetchFromArgumentStack (* n -- *)
       sub1 Eight *
       ArgumentStackPosition fetch +
       fetch
       Exit
     ; define-function
-    
-    
+
+
     :" bye"
-    : String,bye ; defineConstString
-    
+    : String,bye ; define-constant-string
+
     : execute-word (* string[address, length] -- unknown *)
       dup2
       string-denote-number? if
-        number drop 
-        Exit
+	number drop
+	Exit
       then
       dup2 find dup not-zero? if
-        xx|swap|x drop2
-        word-link->word-explainer execute 
-        Exit
+	xx|swap|x drop2
+	word-link->word-explainer execute
+	Exit
       then
-      drop 
+      drop
       String,undefined-word print-string
       print-string cr
       Exit
     ; define-function
-    
+
     : debugerREPL (* unknown -- unknown *)
       read-word-for-runtime
       dup2
       String,bye equal-string? if
-        drop2
-        Exit
+	drop2
+	Exit
       then
       execute-word
       debugerREPL
       Exit
-    ; defineRecursiveFunction
-    
+    ; define-recursive-function
+
     :" debuger said: ``Welcome! Hope you find what's wrong.''"
-    : String,debuger,Welcome ; defineConstString
-    
+    : String,debuger,Welcome ; define-constant-string
+
     :" the length of ReturnStack is: "
-    : String,debuger,theLengthOfReturnStack ; defineConstString
-    
+    : String,debuger,theLengthOfReturnStack ; define-constant-string
+
     :" the length of ArgumentStack is: "
-    : String,debuger,theLengthOfArgumentStack ; defineConstString
-    
+    : String,debuger,theLengthOfArgumentStack ; define-constant-string
+
     :" debuger said: ``Good bye! The computation will go on!''"
-    : String,debuger,Goodbye ; defineConstString
-    
+    : String,debuger,Goodbye ; define-constant-string
+
     : debuger (* unknown -- unknown *)
       String,debuger,Welcome print-string cr
       Three writeSomeSpace String,debuger,theLengthOfReturnStack print-string
-        countReturnStack writeDecNumber cr
+	countReturnStack writeDecNumber cr
       Three writeSomeSpace String,debuger,theLengthOfArgumentStack print-string
-        countArgumentStack writeDecNumber cr
+	countArgumentStack writeDecNumber cr
       fetch-return-stack-pointer ReturnStackPosition save
       fetch-argument-stack-pointer ArgumentStackPosition save
       Input-buffer Current-reading save
@@ -1060,14 +1060,14 @@
       String,debuger,Goodbye print-string cr
       Exit
     ; define-function
-    
+
     (* ><><>< bug ><><>< *)
     (* ``1 fetch'' will cause core dump *)
     : identificationOfWord? (* an address in a word -- *)
       dup fetch ==
       Exit
     ; define-function
-    
+
     (* ||  1 : name-string-header-which-contains-the-length-of-name-string  ||
      ,* || m(bytes) : name-string  ||
      ,* ||  1 : size of function body  ||
@@ -1078,18 +1078,18 @@
      ,* ||  1 : address-of-explainer  ||
      ,* ||  n : body  ||
      ,*)
-    
+
     : word,body->id
       (* [an address of a cell in a word] -- word[identification] *)
       dup
       identificationOfWord? if
-        Exit
+	Exit
       then
       Cell-width -
       word,body->id
       Exit
-    ; defineRecursiveFunction
-    
+    ; define-recursive-function
+
     : word,id->name
       (* word[identification] -- string[address, length] *)
       Cell-width Three * +
@@ -1098,66 +1098,66 @@
       fetch
       Exit
     ; define-function
-    
+
     : word,id->explainer
       (* word[identification] -- explainer *)
       Cell-width Four * +
       fetch
       Exit
     ; define-function
-    
+
     : word,id->body-size
       (* word[identification] -- body-size *)
       Cell-width -
       fetch
       Exit
     ; define-function
-    
+
     : word,id->body-list
       (* word[identification] -- body-list[address, length] *)
       dup
-        Cell-width Five * +
+	Cell-width Five * +
       swap
       word,id->body-size
       Exit
     ; define-function
-    
+
     : printNameOfExplainer (* explainer -- *)
       dup Function-body-explainer == if
-        literal Function-body-explainer
-        word,body->id
-        word,id->name
-        print-string
-        drop Exit
+	literal Function-body-explainer
+	word,body->id
+	word,id->name
+	print-string
+	drop Exit
       then
       dup Variable-explainer == if
-        literal Variable-explainer
-        word,body->id
-        word,id->name
-        print-string
-        drop Exit
+	literal Variable-explainer
+	word,body->id
+	word,id->name
+	print-string
+	drop Exit
       then
       dup Constant-explainer == if
-        literal Constant-explainer
-        word,body->id
-        word,id->name
-        print-string
-        drop Exit
+	literal Constant-explainer
+	word,body->id
+	word,id->name
+	print-string
+	drop Exit
       then
       dup Constant-string-explainer == if
-        literal Constant-string-explainer
-        word,body->id
-        word,id->name
-        print-string
-        drop Exit
+	literal Constant-string-explainer
+	word,body->id
+	word,id->name
+	print-string
+	drop Exit
       then
       drop
       Exit
     ; define-function
-    
+
     : printFunctionBodyList (* body-list[address, length] -- *)
       dup zero? if
-        drop2 Exit
+	drop2 Exit
       then
       Six writeSomeSpace
       over fetch word,body->id word,id->name print-string cr
@@ -1165,82 +1165,82 @@
       Cell-width + swap
       printFunctionBodyList
       Exit
-    ; defineRecursiveFunction
-    
+    ; define-recursive-function
+
     :"  -->  "
-    : String,_-->__ ; defineConstString
-    
+    : String,_-->__ ; define-constant-string
+
     (* the following function is the first function
        on which I must use ``if,else,then'' *)
     : withPointer,printFunctionBodyList
       (* [an address of a cell in a word], body-list[address, length] -- *)
       dup zero? if
-        drop2 drop Exit
+	drop2 drop Exit
       then
       x|over|xx x|over|xx == if
-        String,_-->__ print-string
+	String,_-->__ print-string
       else
-        Six writeSomeSpace
+	Six writeSomeSpace
       then
       over
-      dup fetch specialKeyWord? if
-        fetch word,body->id word,id->name print-string cr
-        sub2 swap
-        dup
-        Six writeSomeSpace
-        Cell-width + fetch writeDecNumber cr
-        Cell-width Two * + swap
-        withPointer,printFunctionBodyList
-        Exit
+      dup fetch special-key-word? if
+	fetch word,body->id word,id->name print-string cr
+	sub2 swap
+	dup
+	Six writeSomeSpace
+	Cell-width + fetch writeDecNumber cr
+	Cell-width Two * + swap
+	withPointer,printFunctionBodyList
+	Exit
       then
       fetch word,body->id word,id->name print-string cr
       sub1 swap
       Cell-width + swap
       withPointer,printFunctionBodyList
       Exit
-    ; defineRecursiveFunction
-    
-    
+    ; define-recursive-function
+
+
     :" traceFunction said: ``Ya! Let's trace a function!''"
-    : String,traceFunction,Welcome ; defineConstString
-    
+    : String,traceFunction,Welcome ; define-constant-string
+
     :" The function we use to trace is:"
-    : String,traceFunction,FunctionToTrace ; defineConstString
-    
+    : String,traceFunction,FunctionToTrace ; define-constant-string
+
     :" The function be traced to is:"
-    : String,traceFunction,FunctionBeTracedTo ; defineConstString
-    
+    : String,traceFunction,FunctionBeTracedTo ; define-constant-string
+
     :" The size of the body of this function is:"
-    : String,traceFunction,FunctionBodySize ; defineConstString
-    
+    : String,traceFunction,FunctionBodySize ; define-constant-string
+
     :" The body of this function is:"
-    : String,traceFunction,FunctionBody ; defineConstString
-    
+    : String,traceFunction,FunctionBody ; define-constant-string
+
     :" traceFunction said: ``The end of a tracing.''"
-    : String,traceFunction,Goodbye ; defineConstString
-    
+    : String,traceFunction,Goodbye ; define-constant-string
+
     : traceFunction
       (* [an address of a cell in a word] -- *)
       String,traceFunction,Welcome print-string cr
       dup
-        Three writeSomeSpace String,traceFunction,FunctionToTrace print-string cr
-        Six writeSomeSpace fetch word,body->id word,id->name print-string cr
+	Three writeSomeSpace String,traceFunction,FunctionToTrace print-string cr
+	Six writeSomeSpace fetch word,body->id word,id->name print-string cr
       dup (* withPointer,printFunctionBodyList still uses original arg *)
       word,body->id
-        dup
-          Three writeSomeSpace String,traceFunction,FunctionBeTracedTo print-string cr
-          Six writeSomeSpace word,id->name print-string cr
-        dup
-          Three writeSomeSpace String,traceFunction,FunctionBodySize print-string cr
-          Six writeSomeSpace word,id->body-size writeDecNumber cr
-        Three writeSomeSpace String,traceFunction,FunctionBody print-string cr
-        word,id->body-list withPointer,printFunctionBodyList
+	dup
+	  Three writeSomeSpace String,traceFunction,FunctionBeTracedTo print-string cr
+	  Six writeSomeSpace word,id->name print-string cr
+	dup
+	  Three writeSomeSpace String,traceFunction,FunctionBodySize print-string cr
+	  Six writeSomeSpace word,id->body-size writeDecNumber cr
+	Three writeSomeSpace String,traceFunction,FunctionBody print-string cr
+	word,id->body-list withPointer,printFunctionBodyList
       String,traceFunction,Goodbye print-string cr
       Exit
     ; define-function
     #+end_src
 *** simple trace
-    #+begin_src cicada :tangle ../play/english-core.ccd 
+    #+begin_src cicada :tangle ../play/english-core.ccd
     : trace (* n -- *)
       debuger,fetchFromReturnStack
       traceFunction
@@ -1272,7 +1272,7 @@
 	  Exit
 	then
 	dup sub1 factorial * Exit
-    ; defineRecursiveFunction
+    ; define-recursive-function
 
     10 factorial
       1 debuger,fetchFromReturnStack
@@ -1296,7 +1296,7 @@
 	debuger
 	writeSomeSpace
 	Exit
-    ; defineRecursiveFunction
+    ; define-recursive-function
 
     100 writeSomeSpace
       1 debuger,fetchFromReturnStack
@@ -1316,7 +1316,7 @@
        will call debuger if it meets a undefined word
     2. there will be syntax-check after the implementation of ``list''
 *** implementation
-    #+begin_src cicada :tangle ../play/english-core.ccd 
+    #+begin_src cicada :tangle ../play/english-core.ccd
     : printWordList (* WordList[address, the number of words] -- *)
       dup zero? if
 	drop2
@@ -1326,27 +1326,27 @@
       tail-and-head-of-word-list print-string cr
       printWordList
       Exit
-    ; defineRecursiveFunction
+    ; define-recursive-function
 
 
     :" an error occurs!
     append-word-description-to-here said:
        ``I am a tail-recursive-function.
 	 My function-type is (* WordList[address, the number of words] -- *)
-	 `defineRecursiveFunction' and `define-function' call me.
+	 `define-recursive-function' and `define-function' call me.
 	 The following word is undefined.
 	 I will print the rest of the WordList and call debuger.''
        --> "
     : String,append-word-description-to-here,meetUndefinedWord
-    ; defineConstString
+    ; define-constant-string
 
     :" The length of the rest of the WordList is: "
     : String,append-word-description-to-here,LengthOfTheRestOfTheWordList
-    ; defineConstString
+    ; define-constant-string
 
     :" The rest of the WordList is: "
     : String,append-word-description-to-here,TheRestOfTheWordList
-    ; defineConstString
+    ; define-constant-string
 
 
     : append-word-description-to-here
@@ -1399,7 +1399,7 @@
       printWordList
       debuger
       Exit
-    ; defineRecursiveFunction
+    ; define-recursive-function
 
 
     : define-function
@@ -1414,7 +1414,7 @@
       Exit
     ; define-function
 
-    : defineRecursiveFunction
+    : define-recursive-function
       (* wordList[address, the number of words] -- *)
       tail-and-head-of-word-list
       create-word-header-for-function
@@ -1441,7 +1441,7 @@
      ,*   Exit
      ,* ; define-function
      ,*
-     ,* : defineRecursiveFunction
+     ,* : define-recursive-function
      ,*   (\* wordList[address, the number of words] -- *\)
      ,*   tail-and-head-of-word-list
      ,*     dup2 print-string
@@ -1480,7 +1480,7 @@
    so I let Symbol-max-length == 64 - 8 == 56
    only first Symbol-max-length of the string is used by the hash-function
 *** string-hash->index & index-hashback->string
-    #+begin_src cicada :tangle ../play/english-core.ccd 
+    #+begin_src cicada :tangle ../play/english-core.ccd
     (* a SymbolEntry [unit : byte]
      ,* ==========================
      ,*  ||   8 : SymbolValue   ||
@@ -1497,7 +1497,7 @@
 	 The following unsign-number is not a index of the hash-table
 	 I will not touch it and call debuger.''
        --> "
-    : String,index->address,error ; defineConstString
+    : String,index->address,error ; define-constant-string
 
     : index->address (* index -- address *)
       dup Number-of-symbol-entrys >= if
@@ -1529,12 +1529,12 @@
       dup zero? if
 	drop2 Exit
       then
-      tailAndHeadOfString
+      tail-and-head-of-string
       over shift-left
       x|swap|xxx  +  xx|swap|x
       help,string-hash->index,sum-up
       Exit
-    ; defineRecursiveFunction
+    ; define-recursive-function
 
     : help,string-hash->index,find-old-or-creat-new
       (* string[address, length], index -- index *)
@@ -1567,7 +1567,7 @@
       add1
       help,string-hash->index,find-old-or-creat-new
       Exit
-    ; defineRecursiveFunction
+    ; define-recursive-function
 
     : help,string-hash->index,sum-up->index
       (* sum-up -- index *)
@@ -1748,7 +1748,7 @@
    then, when I want to treat this <xxx-list> as a <list>
    I just ``drop <list>''
 *** implementation
-    #+begin_src cicada :tangle ../play/english-core.ccd 
+    #+begin_src cicada :tangle ../play/english-core.ccd
     (* if 1 is setted to a symbol, this symbol is a fixnum like data type
        if 2 is setted to a symbol, this symbol is a pair like data type *)
 
@@ -1760,7 +1760,7 @@
 	dup
 	  index->address One swap save
 	xx|swap|x
-      defineConst
+      define-constant
       Exit
     ; define-function
 
@@ -1772,7 +1772,7 @@
 	dup
 	  index->address Two swap save
 	xx|swap|x
-      defineConst
+      define-constant
       Exit
     ; define-function
 
@@ -1795,7 +1795,7 @@
     ; define-function
 
 
-    0 : Null ; defineConst
+    0 : Null ; define-constant
 
     : null Null <null> Exit ; define-function
 
@@ -1869,7 +1869,7 @@
 	 The following index is not a type-tag
 	 I will not touch it and call debuger.''
        --> "
-    : String,printTypeTag,error ; defineConstString
+    : String,printTypeTag,error ; define-constant-string
 
     : printTypeTag
       (* type-tag[index of hash-table] -- *)
@@ -1900,7 +1900,7 @@
 ** dictionary operations
 *** >< note
 *** implementation
-    #+begin_src cicada :tangle ../play/english-core.ccd 
+    #+begin_src cicada :tangle ../play/english-core.ccd
     (*
      ,* a word in the dictionary [unit : Cell-width = 8 bytes]
      ,*   ||  1 : name-string-header-which-contains-the-length-of-name-string  ||
@@ -1940,8 +1940,8 @@
     ; define-function
 
 
-    0 : offsetForHiddenWord          ; defineConst
-    1 : offsetForDynamicVariableWord ; defineConst
+    0 : offsetForHiddenWord          ; define-constant
+    1 : offsetForDynamicVariableWord ; define-constant
 
     : dynamicVariableWord? (* word[address of link] -- True or False *)
 	fetchWordType offsetForDynamicVariableWord fetch-bit one?
@@ -1971,8 +1971,8 @@
     3. instead of allocate this stack in assembly
        I can also use list-processing to implement it
 *** implementation
-    #+begin_src cicada :tangle ../play/english-core.ccd 
-    Lambda-stack-top : LambdaStackPointer ; defineVar
+    #+begin_src cicada :tangle ../play/english-core.ccd
+    Lambda-stack-top : LambdaStackPointer ; define-variable
 
     : pushLambdaStack
       (* ArgumentStack::  value -->
@@ -2027,17 +2027,17 @@
       to save the length of the string
 *** dynamic-allocation of string
 **** try,copy-substring,from->to
-     #+begin_src cicada :tangle ../play/english-core.ccd 
+     #+begin_src cicada :tangle ../play/english-core.ccd
      (* example of a substring stored in StringHeap :
 	|| 4 : length of substring  ||
 	|| n : substring  ||
       ,*)
 
-     String-heap-1 : Variable,StringHeap,from ; defineVar
-     String-heap-2 : Variable,StringHeap,to   ; defineVar
+     String-heap-1 : Variable,StringHeap,from ; define-variable
+     String-heap-2 : Variable,StringHeap,to   ; define-variable
 
-     String-heap-1 : CurrFreeStringAddress,from ; defineVar
-     String-heap-2 : CurrFreeStringAddress,to   ; defineVar
+     String-heap-1 : CurrFreeStringAddress,from ; define-variable
+     String-heap-2 : CurrFreeStringAddress,to   ; define-variable
 
      (*
       ,* little experiment:
@@ -2216,7 +2216,7 @@
       *)
      #+end_src
 **** readString
-     #+begin_src cicada :tangle ../play/english-core.ccd 
+     #+begin_src cicada :tangle ../play/english-core.ccd
      : readNonStringEndingChar (* -- FirstNonBlankChar or Zero *)
        read-char
        dup '"' == if
@@ -2233,7 +2233,7 @@
        add1
        help,readString,loop
        Exit
-     ; defineRecursiveFunction
+     ; define-recursive-function
 
      : readString (* -- string[address, length] *)
        CurrFreeStringAddress,from fetch add4
@@ -2275,13 +2275,13 @@
      I introduce the following c*r functions:
      (maybe more in the future, if needed)
      1. clr : color byte
-        for garbage-collection
+	for garbage-collection
      2. car : contents of the address part of a PairConstruction
-        as the first typed-value of a pair
+	as the first typed-value of a pair
      3. cdr : contents of the decrement part of a PairConstruction
-        as the second typed-value of a pair
+	as the second typed-value of a pair
 **** the construction & clr, car, cdr
-     #+begin_src cicada :tangle ../play/english-core.ccd 
+     #+begin_src cicada :tangle ../play/english-core.ccd
      (* the construction of pair : [unit : byte]
       ,* clr:
       ,*     ||  1 : color     ||
@@ -2305,7 +2305,7 @@
 	  But the type I received is the following,
 	  I will not touch it and call debuger.''
 	--> "
-     : String,clr,type-error ; defineConstString
+     : String,clr,type-error ; define-constant-string
      : clr (* [address, <pair-like>] -- color-byte *)
        dup <not-pair-like>? if
 	 String,clr,type-error print-string
@@ -2322,7 +2322,7 @@
 	  But the type I received is the following,
 	  I will not touch it and call debuger.''
 	--> "
-     : String,car,type-error ; defineConstString
+     : String,car,type-error ; define-constant-string
      : car (* [address, <pair-like>] -- [value, type] *)
        dup <not-pair-like>? if
 	 String,car,type-error print-string
@@ -2339,7 +2339,7 @@
 	  But the type I received is the following,
 	  I will not touch it and call debuger.''
 	--> "
-     : String,cdr,type-error ; defineConstString
+     : String,cdr,type-error ; define-constant-string
      : cdr (* [address, <pair-like>] -- [value, type] *)
        dup <not-pair-like>? if
 	 String,cdr,type-error print-string
@@ -2355,14 +2355,14 @@
      a black pair in GreyPairStackTop is as a ``grey'' pair
      a grey-pair denotes front of the spreading black sub-graph
      these nodes maybe at the junction of black and white (maybe not)
-     #+begin_src cicada :tangle ../play/english-core.ccd 
-     0 : White ; defineConst
-     1 : Black ; defineConst
+     #+begin_src cicada :tangle ../play/english-core.ccd
+     0 : White ; define-constant
+     1 : Black ; define-constant
 
      (* set three offsets used by fetch-byte, set-bit, clear-bit *)
-     0 : VariableColorOffsetForFinding  ; defineVar
-     1 : VariableColorOffsetForMarking  ; defineVar
-     2 : VariableColorOffsetForCleaning ; defineVar
+     0 : VariableColorOffsetForFinding  ; define-variable
+     1 : VariableColorOffsetForMarking  ; define-variable
+     2 : VariableColorOffsetForCleaning ; define-variable
      : ColorOffsetForFinding  VariableColorOffsetForFinding  fetch Exit ; define-function
      : ColorOffsetForMarking  VariableColorOffsetForMarking  fetch Exit ; define-function
      : ColorOffsetForCleaning VariableColorOffsetForCleaning fetch Exit ; define-function
@@ -2373,7 +2373,7 @@
 	  it will be as the following,
 	  I will not touch it and call debuger.''
 	--> "
-     : String,set-clr!,type-error ; defineConstString
+     : String,set-clr!,type-error ; define-constant-string
      : set-clr! (* [address, <pair-like>], color-byte -- [address, <pair-like>] *)
        over dup  <not-pair-like>? if
 	 String,set-clr!,type-error print-string
@@ -2385,7 +2385,7 @@
      ; define-function
      #+end_src
 **** marking
-     #+begin_src cicada :tangle ../play/english-core.ccd 
+     #+begin_src cicada :tangle ../play/english-core.ccd
      : whiteColorForMarking? (* color-byte -- True or False *)
        ColorOffsetForMarking fetch-bit White == Exit
      ; define-function
@@ -2406,7 +2406,7 @@
 	  But the type I received is the following,
 	  I will not touch it and call debuger.''
 	--> "
-     : String,try,white->grey,type-error ; defineConstString
+     : String,try,white->grey,type-error ; define-constant-string
      : try,white->grey (* [address, <pair-like>] -- [address, <pair-like>] *)
        dup <not-pair-like>? if
 	 String,try,white->grey,type-error print-string
@@ -2465,13 +2465,13 @@
        then
        one,grey->black
        all,grey->black Exit
-     ; defineRecursiveFunction
+     ; define-recursive-function
      #+end_src
 **** set!, set-car!, set-cdr!
      in cicada, to make the gc to be incremental
      there are many strategies you can use
      the following shows one of them
-     #+begin_src cicada :tangle ../play/english-core.ccd 
+     #+begin_src cicada :tangle ../play/english-core.ccd
      : set!
        (* VarForTypedValue[address], [value, type] -- VarForTypedValue[address] *)
        dup <pair-like>? if
@@ -2499,7 +2499,7 @@
 	  it will be as the following,
 	  I will not touch it and call debuger.''
 	--> "
-     : String,set-car!,type-error ; defineConstString
+     : String,set-car!,type-error ; define-constant-string
 
      : set-car!
        (* [address, <pair-like>], [valus, type] -- [address, <pair-like>] *)
@@ -2523,7 +2523,7 @@
 	  it will be as the following,
 	  I will not touch it and call debuger.''
 	--> "
-     : String,set-cdr!,type-error ; defineConstString
+     : String,set-cdr!,type-error ; define-constant-string
 
      : set-cdr!
        (* [address, <pair-like>], [valus, type] -- [address, <pair-like>] *)
@@ -2550,7 +2550,7 @@
 	  it will be as the following,
 	  I will not touch it and call debuger.''
 	--> "
-     : String,[cons,car]!,type-error ; defineConstString
+     : String,[cons,car]!,type-error ; define-constant-string
 
      : [cons,car]!
        (* [address, <pair-like>], [valus, type] -- [address, <pair-like>] *)
@@ -2574,7 +2574,7 @@
 	  it will be as the following,
 	  I will not touch it and call debuger.''
 	--> "
-     : String,[cons,cdr]!,type-error ; defineConstString
+     : String,[cons,cdr]!,type-error ; define-constant-string
 
      : [cons,cdr]!
        (* [address, <pair-like>], [valus, type] -- [address, <pair-like>] *)
@@ -2601,7 +2601,7 @@
 	  it will be as the following,
 	  I will not touch it and call debuger.''
 	--> "
-     : String,[car,cons]!,type-error ; defineConstString
+     : String,[car,cons]!,type-error ; define-constant-string
 
      : [car,cons]!
        (* [value, type], [address, <pair-like>] -- [address, <pair-like>] *)
@@ -2626,7 +2626,7 @@
 	  it will be as the following,
 	  I will not touch it and call debuger.''
 	--> "
-     : String,[cdr,cons]!,type-error ; defineConstString
+     : String,[cdr,cons]!,type-error ; define-constant-string
 
      : [cdr,cons]!
        (* [value, type], [address, <pair-like>] -- [address, <pair-like>] *)
@@ -2646,7 +2646,7 @@
      #+end_src
 **** marking & define
      define and set! are the interface of dynamic-typed-value
-     #+begin_src cicada :tangle ../play/english-core.ccd 
+     #+begin_src cicada :tangle ../play/english-core.ccd
      (* recall
       ,* a word in the dictionary [unit : Cell-width = 8 bytes]
       ,*   ||  1 : name-string-header-which-contains-the-length-of-name-string  ||
@@ -2700,40 +2700,40 @@
      ; define-function
      #+end_src
 **** finding & cons : constructor of <pair>
-     #+begin_src cicada :tangle ../play/english-core.ccd 
+     #+begin_src cicada :tangle ../play/english-core.ccd
      (* the following functions are helping cons *)
-     
+
      : clearColorBitOfPairForCleaning (* pair[address] -- pair[address] *)
-         <pair>
-         dup2 clr
-         ColorOffsetForCleaning clear-bit
-         set-clr!
-         drop
-         Exit
+	 <pair>
+	 dup2 clr
+	 ColorOffsetForCleaning clear-bit
+	 set-clr!
+	 drop
+	 Exit
      ; define-function
-     
+
      : whiteColorForFinding? (* color-byte -- True or False *)
-         ColorOffsetForFinding fetch-bit White ==
-         Exit
+	 ColorOffsetForFinding fetch-bit White ==
+	 Exit
      ; define-function
-     
+
      : findNextFreePairConstruction
        (* pair[address] -- Zero or NextFreePairConstruction[address] *)
-         dup Last-pair-construction == if
-           drop Zero Exit
-         then
-         Cons-bytes-size +
-         clearColorBitOfPairForCleaning
-         dup <pair> clr
-         whiteColorForFinding? if
-           Exit
-         then
-         findNextFreePairConstruction
-         Exit
-     ; defineRecursiveFunction
-     
-     
-     
+	 dup Last-pair-construction == if
+	   drop Zero Exit
+	 then
+	 Cons-bytes-size +
+	 clearColorBitOfPairForCleaning
+	 dup <pair> clr
+	 whiteColorForFinding? if
+	   Exit
+	 then
+	 findNextFreePairConstruction
+	 Exit
+     ; define-recursive-function
+
+
+
      (* a cyclic permutation
       ,* of the two three period cyclic permutation
       ,* in the third-order permutation group
@@ -2742,113 +2742,113 @@
       VariableColorOffsetForCleaning --> VariableColorOffsetForMarking
       ,*)
      : resetColorOffsets (* -- *)
-         VariableColorOffsetForFinding  fetch
-         VariableColorOffsetForMarking  fetch
-         VariableColorOffsetForCleaning fetch
-         VariableColorOffsetForMarking  save
-         VariableColorOffsetForFinding  save
-         VariableColorOffsetForCleaning save
-         Exit
+	 VariableColorOffsetForFinding  fetch
+	 VariableColorOffsetForMarking  fetch
+	 VariableColorOffsetForCleaning fetch
+	 VariableColorOffsetForMarking  save
+	 VariableColorOffsetForFinding  save
+	 VariableColorOffsetForCleaning save
+	 Exit
      ; define-function
-     
-     
+
+
      : dynamicVariableWordFor<pair-like>? (* word[address of link] -- True or False *)
-         dup dynamicVariableWord? if
-         word-link->word-explainer execute fetch2
-         swap drop
-         <pair-like>?
-         Exit
-         then
-         drop False Exit
+	 dup dynamicVariableWord? if
+	 word-link->word-explainer execute fetch2
+	 swap drop
+	 <pair-like>?
+	 Exit
+	 then
+	 drop False Exit
      ; define-function
-     
+
      : help,pushAllRootNodeIntoGreyPairStack (* word[address of link] -- *)
-         dup lastWordInTheDictionary? if
-           drop Exit
-         then
-         dup dynamicVariableWordFor<pair-like>? if
-         dup word-link->word-explainer execute fetch2
-         try,white->grey drop2
-         then
-         nextWordInTheDictionary
-         help,pushAllRootNodeIntoGreyPairStack
-         Exit
-     ; defineRecursiveFunction
-     
+	 dup lastWordInTheDictionary? if
+	   drop Exit
+	 then
+	 dup dynamicVariableWordFor<pair-like>? if
+	 dup word-link->word-explainer execute fetch2
+	 try,white->grey drop2
+	 then
+	 nextWordInTheDictionary
+	 help,pushAllRootNodeIntoGreyPairStack
+	 Exit
+     ; define-recursive-function
+
      : pushAllRootNodeIntoGreyPairStack (* -- *)
-         first-word-in-dictionary fetch
-         help,pushAllRootNodeIntoGreyPairStack
-         Exit
+	 first-word-in-dictionary fetch
+	 help,pushAllRootNodeIntoGreyPairStack
+	 Exit
      ; define-function
-     
-     
-     
+
+
+
      (* the following function is not intrinsic
-        but I have to use it this way *)
-     
+	but I have to use it this way *)
+
      (* a value meet the following three conditions is an AddressOfPair
       ,*  (the following is infix notations)
       ,* 1. Value >= First-pair-construction
       ,* 2. Value <= Last-pair-construction
       ,* 3. [Value - First-pair-construction] mod Cons-bytes-size == 0
       ,*)
-     
+
      : addressOfPair? (* value -- True or False *)
-         dup First-pair-construction < if
-           drop False Exit
-         then
-         dup Last-pair-construction > if
-           drop False Exit
-         then
-         First-pair-construction - Cons-bytes-size mod zero?
-         Exit
+	 dup First-pair-construction < if
+	   drop False Exit
+	 then
+	 dup Last-pair-construction > if
+	   drop False Exit
+	 then
+	 First-pair-construction - Cons-bytes-size mod zero?
+	 Exit
      ; define-function
-     
-     
-     
+
+
+
      : help,allPairsInArgumentStack,try,white->grey
        (* address of a Cell in ArgumentStack -- *)
-         dup Argument-stack-top > if
-           drop Exit
-         then
-         dup fetch addressOfPair? if
-           dup fetch
-           <pair> try,white->grey
-           drop2
-         then
-         Cell-width +
-         help,allPairsInArgumentStack,try,white->grey
-         Exit
-     ; defineRecursiveFunction
+	 dup Argument-stack-top > if
+	   drop Exit
+	 then
+	 dup fetch addressOfPair? if
+	   dup fetch
+	   <pair> try,white->grey
+	   drop2
+	 then
+	 Cell-width +
+	 help,allPairsInArgumentStack,try,white->grey
+	 Exit
+     ; define-recursive-function
      : allPairsInArgumentStack,try,white->grey (* -- *)
-         fetch-argument-stack-pointer
-         help,allPairsInArgumentStack,try,white->grey
-         Exit
+	 fetch-argument-stack-pointer
+	 help,allPairsInArgumentStack,try,white->grey
+	 Exit
      ; define-function
-     
-     
+
+
      : help,allPairsInLambdaStack,try,white->grey
        (* address of a Cell in LambdaStack -- *)
-         dup Lambda-stack-top > if
-           drop Exit
-         then
-         dup fetch addressOfPair? if
-           dup fetch
-           <pair> try,white->grey
-           drop2
-         then
-         Cell-width +
-         help,allPairsInLambdaStack,try,white->grey
-         Exit
-     ; defineRecursiveFunction
+	 dup Lambda-stack-top > if
+	   drop Exit
+	 then
+	 dup fetch addressOfPair? if
+	   dup fetch
+	   <pair> try,white->grey
+	   drop2
+	 then
+	 Cell-width +
+	 help,allPairsInLambdaStack,try,white->grey
+	 Exit
+     ; define-recursive-function
      : allPairsInLambdaStack,try,white->grey (* -- *)
-         LambdaStackPointer fetch
-         help,allPairsInLambdaStack,try,white->grey
-         Exit
+	 LambdaStackPointer fetch
+	 help,allPairsInLambdaStack,try,white->grey
+	 Exit
      ; define-function
-     
-     
-     
+
+
+
      : resetVariablesAboutString (* -- *)
        CurrFreeStringAddress,to fetch CurrFreeStringAddress,from save
        Variable,StringHeap,from fetch CurrFreeStringAddress,to   save
@@ -2856,40 +2856,40 @@
        CurrFreeStringAddress,to fetch Variable,StringHeap,to     save
        Exit
      ; define-function
-     
-     
+
+
      :"  :gc: "
-     : String,gc ; defineConstString
-     
+     : String,gc ; define-constant-string
+
      :" cons said: ``Memory for cons is used up! No value is returned!''"
-     : String,cons,MemoryIsUsedUp ; defineConstString
-     
+     : String,cons,MemoryIsUsedUp ; define-constant-string
+
      : cons (* -- [address, <pair>] *)
-         Current-free-pair-construction fetch <pair> (* leave the return <value> *)
-         Current-free-pair-construction fetch findNextFreePairConstruction
-         dup not-zero? (* Zero denotes fail to find *) if
-           Current-free-pair-construction save
-           Exit
-         then drop (* drop the Zero, which denotes fail to find, need gc *)
-         allPairsInArgumentStack,try,white->grey
-         all,grey->black
-         resetColorOffsets resetVariablesAboutString (* note the timing to reset *)
-         pushAllRootNodeIntoGreyPairStack
-         In-front-of-the-first-pair-construction findNextFreePairConstruction
-         dup not-zero? if
-           Current-free-pair-construction save
-           String,gc print-string
-           Exit
-         then drop
-         (* if after gc still fail to find, we know the memory is used up *)
-         drop2
-         String,cons,MemoryIsUsedUp print-string cr
-         debuger
-         Exit
+	 Current-free-pair-construction fetch <pair> (* leave the return <value> *)
+	 Current-free-pair-construction fetch findNextFreePairConstruction
+	 dup not-zero? (* Zero denotes fail to find *) if
+	   Current-free-pair-construction save
+	   Exit
+	 then drop (* drop the Zero, which denotes fail to find, need gc *)
+	 allPairsInArgumentStack,try,white->grey
+	 all,grey->black
+	 resetColorOffsets resetVariablesAboutString (* note the timing to reset *)
+	 pushAllRootNodeIntoGreyPairStack
+	 In-front-of-the-first-pair-construction findNextFreePairConstruction
+	 dup not-zero? if
+	   Current-free-pair-construction save
+	   String,gc print-string
+	   Exit
+	 then drop
+	 (* if after gc still fail to find, we know the memory is used up *)
+	 drop2
+	 String,cons,MemoryIsUsedUp print-string cr
+	 debuger
+	 Exit
      ; define-function
      #+end_src
 **** substring & string : constructor of <substring> & <string>
-     #+begin_src cicada :tangle ../play/english-core.ccd 
+     #+begin_src cicada :tangle ../play/english-core.ccd
      : read-string (* -- [address, <string>] *)
        cons drop (* drop <pair> *) <string>
        s" drop (* drop length *) <substring>
@@ -2908,7 +2908,7 @@
 	  But the type I received is the following,
 	  I will not touch it and call debuger.''
 	--> "
-     : String,write-string,type-error ; defineConstString
+     : String,write-string,type-error ; define-constant-string
 
      : write-string (* [address, <string>] -- *)
        dup <string> =/= if
@@ -2940,7 +2940,7 @@
      ; define-function
      #+end_src
 **** about test
-     #+begin_src cicada :tangle ../play/english-core.ccd 
+     #+begin_src cicada :tangle ../play/english-core.ccd
      (* for test *)
      : printTypeOfIt (* type -- *)
        printTypeTag ':' write-char writeSpace Exit
@@ -2957,7 +2957,7 @@
 	 drop2
 	 ask-for-lots-of-cons
 	 Exit
-     ; defineRecursiveFunction
+     ; define-recursive-function
 
      : ask-for-lots-of-cons,leave-them-on-the-ArgumentStack (* n -- *)
 	 dup zero? if drop Exit
@@ -2969,7 +2969,7 @@
 	 x|swap|xx
 	 ask-for-lots-of-cons,leave-them-on-the-ArgumentStack
 	 Exit
-     ; defineRecursiveFunction
+     ; define-recursive-function
      #+end_src
 *** test
     #+begin_src cicada
@@ -3099,7 +3099,7 @@
 	drop2
 	ask-for-lots-of-cons
 	Exit
-    ; defineRecursiveFunction
+    ; define-recursive-function
 
 
     Number-of-pair-constructions ask-for-lots-of-cons
@@ -3244,37 +3244,37 @@
        this calls can not be compiled into the function-bodys of them
        unless I introduce new syntaxes
 *** implementation
-    #+begin_src cicada :tangle ../play/english-core.ccd 
-    :" {" : String,begining-list ; defineConstString
-    :" }" : String,ending-list   ; defineConstString
+    #+begin_src cicada :tangle ../play/english-core.ccd
+    :" {" : String,begining-list ; define-constant-string
+    :" }" : String,ending-list   ; define-constant-string
 
-    :" ." : String,dot           ; defineConstString
+    :" ." : String,dot           ; define-constant-string
 
-    :" (esc" : String,begining-list-escape ; defineConstString
-    :" )"    : String,ending-list-escape   ; defineConstString
+    :" (esc" : String,begining-list-escape ; define-constant-string
+    :" )"    : String,ending-list-escape   ; define-constant-string
 
-    :" [" : String,begining-*dalin ; defineConstString
-    :" ]" : String,ending-*dalin   ; defineConstString
+    :" [" : String,begining-*dalin ; define-constant-string
+    :" ]" : String,ending-*dalin   ; define-constant-string
 
-    :" (" : String,begining-wodyli ; defineConstString
-    :" )" : String,ending-wodyli   ; defineConstString
+    :" (" : String,begining-wodyli ; define-constant-string
+    :" )" : String,ending-wodyli   ; define-constant-string
     #+end_src
 ** write
 *** implementation
-    #+begin_src cicada :tangle ../play/english-core.ccd 
-    :" write-list"    : String,write-list   ; defineConstString
-    :" write-*dalin"  : String,write-*dalin ; defineConstString
-    :" write-wodyli"  : String,write-wodyli ; defineConstString
+    #+begin_src cicada :tangle ../play/english-core.ccd
+    :" write-list"    : String,write-list   ; define-constant-string
+    :" write-*dalin"  : String,write-*dalin ; define-constant-string
+    :" write-wodyli"  : String,write-wodyli ; define-constant-string
     :" write-wody-or-bound-variable"
-    : String,write-wody-or-bound-variable ; defineConstString
+    : String,write-wody-or-bound-variable ; define-constant-string
 
-    :" null"  : String,null ; defineConstString
+    :" null"  : String,null ; define-constant-string
 
     :" write said:
        ``I do not know how to write the following type of value,
 	 I will not touch it and call debuger.''
        --> "
-    : String,write,type-error ; defineConstString
+    : String,write,type-error ; define-constant-string
 
     : write (* [value, type] -- *)
       dup <fixnum> == if drop (* drop type-tag *)
@@ -3343,7 +3343,7 @@
    I try to avoid many modes in REPL
    but now the list-leader brings me back to the classic forth
 *** execute-word,for-list-reader
-    #+begin_src cicada :tangle ../play/english-core.ccd 
+    #+begin_src cicada :tangle ../play/english-core.ccd
     : stringDenoteListReader?
       (* string[address, length] -- True or False *)
       dup2 String,begining-list equal-string? if
@@ -3381,7 +3381,7 @@
     ; define-function
     #+end_src
 *** list-escape-REPL
-    #+begin_src cicada :tangle ../play/english-core.ccd 
+    #+begin_src cicada :tangle ../play/english-core.ccd
     : list-escape-REPL
       (* could  be: unknown -- unknown *)
       (* should be:  -- [value, type] *)
@@ -3398,7 +3398,7 @@
 	Exit
       then
       dup2 find dup not-zero? if
-        xx|swap|x drop2
+	xx|swap|x drop2
 	word-link->word-explainer execute
 	list-escape-REPL
 	Exit
@@ -3408,12 +3408,12 @@
       print-string cr
       list-escape-REPL
       Exit
-    ; defineRecursiveFunction
+    ; define-recursive-function
 
     : (esc list-escape-REPL Exit ; define-function
     #+end_src
 *** read-list
-    #+begin_src cicada :tangle ../play/english-core.ccd 
+    #+begin_src cicada :tangle ../play/english-core.ccd
     : read-list (* -- [address, <list>] *)
       read-word
       dup2 String,ending-list equal-string? if
@@ -3431,12 +3431,12 @@
 	xx|swap|xx  set-car!
 	read-list   set-cdr!
       Exit
-    ; defineRecursiveFunction
+    ; define-recursive-function
 
     : { read-list Exit ; define-function
     #+end_src
 *** write-list
-    #+begin_src cicada :tangle ../play/english-core.ccd 
+    #+begin_src cicada :tangle ../play/english-core.ccd
     : help,write-list (* [address, <list>] or [Null, <null>] -- *)
       dup <null> == if
 	drop2 Exit
@@ -3450,7 +3450,7 @@
       String,dot print-string writeSpace
       write
       Exit
-    ; defineRecursiveFunction
+    ; define-recursive-function
 
 
     :" write-list said:
@@ -3458,7 +3458,7 @@
 	 But the 1st argument is the following
 	 I will not touch it and call debuger.''
        --> "
-    : String,write-list,type-error ; defineConstString
+    : String,write-list,type-error ; define-constant-string
 
     : write-list (* [address, <list>] -- *)
       dup <list> =/= if
@@ -3505,13 +3505,13 @@
 *** >< note
 the name of the following functions should be changed
 *** implementation
-    #+begin_src cicada :tangle ../play/english-core.ccd 
+    #+begin_src cicada :tangle ../play/english-core.ccd
     :" set-car-to-{car}! said:
        ``My function-type is (* [address, <pair-like>] -- [address, <pair-like>] *)
 	 But the type I received is the following,
 	 I will not touch it and call debuger.''
        --> "
-    : String,set-car-to-{car}!,type-error ; defineConstString
+    : String,set-car-to-{car}!,type-error ; define-constant-string
     (* [car.cdr]->[[car].cdr] *)
     : set-car-to-{car}!
       (* [address, <pair-like>] -- [address, <pair-like>] *)
@@ -3534,7 +3534,7 @@ the name of the following functions should be changed
 	 But the type I received is the following,
 	 I will not touch it and call debuger.''
        --> "
-    : String,set-car-to-{cdr}!,type-error ; defineConstString
+    : String,set-car-to-{cdr}!,type-error ; define-constant-string
     (* [car.cdr]->[car.[cdr]] *)
     : set-cdr-to-{cdr}!
       (* [address, <pair-like>] -- [address, <pair-like>] *)
@@ -3561,7 +3561,7 @@ the name of the following functions should be changed
 	 It will be the following,
 	 I will not touch it and call debuger.''
        --> "
-    : String,set-car-to-{car.x}!,type-error ; defineConstString
+    : String,set-car-to-{car.x}!,type-error ; define-constant-string
 
     : set-car-to-{car.x}!
       (* [address, <pair-like>], [value, type] -- [address, <pair-like>] *)
@@ -3586,7 +3586,7 @@ the name of the following functions should be changed
 	 It will be the following,
 	 I will not touch it and call debuger.''
        --> "
-    : String,set-car-to-{cdr.x}!,type-error ; defineConstString
+    : String,set-car-to-{cdr.x}!,type-error ; define-constant-string
 
     (* [car.cdr],x->[car.[cdr.x]]! *)
     : set-cdr-to-{cdr.x}!
@@ -3612,7 +3612,7 @@ the name of the following functions should be changed
 	 It will be the following,
 	 I will not touch it and call debuger.''
        --> "
-    : String,set-car-to-{x.car}!,type-error ; defineConstString
+    : String,set-car-to-{x.car}!,type-error ; define-constant-string
 
     : set-car-to-{x.car}!
       (* [address, <pair-like>], [value, type] -- [address, <pair-like>] *)
@@ -3637,7 +3637,7 @@ the name of the following functions should be changed
 	 It will be the following,
 	 I will not touch it and call debuger.''
        --> "
-    : String,set-car-to-{x.cdr}!,type-error ; defineConstString
+    : String,set-car-to-{x.cdr}!,type-error ; define-constant-string
 
     : set-cdr-to-{x.cdr}!
       (* [address, <pair-like>], [value, type] -- [address, <pair-like>] *)
@@ -3656,13 +3656,13 @@ the name of the following functions should be changed
     #+end_src
 ** dalin processing
 *** <- & ->
-    #+begin_src cicada :tangle ../play/english-core.ccd 
+    #+begin_src cicada :tangle ../play/english-core.ccd
     :" <- said:
        ``My function-type is (* [address, <dalin-like>] -- [address, <dalin>] *)
 	 But the type I received is the following,
 	 I will not touch it and call debuger.''
        --> "
-    : String,<-,type-error ; defineConstString
+    : String,<-,type-error ; define-constant-string
 
     : <- (* [address, <dalin-like>] -- [address, <dalin>] *)
       dup <not-dalin-like>? if
@@ -3679,7 +3679,7 @@ the name of the following functions should be changed
 	 But the type I received is the following,
 	 I will not touch it and call debuger.''
        --> "
-    : String,->,type-error ; defineConstString
+    : String,->,type-error ; define-constant-string
 
     : -> (* [address, <dalin-like>] -- [address, <dalin>] *)
       dup <not-dalin-like>? if
@@ -3691,7 +3691,7 @@ the name of the following functions should be changed
     ; define-function
     #+end_src
 *** list->dalin
-    #+begin_src cicada :tangle ../play/english-core.ccd 
+    #+begin_src cicada :tangle ../play/english-core.ccd
     (* note that:
        in the following, I am using side-effect to change a existed list
        but NOT to form a new dalin from scratch *)
@@ -3715,7 +3715,7 @@ the name of the following functions should be changed
       xx|swap|xx
       help,list->dalin
       Exit
-    ; defineRecursiveFunction
+    ; define-recursive-function
 
 
     :" list->*dalin* said:
@@ -3724,7 +3724,7 @@ the name of the following functions should be changed
 	 But the type I received is the following,
 	 I will not touch it and call debuger.''
        --> "
-    : String,list->*dalin*,type-error ; defineConstString
+    : String,list->*dalin*,type-error ; define-constant-string
 
     : list->*dalin*
       (* [address, <list>] -- head[address, <dalin>], tail[address, <dalin>] *)
@@ -3746,7 +3746,7 @@ the name of the following functions should be changed
 	 But the type I received is the following,
 	 I will not touch it and call debuger.''
        --> "
-    : String,list->dalin*,type-error ; defineConstString
+    : String,list->dalin*,type-error ; define-constant-string
 
     : list->dalin*
       (* [address, <list>] -- tail[address, <dalin>] *)
@@ -3767,7 +3767,7 @@ the name of the following functions should be changed
 	 But the type I received is the following,
 	 I will not touch it and call debuger.''
        --> "
-    : String,list->*dalin,type-error ; defineConstString
+    : String,list->*dalin,type-error ; define-constant-string
 
     : list->*dalin
       (* [address, <list>] -- head[address, <dalin>] *)
@@ -3785,7 +3785,7 @@ the name of the following functions should be changed
     ; define-function
     #+end_src
 *** *dalin? & dalin*?
-    #+begin_src cicada :tangle ../play/english-core.ccd 
+    #+begin_src cicada :tangle ../play/english-core.ccd
     : *dalin? (* [address, <dalin>] -- True or False *)
       <- null? if
 	True Exit
@@ -3801,7 +3801,7 @@ the name of the following functions should be changed
     ; define-function
     #+end_src
 *** nested-list->dalin
-    #+begin_src cicada :tangle ../play/english-core.ccd 
+    #+begin_src cicada :tangle ../play/english-core.ccd
     : help,nested-list->dalin
       (* [address, <dalin>], left[address, <dalin>] -- [address, <dalin>] *)
       (* or *)
@@ -3826,7 +3826,7 @@ the name of the following functions should be changed
       xx|swap|xx
       help,nested-list->dalin
       Exit
-    ; defineRecursiveFunction
+    ; define-recursive-function
 
 
     :" nested-list->*dalin said:
@@ -3834,7 +3834,7 @@ the name of the following functions should be changed
 	 But the type I received is the following,
 	 I will not touch it and call debuger.''
        --> "
-    : String,nested-list->*dalin,type-error ; defineConstString
+    : String,nested-list->*dalin,type-error ; define-constant-string
 
     : nested-list->*dalin
       (* [address, <list>] -- head[address, <dalin>] *)
@@ -3852,14 +3852,14 @@ the name of the following functions should be changed
     ; define-function
     #+end_src
 *** dalin->tail & head<-dalin
-    #+begin_src cicada :tangle ../play/english-core.ccd 
+    #+begin_src cicada :tangle ../play/english-core.ccd
     :" dalin->tail said:
        ``My function-type is
 	 (* [address, <dalin-like>] -- tail[address, <dalin-like>] *)
 	 But the type I received is the following,
 	 I will not touch it and call debuger.''
        --> "
-    : String,dalin->tail,type-error ; defineConstString
+    : String,dalin->tail,type-error ; define-constant-string
 
     : dalin->tail
       (* [address, <dalin-like>] -- tail[address, <dalin-like>] *)
@@ -3873,7 +3873,7 @@ the name of the following functions should be changed
       then
       ->  dalin->tail
       Exit
-    ; defineRecursiveFunction
+    ; define-recursive-function
 
 
     :" head<-dalin said:
@@ -3882,7 +3882,7 @@ the name of the following functions should be changed
 	 But the type I received is the following,
 	 I will not touch it and call debuger.''
        --> "
-    : String,head<-dalin,type-error ; defineConstString
+    : String,head<-dalin,type-error ; define-constant-string
 
     : head<-dalin
       (* [address, <dalin-like>] -- head[address, <dalin-like>] *)
@@ -3896,10 +3896,10 @@ the name of the following functions should be changed
       then
       <-  head<-dalin
       Exit
-    ; defineRecursiveFunction
+    ; define-recursive-function
     #+end_src
 *** [value,dalin]-associate & [value,dalin]-member?
-    #+begin_src cicada :tangle ../play/english-core.ccd 
+    #+begin_src cicada :tangle ../play/english-core.ccd
     :" [value,dalin]-associate said:
        ``My function-type is
 	 (* [value, type], head[address, <dalin-like>] --
@@ -3908,7 +3908,7 @@ the name of the following functions should be changed
 	 I will not touch it and call debuger.''
        --> "
     : String,[value,dalin]-associate,type-error,at-first
-    ; defineConstString
+    ; define-constant-string
 
     :" [value,dalin]-associate said:
        ``My function-type is
@@ -3920,7 +3920,7 @@ the name of the following functions should be changed
 	 I will not touch it and call debuger''
        --> "
     : String,[value,dalin]-associate,type-error,in-the-middle
-    ; defineConstString
+    ; define-constant-string
 
     : help,[value,dalin]-associate
       (* [value, type], head[address, <dalin-like>], or [Null, <null>] --
@@ -3943,7 +3943,7 @@ the name of the following functions should be changed
       then
       ->  help,[value,dalin]-associate
       Exit
-    ; defineRecursiveFunction
+    ; define-recursive-function
 
     : [value,dalin]-associate
       (* [value, type], head[address, <dalin-like>] --
@@ -3970,13 +3970,13 @@ the name of the following functions should be changed
       then
       ->  [value,dalin]-member?
       Exit
-    ; defineRecursiveFunction
+    ; define-recursive-function
     #+end_src
 *** ^_^
     the following function is very important
     it for dalin is as the ``cons'' for list
     but also really different
-    #+begin_src cicada :tangle ../play/english-core.ccd 
+    #+begin_src cicada :tangle ../play/english-core.ccd
     :" ^_^ said:
        ``My function-type is
 	 (*  left[address, <dalin-like>], rigth[address, <dalin-like>] --
@@ -3985,7 +3985,7 @@ the name of the following functions should be changed
 	 it will be as the following,
 	 I will not touch it and call debuger.''
        --> "
-    : String,^_^,1st-type-error ; defineConstString
+    : String,^_^,1st-type-error ; define-constant-string
 
     :" ^_^ said:
        ``My function-type is
@@ -3995,7 +3995,7 @@ the name of the following functions should be changed
 	 it will be as the following,
 	 I will not touch it and call debuger.''
        --> "
-    : String,^_^,3rd-type-error ; defineConstString
+    : String,^_^,3rd-type-error ; define-constant-string
 
 
     (* the following ``little-smile-face'' is ``link-dalin'' *)
@@ -4161,7 +4161,7 @@ the name of the following functions should be changed
     #+end_src
 ** read-dalin & write-dalin
 *** read-*dalin
-    #+begin_src cicada :tangle ../play/english-core.ccd 
+    #+begin_src cicada :tangle ../play/english-core.ccd
     : help,read-*dalin
       (* tail[address, <dalin>] -- head[address, <dalin>] *)
       (* where:
@@ -4187,7 +4187,7 @@ the name of the following functions should be changed
       ^_^
       help,read-*dalin
       Exit
-    ; defineRecursiveFunction
+    ; define-recursive-function
 
 
     : read-*dalin (* -- head[address, <dalin>] *)
@@ -4199,7 +4199,7 @@ the name of the following functions should be changed
     : [ read-*dalin Exit ; define-function
     #+end_src
 *** write-*dalin
-    #+begin_src cicada :tangle ../play/english-core.ccd 
+    #+begin_src cicada :tangle ../play/english-core.ccd
     : help,write-*dalin
       (* [address, <dalin>] -- *)
       dup2 dalin*? if
@@ -4208,7 +4208,7 @@ the name of the following functions should be changed
       dup2
 	car write
       -> help,write-*dalin Exit
-    ; defineRecursiveFunction
+    ; define-recursive-function
 
 
     :" write-*dalin said:
@@ -4216,7 +4216,7 @@ the name of the following functions should be changed
 	 But the 1st argument is the following
 	 I will not touch it and call debuger.''
        --> "
-    : String,write-*dalin,type-error ; defineConstString
+    : String,write-*dalin,type-error ; define-constant-string
 
     : write-*dalin (* [address, <dalin>] -- *)
       dup <dalin> =/= if
@@ -4302,7 +4302,7 @@ I implement the following:
    LIAF version uses the LambdaStack
    which is very funny
 *** stack->list
-    #+begin_src cicada :tangle ../play/english-core.ccd 
+    #+begin_src cicada :tangle ../play/english-core.ccd
     : help,stack-LIAF->list
       (* ..., number --  *)
       (* LambdaStack::
@@ -4319,7 +4319,7 @@ I implement the following:
       ready
       help,stack-LIAF->list
       Exit
-    ; defineRecursiveFunction
+    ; define-recursive-function
 
     : stack-LIAF->list
       (* ..., number -- [address, <list>] *)
@@ -4348,7 +4348,7 @@ I implement the following:
       getBack [cons,cdr]! ready
       help,stack-FIAF->list
       Exit
-    ; defineRecursiveFunction
+    ; define-recursive-function
 
     : stack-FIAF->list
       (* ..., number -- [address, <list>] *)
@@ -4363,7 +4363,7 @@ I implement the following:
     ; define-function
     #+end_src
 *** stack->dalin
-    #+begin_src cicada :tangle ../play/english-core.ccd 
+    #+begin_src cicada :tangle ../play/english-core.ccd
     : help,stack-LIAF->dalin
       (* ..., number -- [address, <list>] *)
       (* LambdaStack::
@@ -4385,7 +4385,7 @@ I implement the following:
       ready
       help,stack-LIAF->dalin
       Exit
-    ; defineRecursiveFunction
+    ; define-recursive-function
 
     : stack-LIAF->dalin
       (* ..., number -- [address, <dalin>] *)
@@ -4418,7 +4418,7 @@ I implement the following:
       ready
       help,stack-FIAF->dalin
       Exit
-    ; defineRecursiveFunction
+    ; define-recursive-function
 
     : stack-FIAF->dalin
       (* ..., number -- [address, <dalin>] *)
@@ -4436,7 +4436,7 @@ I implement the following:
     ; define-function
     #+end_src
 *** list->stack
-    #+begin_src cicada :tangle ../play/english-core.ccd 
+    #+begin_src cicada :tangle ../play/english-core.ccd
     :" stack<-FIAF-list said:
        ``My function type is (* [address, <list>] -- ... *)
 	 the list should be a list of <not-pair-like> value
@@ -4444,14 +4444,14 @@ I implement the following:
 	 the following is what I found
 	 I will not touch it and call debuger''
        --> "
-    : String,stack<-FIAF-list,error ; defineConstString
+    : String,stack<-FIAF-list,error ; define-constant-string
 
     :" stack<-FIAF-list said:
        ``My function type is (* [address, <list>] -- ... *)
 	 But the type I received is the following,
 	 I will not touch it and call debuger.''
        --> "
-    : String,stack<-FIAF-list,type-error ; defineConstString
+    : String,stack<-FIAF-list,type-error ; define-constant-string
 
     : help,stack<-FIAF-list
       (* -- ... *)
@@ -4473,7 +4473,7 @@ I implement the following:
       (* leave the value of the [value, <not-pair-like>] *)
       help,stack<-FIAF-list
       Exit
-    ; defineRecursiveFunction
+    ; define-recursive-function
 
     : stack<-FIAF-list
       (* [address, <list>] -- ... *)
@@ -4526,7 +4526,7 @@ I implement the following:
     #+end_src
 ** symbol types
 *** helper funciton
-    #+begin_src cicada :tangle ../play/english-core.ccd 
+    #+begin_src cicada :tangle ../play/english-core.ccd
     : charDenoteNumberOrAlphabetOrOutOfAscii?
       (* char -- True of False *)
       dup literal 48 < if     drop False Exit
@@ -4547,21 +4547,21 @@ I implement the following:
     ; define-function
     #+end_src
 *** BoundVariable
-    #+begin_src cicada :tangle ../play/english-core.ccd 
+    #+begin_src cicada :tangle ../play/english-core.ccd
     (* `:' followed by a number or alphabet is a symbolDenoteBoundVariable
        ascii: 48 -- 57, 65 -- 90, 97 -- 122, 128 -- ...
        this set maybe change in the future *)
 
     : stringDenoteBoundVariableOne?
       (* [address, length] -- True or False *)
-      tailAndHeadOfString
+      tail-and-head-of-string
       ':' =/= if
 	drop2 False (* Exit *)
       else
 	dup Zero == if
 	  drop2 False (* Exit *)
 	else
-	  tailAndHeadOfString
+	  tail-and-head-of-string
 	  charDenoteNumberOrAlphabetOrOutOfAscii? if
 	    drop2 True (* Exit *)
 	  else
@@ -4578,7 +4578,7 @@ I implement the following:
 	 But the type I received is the following,
 	 I will not touch it and call debuger.''
        --> "
-    : String,symbolDenoteBoundVariableOne?,type-error ; defineConstString
+    : String,symbolDenoteBoundVariableOne?,type-error ; define-constant-string
     : symbolDenoteBoundVariableOne?
       (* [index, <symbol>] -- True or False *)
       dup <symbol> =/= if
@@ -4599,7 +4599,7 @@ I implement the following:
       dup Two <= if
 	drop2 False Exit
       then
-      tailAndHeadOfString ':' =/= if
+      tail-and-head-of-string ':' =/= if
 	drop2 False Exit
       then
       stringDenoteBoundVariableOne? Exit
@@ -4612,7 +4612,7 @@ I implement the following:
 	 But the type I received is the following,
 	 I will not touch it and call debuger.''
        --> "
-    : String,symbolDenoteBoundVariableTwo?,type-error ; defineConstString
+    : String,symbolDenoteBoundVariableTwo?,type-error ; define-constant-string
     : symbolDenoteBoundVariableTwo?
       (* [index, <symbol>] -- True or False *)
       dup <symbol> =/= if
@@ -4634,7 +4634,7 @@ I implement the following:
       dup Three <= if
 	drop2 False Exit
       then
-      tailAndHeadOfString ':' =/= if
+      tail-and-head-of-string ':' =/= if
 	drop2 False Exit
       then
       stringDenoteBoundVariableTwo? Exit
@@ -4647,7 +4647,7 @@ I implement the following:
 	 But the type I received is the following,
 	 I will not touch it and call debuger.''
        --> "
-    : String,symbolDenoteBoundVariableThree?,type-error ; defineConstString
+    : String,symbolDenoteBoundVariableThree?,type-error ; define-constant-string
     : symbolDenoteBoundVariableThree?
       (* [index, <symbol>] -- True or False *)
       dup <symbol> =/= if
@@ -4668,7 +4668,7 @@ I implement the following:
       dup Four <= if
 	drop2 False Exit
       then
-      tailAndHeadOfString ':' =/= if
+      tail-and-head-of-string ':' =/= if
 	drop2 False Exit
       then
       stringDenoteBoundVariableThree? Exit
@@ -4681,7 +4681,7 @@ I implement the following:
 	 But the type I received is the following,
 	 I will not touch it and call debuger.''
        --> "
-    : String,symbolDenoteBoundVariableFour?,type-error ; defineConstString
+    : String,symbolDenoteBoundVariableFour?,type-error ; define-constant-string
     : symbolDenoteBoundVariableFour?
       (* [index, <symbol>] -- True or False *)
       dup <symbol> =/= if
@@ -4721,7 +4721,7 @@ I implement the following:
 	 But the type I received is the following,
 	 I will not touch it and call debuger.''
        --> "
-    : String,symbolDenoteBoundVariable?,type-error ; defineConstString
+    : String,symbolDenoteBoundVariable?,type-error ; define-constant-string
     : symbolDenoteBoundVariable?
       (* [index, <symbol>] -- True or False *)
       dup <symbol> =/= if
@@ -4736,7 +4736,7 @@ I implement the following:
     ; define-function
     #+end_src
 *** Wody
-    #+begin_src cicada :tangle ../play/english-core.ccd 
+    #+begin_src cicada :tangle ../play/english-core.ccd
     (* string begin with a number or alphabet
        and end with `:' following a number or alphabet
        is a symbolDenoteWody *)
@@ -4746,7 +4746,7 @@ I implement the following:
       dup Two < if
 	drop2 False Exit
       then
-      dup2 headOfString
+      dup2 head-of-string
       charDenoteNumberOrAlphabetOrOutOfAscii? false? if
 	drop2 False Exit
       then
@@ -4766,7 +4766,7 @@ I implement the following:
 	 But the type I received is the following,
 	 I will not touch it and call debuger.''
        --> "
-    : String,symbolDenoteWody?,type-error ; defineConstString
+    : String,symbolDenoteWody?,type-error ; define-constant-string
     : symbolDenoteWody?
       (* [index, <symbol>] -- True or False *)
       dup <symbol> =/= if
@@ -4781,14 +4781,14 @@ I implement the following:
     ; define-function
     #+end_src
 *** LambdaArgument
-    #+begin_src cicada :tangle ../play/english-core.ccd 
+    #+begin_src cicada :tangle ../play/english-core.ccd
     (* `<' plus a stringDenoteBoundVariableOne *)
     : stringDenoteLambdaArgumentOne?
       (* [address, length] -- True or False *)
       dup Two <= if
 	drop2 False Exit
       then
-      tailAndHeadOfString '<' =/= if
+      tail-and-head-of-string '<' =/= if
 	drop2 False Exit
       then
       stringDenoteBoundVariableOne? Exit
@@ -4800,7 +4800,7 @@ I implement the following:
 	 But the type I received is the following,
 	 I will not touch it and call debuger.''
        --> "
-    : String,symbolDenoteLambdaArgumentOne?,type-error ; defineConstString
+    : String,symbolDenoteLambdaArgumentOne?,type-error ; define-constant-string
     : symbolDenoteLambdaArgumentOne?
       (* [index, <symbol>] -- True or False *)
       dup <symbol> =/= if
@@ -4822,7 +4822,7 @@ I implement the following:
       dup Three <= if
 	drop2 False Exit
       then
-      tailAndHeadOfString '<' =/= if
+      tail-and-head-of-string '<' =/= if
 	drop2 False Exit
       then
       stringDenoteBoundVariableTwo? Exit
@@ -4834,7 +4834,7 @@ I implement the following:
 	 But the type I received is the following,
 	 I will not touch it and call debuger.''
        --> "
-    : String,symbolDenoteLambdaArgumentTwo?,type-error ; defineConstString
+    : String,symbolDenoteLambdaArgumentTwo?,type-error ; define-constant-string
     : symbolDenoteLambdaArgumentTwo?
       (* [index, <symbol>] -- True or False *)
       dup <symbol> =/= if
@@ -4857,7 +4857,7 @@ I implement the following:
       dup Four <= if
 	drop2 False Exit
       then
-      tailAndHeadOfString '<' =/= if
+      tail-and-head-of-string '<' =/= if
 	drop2 False Exit
       then
       stringDenoteBoundVariableThree? Exit
@@ -4869,7 +4869,7 @@ I implement the following:
 	 But the type I received is the following,
 	 I will not touch it and call debuger.''
        --> "
-    : String,symbolDenoteLambdaArgumentThree?,type-error ; defineConstString
+    : String,symbolDenoteLambdaArgumentThree?,type-error ; define-constant-string
     : symbolDenoteLambdaArgumentThree?
       (* [index, <symbol>] -- True or False *)
       dup <symbol> =/= if
@@ -4892,7 +4892,7 @@ I implement the following:
       dup Five <= if
 	drop2 False Exit
       then
-      tailAndHeadOfString '<' =/= if
+      tail-and-head-of-string '<' =/= if
 	drop2 False Exit
       then
       stringDenoteBoundVariableFour? Exit
@@ -4904,7 +4904,7 @@ I implement the following:
 	 But the type I received is the following,
 	 I will not touch it and call debuger.''
        --> "
-    : String,symbolDenoteLambdaArgumentFour?,type-error ; defineConstString
+    : String,symbolDenoteLambdaArgumentFour?,type-error ; define-constant-string
     : symbolDenoteLambdaArgumentFour?
       (* [index, <symbol>] -- True or False *)
       dup <symbol> =/= if
@@ -4943,7 +4943,7 @@ I implement the following:
 	 But the type I received is the following,
 	 I will not touch it and call debuger.''
        --> "
-    : String,symbolDenoteLambdaArgument?,type-error ; defineConstString
+    : String,symbolDenoteLambdaArgument?,type-error ; define-constant-string
     : symbolDenoteLambdaArgument?
       (* [index, <symbol>] -- True or False *)
       dup <symbol> =/= if
@@ -5052,7 +5052,7 @@ I implement the following:
 2. wodyli is a dalin of list
 3. lambda will use ``bound-variable-wodyli''
 *** read-wodyli
-    #+begin_src cicada :tangle ../play/english-core.ccd 
+    #+begin_src cicada :tangle ../play/english-core.ccd
     : help,with-word,read-wody-or-bound-variable
       (* -- [address, <list>] *)
       (* LambdaStack::
@@ -5082,7 +5082,7 @@ I implement the following:
 	  help,with-word,read-wody-or-bound-variable
 	set-cdr!
       Exit
-    ; defineRecursiveFunction
+    ; define-recursive-function
 
 
     : with-word,read-wody-or-bound-variable
@@ -5111,7 +5111,7 @@ I implement the following:
 	 But the following is what I meet
 	 I will not touch it and call debuger''
        --> "
-    : String,help,read-wodyli,error ; defineConstString
+    : String,help,read-wodyli,error ; define-constant-string
 
     (* a ``with-word'' reader *)
     : help,read-wodyli
@@ -5151,7 +5151,7 @@ I implement the following:
       xx|swap|xx
       help,read-wodyli
       Exit
-    ; defineRecursiveFunction
+    ; define-recursive-function
 
 
 
@@ -5169,13 +5169,13 @@ I implement the following:
     : ( read-wodyli Exit ; define-function
     #+end_src
 *** write-wody & write-wodyli
-    #+begin_src cicada :tangle ../play/english-core.ccd 
+    #+begin_src cicada :tangle ../play/english-core.ccd
     :" write-wody-or-bound-variable said:
        ``My function-type is (* [address, <wody> or <bound-variable>] -- *)
 	 But the 1st argument is the following
 	 I will not touch it and call debuger.''
        --> "
-    : String,write-wody-or-bound-variable,type-error ; defineConstString
+    : String,write-wody-or-bound-variable,type-error ; define-constant-string
 
     : write-wody-or-bound-variable
       (* [address, <wody> or <bound-variable>] -- *)
@@ -5202,7 +5202,7 @@ I implement the following:
       dup2
 	car write
       -> help,write-wodyli Exit
-    ; defineRecursiveFunction
+    ; define-recursive-function
 
 
     :" write-wodyli said:
@@ -5210,7 +5210,7 @@ I implement the following:
 	 But the 1st argument is the following
 	 I will not touch it and call debuger.''
        --> "
-    : String,write-wodyli,type-error ; defineConstString
+    : String,write-wodyli,type-error ; define-constant-string
 
     : write-wodyli
       (* [address, <wodyli>] -- *)
@@ -5243,7 +5243,7 @@ I implement the following:
     2. to handle <:x <::x <:::x <::::x
     3. print better ErrorInfo for ExecuteWord
 *** implementation
-    #+begin_src cicada :tangle ../play/english-core.ccd 
+    #+begin_src cicada :tangle ../play/english-core.ccd
     : <lambda-argument-one>   ; definePairLikeDataType
     : <lambda-argument-two>   ; definePairLikeDataType
     : <lambda-argument-three> ; definePairLikeDataType
@@ -5265,7 +5265,7 @@ I implement the following:
       then
       drop False Exit
     ; define-function
-    
+
     (* ><><>< the following comment should be rewritten *)
     (* redefine execute-word to handle the following symbols
        <:x   ::    value       -- [{ :x  . { ... } }, <lambda-argument-one>]
@@ -5300,7 +5300,7 @@ I implement the following:
       then
 
       dup2 stringDenoteLambdaArgumentOne? if
-	tailOfString
+	tail-of-string
 	string-hash->index <symbol>
 	cons drop <lambda-argument-one>
 	  xx|swap|xx set-car!
@@ -5311,7 +5311,7 @@ I implement the following:
 	Exit
       then
       dup2 stringDenoteLambdaArgumentTwo? if
-	tailOfString
+	tail-of-string
 	string-hash->index <symbol>
 	cons drop <lambda-argument-two>
 	  xx|swap|xx set-car!
@@ -5322,7 +5322,7 @@ I implement the following:
 	Exit
       then
       dup2 stringDenoteLambdaArgumentThree? if
-	tailOfString
+	tail-of-string
 	string-hash->index <symbol>
 	cons drop <lambda-argument-three>
 	  xx|swap|xx set-car!
@@ -5333,7 +5333,7 @@ I implement the following:
 	Exit
       then
       dup2 stringDenoteLambdaArgumentFour? if
-	tailOfString
+	tail-of-string
 	string-hash->index <symbol>
 	cons drop <lambda-argument-four>
 	  xx|swap|xx set-car!
@@ -5364,7 +5364,7 @@ I implement the following:
       execute-word
       symbolREPL
       Exit
-    ; defineRecursiveFunction
+    ; define-recursive-function
     #+end_src
 *** test
     #+begin_src cicada
@@ -5388,55 +5388,55 @@ I implement the following:
     cr
     #+end_src
 ** using the symbolREPL now !
-   #+begin_src cicada :tangle ../play/english-core.ccd 
+   #+begin_src cicada :tangle ../play/english-core.ccd
    symbolREPL
    #+end_src
 ** ><><><><><><><><><><><><><><><><><><><
 ** lambda
 *** note
 **** ABOUT lambda-calculus
-1. lambda is a function which uses two dalin
-   to compose a anonymous function
-   (not compile to the dictionary)
-   apply is a function which
-   explain (or eval) the anonymous function composed by lambda
-2. ``compose(撰写)'' is different from ``compile(编撰)''
-3. the essence is
-   ``compose and explain''
-   or ``compile and explain''
-   1) what(syntax) to be composed ?
-   2) compose to what ?
-   3) how to explain(or eval) the result of the composition
-4. in cicada
-   apply is linear
-   lambda is almost linear
-   ``linear'' means a loop walk through a dalin
-   but not a recursive function traverse a nested dalin
-   only the function that calculates the scope of a lambda is recursive
-5. a bound-variable of a lambda function
-   is used to label the place in the lambda-body
-   into where you want to substitute a argument
-   when lambda-body is nested
-   the scope of bound-variables need to be handled
-   scheme use closure to handle this
-   cicada use simple graph processing to handle this
-6. during lambda-application,
-   one <lambda-argument-N> substitute into
-   one <bound-variable>
-7. from lisp to cicada
-   I am dispersing the works of parsing all the time
+     1. lambda is a function which uses two dalin
+	to compose a anonymous function
+	(not compile to the dictionary)
+	apply is a function which
+	explain (or eval) the anonymous function composed by lambda
+     2. ``compose(撰写)'' is different from ``compile(编撰)''
+     3. the essence is
+	``compose and explain''
+	or ``compile and explain''
+	1) what(syntax) to be composed ?
+	2) compose to what ?
+	3) how to explain(or eval) the result of the composition
+     4. in cicada
+	apply is linear
+	lambda is almost linear
+	``linear'' means a loop walk through a dalin
+	but not a recursive function traverse a nested dalin
+	only the function that calculates the scope of a lambda is recursive
+     5. a bound-variable of a lambda function
+	is used to label the place in the lambda-body
+	into where you want to substitute a argument
+	when lambda-body is nested
+	the scope of bound-variables need to be handled
+	scheme use closure to handle this
+	cicada use simple graph processing to handle this
+     6. during lambda-application,
+	one <lambda-argument-N> substitute into
+	one <bound-variable>
+     7. from lisp to cicada
+	I am dispersing the works of parsing all the time
 **** ABOUT lazy-eval
-1. in cicada use explicit lazy-eval
-   use ()lambda or ()λ
-   to make a lambda-function without arguments
-   to use explicit lazy-eval
-2. lazy-eval has better theoretical feature in lambda-calculus
-   but it makes computation unpredictable
+     1. in cicada use explicit lazy-eval
+	use ()lambda or ()λ
+	to make a lambda-function without arguments
+	to use explicit lazy-eval
+     2. lazy-eval has better theoretical feature in lambda-calculus
+	but it makes computation unpredictable
 **** ABOUT substitution
-note that you can only use bound-variable (such as ::x :n) in a lambda-body
-bot NOT a dalin or list or wodyli
+     note that you can only use bound-variable (such as ::x :n) in a lambda-body
+     bot NOT a dalin or list or wodyli
 *** data-types
-    #+begin_src cicada :tangle ../play/english-core.ccd 
+    #+begin_src cicada :tangle ../play/english-core.ccd
     : <lambda>               ; definePairLikeDataType
     : <explainer-pair>       ; definePairLikeDataType
     : <explainer>            ; defineDataType
@@ -5444,7 +5444,7 @@ bot NOT a dalin or list or wodyli
 *** helper functions
     used to decide the type error of lambda
     and to decide when I need to calculate lambda-scope
-    #+begin_src cicada :tangle ../play/english-core.ccd 
+    #+begin_src cicada :tangle ../play/english-core.ccd
     : bound-variable-wodyli?
       (* head[address, <wodyli>] -- True or False *)
       dup <wodyli> =/= if
@@ -5459,7 +5459,7 @@ bot NOT a dalin or list or wodyli
       then
       ->  bound-variable-wodyli?
       Exit
-    ; defineRecursiveFunction
+    ; define-recursive-function
 
 
     (*
@@ -5509,7 +5509,7 @@ bot NOT a dalin or list or wodyli
      *)
     #+end_src
 *** bound-variable-wodyli-subtraction (for calculating lambda-scope)
-    #+begin_src cicada :tangle ../play/english-core.ccd 
+    #+begin_src cicada :tangle ../play/english-core.ccd
     : help,bound-variable-wodyli-subtraction
       (* LambdaStack::
 	 (a-b) [address, <wodyli>] -- *)
@@ -5546,7 +5546,7 @@ bot NOT a dalin or list or wodyli
 	(* so the order of bound-variable-wodyli will be preserved *)
       ready
       ->  help,bound-variable-wodyli-subtraction Exit
-    ; defineRecursiveFunction
+    ; define-recursive-function
 
 
     (* the following function will creat a new wodyli, maybe ``null'' *)
@@ -5583,12 +5583,12 @@ bot NOT a dalin or list or wodyli
      *)
     #+end_src
 *** lambda
-    #+begin_src cicada :tangle ../play/english-core.ccd 
+    #+begin_src cicada :tangle ../play/english-core.ccd
     :" lambda" string-hash->index
-    : SymbolIndex,lambda ; defineConst
+    : SymbolIndex,lambda ; define-constant
 
     :" λ" string-hash->index
-    : SymbolIndex,λ ; defineConst
+    : SymbolIndex,λ ; define-constant
 
 
     (* the following two functions are side-effects through a dalin
@@ -5688,7 +5688,7 @@ bot NOT a dalin or list or wodyli
       (* here is general symbol *)
       drop2
       <-  help,lambda,set-bound-variables Exit
-    ; defineRecursiveFunction
+    ; define-recursive-function
 
 
     : help,lambda,set-function-body
@@ -5733,7 +5733,7 @@ bot NOT a dalin or list or wodyli
 	[cdr,cons]!  [car,cons]!
       [cons,car]!
       <-  help,lambda,set-function-body Exit
-    ; defineRecursiveFunction
+    ; define-recursive-function
 
 
 
@@ -5758,7 +5758,7 @@ bot NOT a dalin or list or wodyli
 	 But the 1st argument is the following
 	 I will not touch it and call debuger''
        --> "
-    : String,lambda,type-error,1st ; defineConstString
+    : String,lambda,type-error,1st ; define-constant-string
 
     :" lambda said:
        ``My function type is
@@ -5768,7 +5768,7 @@ bot NOT a dalin or list or wodyli
 	 The 1st argument is a wodyli but not a bound-variable-wodyli
 	 I will not touch it and call debuger''"
     : String,lambda,type-error,1st,not-bound-variable-wodyli
-    ; defineConstString
+    ; define-constant-string
 
     :" lambda said:
        ``My function type is
@@ -5778,7 +5778,7 @@ bot NOT a dalin or list or wodyli
 	 But the 3rd argument is the following
 	 I will not touch it and call debuger''
        --> "
-    : String,lambda,type-error,3rd ; defineConstString
+    : String,lambda,type-error,3rd ; define-constant-string
 
     : lambda
       (* [address, <dalin>], [address, <wodyli>] -- [address, <lambda>] *)
@@ -5886,7 +5886,7 @@ bot NOT a dalin or list or wodyli
    也许这种效果能被有趣地利用起来
 3. maybe I can support cc here !
 *** lambda-body-stack
-    #+begin_src cicada :tangle ../play/english-core.ccd 
+    #+begin_src cicada :tangle ../play/english-core.ccd
     (* note that:
 	 when a explainer is been executed
 	 only the arguments of the word to be explained
@@ -5915,7 +5915,7 @@ bot NOT a dalin or list or wodyli
     ; define-function
     #+end_src
 *** help,apply,eval-lambda-body
-    #+begin_src cicada :tangle ../play/english-core.ccd 
+    #+begin_src cicada :tangle ../play/english-core.ccd
     (* the following function
        do side-effect to the car of the lambda-body-stack *)
 
@@ -5957,7 +5957,7 @@ bot NOT a dalin or list or wodyli
 	 I will not touch it and call debuger''
        --> "
     : String,help,apply,eval-lambda-body,error,symbol
-    ; defineConstString
+    ; define-constant-string
 
     : help,apply,eval-lambda-body
       (* unknow -- unknow *)
@@ -6018,10 +6018,10 @@ bot NOT a dalin or list or wodyli
 	 leave the value and the type in the stack *)
       help,apply,eval-lambda-body
       Exit
-    ; defineRecursiveFunction
+    ; define-recursive-function
     #+end_src
 *** apply
-    #+begin_src cicada :tangle ../play/english-core.ccd 
+    #+begin_src cicada :tangle ../play/english-core.ccd
     (* examples of <lambda-argument>:
 	 { :x       . { 1 } }
 	 { ::null   . { Null <null> } }
@@ -6053,7 +6053,7 @@ bot NOT a dalin or list or wodyli
       [cons,cdr]!  drop2
       help-to-rec,help,apply,set-variables
       Exit
-    ; defineRecursiveFunction
+    ; define-recursive-function
 
 
     : help,apply,set-variables
@@ -6072,7 +6072,7 @@ bot NOT a dalin or list or wodyli
 	 But the value in the LambdaStack is of the following type
 	 I will not touch it and call debuger''
        --> "
-    : String,apply,type-error ; defineConstString
+    : String,apply,type-error ; define-constant-string
     : apply
       (* LambdaStack::  [address, <lambda>] -- unknow *)
       (* ArgumentStack::  ..., [address, <lambda-argument>] -- unknow *)
@@ -6095,7 +6095,7 @@ bot NOT a dalin or list or wodyli
     ; define-function
     #+end_src
 *** syntax sugar
-    #+begin_src cicada :tangle ../play/english-core.ccd 
+    #+begin_src cicada :tangle ../play/english-core.ccd
     : @
       (* ...,
 	 [address, <lambda-argument>],
@@ -6557,9 +6557,9 @@ bot NOT a dalin or list or wodyli
 ** ok & bye
    for the REPL is actually a REL which does not print
    so I provide a word to check that the cicada is working properly
-   #+begin_src cicada :tangle ../play/english-core.ccd 
+   #+begin_src cicada :tangle ../play/english-core.ccd
    :" yes"
-   : String,yes ; defineConstString
+   : String,yes ; define-constant-string
    : ok (* -- *)
      String,yes print-string
      writeSpace
@@ -6567,7 +6567,7 @@ bot NOT a dalin or list or wodyli
    ; define-function
 
    :" byebye ^_^"
-   : String,byebye ; defineConstString
+   : String,byebye ; define-constant-string
    (*
     ,* : bye (\* -- THE END *\)
     ,*   writeSpace
@@ -6579,9 +6579,9 @@ bot NOT a dalin or list or wodyli
    #+end_src
 ** --------------------------------------
 ** welcome
-   #+begin_src cicada :tangle ../play/english-core.ccd 
+   #+begin_src cicada :tangle ../play/english-core.ccd
    :"    welcome to cicada ^_^"
-   : String,welcome ; defineConstString
+   : String,welcome ; define-constant-string
    : welcome (* -- *)
      String,welcome print-string cr
      Exit
@@ -6717,14 +6717,14 @@ bot NOT a dalin or list or wodyli
 	One negate
 	Exit
       then
-      tailAndHeadOfString
+      tail-and-head-of-string
       x|over|xxx == if
 	drop swap drop
 	sub1 Exit
       then
       find-char-address
       Exit
-    ; defineRecursiveFunction
+    ; define-recursive-function
 
     : find-char-index
       (* char, [address, length] -- index or -1 *)
@@ -6810,7 +6810,7 @@ bot NOT a dalin or list or wodyli
       ready
       help,string->line-dalin
       Exit
-    ; defineRecursiveFunction
+    ; define-recursive-function
 
     : string->line-dalin
       (* [address, length] -- head[address, <dalin>] *)
@@ -6871,7 +6871,7 @@ bot NOT a dalin or list or wodyli
 	 cursor is a Zero-based-index, from Zero to length *)
 
 
-    0 : Var,LineBuffer ; defineVar
+    0 : Var,LineBuffer ; define-variable
 
     Here fetch Var,LineBuffer save
     1000 Here add-save
@@ -6882,7 +6882,7 @@ bot NOT a dalin or list or wodyli
     ; define-function
 
 
-    0 : Var,Tmp,LineBuffer ; defineVar
+    0 : Var,Tmp,LineBuffer ; define-variable
 
     Here fetch Var,Tmp,LineBuffer save
     1000 Here add-save
@@ -7100,7 +7100,7 @@ bot NOT a dalin or list or wodyli
     just use the ``read-char''
     #+begin_src cicada
     :" 1234567890"
-    : InitString,for-update-display ; defineConstString
+    : InitString,for-update-display ; define-constant-string
 
     InitString,for-update-display
     : Var-string,for-update-display ; define
@@ -7122,10 +7122,10 @@ bot NOT a dalin or list or wodyli
       Exit
     ; define-function
     "
-    : String-for,kkk ; defineConstString
+    : String-for,kkk ; define-constant-string
 
     :" kkk" string-hash->index
-    : SymbolIndex,kkk ; defineConst
+    : SymbolIndex,kkk ; define-constant
     : kkk (*  -- *)
       String-for,kkk
       Var-string,for-update-display
@@ -7146,13 +7146,13 @@ bot NOT a dalin or list or wodyli
       (* L *)
       help,tryREDL
       Exit
-    ; defineRecursiveFunction
+    ; define-recursive-function
     "
     : String-for,aaa
-    ; defineConstString
+    ; define-constant-string
 
     :" aaa" string-hash->index
-    : SymbolIndex,aaa ; defineConst
+    : SymbolIndex,aaa ; define-constant
     : aaa (*  -- *)
       String-for,aaa
       Var-string,for-update-display
@@ -7180,7 +7180,7 @@ bot NOT a dalin or list or wodyli
 	 But I meet the following type
 	 I will not touch it and call debuger.''
        --> "
-    : String,executeSymbol,type-error ; defineConstString
+    : String,executeSymbol,type-error ; define-constant-string
     : executeSymbol (* [index, <symbol>] -- unknown *)
       dup <symbol> =/= if
 	String,executeSymbol,type-error print-string
@@ -7207,7 +7207,7 @@ bot NOT a dalin or list or wodyli
       (* L *)
       help,tryREDL
       Exit
-    ; defineRecursiveFunction
+    ; define-recursive-function
 
     : tryREDL (*  --  *)
       setTerminalToReadKey

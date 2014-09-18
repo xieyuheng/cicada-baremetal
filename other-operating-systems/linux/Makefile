@@ -4,7 +4,7 @@ help:
 	@
 	echo -e " \E[33;1m                                                      \E[0m "
 	echo -e " \E[33;1m   this Makefile helps you to play with               \E[0m "
-	echo -e " \E[33;1m     a special version of cicada language,            \E[0m "
+	echo -e " \E[33;1m     a specific version of cicada language,           \E[0m "
 	echo -e " \E[33;1m     which is a porting of the language               \E[0m "
 	echo -e " \E[33;1m     to linux operating system.                       \E[0m "
 	echo -e " \E[33;1m                                                      \E[0m "

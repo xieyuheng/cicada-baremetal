@@ -1,5 +1,5 @@
 (* magic check *)
-: defineVar,byString
+: define-variable,by-string
   (* initial-value, String[address, length] -- *)
   create-word-header
   Variable-explainer append-number-to-here
@@ -9,14 +9,14 @@
   Exit
 ; define-function
 
-: defineVar (* byWordList *)
+: define-variable (* byWordList *)
   (* initial-value, WordList[address, the number of words] -- *)
   head-of-word-list
-  defineVar,byString
+  define-variable,by-string
   Exit
 ; define-function
 
-: defineConst,byString
+: define-constant,by-string
   (* initial-value, WordList[address, the number of words] -- *)
   create-word-header
   Constant-explainer append-number-to-here
@@ -26,10 +26,10 @@
   Exit
 ; define-function
 
-: defineConst (* byWordList *)
+: define-constant (* byWordList *)
   (* initial-value, WordList[address, the number of words] -- *)
   head-of-word-list
-  defineConst,byString
+  define-constant,by-string
   Exit
 ; define-function
 : /mod (* a, b -- quotient, a mod b *)
@@ -51,114 +51,114 @@
   Zero swap -
   Exit
 ; define-function
-9   : 'tab'      ; defineConst
-10  : 'linefeed' ; defineConst
-10  : 'newline'  ; defineConst
-27  : 'esc'      ; defineConst
-27  : 'escape'   ; defineConst
-32  : 'space'    ; defineConst
-127 : 'delete'   ; defineConst
+9   : 'tab'      ; define-constant
+10  : 'linefeed' ; define-constant
+10  : 'newline'  ; define-constant
+27  : 'esc'      ; define-constant
+27  : 'escape'   ; define-constant
+32  : 'space'    ; define-constant
+127 : 'delete'   ; define-constant
 
-33 : '!' ; defineConst
-34 : '"' ; defineConst
-35 : '#' ; defineConst
-36 : '$' ; defineConst
-37 : '%' ; defineConst
-38 : '&' ; defineConst
-39 : ''' ; defineConst
-40 : '(' ; defineConst
-41 : ')' ; defineConst
-42 : '*' ; defineConst
-43 : '+' ; defineConst
-44 : ',' ; defineConst
-45 : '-' ; defineConst
-46 : '.' ; defineConst
-47 : '/' ; defineConst
+33 : '!' ; define-constant
+34 : '"' ; define-constant
+35 : '#' ; define-constant
+36 : '$' ; define-constant
+37 : '%' ; define-constant
+38 : '&' ; define-constant
+39 : ''' ; define-constant
+40 : '(' ; define-constant
+41 : ')' ; define-constant
+42 : '*' ; define-constant
+43 : '+' ; define-constant
+44 : ',' ; define-constant
+45 : '-' ; define-constant
+46 : '.' ; define-constant
+47 : '/' ; define-constant
 
-48 : '0' ; defineConst
-49 : '1' ; defineConst
-50 : '2' ; defineConst
-51 : '3' ; defineConst
-52 : '4' ; defineConst
-53 : '5' ; defineConst
-54 : '6' ; defineConst
-55 : '7' ; defineConst
-56 : '8' ; defineConst
-57 : '9' ; defineConst
+48 : '0' ; define-constant
+49 : '1' ; define-constant
+50 : '2' ; define-constant
+51 : '3' ; define-constant
+52 : '4' ; define-constant
+53 : '5' ; define-constant
+54 : '6' ; define-constant
+55 : '7' ; define-constant
+56 : '8' ; define-constant
+57 : '9' ; define-constant
 
-58 : ':' ; defineConst
-59 : ';' ; defineConst
-60 : '<' ; defineConst
-61 : '=' ; defineConst
-62 : '>' ; defineConst
-63 : '?' ; defineConst
-64 : '@' ; defineConst
+58 : ':' ; define-constant
+59 : ';' ; define-constant
+60 : '<' ; define-constant
+61 : '=' ; define-constant
+62 : '>' ; define-constant
+63 : '?' ; define-constant
+64 : '@' ; define-constant
 
-65 : 'A' ; defineConst
-66 : 'B' ; defineConst
-67 : 'C' ; defineConst
-68 : 'D' ; defineConst
-69 : 'E' ; defineConst
-70 : 'F' ; defineConst
-71 : 'G' ; defineConst
-72 : 'H' ; defineConst
-73 : 'I' ; defineConst
-74 : 'J' ; defineConst
-75 : 'K' ; defineConst
-76 : 'L' ; defineConst
-77 : 'M' ; defineConst
-78 : 'N' ; defineConst
-79 : 'O' ; defineConst
-80 : 'P' ; defineConst
-81 : 'Q' ; defineConst
-82 : 'R' ; defineConst
-83 : 'S' ; defineConst
-84 : 'T' ; defineConst
-85 : 'U' ; defineConst
-86 : 'V' ; defineConst
-87 : 'W' ; defineConst
-88 : 'X' ; defineConst
-89 : 'Y' ; defineConst
-90 : 'Z' ; defineConst
+65 : 'A' ; define-constant
+66 : 'B' ; define-constant
+67 : 'C' ; define-constant
+68 : 'D' ; define-constant
+69 : 'E' ; define-constant
+70 : 'F' ; define-constant
+71 : 'G' ; define-constant
+72 : 'H' ; define-constant
+73 : 'I' ; define-constant
+74 : 'J' ; define-constant
+75 : 'K' ; define-constant
+76 : 'L' ; define-constant
+77 : 'M' ; define-constant
+78 : 'N' ; define-constant
+79 : 'O' ; define-constant
+80 : 'P' ; define-constant
+81 : 'Q' ; define-constant
+82 : 'R' ; define-constant
+83 : 'S' ; define-constant
+84 : 'T' ; define-constant
+85 : 'U' ; define-constant
+86 : 'V' ; define-constant
+87 : 'W' ; define-constant
+88 : 'X' ; define-constant
+89 : 'Y' ; define-constant
+90 : 'Z' ; define-constant
 
-91 : '[' ; defineConst
-92 : '\' ; defineConst
-93 : ']' ; defineConst
-94 : '^' ; defineConst
-95 : '_' ; defineConst
-96 : '`' ; defineConst
+91 : '[' ; define-constant
+92 : '\' ; define-constant
+93 : ']' ; define-constant
+94 : '^' ; define-constant
+95 : '_' ; define-constant
+96 : '`' ; define-constant
 
-97  : 'a' ; defineConst
-98  : 'b' ; defineConst
-99  : 'c' ; defineConst
-100 : 'd' ; defineConst
-101 : 'e' ; defineConst
-102 : 'f' ; defineConst
-103 : 'g' ; defineConst
-104 : 'h' ; defineConst
-105 : 'i' ; defineConst
-106 : 'j' ; defineConst
-107 : 'k' ; defineConst
-108 : 'l' ; defineConst
-109 : 'm' ; defineConst
-110 : 'n' ; defineConst
-111 : 'o' ; defineConst
-112 : 'p' ; defineConst
-113 : 'q' ; defineConst
-114 : 'r' ; defineConst
-115 : 's' ; defineConst
-116 : 't' ; defineConst
-117 : 'u' ; defineConst
-118 : 'v' ; defineConst
-119 : 'w' ; defineConst
-120 : 'x' ; defineConst
-121 : 'y' ; defineConst
-122 : 'z' ; defineConst
+97  : 'a' ; define-constant
+98  : 'b' ; define-constant
+99  : 'c' ; define-constant
+100 : 'd' ; define-constant
+101 : 'e' ; define-constant
+102 : 'f' ; define-constant
+103 : 'g' ; define-constant
+104 : 'h' ; define-constant
+105 : 'i' ; define-constant
+106 : 'j' ; define-constant
+107 : 'k' ; define-constant
+108 : 'l' ; define-constant
+109 : 'm' ; define-constant
+110 : 'n' ; define-constant
+111 : 'o' ; define-constant
+112 : 'p' ; define-constant
+113 : 'q' ; define-constant
+114 : 'r' ; define-constant
+115 : 's' ; define-constant
+116 : 't' ; define-constant
+117 : 'u' ; define-constant
+118 : 'v' ; define-constant
+119 : 'w' ; define-constant
+120 : 'x' ; define-constant
+121 : 'y' ; define-constant
+122 : 'z' ; define-constant
 
-123 : '{' ; defineConst
-124 : '|' ; defineConst
-125 : '}' ; defineConst
-126 : '~' ; defineConst
+123 : '{' ; define-constant
+124 : '|' ; define-constant
+125 : '}' ; define-constant
+126 : '~' ; define-constant
 (* ><><>< string of 0 length is a not handled  error *)
 : headOfString (* string[address, length] -- first char *)
   drop fetch-byte
@@ -187,7 +187,7 @@
   Exit
 ; define-function
 
-: defineConstString,byString
+: define-constant-string,by-string
   (* initial-string[address, length],
      string[address, length], the number of words] -- *)
   create-word-header
@@ -198,11 +198,11 @@
   Exit
 ; define-function
 
-: defineConstString (* byWordList *)
+: define-constant-string (* byWordList *)
   (* string[address, length],
      wordList[address, the number of words] -- *)
   head-of-word-list
-  defineConstString,byString
+  define-constant-string,by-string
   Exit
 ; define-function
 : defineRecursiveFunction (* wordList[address, the number of words] -- *)
@@ -215,9 +215,9 @@
   Exit
 ; define-function
 
-:" if"    : String,KeyWord,if   ; defineConstString
-:" else"  : String,KeyWord,else ; defineConstString
-:" then"  : String,KeyWord,then ; defineConstString
+:" if"    : String,KeyWord,if   ; define-constant-string
+:" else"  : String,KeyWord,else ; define-constant-string
+:" then"  : String,KeyWord,then ; define-constant-string
 
 : append-word-description-to-here,with-if&then
   (* wordList[address, the number of words] -- *)
@@ -736,8 +736,8 @@
 ; define-function
 
 
-0 : ReturnStackPosition ; defineVar
-0 : ArgumentStackPosition ; defineVar
+0 : ReturnStackPosition ; define-variable
+0 : ArgumentStackPosition ; define-variable
 
 (* the following two function are as interface *)
 : debuger,fetchFromReturnStack (* n -- *)
@@ -756,7 +756,7 @@
 
 
 :" bye"
-: String,bye ; defineConstString
+: String,bye ; define-constant-string
 
 : execute-word (* string[address, length] -- unknown *)
   dup2
@@ -788,16 +788,16 @@
 ; defineRecursiveFunction
 
 :" debuger said: ``Welcome! Hope you find what's wrong.''"
-: String,debuger,Welcome ; defineConstString
+: String,debuger,Welcome ; define-constant-string
 
 :" the length of ReturnStack is: "
-: String,debuger,theLengthOfReturnStack ; defineConstString
+: String,debuger,theLengthOfReturnStack ; define-constant-string
 
 :" the length of ArgumentStack is: "
-: String,debuger,theLengthOfArgumentStack ; defineConstString
+: String,debuger,theLengthOfArgumentStack ; define-constant-string
 
 :" debuger said: ``Good bye! The computation will go on!''"
-: String,debuger,Goodbye ; defineConstString
+: String,debuger,Goodbye ; define-constant-string
 
 : debuger (* unknown -- unknown *)
   String,debuger,Welcome print-string cr
@@ -921,7 +921,7 @@
 ; defineRecursiveFunction
 
 :"  -->  "
-: String,_-->__ ; defineConstString
+: String,_-->__ ; define-constant-string
 
 (* the following function is the first function
    on which I must use ``if,else,then'' *)
@@ -955,22 +955,22 @@
 
 
 :" traceFunction said: ``Ya! Let's trace a function!''"
-: String,traceFunction,Welcome ; defineConstString
+: String,traceFunction,Welcome ; define-constant-string
 
 :" The function we use to trace is:"
-: String,traceFunction,FunctionToTrace ; defineConstString
+: String,traceFunction,FunctionToTrace ; define-constant-string
 
 :" The function be traced to is:"
-: String,traceFunction,FunctionBeTracedTo ; defineConstString
+: String,traceFunction,FunctionBeTracedTo ; define-constant-string
 
 :" The size of the body of this function is:"
-: String,traceFunction,FunctionBodySize ; defineConstString
+: String,traceFunction,FunctionBodySize ; define-constant-string
 
 :" The body of this function is:"
-: String,traceFunction,FunctionBody ; defineConstString
+: String,traceFunction,FunctionBody ; define-constant-string
 
 :" traceFunction said: ``The end of a tracing.''"
-: String,traceFunction,Goodbye ; defineConstString
+: String,traceFunction,Goodbye ; define-constant-string
 
 : traceFunction
   (* [an address of a cell in a word] -- *)
@@ -1017,15 +1017,15 @@ append-word-description-to-here said:
      I will print the rest of the WordList and call debuger.''
    --> "
 : String,append-word-description-to-here,meetUndefinedWord
-; defineConstString
+; define-constant-string
 
 :" The length of the rest of the WordList is: "
 : String,append-word-description-to-here,LengthOfTheRestOfTheWordList
-; defineConstString
+; define-constant-string
 
 :" The rest of the WordList is: "
 : String,append-word-description-to-here,TheRestOfTheWordList
-; defineConstString
+; define-constant-string
 
 
 : append-word-description-to-here
@@ -1149,7 +1149,7 @@ index->address said:
      The following unsign-number is not a index of the hash-table
      I will not touch it and call debuger.''
    --> "
-: String,index->address,error ; defineConstString
+: String,index->address,error ; define-constant-string
 
 : index->address (* index -- address *)
   dup Number-of-symbol-entrys >= if
@@ -1251,7 +1251,7 @@ index->address said:
     dup
       index->address One swap save
     xx|swap|x
-  defineConst
+  define-constant
   Exit
 ; define-function
 
@@ -1263,7 +1263,7 @@ index->address said:
     dup
       index->address Two swap save
     xx|swap|x
-  defineConst
+  define-constant
   Exit
 ; define-function
 
@@ -1286,7 +1286,7 @@ index->address said:
 ; define-function
 
 
-0 : Null ; defineConst
+0 : Null ; define-constant
 
 : null Null <null> Exit ; define-function
 
@@ -1360,7 +1360,7 @@ printTypeTag said:
      The following index is not a type-tag
      I will not touch it and call debuger.''
    --> "
-: String,printTypeTag,error ; defineConstString
+: String,printTypeTag,error ; define-constant-string
 
 : printTypeTag
   (* type-tag[index of hash-table] -- *)
@@ -1426,14 +1426,14 @@ printTypeTag said:
 ; define-function
 
 
-0 : offsetForHiddenWord          ; defineConst
-1 : offsetForDynamicVariableWord ; defineConst
+0 : offsetForHiddenWord          ; define-constant
+1 : offsetForDynamicVariableWord ; define-constant
 
 : dynamicVariableWord? (* word[address of link] -- True or False *)
     fetchWordType offsetForDynamicVariableWord fetch-bit one?
     Exit
 ; define-function
-Lambda-stack-top : LambdaStackPointer ; defineVar
+Lambda-stack-top : LambdaStackPointer ; define-variable
 
 : pushLambdaStack
   (* ArgumentStack::  value -->
@@ -1470,11 +1470,11 @@ Lambda-stack-top : LambdaStackPointer ; defineVar
    || n : substring  ||
  *)
 
-String-heap-1 : Variable,StringHeap,from ; defineVar
-String-heap-2 : Variable,StringHeap,to   ; defineVar
+String-heap-1 : Variable,StringHeap,from ; define-variable
+String-heap-2 : Variable,StringHeap,to   ; define-variable
 
-String-heap-1 : CurrFreeStringAddress,from ; defineVar
-String-heap-2 : CurrFreeStringAddress,to   ; defineVar
+String-heap-1 : CurrFreeStringAddress,from ; define-variable
+String-heap-2 : CurrFreeStringAddress,to   ; define-variable
 
 (*
  * little experiment:
@@ -1711,7 +1711,7 @@ String-heap-2 : CurrFreeStringAddress,to   ; defineVar
      But the type I received is the following,
      I will not touch it and call debuger.''
    --> "
-: String,clr,type-error ; defineConstString
+: String,clr,type-error ; define-constant-string
 : clr (* [address, <pair-like>] -- color-byte *)
   dup <not-pair-like>? if
     String,clr,type-error print-string
@@ -1728,7 +1728,7 @@ String-heap-2 : CurrFreeStringAddress,to   ; defineVar
      But the type I received is the following,
      I will not touch it and call debuger.''
    --> "
-: String,car,type-error ; defineConstString
+: String,car,type-error ; define-constant-string
 : car (* [address, <pair-like>] -- [value, type] *)
   dup <not-pair-like>? if
     String,car,type-error print-string
@@ -1745,7 +1745,7 @@ String-heap-2 : CurrFreeStringAddress,to   ; defineVar
      But the type I received is the following,
      I will not touch it and call debuger.''
    --> "
-: String,cdr,type-error ; defineConstString
+: String,cdr,type-error ; define-constant-string
 : cdr (* [address, <pair-like>] -- [value, type] *)
   dup <not-pair-like>? if
     String,cdr,type-error print-string
@@ -1755,13 +1755,13 @@ String-heap-2 : CurrFreeStringAddress,to   ; defineVar
   drop (* drop the type-tag *)
   Car-bytes-size + fetch2 Exit
 ; define-function
-0 : White ; defineConst
-1 : Black ; defineConst
+0 : White ; define-constant
+1 : Black ; define-constant
 
 (* set three offsets used by fetch-byte, set-bit, clear-bit *)
-0 : VariableColorOffsetForFinding  ; defineVar
-1 : VariableColorOffsetForMarking  ; defineVar
-2 : VariableColorOffsetForCleaning ; defineVar
+0 : VariableColorOffsetForFinding  ; define-variable
+1 : VariableColorOffsetForMarking  ; define-variable
+2 : VariableColorOffsetForCleaning ; define-variable
 : ColorOffsetForFinding  VariableColorOffsetForFinding  fetch Exit ; define-function
 : ColorOffsetForMarking  VariableColorOffsetForMarking  fetch Exit ; define-function
 : ColorOffsetForCleaning VariableColorOffsetForCleaning fetch Exit ; define-function
@@ -1772,7 +1772,7 @@ String-heap-2 : CurrFreeStringAddress,to   ; defineVar
      it will be as the following,
      I will not touch it and call debuger.''
    --> "
-: String,set-clr!,type-error ; defineConstString
+: String,set-clr!,type-error ; define-constant-string
 : set-clr! (* [address, <pair-like>], color-byte -- [address, <pair-like>] *)
   over dup  <not-pair-like>? if
     String,set-clr!,type-error print-string
@@ -1802,7 +1802,7 @@ String-heap-2 : CurrFreeStringAddress,to   ; defineVar
      But the type I received is the following,
      I will not touch it and call debuger.''
    --> "
-: String,try,white->grey,type-error ; defineConstString
+: String,try,white->grey,type-error ; define-constant-string
 : try,white->grey (* [address, <pair-like>] -- [address, <pair-like>] *)
   dup <not-pair-like>? if
     String,try,white->grey,type-error print-string
@@ -1889,7 +1889,7 @@ String-heap-2 : CurrFreeStringAddress,to   ; defineVar
      it will be as the following,
      I will not touch it and call debuger.''
    --> "
-: String,set-car!,type-error ; defineConstString
+: String,set-car!,type-error ; define-constant-string
 
 : set-car!
   (* [address, <pair-like>], [valus, type] -- [address, <pair-like>] *)
@@ -1913,7 +1913,7 @@ String-heap-2 : CurrFreeStringAddress,to   ; defineVar
      it will be as the following,
      I will not touch it and call debuger.''
    --> "
-: String,set-cdr!,type-error ; defineConstString
+: String,set-cdr!,type-error ; define-constant-string
 
 : set-cdr!
   (* [address, <pair-like>], [valus, type] -- [address, <pair-like>] *)
@@ -1940,7 +1940,7 @@ String-heap-2 : CurrFreeStringAddress,to   ; defineVar
      it will be as the following,
      I will not touch it and call debuger.''
    --> "
-: String,[cons,car]!,type-error ; defineConstString
+: String,[cons,car]!,type-error ; define-constant-string
 
 : [cons,car]!
   (* [address, <pair-like>], [valus, type] -- [address, <pair-like>] *)
@@ -1964,7 +1964,7 @@ String-heap-2 : CurrFreeStringAddress,to   ; defineVar
      it will be as the following,
      I will not touch it and call debuger.''
    --> "
-: String,[cons,cdr]!,type-error ; defineConstString
+: String,[cons,cdr]!,type-error ; define-constant-string
 
 : [cons,cdr]!
   (* [address, <pair-like>], [valus, type] -- [address, <pair-like>] *)
@@ -1991,7 +1991,7 @@ String-heap-2 : CurrFreeStringAddress,to   ; defineVar
      it will be as the following,
      I will not touch it and call debuger.''
    --> "
-: String,[car,cons]!,type-error ; defineConstString
+: String,[car,cons]!,type-error ; define-constant-string
 
 : [car,cons]!
   (* [value, type], [address, <pair-like>] -- [address, <pair-like>] *)
@@ -2016,7 +2016,7 @@ String-heap-2 : CurrFreeStringAddress,to   ; defineVar
      it will be as the following,
      I will not touch it and call debuger.''
    --> "
-: String,[cdr,cons]!,type-error ; defineConstString
+: String,[cdr,cons]!,type-error ; define-constant-string
 
 : [cdr,cons]!
   (* [value, type], [address, <pair-like>] -- [address, <pair-like>] *)
@@ -2242,10 +2242,10 @@ String-heap-2 : CurrFreeStringAddress,to   ; defineVar
 
 
 :"  :gc: "
-: String,gc ; defineConstString
+: String,gc ; define-constant-string
 
 :" cons said: ``Memory for cons is used up! No value is returned!''"
-: String,cons,MemoryIsUsedUp ; defineConstString
+: String,cons,MemoryIsUsedUp ; define-constant-string
 
 : cons (* -- [address, <pair>] *)
     Current-free-pair-construction fetch <pair> (* leave the return <value> *)
@@ -2288,7 +2288,7 @@ String-heap-2 : CurrFreeStringAddress,to   ; defineVar
      But the type I received is the following,
      I will not touch it and call debuger.''
    --> "
-: String,write-string,type-error ; defineConstString
+: String,write-string,type-error ; define-constant-string
 
 : write-string (* [address, <string>] -- *)
   dup <string> =/= if
@@ -2347,32 +2347,32 @@ String-heap-2 : CurrFreeStringAddress,to   ; defineVar
     ask-for-lots-of-cons,leave-them-on-the-ArgumentStack
     Exit
 ; defineRecursiveFunction
-:" {" : String,begining-list ; defineConstString
-:" }" : String,ending-list   ; defineConstString
+:" {" : String,begining-list ; define-constant-string
+:" }" : String,ending-list   ; define-constant-string
 
-:" ." : String,dot           ; defineConstString
+:" ." : String,dot           ; define-constant-string
 
-:" (esc" : String,begining-list-escape ; defineConstString
-:" )"    : String,ending-list-escape   ; defineConstString
+:" (esc" : String,begining-list-escape ; define-constant-string
+:" )"    : String,ending-list-escape   ; define-constant-string
 
-:" [" : String,begining-*dalin ; defineConstString
-:" ]" : String,ending-*dalin   ; defineConstString
+:" [" : String,begining-*dalin ; define-constant-string
+:" ]" : String,ending-*dalin   ; define-constant-string
 
-:" (" : String,begining-wodyli ; defineConstString
-:" )" : String,ending-wodyli   ; defineConstString
-:" write-list"    : String,write-list   ; defineConstString
-:" write-*dalin"  : String,write-*dalin ; defineConstString
-:" write-wodyli"  : String,write-wodyli ; defineConstString
+:" (" : String,begining-wodyli ; define-constant-string
+:" )" : String,ending-wodyli   ; define-constant-string
+:" write-list"    : String,write-list   ; define-constant-string
+:" write-*dalin"  : String,write-*dalin ; define-constant-string
+:" write-wodyli"  : String,write-wodyli ; define-constant-string
 :" write-wody-or-bound-variable"
-: String,write-wody-or-bound-variable ; defineConstString
+: String,write-wody-or-bound-variable ; define-constant-string
 
-:" null"  : String,null ; defineConstString
+:" null"  : String,null ; define-constant-string
 
 :" write said:
    ``I do not know how to write the following type of value,
      I will not touch it and call debuger.''
    --> "
-: String,write,type-error ; defineConstString
+: String,write,type-error ; define-constant-string
 
 : write (* [value, type] -- *)
   dup <fixnum> == if drop (* drop type-tag *)
@@ -2515,7 +2515,7 @@ String-heap-2 : CurrFreeStringAddress,to   ; defineVar
      But the 1st argument is the following
      I will not touch it and call debuger.''
    --> "
-: String,write-list,type-error ; defineConstString
+: String,write-list,type-error ; define-constant-string
 
 : write-list (* [address, <list>] -- *)
   dup <list> =/= if
@@ -2533,7 +2533,7 @@ String-heap-2 : CurrFreeStringAddress,to   ; defineVar
      But the type I received is the following,
      I will not touch it and call debuger.''
    --> "
-: String,set-car-to-{car}!,type-error ; defineConstString
+: String,set-car-to-{car}!,type-error ; define-constant-string
 (* [car.cdr]->[[car].cdr] *)
 : set-car-to-{car}!
   (* [address, <pair-like>] -- [address, <pair-like>] *)
@@ -2556,7 +2556,7 @@ String-heap-2 : CurrFreeStringAddress,to   ; defineVar
      But the type I received is the following,
      I will not touch it and call debuger.''
    --> "
-: String,set-car-to-{cdr}!,type-error ; defineConstString
+: String,set-car-to-{cdr}!,type-error ; define-constant-string
 (* [car.cdr]->[car.[cdr]] *)
 : set-cdr-to-{cdr}!
   (* [address, <pair-like>] -- [address, <pair-like>] *)
@@ -2583,7 +2583,7 @@ String-heap-2 : CurrFreeStringAddress,to   ; defineVar
      It will be the following,
      I will not touch it and call debuger.''
    --> "
-: String,set-car-to-{car.x}!,type-error ; defineConstString
+: String,set-car-to-{car.x}!,type-error ; define-constant-string
 
 : set-car-to-{car.x}!
   (* [address, <pair-like>], [value, type] -- [address, <pair-like>] *)
@@ -2608,7 +2608,7 @@ String-heap-2 : CurrFreeStringAddress,to   ; defineVar
      It will be the following,
      I will not touch it and call debuger.''
    --> "
-: String,set-car-to-{cdr.x}!,type-error ; defineConstString
+: String,set-car-to-{cdr.x}!,type-error ; define-constant-string
 
 (* [car.cdr],x->[car.[cdr.x]]! *)
 : set-cdr-to-{cdr.x}!
@@ -2634,7 +2634,7 @@ String-heap-2 : CurrFreeStringAddress,to   ; defineVar
      It will be the following,
      I will not touch it and call debuger.''
    --> "
-: String,set-car-to-{x.car}!,type-error ; defineConstString
+: String,set-car-to-{x.car}!,type-error ; define-constant-string
 
 : set-car-to-{x.car}!
   (* [address, <pair-like>], [value, type] -- [address, <pair-like>] *)
@@ -2659,7 +2659,7 @@ String-heap-2 : CurrFreeStringAddress,to   ; defineVar
      It will be the following,
      I will not touch it and call debuger.''
    --> "
-: String,set-car-to-{x.cdr}!,type-error ; defineConstString
+: String,set-car-to-{x.cdr}!,type-error ; define-constant-string
 
 : set-cdr-to-{x.cdr}!
   (* [address, <pair-like>], [value, type] -- [address, <pair-like>] *)
@@ -2680,7 +2680,7 @@ String-heap-2 : CurrFreeStringAddress,to   ; defineVar
      But the type I received is the following,
      I will not touch it and call debuger.''
    --> "
-: String,<-,type-error ; defineConstString
+: String,<-,type-error ; define-constant-string
 
 : <- (* [address, <dalin-like>] -- [address, <dalin>] *)
   dup <not-dalin-like>? if
@@ -2697,7 +2697,7 @@ String-heap-2 : CurrFreeStringAddress,to   ; defineVar
      But the type I received is the following,
      I will not touch it and call debuger.''
    --> "
-: String,->,type-error ; defineConstString
+: String,->,type-error ; define-constant-string
 
 : -> (* [address, <dalin-like>] -- [address, <dalin>] *)
   dup <not-dalin-like>? if
@@ -2739,7 +2739,7 @@ String-heap-2 : CurrFreeStringAddress,to   ; defineVar
      But the type I received is the following,
      I will not touch it and call debuger.''
    --> "
-: String,list->*dalin*,type-error ; defineConstString
+: String,list->*dalin*,type-error ; define-constant-string
 
 : list->*dalin*
   (* [address, <list>] -- head[address, <dalin>], tail[address, <dalin>] *)
@@ -2761,7 +2761,7 @@ String-heap-2 : CurrFreeStringAddress,to   ; defineVar
      But the type I received is the following,
      I will not touch it and call debuger.''
    --> "
-: String,list->dalin*,type-error ; defineConstString
+: String,list->dalin*,type-error ; define-constant-string
 
 : list->dalin*
   (* [address, <list>] -- tail[address, <dalin>] *)
@@ -2782,7 +2782,7 @@ String-heap-2 : CurrFreeStringAddress,to   ; defineVar
      But the type I received is the following,
      I will not touch it and call debuger.''
    --> "
-: String,list->*dalin,type-error ; defineConstString
+: String,list->*dalin,type-error ; define-constant-string
 
 : list->*dalin
   (* [address, <list>] -- head[address, <dalin>] *)
@@ -2843,7 +2843,7 @@ String-heap-2 : CurrFreeStringAddress,to   ; defineVar
      But the type I received is the following,
      I will not touch it and call debuger.''
    --> "
-: String,nested-list->*dalin,type-error ; defineConstString
+: String,nested-list->*dalin,type-error ; define-constant-string
 
 : nested-list->*dalin
   (* [address, <list>] -- head[address, <dalin>] *)
@@ -2865,7 +2865,7 @@ String-heap-2 : CurrFreeStringAddress,to   ; defineVar
      But the type I received is the following,
      I will not touch it and call debuger.''
    --> "
-: String,dalin->tail,type-error ; defineConstString
+: String,dalin->tail,type-error ; define-constant-string
 
 : dalin->tail
   (* [address, <dalin-like>] -- tail[address, <dalin-like>] *)
@@ -2888,7 +2888,7 @@ String-heap-2 : CurrFreeStringAddress,to   ; defineVar
      But the type I received is the following,
      I will not touch it and call debuger.''
    --> "
-: String,head<-dalin,type-error ; defineConstString
+: String,head<-dalin,type-error ; define-constant-string
 
 : head<-dalin
   (* [address, <dalin-like>] -- head[address, <dalin-like>] *)
@@ -2911,7 +2911,7 @@ String-heap-2 : CurrFreeStringAddress,to   ; defineVar
      I will not touch it and call debuger.''
    --> "
 : String,[value,dalin]-associate,type-error,at-first
-; defineConstString
+; define-constant-string
 
 :" [value,dalin]-associate said:
    ``My function-type is
@@ -2923,7 +2923,7 @@ String-heap-2 : CurrFreeStringAddress,to   ; defineVar
      I will not touch it and call debuger''
    --> "
 : String,[value,dalin]-associate,type-error,in-the-middle
-; defineConstString
+; define-constant-string
 
 : help,[value,dalin]-associate
   (* [value, type], head[address, <dalin-like>], or [Null, <null>] --
@@ -2982,7 +2982,7 @@ String-heap-2 : CurrFreeStringAddress,to   ; defineVar
      it will be as the following,
      I will not touch it and call debuger.''
    --> "
-: String,^_^,1st-type-error ; defineConstString
+: String,^_^,1st-type-error ; define-constant-string
 
 :" ^_^ said:
    ``My function-type is
@@ -2992,7 +2992,7 @@ String-heap-2 : CurrFreeStringAddress,to   ; defineVar
      it will be as the following,
      I will not touch it and call debuger.''
    --> "
-: String,^_^,3rd-type-error ; defineConstString
+: String,^_^,3rd-type-error ; define-constant-string
 
 
 (* the following ``little-smile-face'' is ``link-dalin'' *)
@@ -3072,7 +3072,7 @@ String-heap-2 : CurrFreeStringAddress,to   ; defineVar
      But the 1st argument is the following
      I will not touch it and call debuger.''
    --> "
-: String,write-*dalin,type-error ; defineConstString
+: String,write-*dalin,type-error ; define-constant-string
 
 : write-*dalin (* [address, <dalin>] -- *)
   dup <dalin> =/= if
@@ -3220,14 +3220,14 @@ String-heap-2 : CurrFreeStringAddress,to   ; defineVar
      the following is what I found
      I will not touch it and call debuger''
    --> "
-: String,stack<-FIAF-list,error ; defineConstString
+: String,stack<-FIAF-list,error ; define-constant-string
 
 :" stack<-FIAF-list said:
    ``My function type is (* [address, <list>] -- ... *)
      But the type I received is the following,
      I will not touch it and call debuger.''
    --> "
-: String,stack<-FIAF-list,type-error ; defineConstString
+: String,stack<-FIAF-list,type-error ; define-constant-string
 
 : help,stack<-FIAF-list
   (* -- ... *)
@@ -3310,7 +3310,7 @@ symbolDenoteBoundVariableOne? said:
      But the type I received is the following,
      I will not touch it and call debuger.''
    --> "
-: String,symbolDenoteBoundVariableOne?,type-error ; defineConstString
+: String,symbolDenoteBoundVariableOne?,type-error ; define-constant-string
 : symbolDenoteBoundVariableOne?
   (* [index, <symbol>] -- True or False *)
   dup <symbol> =/= if
@@ -3344,7 +3344,7 @@ symbolDenoteBoundVariableTwo? said:
      But the type I received is the following,
      I will not touch it and call debuger.''
    --> "
-: String,symbolDenoteBoundVariableTwo?,type-error ; defineConstString
+: String,symbolDenoteBoundVariableTwo?,type-error ; define-constant-string
 : symbolDenoteBoundVariableTwo?
   (* [index, <symbol>] -- True or False *)
   dup <symbol> =/= if
@@ -3379,7 +3379,7 @@ symbolDenoteBoundVariableThree? said:
      But the type I received is the following,
      I will not touch it and call debuger.''
    --> "
-: String,symbolDenoteBoundVariableThree?,type-error ; defineConstString
+: String,symbolDenoteBoundVariableThree?,type-error ; define-constant-string
 : symbolDenoteBoundVariableThree?
   (* [index, <symbol>] -- True or False *)
   dup <symbol> =/= if
@@ -3413,7 +3413,7 @@ symbolDenoteBoundVariableFour? said:
      But the type I received is the following,
      I will not touch it and call debuger.''
    --> "
-: String,symbolDenoteBoundVariableFour?,type-error ; defineConstString
+: String,symbolDenoteBoundVariableFour?,type-error ; define-constant-string
 : symbolDenoteBoundVariableFour?
   (* [index, <symbol>] -- True or False *)
   dup <symbol> =/= if
@@ -3453,7 +3453,7 @@ symbolDenoteBoundVariable? said:
      But the type I received is the following,
      I will not touch it and call debuger.''
    --> "
-: String,symbolDenoteBoundVariable?,type-error ; defineConstString
+: String,symbolDenoteBoundVariable?,type-error ; define-constant-string
 : symbolDenoteBoundVariable?
   (* [index, <symbol>] -- True or False *)
   dup <symbol> =/= if
@@ -3495,7 +3495,7 @@ symbolDenoteWody? said:
      But the type I received is the following,
      I will not touch it and call debuger.''
    --> "
-: String,symbolDenoteWody?,type-error ; defineConstString
+: String,symbolDenoteWody?,type-error ; define-constant-string
 : symbolDenoteWody?
   (* [index, <symbol>] -- True or False *)
   dup <symbol> =/= if
@@ -3526,7 +3526,7 @@ symbolDenoteLambdaArgumentOne? said:
      But the type I received is the following,
      I will not touch it and call debuger.''
    --> "
-: String,symbolDenoteLambdaArgumentOne?,type-error ; defineConstString
+: String,symbolDenoteLambdaArgumentOne?,type-error ; define-constant-string
 : symbolDenoteLambdaArgumentOne?
   (* [index, <symbol>] -- True or False *)
   dup <symbol> =/= if
@@ -3560,7 +3560,7 @@ symbolDenoteLambdaArgumentTwo? said:
      But the type I received is the following,
      I will not touch it and call debuger.''
    --> "
-: String,symbolDenoteLambdaArgumentTwo?,type-error ; defineConstString
+: String,symbolDenoteLambdaArgumentTwo?,type-error ; define-constant-string
 : symbolDenoteLambdaArgumentTwo?
   (* [index, <symbol>] -- True or False *)
   dup <symbol> =/= if
@@ -3595,7 +3595,7 @@ symbolDenoteLambdaArgumentThree? said:
      But the type I received is the following,
      I will not touch it and call debuger.''
    --> "
-: String,symbolDenoteLambdaArgumentThree?,type-error ; defineConstString
+: String,symbolDenoteLambdaArgumentThree?,type-error ; define-constant-string
 : symbolDenoteLambdaArgumentThree?
   (* [index, <symbol>] -- True or False *)
   dup <symbol> =/= if
@@ -3630,7 +3630,7 @@ symbolDenoteLambdaArgumentFour? said:
      But the type I received is the following,
      I will not touch it and call debuger.''
    --> "
-: String,symbolDenoteLambdaArgumentFour?,type-error ; defineConstString
+: String,symbolDenoteLambdaArgumentFour?,type-error ; define-constant-string
 : symbolDenoteLambdaArgumentFour?
   (* [index, <symbol>] -- True or False *)
   dup <symbol> =/= if
@@ -3669,7 +3669,7 @@ symbolDenoteLambdaArgument? said:
      But the type I received is the following,
      I will not touch it and call debuger.''
    --> "
-: String,symbolDenoteLambdaArgument?,type-error ; defineConstString
+: String,symbolDenoteLambdaArgument?,type-error ; define-constant-string
 : symbolDenoteLambdaArgument?
   (* [index, <symbol>] -- True or False *)
   dup <symbol> =/= if
@@ -3740,7 +3740,7 @@ symbolDenoteLambdaArgument? said:
      But the following is what I meet
      I will not touch it and call debuger''
    --> "
-: String,help,read-wodyli,error ; defineConstString
+: String,help,read-wodyli,error ; define-constant-string
 
 (* a ``with-word'' reader *)
 : help,read-wodyli
@@ -3801,7 +3801,7 @@ symbolDenoteLambdaArgument? said:
      But the 1st argument is the following
      I will not touch it and call debuger.''
    --> "
-: String,write-wody-or-bound-variable,type-error ; defineConstString
+: String,write-wody-or-bound-variable,type-error ; define-constant-string
 
 : write-wody-or-bound-variable
   (* [address, <wody> or <bound-variable>] -- *)
@@ -3836,7 +3836,7 @@ symbolDenoteLambdaArgument? said:
      But the 1st argument is the following
      I will not touch it and call debuger.''
    --> "
-: String,write-wodyli,type-error ; defineConstString
+: String,write-wodyli,type-error ; define-constant-string
 
 : write-wodyli
   (* [address, <wodyli>] -- *)
@@ -4109,10 +4109,10 @@ symbolREPL
  * . (\* 666 *\)
  *)
 :" lambda" string-hash->index
-: SymbolIndex,lambda ; defineConst
+: SymbolIndex,lambda ; define-constant
 
 :" λ" string-hash->index
-: SymbolIndex,λ ; defineConst
+: SymbolIndex,λ ; define-constant
 
 
 (* the following two functions are side-effects through a dalin
@@ -4282,7 +4282,7 @@ symbolREPL
      But the 1st argument is the following
      I will not touch it and call debuger''
    --> "
-: String,lambda,type-error,1st ; defineConstString
+: String,lambda,type-error,1st ; define-constant-string
 
 :" lambda said:
    ``My function type is
@@ -4292,7 +4292,7 @@ symbolREPL
      The 1st argument is a wodyli but not a bound-variable-wodyli
      I will not touch it and call debuger''"
 : String,lambda,type-error,1st,not-bound-variable-wodyli
-; defineConstString
+; define-constant-string
 
 :" lambda said:
    ``My function type is
@@ -4302,7 +4302,7 @@ symbolREPL
      But the 3rd argument is the following
      I will not touch it and call debuger''
    --> "
-: String,lambda,type-error,3rd ; defineConstString
+: String,lambda,type-error,3rd ; define-constant-string
 
 : lambda
   (* [address, <dalin>], [address, <wodyli>] -- [address, <lambda>] *)
@@ -4408,7 +4408,7 @@ null : lambda-body-stack ; define
      I will not touch it and call debuger''
    --> "
 : String,help,apply,eval-lambda-body,error,symbol
-; defineConstString
+; define-constant-string
 
 : help,apply,eval-lambda-body
   (* unknow -- unknow *)
@@ -4520,7 +4520,7 @@ null : lambda-body-stack ; define
      But the value in the LambdaStack is of the following type
      I will not touch it and call debuger''
    --> "
-: String,apply,type-error ; defineConstString
+: String,apply,type-error ; define-constant-string
 : apply
   (* LambdaStack::  [address, <lambda>] -- unknow *)
   (* ArgumentStack::  ..., [address, <lambda-argument>] -- unknow *)
@@ -4550,7 +4550,7 @@ null : lambda-body-stack ; define
   ready apply Exit
 ; define-function
 :" yes"
-: String,yes ; defineConstString
+: String,yes ; define-constant-string
 : ok (* -- *)
   String,yes print-string
   writeSpace
@@ -4558,7 +4558,7 @@ null : lambda-body-stack ; define
 ; define-function
 
 :" byebye ^_^"
-: String,byebye ; defineConstString
+: String,byebye ; define-constant-string
 (*
  * : bye (\* -- THE END *\)
  *   writeSpace
@@ -4568,7 +4568,7 @@ null : lambda-body-stack ; define
  * ; define-function
  *)
 :"    welcome to cicada ^_^"
-: String,welcome ; defineConstString
+: String,welcome ; define-constant-string
 : welcome (* -- *)
   String,welcome print-string cr
   Exit
