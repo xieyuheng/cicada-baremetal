@@ -4125,14 +4125,14 @@ defConst "TheLatestWordInAssembly", 0, TheLatestWordInAssembly
    #+end_src
 ** test
    #+begin_src cicada
-   : factorial (* n -- n! *)
+   : factorial 
+     (* n -- n! *)
      dup one? if
        Exit
      then
      dup sub1 factorial * Exit
    ; defineRecursiveFunction
-    
-    
+     
     
    1 factorial .
    2 factorial .

@@ -1,7 +1,7 @@
 WARNING
 ======================================
 system is very unstable currently,
-please do NOT use it for something that require stability.
+please do NOT use it for something that requires stability.
 
 what is cicada ?
 ======================================
@@ -25,7 +25,8 @@ operating system for x86_64 : ``architecturals/x86-64/``
 
 how to install and run ?
 ======================================
-please read the Makefile.
+please type ``make help`` or just ``make``
+or read the Makefile.
 
 where can I find more documentations ?
 ======================================

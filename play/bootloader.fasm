@@ -20,6 +20,7 @@ org 7c00h
 
         jmp short start
         nop
+
 ;; basic information about the FAT file system
 
 DiskNameString db "cicada  "

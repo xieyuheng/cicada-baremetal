@@ -6,12 +6,11 @@
 * ==================================================
 * TODO
   1. in lmode, how to set up the "attributes-and-type" field in an entry of IDT ?
-  1. SMP support
-  2. learn more from baremetal-OS
-  3. convert the code about storage & BMFS from old-asm to forth-like-asm
+  2. SMP support
+  3. learn more from baremetal-OS
+  4. convert the code about storage & BMFS from old-asm to forth-like-asm
      to examine the bug of "readsectors"
-  4. fix "bye"
-  5. fix the IO of baremetal-OS
+  5. fix "bye"
   6. design game-like UI in text mode
   7. add GPT support
      to let cicada-OS to be able to installed along with linux
@@ -960,27 +959,27 @@
                 jmp cicada
         #+end_src
 *** create_gate
-        #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
-        align 16
-        ; create_gate
-        ; rax = address of handler
-        ; rdi = gate # to configure
-        create_gate:
-                push rdi
-                push rax
+    #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+    align 16
+    ; create_gate
+    ; rax = address of handler
+    ; rdi = gate # to configure
+    create_gate:
+            push rdi
+            push rax
 
-                shl rdi, 4                      ; quickly multiply rdi by 16
-                stosw                           ; store the low word (15..0)
-                shr rax, 16
-                add rdi, 4                      ; skip the gate marker
-                stosw                           ; store the high word (31..16)
-                shr rax, 16
-                stosd                           ; store the high dword (63..32)
+            shl rdi, 4                      ; quickly multiply rdi by 16
+            stosw                           ; store the low word (15..0)
+            shr rax, 16
+            add rdi, 4                      ; skip the gate marker
+            stosw                           ; store the high word (31..16)
+            shr rax, 16
+            stosd                           ; store the high dword (63..32)
 
-                pop rax
-                pop rdi
-                ret
-        #+end_src
+            pop rax
+            pop rdi
+            ret
+    #+end_src
 *** IDT
         #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
         align 16
@@ -1453,30 +1452,30 @@
 *** stack processing
 **** drop & dup
          #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
-         defCode "drop", drop
-        ;; (* a -- *)
-        popArgumentStack rax
-        next
+          defCode "drop", drop
+         ;; (* a -- *)
+         popArgumentStack rax
+         next
 
-         defCode "drop2", drop2
-        ;; (* a b -- *)
-        popArgumentStack rax
-        popArgumentStack rax
-        next
+          defCode "drop2", drop2
+         ;; (* a b -- *)
+         popArgumentStack rax
+         popArgumentStack rax
+         next
 
-         defCode "dup", dup
-        ;; (* a -- a a *)
-        mov  rax, [ArgumentStackPointer]
-        pushArgumentStack rax
-        next
+          defCode "dup", dup
+         ;; (* a -- a a *)
+         mov  rax, [ArgumentStackPointer]
+         pushArgumentStack rax
+         next
 
-         defCode "dup2", dup2
-        ;; (* a b -- a b a b *)
-        mov  rbx, [ArgumentStackPointer]
-        mov  rax, [ArgumentStackPointer + CellWidth]
-        pushArgumentStack rax
-        pushArgumentStack rbx
-        next
+          defCode "dup2", dup2
+         ;; (* a b -- a b a b *)
+         mov  rbx, [ArgumentStackPointer]
+         mov  rax, [ArgumentStackPointer + CellWidth]
+         pushArgumentStack rax
+         pushArgumentStack rbx
+         next
          #+end_src
 **** over
          #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
@@ -3612,26 +3611,26 @@
          ;; (* ok (* ok *) ok *) ok
          #+end_src
 **** readWordListForLexicographer
-         #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
-         ;; a WordList (unit : CellWidth = 8 bytes)
-         ;;   ||  1 : length-of-Word-1     ||
-         ;;   ||  a : Word-1--as-a-string  ||
-         ;;   ||  1 : length-of-Word-2     ||
-         ;;   ||  b : Word-2--as-a-string  ||
-         ;;   ...
+     #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+     ;; a WordList (unit : CellWidth = 8 bytes)
+     ;;   ||  1 : length-of-Word-1     ||
+     ;;   ||  a : Word-1--as-a-string  ||
+     ;;   ||  1 : length-of-Word-2     ||
+     ;;   ||  b : Word-2--as-a-string  ||
+     ;;   ...
 
-         ;; note that:
-         ;;    Subsequent calls will overwrite BufferForReadWordListForLexicographer
+     ;; note that:
+     ;;    Subsequent calls will overwrite BufferForReadWordListForLexicographer
 
-         ;; BufferForReadWordListForLexicographer:
-         ;;    rb 1024*1024
+     ;; BufferForReadWordListForLexicographer:
+     ;;    rb 1024*1024
 
-         defConstString "Ending-word-list", ";", EndingWordList
-         defConstString "Chinese-ending-word-list", "者", ChineseEndingWordList
+     defConstString "Ket:cosemi", ";", Ket_cosemi
+     defConstString "Ket:fuzhe", "者", Ket_fuzhe
 
-         defVar "Next-word-for-read-word-list-for-lexicographer", BufferForReadWordListForLexicographer, NextWordForReadWordListForLexicographer
+     defVar "Next-word-for-read-word-list-for-lexicographer", BufferForReadWordListForLexicographer, NextWordForReadWordListForLexicographer
 
-         defWord "read-word-list-for-lexicographer", readWordListForLexicographer
+     defWord "read-word-list-for-lexicographer", readWordListForLexicographer
         ;; (* read a WordList from stdin (ForLexicographer) *)
         ;; (* -- wordList[address, the number of words] *)
 
@@ -3651,32 +3650,32 @@
         xx drop2, ignoreComment, branch, -9
 
         xx dup2
-        xx EndingWordList, equalString?, false?branch, 3
+        xx Ket_cosemi, equalString?, false?branch, 3
         xx drop2
         xx Exit
 
         xx dup2
-        xx ChineseEndingWordList, equalString?, false?branch, 3
+        xx Ket_fuzhe, equalString?, false?branch, 3
         xx drop2
         xx Exit
 
         xx addWordToListForLexicographer
         xx add1
         xx branch, -27
-         defWordEnd readWordListForLexicographer
+     defWordEnd readWordListForLexicographer
 
-         defWord ":", BeginningWordForReadWordListForLexicographer
+     defWord ":", readWordListForLexicographer_Bra_cosemi
         xx readWordListForLexicographer
         xx Exit
-         defWordEnd BeginningWordForReadWordListForLexicographer
+     defWordEnd readWordListForLexicographer_Bra_cosemi
 
-         defWord "夫", ChineseBeginningWordForReadWordListForLexicographer
+     defWord "夫", readWordListForLexicographer_Bra_fuzhe
         xx readWordListForLexicographer
         xx Exit
-         defWordEnd ChineseBeginningWordForReadWordListForLexicographer
+     defWordEnd readWordListForLexicographer_Bra_fuzhe
 
 
-         defWord "add-word-to-list-for-lexicographer", addWordToListForLexicographer
+     defWord "add-word-to-list-for-lexicographer", addWordToListForLexicographer
         ;; ( wordString[address, length] -- )
         ;; leave a length behind, for update NextWordForReadWordListForLexicographer at the end
         xx dup, xxswapx
@@ -3689,8 +3688,8 @@
         ;; update NextWordForReadWordListForLexicographer again
         xx NextWordForReadWordListForLexicographer, addSave
         xx Exit
-         defWordEnd addWordToListForLexicographer
-         #+end_src
+     defWordEnd addWordToListForLexicographer
+     #+end_src
 *** >< file
 ** misc
    #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
@@ -3774,12 +3773,12 @@
           xx   wordLinkToWordExplainer, execute
           xx   Exit
           xx drop ;; drop zore
-          xx String_undefined_word, printString
+          xx Message_undefined_word, printString
           xx printString, printNewline
           xx Exit
    defWordEnd executeWord
 
-   defConstString "String,undefined-word", "   UNDEFINED WORD: ", String_undefined_word
+   defConstString "Message:undefined-word", "   UNDEFINED WORD: ", Message_undefined_word
    #+end_src
 ** assemblyDebug
    #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
