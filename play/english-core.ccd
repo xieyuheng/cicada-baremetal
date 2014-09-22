@@ -221,42 +221,42 @@
 
 : append-word-description-to-here,with-if&then
   (* wordList[address, the number of words] -- *)
-    dup zero? false?branch 3
-      drop2 Exit
+  dup zero? false?branch 3
+    drop2 Exit
 
-    tail-and-head-of-word-list
+  tail-and-head-of-word-list
 
-    dup2 Key-word:if equal-string? false?branch 12
-      drop2
-      literal false?branch append-number-to-here
-      Here fetch xx|swap|x
-      Zero append-number-to-here (* leave a place *)
-      append-word-description-to-here,with-if&then Exit
+  dup2 Key-word:if equal-string? false?branch 12
+    drop2
+    literal false?branch append-number-to-here
+    Here fetch xx|swap|x
+    Zero append-number-to-here (* leave a place *)
+    append-word-description-to-here,with-if&then Exit
 
-    dup2 Key-word:then equal-string? false?branch 13
-      drop2
-      x|swap|xx
-      Here fetch over -  Cell-width /
-      swap save
-      append-word-description-to-here,with-if&then Exit
+  dup2 Key-word:then equal-string? false?branch 13
+    drop2
+    x|swap|xx
+    Here fetch over -  Cell-width /
+    swap save
+    append-word-description-to-here,with-if&then Exit
 
-    dup2 string-denote-number? false?branch 6
-      number drop append-number-to-here
-      append-word-description-to-here,with-if&then Exit
+  dup2 string-denote-number? false?branch 6
+    number drop append-number-to-here
+    append-word-description-to-here,with-if&then Exit
 
-      find word-link->word-explainer append-number-to-here
-      append-word-description-to-here,with-if&then Exit
+    find word-link->word-explainer append-number-to-here
+    append-word-description-to-here,with-if&then Exit
 ; define-recursive-function
 
 : define-recursive-function,with-if&then
   (* wordList[address, the number of words] -- *)
-    tail-and-head-of-word-list
-    create-word-header-for-function
-    set-size-of-function-body
-    add-new-word-to-dictionary
-    Function-body-explainer append-number-to-here
-    append-word-description-to-here,with-if&then
-    Exit
+  tail-and-head-of-word-list
+  create-word-header-for-function
+  set-size-of-function-body
+  add-new-word-to-dictionary
+  Function-body-explainer append-number-to-here
+  append-word-description-to-here,with-if&then
+  Exit
 ; define-function
 
 
@@ -264,40 +264,40 @@
 
 : append-word-description-to-here
   (* wordList[address, the number of words] -- *)
-    dup zero? if
-      drop2 Exit
-    then
-    tail-and-head-of-word-list
-    dup2 Key-word:if equal-string? if
-      drop2
-      literal false?branch append-number-to-here
-      Here fetch xx|swap|x
-      Zero append-number-to-here (* leave a place *)
-      append-word-description-to-here Exit
-    then
-    dup2 Key-word:else equal-string? if
-      drop2
-      literal branch append-number-to-here
-      Here fetch xxx|swap|x
-      Zero append-number-to-here (* leave a place *)
-      x|swap|xx
-      Here fetch over -  Cell-width /
-      swap save
-      append-word-description-to-here Exit
-    then
-    dup2 Key-word:then equal-string? if
-      drop2
-      x|swap|xx
-      Here fetch over -  Cell-width /
-      swap save
-      append-word-description-to-here Exit
-    then
-    dup2 string-denote-number? if
-      number drop append-number-to-here
-      append-word-description-to-here Exit
-    then
-      find word-link->word-explainer append-number-to-here
-      append-word-description-to-here Exit
+  dup zero? if
+    drop2 Exit
+  then
+  tail-and-head-of-word-list
+  dup2 Key-word:if equal-string? if
+    drop2
+    literal false?branch append-number-to-here
+    Here fetch xx|swap|x
+    Zero append-number-to-here (* leave a place *)
+    append-word-description-to-here Exit
+  then
+  dup2 Key-word:else equal-string? if
+    drop2
+    literal branch append-number-to-here
+    Here fetch xxx|swap|x
+    Zero append-number-to-here (* leave a place *)
+    x|swap|xx
+    Here fetch over -  Cell-width /
+    swap save
+    append-word-description-to-here Exit
+  then
+  dup2 Key-word:then equal-string? if
+    drop2
+    x|swap|xx
+    Here fetch over -  Cell-width /
+    swap save
+    append-word-description-to-here Exit
+  then
+  dup2 string-denote-number? if
+    number drop append-number-to-here
+    append-word-description-to-here Exit
+  then
+    find word-link->word-explainer append-number-to-here
+    append-word-description-to-here Exit
 ; define-recursive-function,with-if&then
 
 
@@ -305,25 +305,25 @@
 
 : define-function
   (* wordList[address, the number of words] -- *)
-    tail-and-head-of-word-list
-    create-word-header-for-function
-    set-size-of-function-body
-    xx|swap|x
-    Function-body-explainer append-number-to-here
-    append-word-description-to-here
-    add-new-word-to-dictionary
-    Exit
+  tail-and-head-of-word-list
+  create-word-header-for-function
+  set-size-of-function-body
+  xx|swap|x
+  Function-body-explainer append-number-to-here
+  append-word-description-to-here
+  add-new-word-to-dictionary
+  Exit
 ; define-function
 
 : define-recursive-function
   (* wordList[address, the number of words] -- *)
-    tail-and-head-of-word-list
-    create-word-header-for-function
-    set-size-of-function-body
-    add-new-word-to-dictionary
-    Function-body-explainer append-number-to-here
-    append-word-description-to-here
-    Exit
+  tail-and-head-of-word-list
+  create-word-header-for-function
+  set-size-of-function-body
+  add-new-word-to-dictionary
+  Function-body-explainer append-number-to-here
+  append-word-description-to-here
+  Exit
 ; define-function
 : special-key-word? (* word[explainer] -- True or False *)
   dup literal literal           == if drop True Exit then
@@ -339,7 +339,7 @@
   Exit
 ; define-function
 
-: help,write-dec-number,push-chars
+: help:write-dec-number,push-chars
   (* ... , number of small DecNumbers, fixnum --
      ... , number of small DecNumbers *)
   Dec-base mod/
@@ -347,23 +347,23 @@
     drop swap add1 Exit
   then
   xx|swap|x xx|swap|x add1 swap
-  help,write-dec-number,push-chars
+  help:write-dec-number,push-chars
   Exit
 ; define-recursive-function
 
-: help,write-dec-number,write-chars
+: help:write-dec-number,write-chars
   (* ... , number of small DecNumbers -- *)
   dup zero? if drop Exit
   then
   sub1 swap write-dec-number-char
-  help,write-dec-number,write-chars
+  help:write-dec-number,write-chars
   Exit
 ; define-recursive-function
 
 : write-dec-number (* fixnum -- *)
   Zero swap
-  help,write-dec-number,push-chars
-  help,write-dec-number,write-chars
+  help:write-dec-number,push-chars
+  help:write-dec-number,write-chars
   Exit
 ; define-function
 
@@ -380,7 +380,7 @@
   Exit
 ; define-function
 
-: help,write-bin-number,push-chars
+: help:write-bin-number,push-chars
   (* ... , number of small BinNumbers, fixnum --
      ... , number of small BinNumbers *)
   Bin-base mod/
@@ -388,23 +388,23 @@
     drop swap add1 Exit
   then
   xx|swap|x xx|swap|x add1 swap
-  help,write-bin-number,push-chars
+  help:write-bin-number,push-chars
   Exit
 ; define-recursive-function
 
-: help,write-bin-number,write-chars
+: help:write-bin-number,write-chars
   (* ... , number of small BinNumbers -- *)
   dup zero? if drop Exit
   then
   sub1 swap write-bin-number-char
-  help,write-bin-number,write-chars
+  help:write-bin-number,write-chars
   Exit
 ; define-recursive-function
 
 : write-bin-number (* fixnum -- *)
   Zero swap
-  help,write-bin-number,push-chars
-  help,write-bin-number,write-chars
+  help:write-bin-number,push-chars
+  help:write-bin-number,write-chars
   Exit
 ; define-function
 
@@ -421,7 +421,7 @@
   Exit
 ; define-function
 
-: help,write-oct-number,push-chars
+: help:write-oct-number,push-chars
   (* ... , number of small OctNumbers, fixnum --
      ... , number of small OctNumbers *)
   Oct-base mod/
@@ -429,23 +429,23 @@
     drop swap add1 Exit
   then
   xx|swap|x xx|swap|x add1 swap
-  help,write-oct-number,push-chars
+  help:write-oct-number,push-chars
   Exit
 ; define-recursive-function
 
-: help,write-oct-number,write-chars
+: help:write-oct-number,write-chars
   (* ... , number of small OctNumbers -- *)
   dup zero? if drop Exit
   then
   sub1 swap write-oct-number-char
-  help,write-oct-number,write-chars
+  help:write-oct-number,write-chars
   Exit
 ; define-recursive-function
 
 : write-oct-number (* fixnum -- *)
   Zero swap
-  help,write-oct-number,push-chars
-  help,write-oct-number,write-chars
+  help:write-oct-number,push-chars
+  help:write-oct-number,write-chars
   Exit
 ; define-function
 
@@ -475,7 +475,7 @@
   Exit
 ; define-function
 
-: help,write-hex-number,push-chars
+: help:write-hex-number,push-chars
   (* ... , number of small HexNumbers, fixnum --
      ... , number of small HexNumbers *)
   Hex-base mod/
@@ -483,39 +483,39 @@
     drop swap add1 Exit
   then
   xx|swap|x xx|swap|x add1 swap
-  help,write-hex-number,push-chars
+  help:write-hex-number,push-chars
   Exit
 ; define-recursive-function
 
-: help,write-hex-number,write-chars
+: help:write-hex-number,write-chars
   (* ... , number of small HexNumbers -- *)
   dup zero? if drop Exit
   then
   sub1 swap write-hex-number-char
-  help,write-hex-number,write-chars
+  help:write-hex-number,write-chars
   Exit
 ; define-recursive-function
 
-: help,write-hex-number,write-chars,capital
+: help:write-hex-number,write-chars,capital
   (* ... , number of small HexNumbers -- *)
   dup zero? if drop Exit
   then
   sub1 swap write-hex-number-char,capital
-  help,write-hex-number,write-chars,capital
+  help:write-hex-number,write-chars,capital
   Exit
 ; define-recursive-function
 
 : write-hex-number (* fixnum -- *)
   Zero swap
-  help,write-hex-number,push-chars
-  help,write-hex-number,write-chars
+  help:write-hex-number,push-chars
+  help:write-hex-number,write-chars
   Exit
 ; define-function
 
 : write-hex-number,capital (* fixnum -- *)
   Zero swap
-  help,write-hex-number,push-chars
-  help,write-hex-number,write-chars,capital
+  help:write-hex-number,push-chars
+  help:write-hex-number,write-chars,capital
   Exit
 ; define-function
 
@@ -554,7 +554,7 @@
   Exit
 ; define-function
 
-: help,write-aph-number,push-chars
+: help:write-aph-number,push-chars
   (* ... , number of small AphNumbers, fixnum --
      ... , number of small AphNumbers *)
   Aph-base mod/
@@ -562,39 +562,39 @@
     drop swap add1 Exit
   then
   xx|swap|x xx|swap|x add1 swap
-  help,write-aph-number,push-chars
+  help:write-aph-number,push-chars
   Exit
 ; define-recursive-function
 
-: help,write-aph-number,write-chars
+: help:write-aph-number,write-chars
   (* ... , number of small AphNumbers -- *)
   dup zero? if drop Exit
   then
   sub1 swap write-aph-number-char
-  help,write-aph-number,write-chars
+  help:write-aph-number,write-chars
   Exit
 ; define-recursive-function
 
-: help,write-aph-number,write-chars,capital
+: help:write-aph-number,write-chars,capital
   (* ... , number of small AphNumbers -- *)
   dup zero? if drop Exit
   then
   sub1 swap write-aph-number-char,capital
-  help,write-aph-number,write-chars,capital
+  help:write-aph-number,write-chars,capital
   Exit
 ; define-recursive-function
 
 : write-aph-number (* fixnum -- *)
   Zero swap
-  help,write-aph-number,push-chars
-  help,write-aph-number,write-chars
+  help:write-aph-number,push-chars
+  help:write-aph-number,write-chars
   Exit
 ; define-function
 
 : write-aph-number,capital (* fixnum -- *)
   Zero swap
-  help,write-aph-number,push-chars
-  help,write-aph-number,write-chars,capital
+  help:write-aph-number,push-chars
+  help:write-aph-number,write-chars,capital
   Exit
 ; define-function
 
@@ -1176,7 +1176,7 @@ index->address said:
 ; define-function
 
 
-: help,string-hash->index,sum-up
+: help:string-hash->index,sum-up
   (* sum-up , string[address, length] -- sum-up *)
   dup zero? if
     drop2 Exit
@@ -1184,11 +1184,11 @@ index->address said:
   tail-and-head-of-string
   over shift-left
   x|swap|xxx  +  xx|swap|x
-  help,string-hash->index,sum-up
+  help:string-hash->index,sum-up
   Exit
 ; define-recursive-function
 
-: help,string-hash->index,find-old-or-creat-new
+: help:string-hash->index,find-old-or-creat-new
   (* string[address, length], index -- index *)
   xx|tuck|x
   index-hashback->string
@@ -1213,15 +1213,15 @@ index->address said:
   dup index->address Last-symbol-entry == if
     drop
     Zero
-    help,string-hash->index,find-old-or-creat-new
+    help:string-hash->index,find-old-or-creat-new
     Exit
   then
   add1
-  help,string-hash->index,find-old-or-creat-new
+  help:string-hash->index,find-old-or-creat-new
   Exit
 ; define-recursive-function
 
-: help,string-hash->index,sum-up->index
+: help:string-hash->index,sum-up->index
   (* sum-up -- index *)
   Number-of-symbol-entrys mod
   Exit
@@ -1235,9 +1235,9 @@ index->address said:
       (* this means only first Symbol-max-length of the string is used by the hash-function *)
     then
     Zero xx|swap|x
-    help,string-hash->index,sum-up
-    help,string-hash->index,sum-up->index
-  help,string-hash->index,find-old-or-creat-new
+    help:string-hash->index,sum-up
+    help:string-hash->index,sum-up->index
+  help:string-hash->index,find-old-or-creat-new
   Exit
 ; define-function
 (* if 1 is setted to a symbol, this symbol is a fixnum like data type
@@ -1658,21 +1658,21 @@ String-heap-2 : Current-free-string-address,to   ; define-variable
   then Exit
 ; define-function
 
-: help,read-string,loop (* begin-address -- end-address *)
+: help:read-string,loop (* begin-address -- end-address *)
   read-non-string-ending-char
   dup zero? if
     drop Exit
   then
   over save-byte
   add1
-  help,read-string,loop
+  help:read-string,loop
   Exit
 ; define-recursive-function
 
 : read-string (* -- string[address, length] *)
   Current-free-string-address,from fetch add4
   dup (* leave begin-address *)
-    help,read-string,loop
+    help:read-string,loop
   dup (* leave end-address *)
     Current-free-string-address,from save
   over -
@@ -1874,7 +1874,7 @@ String-heap-2 : Current-free-string-address,to   ; define-variable
 ; define-function
 
 
-: help,set-car!&set-cdr!,for-black-<pair>
+: help:set-car!&set-cdr!,for-black-<pair>
   (* [valus, type] -- [valus, type] *)
   dup <pair-like>? if
     all,grey->black (* to be incremental-gc is to call this function here *)
@@ -1901,7 +1901,7 @@ String-heap-2 : Current-free-string-address,to   ; define-variable
   then
   drop (* drop the type-tag overed *)
   xx|over|xx black-<pair>? if
-    help,set-car!&set-cdr!,for-black-<pair>
+    help:set-car!&set-cdr!,for-black-<pair>
   then
   x|over|xxx save2
   Exit
@@ -1925,7 +1925,7 @@ String-heap-2 : Current-free-string-address,to   ; define-variable
   then
   drop (* drop the type-tag overed *)
   xx|over|xx black-<pair>? if
-    help,set-car!&set-cdr!,for-black-<pair>
+    help:set-car!&set-cdr!,for-black-<pair>
   then
   x|over|xxx Car-bytes-size + save2
   Exit
@@ -1952,7 +1952,7 @@ String-heap-2 : Current-free-string-address,to   ; define-variable
   then
   drop (* drop the type-tag overed *)
   xx|over|xx black-<pair>? if
-    help,set-car!&set-cdr!,for-black-<pair>
+    help:set-car!&set-cdr!,for-black-<pair>
   then
   x|over|xxx save2
   Exit
@@ -1976,7 +1976,7 @@ String-heap-2 : Current-free-string-address,to   ; define-variable
   then
   drop (* drop the type-tag overed *)
   xx|over|xx black-<pair>? if
-    help,set-car!&set-cdr!,for-black-<pair>
+    help:set-car!&set-cdr!,for-black-<pair>
   then
   x|over|xxx Car-bytes-size + save2
   Exit
@@ -2003,7 +2003,7 @@ String-heap-2 : Current-free-string-address,to   ; define-variable
     debuger Exit
   then
   dup2 black-<pair>? if
-    xx|swap|xx help,set-car!&set-cdr!,for-black-<pair> xx|swap|xx
+    xx|swap|xx help:set-car!&set-cdr!,for-black-<pair> xx|swap|xx
   then
   xx|tuck|xx
   drop save2
@@ -2028,7 +2028,7 @@ String-heap-2 : Current-free-string-address,to   ; define-variable
     debuger Exit
   then
   dup2 black-<pair>? if
-    xx|swap|xx help,set-car!&set-cdr!,for-black-<pair> xx|swap|xx
+    xx|swap|xx help:set-car!&set-cdr!,for-black-<pair> xx|swap|xx
   then
   xx|tuck|xx
   drop Car-bytes-size + save2
@@ -2147,7 +2147,7 @@ String-heap-2 : Current-free-string-address,to   ; define-variable
   drop False Exit
 ; define-function
 
-: help,push-all-root-node-into-grey-pair-stack
+: help:push-all-root-node-into-grey-pair-stack
   (* word[address of link] -- *)
   dup last-word-in-dictionary? if
     drop Exit
@@ -2157,13 +2157,13 @@ String-heap-2 : Current-free-string-address,to   ; define-variable
   try,white->grey drop2
   then
   next-word-in-dictionary
-  help,push-all-root-node-into-grey-pair-stack
+  help:push-all-root-node-into-grey-pair-stack
   Exit
 ; define-recursive-function
 
 : push-all-root-node-into-grey-pair-stack (* -- *)
     first-word-in-dictionary fetch
-    help,push-all-root-node-into-grey-pair-stack
+    help:push-all-root-node-into-grey-pair-stack
     Exit
 ; define-function
 
@@ -2192,7 +2192,7 @@ String-heap-2 : Current-free-string-address,to   ; define-variable
 
 
 
-: help,all-pairs-in-argument-stack,try,white->grey
+: help:all-pairs-in-argument-stack,try,white->grey
   (* address of a Cell in ArgumentStack -- *)
     dup Argument-stack-top > if
       drop Exit
@@ -2203,18 +2203,18 @@ String-heap-2 : Current-free-string-address,to   ; define-variable
       drop2
     then
     Cell-width +
-    help,all-pairs-in-argument-stack,try,white->grey
+    help:all-pairs-in-argument-stack,try,white->grey
     Exit
 ; define-recursive-function
 
 : all-pairs-in-argument-stack,try,white->grey (* -- *)
     fetch-argument-stack-pointer
-    help,all-pairs-in-argument-stack,try,white->grey
+    help:all-pairs-in-argument-stack,try,white->grey
     Exit
 ; define-function
 
 
-: help,all-pairs-in-lambda-stack,try,white->grey
+: help:all-pairs-in-lambda-stack,try,white->grey
   (* address of a Cell in LambdaStack -- *)
   dup Lambda-stack-top > if
     drop Exit
@@ -2225,13 +2225,13 @@ String-heap-2 : Current-free-string-address,to   ; define-variable
     drop2
   then
   Cell-width +
-  help,all-pairs-in-lambda-stack,try,white->grey
+  help:all-pairs-in-lambda-stack,try,white->grey
   Exit
 ; define-recursive-function
 
 : all-pairs-in-lambda-stack,try,white->grey (* -- *)
   Lambda-stack-pointer fetch
-  help,all-pairs-in-lambda-stack,try,white->grey
+  help:all-pairs-in-lambda-stack,try,white->grey
   Exit
 ; define-function
 
@@ -2499,14 +2499,14 @@ String-heap-2 : Current-free-string-address,to   ; define-variable
 ; define-recursive-function
 
 : { read-list Exit ; define-function
-: help,write-list (* [address, <list>] or [Null, <null>] -- *)
+: help:write-list (* [address, <list>] or [Null, <null>] -- *)
   dup <null> == if
     drop2 Exit
   then
   dup <pair-like>? if
     dup2
     car write
-    cdr help,write-list
+    cdr help:write-list
     Exit
   then
   Mid:dot print-string write-space
@@ -2529,7 +2529,7 @@ String-heap-2 : Current-free-string-address,to   ; define-variable
     debuger Exit
   then
   Bra:flower print-string write-space
-  help,write-list
+  help:write-list
   Ket:flower print-string write-space
   Exit
 ; define-function
@@ -2716,7 +2716,7 @@ String-heap-2 : Current-free-string-address,to   ; define-variable
    in the following, I am using side-effect to change a existed list
    but NOT to form a new dalin from scratch *)
 
-: help,list->dalin
+: help:list->dalin
   (* [address, <dalin>], left[address, <dalin>] -- [address, <dalin>] *)
   (* or *)
   (* [address, <dalin>], [value, <non-dalin>] -- [address, <dalin>] *)
@@ -2733,7 +2733,7 @@ String-heap-2 : Current-free-string-address,to   ; define-variable
     cdr
   (* [address, <dalin>], [address, <pair-like>] *)
   xx|swap|xx
-  help,list->dalin
+  help:list->dalin
   Exit
 ; define-recursive-function
 
@@ -2756,7 +2756,7 @@ String-heap-2 : Current-free-string-address,to   ; define-variable
   drop <dalin>
   dup2 (* leave the return value *)
   null
-  help,list->dalin
+  help:list->dalin
   Exit
 ; define-function
 
@@ -2777,7 +2777,7 @@ String-heap-2 : Current-free-string-address,to   ; define-variable
   then
   drop <dalin>
   null
-  help,list->dalin
+  help:list->dalin
   Exit
 ; define-function
 
@@ -2799,7 +2799,7 @@ String-heap-2 : Current-free-string-address,to   ; define-variable
   drop <dalin>
   dup2 (* leave the return value *)
   null
-  help,list->dalin
+  help:list->dalin
   drop2
   Exit
 ; define-function
@@ -2816,7 +2816,7 @@ String-heap-2 : Current-free-string-address,to   ; define-variable
   then
   False Exit
 ; define-function
-: help,nested-list->dalin
+: help:nested-list->dalin
   (* [address, <dalin>], left[address, <dalin>] -- [address, <dalin>] *)
   (* or *)
   (* [address, <dalin>], [value, <non-dalin>] -- [address, <dalin>] *)
@@ -2838,7 +2838,7 @@ String-heap-2 : Current-free-string-address,to   ; define-variable
     cdr
   (* [address, <dalin>], [address, <pair-like>] *)
   xx|swap|xx
-  help,nested-list->dalin
+  help:nested-list->dalin
   Exit
 ; define-recursive-function
 
@@ -2860,7 +2860,7 @@ String-heap-2 : Current-free-string-address,to   ; define-variable
   drop <dalin>
   dup2 (* leave the return value *)
   null
-  help,nested-list->dalin
+  help:nested-list->dalin
   drop2
   Exit
 ; define-function
@@ -2930,7 +2930,7 @@ String-heap-2 : Current-free-string-address,to   ; define-variable
 : Message:[value,dalin]-associate,type-error,in-the-middle
 ; define-constant-string
 
-: help,[value,dalin]-associate
+: help:[value,dalin]-associate
   (* [value, type], head[address, <dalin-like>], or [Null, <null>] --
      associate-pair[address, <pair-like>] or [Null, <null>] *)
   dup <null> == if
@@ -2949,7 +2949,7 @@ String-heap-2 : Current-free-string-address,to   ; define-variable
     xx|swap|xx drop2
     car Exit
   then
-  ->  help,[value,dalin]-associate
+  ->  help:[value,dalin]-associate
   Exit
 ; define-recursive-function
 
@@ -2961,7 +2961,7 @@ String-heap-2 : Current-free-string-address,to   ; define-variable
     dup print-type-tag cr
     debuger Exit
   then
-  help,[value,dalin]-associate
+  help:[value,dalin]-associate
   Exit
 ; define-function
 
@@ -3026,7 +3026,7 @@ String-heap-2 : Current-free-string-address,to   ; define-variable
   cdr xx|over|xx set-cdr! drop2
   Exit
 ; define-function
-: help,read-*dalin
+: help:read-*dalin
   (* tail[address, <dalin>] -- head[address, <dalin>] *)
   (* where:
        the <- of ``tail'' is setted,
@@ -3049,26 +3049,26 @@ String-heap-2 : Current-free-string-address,to   ; define-variable
     xx|swap|xx  set-car!
     cons        set-cdr!
   ^_^
-  help,read-*dalin
+  help:read-*dalin
   Exit
 ; define-recursive-function
 
 
 : read-*dalin (* -- head[address, <dalin>] *)
   null
-  help,read-*dalin
+  help:read-*dalin
   Exit
 ; define-function
 
 : [ read-*dalin Exit ; define-function
-: help,write-*dalin
+: help:write-*dalin
   (* [address, <dalin>] -- *)
   dup2 dalin*? if
     car write Exit
   then
   dup2
     car write
-  -> help,write-*dalin Exit
+  -> help:write-*dalin Exit
 ; define-recursive-function
 
 
@@ -3086,11 +3086,11 @@ String-heap-2 : Current-free-string-address,to   ; define-variable
     debuger Exit
   then
   Bra:square print-string write-space
-  help,write-*dalin
+  help:write-*dalin
   Ket:square print-string write-space
   Exit
 ; define-function
-: help,stack-LIAF->list
+: help:stack-LIAF->list
   (* ..., number --  *)
   (* LambdaStack::
      [address, <list>] -- *)
@@ -3104,7 +3104,7 @@ String-heap-2 : Current-free-string-address,to   ; define-variable
   dup2
     get-back [cdr,cons]! drop2
   ready
-  help,stack-LIAF->list
+  help:stack-LIAF->list
   Exit
 ; define-recursive-function
 
@@ -3117,12 +3117,12 @@ String-heap-2 : Current-free-string-address,to   ; define-variable
   swap <fixnum>  cons drop <list>  [car,cons]!
   dup2 ready (* leave the return *)
   ready
-    help,stack-LIAF->list
+    help:stack-LIAF->list
   get-back Exit
 ; define-function
 
 
-: help,stack-FIAF->list
+: help:stack-FIAF->list
   (* ..., number -- *)
   (* LambdaStack::
      [address, <list>] -- [address, <list>] *)
@@ -3133,7 +3133,7 @@ String-heap-2 : Current-free-string-address,to   ; define-variable
   sub1
   swap <fixnum>  cons drop <list>  [car,cons]!
   get-back [cons,cdr]! ready
-  help,stack-FIAF->list
+  help:stack-FIAF->list
   Exit
 ; define-recursive-function
 
@@ -3144,11 +3144,11 @@ String-heap-2 : Current-free-string-address,to   ; define-variable
   then
   null
   ready
-    help,stack-FIAF->list
+    help:stack-FIAF->list
   get-back
   Exit
 ; define-function
-: help,stack-LIAF->dalin
+: help:stack-LIAF->dalin
   (* ..., number -- [address, <list>] *)
   (* LambdaStack::
      [address, <list>] -- *)
@@ -3167,7 +3167,7 @@ String-heap-2 : Current-free-string-address,to   ; define-variable
   get-back
     xx|swap|xx ^_^
   ready
-  help,stack-LIAF->dalin
+  help:stack-LIAF->dalin
   Exit
 ; define-recursive-function
 
@@ -3178,12 +3178,12 @@ String-heap-2 : Current-free-string-address,to   ; define-variable
   then
   null
   ready
-  help,stack-LIAF->dalin
+  help:stack-LIAF->dalin
   Exit
 ; define-function
 
 
-: help,stack-FIAF->dalin
+: help:stack-FIAF->dalin
   (* ..., number -- [address, <list>] *)
   (* LambdaStack::
      [address, <list>] -- *)
@@ -3200,7 +3200,7 @@ String-heap-2 : Current-free-string-address,to   ; define-variable
   get-back
     ^_^ <-
   ready
-  help,stack-FIAF->dalin
+  help:stack-FIAF->dalin
   Exit
 ; define-recursive-function
 
@@ -3215,7 +3215,7 @@ String-heap-2 : Current-free-string-address,to   ; define-variable
   [car,cons]!
     null set-cdr-to-{cdr.x}!
   ready
-  help,stack-FIAF->dalin
+  help:stack-FIAF->dalin
   Exit
 ; define-function
 :" stack<-FIAF-list said:
@@ -3234,7 +3234,7 @@ String-heap-2 : Current-free-string-address,to   ; define-variable
    --> "
 : Message:stack<-FIAF-list,type-error ; define-constant-string
 
-: help,stack<-FIAF-list
+: help:stack<-FIAF-list
   (* -- ... *)
   (* LambdaStack::
      [address, <list>] -- *)
@@ -3252,7 +3252,7 @@ String-heap-2 : Current-free-string-address,to   ; define-variable
   then
   drop (* drop a <not-pair-like> type-tag *)
   (* leave the value of the [value, <not-pair-like>] *)
-  help,stack<-FIAF-list
+  help:stack<-FIAF-list
   Exit
 ; define-recursive-function
 
@@ -3264,7 +3264,7 @@ String-heap-2 : Current-free-string-address,to   ; define-variable
     debuger Exit
   then
   ready
-  help,stack<-FIAF-list
+  help:stack<-FIAF-list
   Exit
 ; define-function
 : char-denote-number,or-alphabet,or-out-of-ascii?
@@ -3687,7 +3687,7 @@ symbol-denote-lambda-argument? said:
   string-denote-lambda-argument?
   Exit
 ; define-function
-: help,with-word,read-wody-or-bound-variable
+: help:with-word,read-wody-or-bound-variable
   (* -- [address, <list>] *)
   (* LambdaStack::
      -- wody[address, length] *)
@@ -3706,14 +3706,14 @@ symbol-denote-lambda-argument? said:
   then
   dup2 Mid:dot equal-string? if
     drop2
-    help,with-word,read-wody-or-bound-variable car
+    help:with-word,read-wody-or-bound-variable car
     (* this means { 1 . 2 3 } will be read as { 1 . 2 } *)
     Exit
   then
   execute-word,for-list-reader
   cons drop <list>
     xx|swap|xx  set-car!
-      help,with-word,read-wody-or-bound-variable
+      help:with-word,read-wody-or-bound-variable
     set-cdr!
   Exit
 ; define-recursive-function
@@ -3728,27 +3728,27 @@ symbol-denote-lambda-argument? said:
   string-hash->index <symbol>
   cons drop pop-lambda-stack
     [car,cons]!
-      help,with-word,read-wody-or-bound-variable
+      help:with-word,read-wody-or-bound-variable
     [cons,cdr]!
   get-back
   (* return the next ``wody'' word
-     it must be handled in help,read-wodyli *)
+     it must be handled in help:read-wodyli *)
   Exit
 ; define-function
 
 
 
-:" help,read-wodyli said:
+:" help:read-wodyli said:
    ``My function type is
      (* [address, <wodyli>], word[address, length] -- head[address, <wodyli>] *)
      the `word' must be `)' or denotes `wody' or denotes `bound-variable'
      But the following is what I meet
      I will not touch it and call debuger''
    --> "
-: Message:help,read-wodyli,error ; define-constant-string
+: Message:help:read-wodyli,error ; define-constant-string
 
 (* a ``with-word'' reader *)
-: help,read-wodyli
+: help:read-wodyli
   (* [address, <wodyli>], word[address, length] -- head[address, <wodyli>] *)
   (* where:
        the <- of [address, <wodyli>] is setted,
@@ -3768,7 +3768,7 @@ symbol-denote-lambda-argument? said:
     dup2 string-denote-bound-variable? if
       <bound-variable> push-lambda-stack
     else
-      Message:help,read-wodyli,error print-string
+      Message:help:read-wodyli,error print-string
       print-string cr
       debuger Exit
     then
@@ -3783,7 +3783,7 @@ symbol-denote-lambda-argument? said:
     cons        set-cdr!
   ^_^
   xx|swap|xx
-  help,read-wodyli
+  help:read-wodyli
   Exit
 ; define-recursive-function
 
@@ -3796,7 +3796,7 @@ symbol-denote-lambda-argument? said:
     (* return ``null'' on ( ) *)
     drop2 Exit
   then
-  help,read-wodyli
+  help:read-wodyli
   Exit
 ; define-function
 
@@ -3819,20 +3819,20 @@ symbol-denote-lambda-argument? said:
   then
   dup2
     car write
-  cdr help,write-list
+  cdr help:write-list
   Exit
 ; define-function
 
 
 
-: help,write-wodyli
+: help:write-wodyli
   (* [address, <wodyli>] -- *)
   dup <null> == if
     drop2 Exit
   then
   dup2
     car write
-  -> help,write-wodyli Exit
+  -> help:write-wodyli Exit
 ; define-recursive-function
 
 
@@ -3851,7 +3851,7 @@ symbol-denote-lambda-argument? said:
     debuger Exit
   then
   Bra:round print-string write-space
-  help,write-wodyli
+  help:write-wodyli
   Ket:round print-string write-space
   Exit
 ; define-function
@@ -3965,7 +3965,7 @@ symbol-denote-lambda-argument? said:
 ; define-function
 
 (* if wished
- *   one needs to use help,symbol-REPL to do the recursive
+ *   one needs to use help:symbol-REPL to do the recursive
  *   and reset the two pointers in symbol-REPL
  * Return-stack-top reset-return-stack-pointer
  * Argument-stack-top reset-argument-stack-pointer *)
@@ -4042,7 +4042,7 @@ symbol-REPL
  * [ [ 1 ] ( x: ) ] dalin->tail
  * meet-lambda-abstraction-in-lambda-body-dalin? . (\* 0 *\) cr
  *)
-: help,bound-variable-wodyli-subtraction
+: help:bound-variable-wodyli-subtraction
   (* LambdaStack::
      (a-b) [address, <wodyli>] -- *)
   (* b [address, <wodyli>], a [address, <wodyli>] --
@@ -4064,7 +4064,7 @@ symbol-REPL
     (* if this bound-variable is ``blocked'',
        it should not be ``cons'' to the new bound-variable-wodyli *)
     drop2 (* drop the associate-pair *)
-    ->  help,bound-variable-wodyli-subtraction Exit
+    ->  help:bound-variable-wodyli-subtraction Exit
   then
   drop2 (* drop the associate-pair *)
   (* b [address, <wodyli>], a [address, <wodyli>] *)
@@ -4077,7 +4077,7 @@ symbol-REPL
     xx|swap|xx  ^_^
     (* so the order of bound-variable-wodyli will be preserved *)
   ready
-  ->  help,bound-variable-wodyli-subtraction Exit
+  ->  help:bound-variable-wodyli-subtraction Exit
 ; define-recursive-function
 
 
@@ -4097,7 +4097,7 @@ symbol-REPL
   xx|swap|xx
   (* b [address, <wodyli>], a [address, <wodyli>] *)
   (* LambdaStack::  [Null, <null>] *)
-  help,bound-variable-wodyli-subtraction
+  help:bound-variable-wodyli-subtraction
   Exit
 ; define-function
 
@@ -4148,7 +4148,7 @@ symbol-REPL
  *)
 
 
-: help,lambda,set-bound-variables (* calculating lambda-scope *)
+: help:lambda,set-bound-variables (* calculating lambda-scope *)
   (* [address, <wodyli>], [address, <dalin>] -- *)
   dup <null> == if
     (* drop all the arguments here *)
@@ -4161,7 +4161,7 @@ symbol-REPL
     (* types of value other then <symbol>
        will be leaved in the lambda-body as they are *)
     drop2
-    <-  help,lambda,set-bound-variables Exit
+    <-  help:lambda,set-bound-variables Exit
   then
 
   (* [address, <wodyli>], [address, <dalin>], [index, <symbol>] *)
@@ -4173,18 +4173,18 @@ symbol-REPL
          just leave them in the lambda-body as they are *)
       drop2 (* drop [Null, <null>] *)
       drop2 (* drop [index, <symbol>] *)
-      <-  help,lambda,set-bound-variables Exit
+      <-  help:lambda,set-bound-variables Exit
     then
     [value,dalin]-associate
     dup <null> == if
       (* symbol-denote-bound-variable that can not be bound by this lambda
          will be leaved in the lambda-body as they are *)
       drop2
-      <-  help,lambda,set-bound-variables Exit
+      <-  help:lambda,set-bound-variables Exit
     then
     (* [address, <wodyli>], [address, <dalin>], [address, <bound-variable>] *)
     [cons,car]!
-    <-  help,lambda,set-bound-variables Exit
+    <-  help:lambda,set-bound-variables Exit
   then
 
   (* [address, <wodyli>], [address, <dalin>], [index, <symbol>] *)
@@ -4199,28 +4199,28 @@ symbol-REPL
     dup2
     meet-lambda-abstraction-in-lambda-body-dalin?
     false? if
-      help,lambda,set-bound-variables Exit
+      help:lambda,set-bound-variables Exit
     then
     (* [address, <wodyli>], [address, <dalin>] *)
-      (* prepare the arguments for a non-tail-recursive call of help,lambda,set-bound-variables *)
+      (* prepare the arguments for a non-tail-recursive call of help:lambda,set-bound-variables *)
       xx|over|xx xx|over|xx
         car bound-variable-wodyli-subtraction
       xx|over|xx
-        (* note that: the 2ed arg of help,lambda,set-bound-variables is a tail-dalin *)
+        (* note that: the 2ed arg of help:lambda,set-bound-variables is a tail-dalin *)
         <-  car  dalin->tail
-      help,lambda,set-bound-variables
+      help:lambda,set-bound-variables
       (* after then : *)
-      <- <-  help,lambda,set-bound-variables Exit
+      <- <-  help:lambda,set-bound-variables Exit
   then
 
   (* [address, <wodyli>], [address, <dalin>], [index, <symbol>] *)
   (* here is general symbol *)
   drop2
-  <-  help,lambda,set-bound-variables Exit
+  <-  help:lambda,set-bound-variables Exit
 ; define-recursive-function
 
 
-: help,lambda,set-function-body
+: help:lambda,set-function-body
   (* [address, <wodyli>], [address, <dalin>] -- *)
   dup <null> == if
     (* drop all the arguments here *)
@@ -4232,7 +4232,7 @@ symbol-REPL
     (* types of value other then <symbol>
        will be leaved in the lambda-body as they are *)
     drop2
-    <-  help,lambda,set-function-body Exit
+    <-  help:lambda,set-function-body Exit
   then
   (* [address, <wodyli>], [address, <dalin>], [index, <symbol>] *)
   dup2 symbol-denote-lambda-argument? if
@@ -4240,16 +4240,16 @@ symbol-REPL
        will be leaved in the lambda-body as they are
        they will be handled by ``apply'' *)
     drop2
-    <-  help,lambda,set-function-body Exit
+    <-  help:lambda,set-function-body Exit
   then
   (* [address, <wodyli>], [address, <dalin>], [index, <symbol>] *)
   dup2 symbol-denote-bound-variable? if
     (* i.e. symbols like ``:x''
        will be leaved in the lambda-body as they are
-       ``help,lambda,set-bound-variables'' take care of them
+       ``help:lambda,set-bound-variables'' take care of them
        when ``apply'' is executed there should be none of them *)
     drop2
-    <-  help,lambda,set-function-body Exit
+    <-  help:lambda,set-function-body Exit
   then
   (* [address, <wodyli>], [address, <dalin>], [index, <symbol>] *)
   (* here is general symbol *)
@@ -4261,13 +4261,13 @@ symbol-REPL
   cons drop <explainer-pair>
     [cdr,cons]!  [car,cons]!
   [cons,car]!
-  <-  help,lambda,set-function-body Exit
+  <-  help:lambda,set-function-body Exit
 ; define-recursive-function
 
 
 
 
-: help,lambda,make-lambda-function
+: help:lambda,make-lambda-function
   (* [address, <wodyli>], [address, <dalin>] --
      [address, <lambda>] *)
   cons drop <lambda>
@@ -4337,11 +4337,11 @@ symbol-REPL
   (* [address, <wodyli>], [address, <dalin>],
      [address, <wodyli>], tail[address, <dalin>] *)
   xx|over|xx  xx|over|xx
-  help,lambda,set-bound-variables
+  help:lambda,set-bound-variables
   (* multi-pass *)
-  help,lambda,set-function-body
+  help:lambda,set-function-body
   (* [address, <wodyli>], [address, <dalin>] *)
-  help,lambda,make-lambda-function
+  help:lambda,make-lambda-function
   Exit
 ; define-function
 
@@ -4405,17 +4405,17 @@ null : lambda-body-stack ; define
 ; define-function
 
 
-:" help,apply,eval-lambda-body said:
+:" help:apply,eval-lambda-body said:
    ``My function type is (* unknow -- unknow *)
      I call `lambda-forth' to do side-effect on lambda-body-stack
      The symbol I meet should always DenoteLambdaArgument
      But I meet the following symbol
      I will not touch it and call debuger''
    --> "
-: Message:help,apply,eval-lambda-body,error,symbol
+: Message:help:apply,eval-lambda-body,error,symbol
 ; define-constant-string
 
-: help,apply,eval-lambda-body
+: help:apply,eval-lambda-body
   (* unknow -- unknow *)
   lambda-forth
   dup <end-of-one-lambda-body> == if
@@ -4428,7 +4428,7 @@ null : lambda-body-stack ; define
   dup <bound-variable> == if
     cdr
     stack<-FIAF-list
-    help,apply,eval-lambda-body
+    help:apply,eval-lambda-body
     Exit
   then
 
@@ -4438,7 +4438,7 @@ null : lambda-body-stack ; define
     cdr
     drop (* drop type-tag: <explainer> *)
     execute
-    help,apply,eval-lambda-body
+    help:apply,eval-lambda-body
     Exit
   then
 
@@ -4449,10 +4449,10 @@ null : lambda-body-stack ; define
       drop (* drop <symbol> *)
       index-hashback->string
       execute-word
-      help,apply,eval-lambda-body
+      help:apply,eval-lambda-body
       Exit
     then
-    Message:help,apply,eval-lambda-body,error,symbol print-string
+    Message:help:apply,eval-lambda-body,error,symbol print-string
     dup2 write cr
     debuger
     Exit
@@ -4462,7 +4462,7 @@ null : lambda-body-stack ; define
        [666, <fixnum>] *)
   dup <fixnum> == if
     drop (* drop type-tag: <fixnum> *)
-    help,apply,eval-lambda-body
+    help:apply,eval-lambda-body
     Exit
   then
 
@@ -4472,7 +4472,7 @@ null : lambda-body-stack ; define
        [address, <wodyli>]
      and all other types
      leave the value and the type in the stack *)
-  help,apply,eval-lambda-body
+  help:apply,eval-lambda-body
   Exit
 ; define-recursive-function
 (* examples of <lambda-argument>:
@@ -4487,7 +4487,7 @@ null : lambda-body-stack ; define
  *)
 
 
-: help-to-rec,help,apply,set-variables
+: help-to-rec,help:apply,set-variables
   (* ArgumentStack::
      ..., [address, <lambda-argument-N>] -- *)
   (* LambdaStack::
@@ -4504,15 +4504,15 @@ null : lambda-body-stack ; define
   (* [address, <lambda-argument-N>], [..., <bound-variable>] *)
   xx|swap|xx   cdr
   [cons,cdr]!  drop2
-  help-to-rec,help,apply,set-variables
+  help-to-rec,help:apply,set-variables
   Exit
 ; define-recursive-function
 
 
-: help,apply,set-variables
+: help:apply,set-variables
   (* ..., [address, <lambda-argument>], [address, <wodyli>] -- *)
   ready
-    help-to-rec,help,apply,set-variables
+    help-to-rec,help:apply,set-variables
   get-back drop2 Exit
 ; define-function
 
@@ -4534,11 +4534,11 @@ null : lambda-body-stack ; define
     car dup <null> == if
       drop2
     else
-      help,apply,set-variables
+      help:apply,set-variables
     then
     get-back  cdr
     push,lambda-body-stack
-    help,apply,eval-lambda-body
+    help:apply,eval-lambda-body
     Exit
   then
   Message:apply,type-error print-string

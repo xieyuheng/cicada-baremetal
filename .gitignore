@@ -14,3 +14,4 @@ play/bmfs
 play/*.sys
 play/*.bin
 play/*.image
+play/*.vmdk

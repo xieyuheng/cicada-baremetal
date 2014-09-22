@@ -8,40 +8,39 @@
   1. need to redesign the way to do test
      should tangle test to separated file
      for i do not have my org-mode now
-  2. need to rethink the names about substring & string
-  3. wodyli processing
+  2. wodyli processing
      then digrap in cicada
-  4. tab completion in the REPL
+  3. tab completion in the REPL
      (or in text editor)
-  5. better basic interface of the OS
-  6. let functions in assembly-code
+  4. better basic interface of the OS
+  5. let functions in assembly-code
      be able to call functions in cicada-style-assembly-code
-  7. 实现对多种实现技术的定制
-  8. 重新思考某些术语和命名方式
-  9. 更改所谓的线程技术
+  6. 实现对多种实现技术的定制
+  7. 重新思考某些术语和命名方式
+  8. 更改所谓的线程技术
      以支持汇编扩展
      然后利用会汇编扩展的良好支持来优化某些代码
-  10. cicada should design it's own abstractions of IO
-      this can help cicada to be portable
-  11. 在核心就直接使用hash-table来find
+  9. cicada should design it's own abstractions of IO
+     this can help cicada to be portable
+  10. 在核心就直接使用hash-table来find
       但是list还是必要的
       因为这样就能保持对字典的灵活控制
-  12. better interface for lambda
-  13. memory allocation
-  14. use hash-table to lookup dictionary
+  11. better interface for lambda
+  12. memory allocation
+  13. use hash-table to lookup dictionary
       then mutually recursive call
-  15. flow-point number
-  16. >< maybe substitute word to execute in lambda-body
-  17. >< maybe syntax-check
-  18. >< modern pattern-match  HOW ???
-  19. better interface for debuger
-  20. TAIL-CALL-OPTIMIZATION in apply lambda-body
-  21. more protection on allocated memory
+  14. flow-point number
+  15. >< maybe substitute word to execute in lambda-body
+  16. >< maybe syntax-check
+  17. >< modern pattern-match  HOW ???
+  18. better interface for debuger
+  19. TAIL-CALL-OPTIMIZATION in apply lambda-body
+  20. more protection on allocated memory
       maybe use paging
-  22. cicada-assembler
-  23. cicada-editor
-  24. APL-like array-processing
-  25. needs better sexp-reader&write
+  21. cicada-assembler
+  22. cicada-editor
+  23. APL-like array-processing
+  24. needs better sexp-reader&write
       design a better way
       to use local-label to from list-with-circuit
 * ==================================================
@@ -63,6 +62,152 @@
       It is not easy to find those hundred words,
       but they exist,
       they always exist.''
+** 以名释性
+   (string-reference <string> <index>)
+   (string-compare <string1> <string2>)
+   (string-append <string1> <string2>)
+   发现命名是一个问题
+   每个动词比如compare
+   可以是 string-compare 或 list-compare
+   这就要求在命名上给每个函数加上数据类型的前缀
+   作为特殊的前缀
+   也许应该用 string:compare 而不是 string-compare
+   这种看来劳神的前缀的需要是因为
+   我不允许函数名的重载
+   如果我统一这种对数据类型前缀的使用
+   那么 动态类型的量 和 非动态类型的量
+   之间命名规则的冲突也就被化解了
+   也许 string-append 应该被叫做 string:^_^
+   就像 ^_^ 在 dalin 中的效果一样
+   但是这两种函数之间又有区别
+   重要的区别是
+   他们是返回新的数据还是在原来数据的基础上做副作用
+   我还可以用对命名函数的约定来
+   让函数的名字体现更多的函数的性质
+   也就是说 cicada 的一个特点是
+   ``以名释性''
+   这是实现起来最简单的
+   但是需要设计良好的命名规则
+   在给函数取名字的时候
+   写代码的人也要花一些功夫思考
+   才能让这个名字恰当地体现函数的性质
+   同时最重要的是
+   这种方案
+   可以在最大程度上减轻人们在读代码的时候的
+   认知上的负担
+   ------------------
+   但是有一些重要的函数比如 write
+   还是需要取处理不同类型的量
+** IDE
+   另外还有 IDE
+   通过语法高亮和 mimi-buffer
+   来帮助代码的阅读者来
+   获知名词和动词的语义
+   与命名规则一样
+   这一切都是为了
+   减轻``代码的阅读者的认知上的负担''
+** the naming conventions in cicada
+   回顾一下 cicada 中现在所使用的命名规则
+   做一个系统的笔记
+   这也将方便将来文档的撰写
+   1. 首先是关于 primitive functions
+      它们的命名都是简单的用"-"来连词的
+      尽管这里也有类似数据类型的概念
+      比如string[address, length]
+      没有复杂的跟类型有关的前缀
+   2. 也就是说"-"是用来把单个的word链接成短语的
+   3. 而在 *basic* 中
+      还用到了","
+      它是用来把短语链接成短句的
+      比如 ``define-variable,by-string''
+      在这个例子中 ``by-string'' 表明了
+      这个函数的参数的数据类型
+   4. ":"被用作前缀的链接符
+      比如 ``Message:bye'' 和 ``Key-word:then''
+      首字母大写表明他们是名词性的
+      这些常量或变量前缀单单指明了
+      这个名词的功能
+      而没有指明这个名词的实现细节
+      >< 这种特性是好的吗?
+      这是好的 如果 人们总能简单地从这些描述特性的词中推测出这些名词的实现细节
+      这是不好的 如果 这种推测并不平凡和简单 而带来了额外的认知上的负担
+   5. 对名词而言
+      第一个简单的跟类型无关的描述函数功能的前缀是"help:"
+      也就是说前缀的使用方式是相当自由的
+      >< 我不应该做更细致的标准式来削弱这种自由性吗?
+   6. 前缀是可以有多个的
+      比如"help:string:copy"
+** about programming paradigms
+   - imperative
+     to describe computation in terms of statements
+     that change a program state
+     in much the same way that imperative mood in natural languages
+     expresses commands to take action
+   - object-oriented
+     computation should be viewed as an intrinsic capability of objects
+     that can be invoked by sending messages
+     其重要的特点是这样的模型非常节省用来定义函数的命名空间
+     这样是以数据结构为中心的
+     函数 (算法或对数据结构的处理过程) 在思想观念上的重要性 屈居次位
+     这是在尝试
+     让我们的编程行为适应我们对这个世界的最通俗的非结构化的理解
+     我们能够辨别我们在这个世界上所观察到的各种物体(对象)
+     并且我们总在以某种方式与这些对象交流
+     每个对象是一个内蕴的独立的个体
+     并且在我们的观察过程中
+     我们给对象分类
+     分类在这里其实是不重要的
+     - 这是因为分类不是一个系统的方法
+       分类的过程可以是相当任意的
+       不同的分类者 去分类 同一个对象的集合时
+       按照他们的理解方式的不同 他们会作出不同的分类
+       看看生物学就知道了
+     重要的是每个内蕴的个体
+   - functional
+     computation should be viewed as functions act on their arguments
+     并且这些函数的行为 要具有数学意义上的函数的某些重要特性
+     这是以算法为中心的
+     这是在尝试
+     用我们的数学知识来帮助我们编程
+     而数学代表了我们对这个世界的结构化的理解
+     我们观察这个世界
+     然后用数学的语言还有数学的方法论总结我们的观察结果
+     如果 说数学的方法论是"纯粹客观的" 太过有争议
+     那么 说这种方法论相比较与其他的编程范式更加具有客观性
+     是没有错的
+** about string processing
+   1. 我可以实现一些适用于用来写
+      string-reader 和 string-writer
+      的基础函数
+      使得用户很容易在 cicada 中实现自己所希望的这类函数
+      string-writer 用于 格式输出 之类的东西
+** object-oriented
+   其实 利用 list-processing 我可以在 cicada 中加入对 object-oriented (class and message-passing) 的支持
+   正如 我用 list-processing 来实现 lambda-calculus 一样
+   并且我想 object-oriented 这种编程范式也许更适合用来实现 digrap
+   但是 问题是 新的语法元素必须被引进
+   这也许可以通过写一个不同的 REPL 来实现   
+** about literal
+   1. 解释器对 literal 的使用方式应该改变
+      我需要能够在 function-body 中使用``数字''
+      而不是使用``literal 数字''
+   2. 我需要取消对 Base 的使用
+      因为这个全局变量其实并不好用
+      我需要设计新对不同进位制的数字的读取方式
+   3. 以个 REPL 的性质很像是 bra-ket 中的 一个 bra      
+      symbol-REPL 作为 bra 
+      所对应的 ket 可以是 bye,symbol-REPL
+   4. 各个 REPL 和 bra 之间
+      必须能够灵活的相互递归调用
+      我没能实现很好的机制来完成这一点
+   5. 并且我现在应该把 REPL 和 bra-ket 的实现方式统一起来
+      我以前并没有意识到它们是完全相同的东西
+      它们之前确实有区别
+      但是我应该把它们的共同点提取出来
+      >< 这种``对共同点的提取''
+      用函数的 factoring 做起来
+      和用 class 的继承做起来 相比
+      感觉有什么不同 ???
 * *basic*
 ** magic check
    #+begin_src cicada :tangle ../play/english-core.ccd
@@ -344,42 +489,42 @@
 
     : append-word-description-to-here,with-if&then
       (* wordList[address, the number of words] -- *)
-        dup zero? false?branch 3
-          drop2 Exit
+      dup zero? false?branch 3
+        drop2 Exit
 
-        tail-and-head-of-word-list
+      tail-and-head-of-word-list
 
-        dup2 Key-word:if equal-string? false?branch 12
-          drop2
-          literal false?branch append-number-to-here
-          Here fetch xx|swap|x
-          Zero append-number-to-here (* leave a place *)
-          append-word-description-to-here,with-if&then Exit
+      dup2 Key-word:if equal-string? false?branch 12
+        drop2
+        literal false?branch append-number-to-here
+        Here fetch xx|swap|x
+        Zero append-number-to-here (* leave a place *)
+        append-word-description-to-here,with-if&then Exit
 
-        dup2 Key-word:then equal-string? false?branch 13
-          drop2
-          x|swap|xx
-          Here fetch over -  Cell-width /
-          swap save
-          append-word-description-to-here,with-if&then Exit
+      dup2 Key-word:then equal-string? false?branch 13
+        drop2
+        x|swap|xx
+        Here fetch over -  Cell-width /
+        swap save
+        append-word-description-to-here,with-if&then Exit
 
-        dup2 string-denote-number? false?branch 6
-          number drop append-number-to-here
-          append-word-description-to-here,with-if&then Exit
+      dup2 string-denote-number? false?branch 6
+        number drop append-number-to-here
+        append-word-description-to-here,with-if&then Exit
 
-          find word-link->word-explainer append-number-to-here
-          append-word-description-to-here,with-if&then Exit
+        find word-link->word-explainer append-number-to-here
+        append-word-description-to-here,with-if&then Exit
     ; define-recursive-function
 
     : define-recursive-function,with-if&then
       (* wordList[address, the number of words] -- *)
-        tail-and-head-of-word-list
-        create-word-header-for-function
-        set-size-of-function-body
-        add-new-word-to-dictionary
-        Function-body-explainer append-number-to-here
-        append-word-description-to-here,with-if&then
-        Exit
+      tail-and-head-of-word-list
+      create-word-header-for-function
+      set-size-of-function-body
+      add-new-word-to-dictionary
+      Function-body-explainer append-number-to-here
+      append-word-description-to-here,with-if&then
+      Exit
     ; define-function
 
 
@@ -387,40 +532,40 @@
 
     : append-word-description-to-here
       (* wordList[address, the number of words] -- *)
-        dup zero? if
-          drop2 Exit
-        then
-        tail-and-head-of-word-list
-        dup2 Key-word:if equal-string? if
-          drop2
-          literal false?branch append-number-to-here
-          Here fetch xx|swap|x
-          Zero append-number-to-here (* leave a place *)
-          append-word-description-to-here Exit
-        then
-        dup2 Key-word:else equal-string? if
-          drop2
-          literal branch append-number-to-here
-          Here fetch xxx|swap|x
-          Zero append-number-to-here (* leave a place *)
-          x|swap|xx
-          Here fetch over -  Cell-width /
-          swap save
-          append-word-description-to-here Exit
-        then
-        dup2 Key-word:then equal-string? if
-          drop2
-          x|swap|xx
-          Here fetch over -  Cell-width /
-          swap save
-          append-word-description-to-here Exit
-        then
-        dup2 string-denote-number? if
-          number drop append-number-to-here
-          append-word-description-to-here Exit
-        then
-          find word-link->word-explainer append-number-to-here
-          append-word-description-to-here Exit
+      dup zero? if
+        drop2 Exit
+      then
+      tail-and-head-of-word-list
+      dup2 Key-word:if equal-string? if
+        drop2
+        literal false?branch append-number-to-here
+        Here fetch xx|swap|x
+        Zero append-number-to-here (* leave a place *)
+        append-word-description-to-here Exit
+      then
+      dup2 Key-word:else equal-string? if
+        drop2
+        literal branch append-number-to-here
+        Here fetch xxx|swap|x
+        Zero append-number-to-here (* leave a place *)
+        x|swap|xx
+        Here fetch over -  Cell-width /
+        swap save
+        append-word-description-to-here Exit
+      then
+      dup2 Key-word:then equal-string? if
+        drop2
+        x|swap|xx
+        Here fetch over -  Cell-width /
+        swap save
+        append-word-description-to-here Exit
+      then
+      dup2 string-denote-number? if
+        number drop append-number-to-here
+        append-word-description-to-here Exit
+      then
+        find word-link->word-explainer append-number-to-here
+        append-word-description-to-here Exit
     ; define-recursive-function,with-if&then
 
 
@@ -428,25 +573,25 @@
 
     : define-function
       (* wordList[address, the number of words] -- *)
-        tail-and-head-of-word-list
-        create-word-header-for-function
-        set-size-of-function-body
-        xx|swap|x
-        Function-body-explainer append-number-to-here
-        append-word-description-to-here
-        add-new-word-to-dictionary
-        Exit
+      tail-and-head-of-word-list
+      create-word-header-for-function
+      set-size-of-function-body
+      xx|swap|x
+      Function-body-explainer append-number-to-here
+      append-word-description-to-here
+      add-new-word-to-dictionary
+      Exit
     ; define-function
 
     : define-recursive-function
       (* wordList[address, the number of words] -- *)
-        tail-and-head-of-word-list
-        create-word-header-for-function
-        set-size-of-function-body
-        add-new-word-to-dictionary
-        Function-body-explainer append-number-to-here
-        append-word-description-to-here
-        Exit
+      tail-and-head-of-word-list
+      create-word-header-for-function
+      set-size-of-function-body
+      add-new-word-to-dictionary
+      Function-body-explainer append-number-to-here
+      append-word-description-to-here
+      Exit
     ; define-function
     #+end_src
 *** test
@@ -542,7 +687,7 @@
        Exit
      ; define-function
 
-     : help,write-dec-number,push-chars
+     : help:write-dec-number,push-chars
        (* ... , number of small DecNumbers, fixnum --
           ... , number of small DecNumbers *)
        Dec-base mod/
@@ -550,23 +695,23 @@
          drop swap add1 Exit
        then
        xx|swap|x xx|swap|x add1 swap
-       help,write-dec-number,push-chars
+       help:write-dec-number,push-chars
        Exit
      ; define-recursive-function
 
-     : help,write-dec-number,write-chars
+     : help:write-dec-number,write-chars
        (* ... , number of small DecNumbers -- *)
        dup zero? if drop Exit
        then
        sub1 swap write-dec-number-char
-       help,write-dec-number,write-chars
+       help:write-dec-number,write-chars
        Exit
      ; define-recursive-function
 
      : write-dec-number (* fixnum -- *)
        Zero swap
-       help,write-dec-number,push-chars
-       help,write-dec-number,write-chars
+       help:write-dec-number,push-chars
+       help:write-dec-number,write-chars
        Exit
      ; define-function
 
@@ -586,7 +731,7 @@
        Exit
      ; define-function
 
-     : help,write-bin-number,push-chars
+     : help:write-bin-number,push-chars
        (* ... , number of small BinNumbers, fixnum --
           ... , number of small BinNumbers *)
        Bin-base mod/
@@ -594,23 +739,23 @@
          drop swap add1 Exit
        then
        xx|swap|x xx|swap|x add1 swap
-       help,write-bin-number,push-chars
+       help:write-bin-number,push-chars
        Exit
      ; define-recursive-function
 
-     : help,write-bin-number,write-chars
+     : help:write-bin-number,write-chars
        (* ... , number of small BinNumbers -- *)
        dup zero? if drop Exit
        then
        sub1 swap write-bin-number-char
-       help,write-bin-number,write-chars
+       help:write-bin-number,write-chars
        Exit
      ; define-recursive-function
 
      : write-bin-number (* fixnum -- *)
        Zero swap
-       help,write-bin-number,push-chars
-       help,write-bin-number,write-chars
+       help:write-bin-number,push-chars
+       help:write-bin-number,write-chars
        Exit
      ; define-function
 
@@ -630,7 +775,7 @@
        Exit
      ; define-function
 
-     : help,write-oct-number,push-chars
+     : help:write-oct-number,push-chars
        (* ... , number of small OctNumbers, fixnum --
           ... , number of small OctNumbers *)
        Oct-base mod/
@@ -638,23 +783,23 @@
          drop swap add1 Exit
        then
        xx|swap|x xx|swap|x add1 swap
-       help,write-oct-number,push-chars
+       help:write-oct-number,push-chars
        Exit
      ; define-recursive-function
 
-     : help,write-oct-number,write-chars
+     : help:write-oct-number,write-chars
        (* ... , number of small OctNumbers -- *)
        dup zero? if drop Exit
        then
        sub1 swap write-oct-number-char
-       help,write-oct-number,write-chars
+       help:write-oct-number,write-chars
        Exit
      ; define-recursive-function
 
      : write-oct-number (* fixnum -- *)
        Zero swap
-       help,write-oct-number,push-chars
-       help,write-oct-number,write-chars
+       help:write-oct-number,push-chars
+       help:write-oct-number,write-chars
        Exit
      ; define-function
 
@@ -687,7 +832,7 @@
        Exit
      ; define-function
 
-     : help,write-hex-number,push-chars
+     : help:write-hex-number,push-chars
        (* ... , number of small HexNumbers, fixnum --
           ... , number of small HexNumbers *)
        Hex-base mod/
@@ -695,39 +840,39 @@
          drop swap add1 Exit
        then
        xx|swap|x xx|swap|x add1 swap
-       help,write-hex-number,push-chars
+       help:write-hex-number,push-chars
        Exit
      ; define-recursive-function
 
-     : help,write-hex-number,write-chars
+     : help:write-hex-number,write-chars
        (* ... , number of small HexNumbers -- *)
        dup zero? if drop Exit
        then
        sub1 swap write-hex-number-char
-       help,write-hex-number,write-chars
+       help:write-hex-number,write-chars
        Exit
      ; define-recursive-function
 
-     : help,write-hex-number,write-chars,capital
+     : help:write-hex-number,write-chars,capital
        (* ... , number of small HexNumbers -- *)
        dup zero? if drop Exit
        then
        sub1 swap write-hex-number-char,capital
-       help,write-hex-number,write-chars,capital
+       help:write-hex-number,write-chars,capital
        Exit
      ; define-recursive-function
 
      : write-hex-number (* fixnum -- *)
        Zero swap
-       help,write-hex-number,push-chars
-       help,write-hex-number,write-chars
+       help:write-hex-number,push-chars
+       help:write-hex-number,write-chars
        Exit
      ; define-function
 
      : write-hex-number,capital (* fixnum -- *)
        Zero swap
-       help,write-hex-number,push-chars
-       help,write-hex-number,write-chars,capital
+       help:write-hex-number,push-chars
+       help:write-hex-number,write-chars,capital
        Exit
      ; define-function
 
@@ -769,7 +914,7 @@
        Exit
      ; define-function
 
-     : help,write-aph-number,push-chars
+     : help:write-aph-number,push-chars
        (* ... , number of small AphNumbers, fixnum --
           ... , number of small AphNumbers *)
        Aph-base mod/
@@ -777,39 +922,39 @@
          drop swap add1 Exit
        then
        xx|swap|x xx|swap|x add1 swap
-       help,write-aph-number,push-chars
+       help:write-aph-number,push-chars
        Exit
      ; define-recursive-function
 
-     : help,write-aph-number,write-chars
+     : help:write-aph-number,write-chars
        (* ... , number of small AphNumbers -- *)
        dup zero? if drop Exit
        then
        sub1 swap write-aph-number-char
-       help,write-aph-number,write-chars
+       help:write-aph-number,write-chars
        Exit
      ; define-recursive-function
 
-     : help,write-aph-number,write-chars,capital
+     : help:write-aph-number,write-chars,capital
        (* ... , number of small AphNumbers -- *)
        dup zero? if drop Exit
        then
        sub1 swap write-aph-number-char,capital
-       help,write-aph-number,write-chars,capital
+       help:write-aph-number,write-chars,capital
        Exit
      ; define-recursive-function
 
      : write-aph-number (* fixnum -- *)
        Zero swap
-       help,write-aph-number,push-chars
-       help,write-aph-number,write-chars
+       help:write-aph-number,push-chars
+       help:write-aph-number,write-chars
        Exit
      ; define-function
 
      : write-aph-number,capital (* fixnum -- *)
        Zero swap
-       help,write-aph-number,push-chars
-       help,write-aph-number,write-chars,capital
+       help:write-aph-number,push-chars
+       help:write-aph-number,write-chars,capital
        Exit
      ; define-function
 
@@ -1526,7 +1671,7 @@
    ; define-function
 
 
-   : help,string-hash->index,sum-up
+   : help:string-hash->index,sum-up
      (* sum-up , string[address, length] -- sum-up *)
      dup zero? if
        drop2 Exit
@@ -1534,11 +1679,11 @@
      tail-and-head-of-string
      over shift-left
      x|swap|xxx  +  xx|swap|x
-     help,string-hash->index,sum-up
+     help:string-hash->index,sum-up
      Exit
    ; define-recursive-function
 
-   : help,string-hash->index,find-old-or-creat-new
+   : help:string-hash->index,find-old-or-creat-new
      (* string[address, length], index -- index *)
      xx|tuck|x
      index-hashback->string
@@ -1563,15 +1708,15 @@
      dup index->address Last-symbol-entry == if
        drop
        Zero
-       help,string-hash->index,find-old-or-creat-new
+       help:string-hash->index,find-old-or-creat-new
        Exit
      then
      add1
-     help,string-hash->index,find-old-or-creat-new
+     help:string-hash->index,find-old-or-creat-new
      Exit
    ; define-recursive-function
 
-   : help,string-hash->index,sum-up->index
+   : help:string-hash->index,sum-up->index
      (* sum-up -- index *)
      Number-of-symbol-entrys mod
      Exit
@@ -1585,9 +1730,9 @@
          (* this means only first Symbol-max-length of the string is used by the hash-function *)
        then
        Zero xx|swap|x
-       help,string-hash->index,sum-up
-       help,string-hash->index,sum-up->index
-     help,string-hash->index,find-old-or-creat-new
+       help:string-hash->index,sum-up
+       help:string-hash->index,sum-up->index
+     help:string-hash->index,find-old-or-creat-new
      Exit
    ; define-function
    #+end_src
@@ -1696,7 +1841,7 @@
 * *dynamic type system*
 ** note
    1. I make the following stipulations about creating cicada words:
-      1) constants and variables are nouns,
+      1 constants) and variables are nouns,
          the first letter of them should be capitalized.
          (just as in Deutsch)
       2) functions are verbs,
@@ -2227,21 +2372,21 @@
       then Exit
     ; define-function
 
-    : help,read-string,loop (* begin-address -- end-address *)
+    : help:read-string,loop (* begin-address -- end-address *)
       read-non-string-ending-char
       dup zero? if
         drop Exit
       then
       over save-byte
       add1
-      help,read-string,loop
+      help:read-string,loop
       Exit
     ; define-recursive-function
 
     : read-string (* -- string[address, length] *)
       Current-free-string-address,from fetch add4
       dup (* leave begin-address *)
-        help,read-string,loop
+        help:read-string,loop
       dup (* leave end-address *)
         Current-free-string-address,from save
       over -
@@ -2487,7 +2632,7 @@
     ; define-function
 
 
-    : help,set-car!&set-cdr!,for-black-<pair>
+    : help:set-car!&set-cdr!,for-black-<pair>
       (* [valus, type] -- [valus, type] *)
       dup <pair-like>? if
         all,grey->black (* to be incremental-gc is to call this function here *)
@@ -2514,7 +2659,7 @@
       then
       drop (* drop the type-tag overed *)
       xx|over|xx black-<pair>? if
-        help,set-car!&set-cdr!,for-black-<pair>
+        help:set-car!&set-cdr!,for-black-<pair>
       then
       x|over|xxx save2
       Exit
@@ -2538,7 +2683,7 @@
       then
       drop (* drop the type-tag overed *)
       xx|over|xx black-<pair>? if
-        help,set-car!&set-cdr!,for-black-<pair>
+        help:set-car!&set-cdr!,for-black-<pair>
       then
       x|over|xxx Car-bytes-size + save2
       Exit
@@ -2565,7 +2710,7 @@
       then
       drop (* drop the type-tag overed *)
       xx|over|xx black-<pair>? if
-        help,set-car!&set-cdr!,for-black-<pair>
+        help:set-car!&set-cdr!,for-black-<pair>
       then
       x|over|xxx save2
       Exit
@@ -2589,7 +2734,7 @@
       then
       drop (* drop the type-tag overed *)
       xx|over|xx black-<pair>? if
-        help,set-car!&set-cdr!,for-black-<pair>
+        help:set-car!&set-cdr!,for-black-<pair>
       then
       x|over|xxx Car-bytes-size + save2
       Exit
@@ -2616,7 +2761,7 @@
         debuger Exit
       then
       dup2 black-<pair>? if
-        xx|swap|xx help,set-car!&set-cdr!,for-black-<pair> xx|swap|xx
+        xx|swap|xx help:set-car!&set-cdr!,for-black-<pair> xx|swap|xx
       then
       xx|tuck|xx
       drop save2
@@ -2641,7 +2786,7 @@
         debuger Exit
       then
       dup2 black-<pair>? if
-        xx|swap|xx help,set-car!&set-cdr!,for-black-<pair> xx|swap|xx
+        xx|swap|xx help:set-car!&set-cdr!,for-black-<pair> xx|swap|xx
       then
       xx|tuck|xx
       drop Car-bytes-size + save2
@@ -2767,7 +2912,7 @@
       drop False Exit
     ; define-function
 
-    : help,push-all-root-node-into-grey-pair-stack
+    : help:push-all-root-node-into-grey-pair-stack
       (* word[address of link] -- *)
       dup last-word-in-dictionary? if
         drop Exit
@@ -2777,13 +2922,13 @@
       try,white->grey drop2
       then
       next-word-in-dictionary
-      help,push-all-root-node-into-grey-pair-stack
+      help:push-all-root-node-into-grey-pair-stack
       Exit
     ; define-recursive-function
 
     : push-all-root-node-into-grey-pair-stack (* -- *)
         first-word-in-dictionary fetch
-        help,push-all-root-node-into-grey-pair-stack
+        help:push-all-root-node-into-grey-pair-stack
         Exit
     ; define-function
 
@@ -2812,7 +2957,7 @@
 
 
 
-    : help,all-pairs-in-argument-stack,try,white->grey
+    : help:all-pairs-in-argument-stack,try,white->grey
       (* address of a Cell in ArgumentStack -- *)
         dup Argument-stack-top > if
           drop Exit
@@ -2823,18 +2968,18 @@
           drop2
         then
         Cell-width +
-        help,all-pairs-in-argument-stack,try,white->grey
+        help:all-pairs-in-argument-stack,try,white->grey
         Exit
     ; define-recursive-function
 
     : all-pairs-in-argument-stack,try,white->grey (* -- *)
         fetch-argument-stack-pointer
-        help,all-pairs-in-argument-stack,try,white->grey
+        help:all-pairs-in-argument-stack,try,white->grey
         Exit
     ; define-function
 
 
-    : help,all-pairs-in-lambda-stack,try,white->grey
+    : help:all-pairs-in-lambda-stack,try,white->grey
       (* address of a Cell in LambdaStack -- *)
       dup Lambda-stack-top > if
         drop Exit
@@ -2845,13 +2990,13 @@
         drop2
       then
       Cell-width +
-      help,all-pairs-in-lambda-stack,try,white->grey
+      help:all-pairs-in-lambda-stack,try,white->grey
       Exit
     ; define-recursive-function
 
     : all-pairs-in-lambda-stack,try,white->grey (* -- *)
       Lambda-stack-pointer fetch
-      help,all-pairs-in-lambda-stack,try,white->grey
+      help:all-pairs-in-lambda-stack,try,white->grey
       Exit
     ; define-function
 
@@ -3461,14 +3606,14 @@
     #+end_src
 *** write-list
     #+begin_src cicada :tangle ../play/english-core.ccd
-    : help,write-list (* [address, <list>] or [Null, <null>] -- *)
+    : help:write-list (* [address, <list>] or [Null, <null>] -- *)
       dup <null> == if
         drop2 Exit
       then
       dup <pair-like>? if
         dup2
         car write
-        cdr help,write-list
+        cdr help:write-list
         Exit
       then
       Mid:dot print-string write-space
@@ -3491,7 +3636,7 @@
         debuger Exit
       then
       Bra:flower print-string write-space
-      help,write-list
+      help:write-list
       Ket:flower print-string write-space
       Exit
     ; define-function
@@ -3720,7 +3865,7 @@
        in the following, I am using side-effect to change a existed list
        but NOT to form a new dalin from scratch *)
 
-    : help,list->dalin
+    : help:list->dalin
       (* [address, <dalin>], left[address, <dalin>] -- [address, <dalin>] *)
       (* or *)
       (* [address, <dalin>], [value, <non-dalin>] -- [address, <dalin>] *)
@@ -3737,7 +3882,7 @@
         cdr
       (* [address, <dalin>], [address, <pair-like>] *)
       xx|swap|xx
-      help,list->dalin
+      help:list->dalin
       Exit
     ; define-recursive-function
 
@@ -3760,7 +3905,7 @@
       drop <dalin>
       dup2 (* leave the return value *)
       null
-      help,list->dalin
+      help:list->dalin
       Exit
     ; define-function
 
@@ -3781,7 +3926,7 @@
       then
       drop <dalin>
       null
-      help,list->dalin
+      help:list->dalin
       Exit
     ; define-function
 
@@ -3803,7 +3948,7 @@
       drop <dalin>
       dup2 (* leave the return value *)
       null
-      help,list->dalin
+      help:list->dalin
       drop2
       Exit
     ; define-function
@@ -3826,7 +3971,7 @@
     #+end_src
 *** nested-list->dalin
     #+begin_src cicada :tangle ../play/english-core.ccd
-    : help,nested-list->dalin
+    : help:nested-list->dalin
       (* [address, <dalin>], left[address, <dalin>] -- [address, <dalin>] *)
       (* or *)
       (* [address, <dalin>], [value, <non-dalin>] -- [address, <dalin>] *)
@@ -3848,7 +3993,7 @@
         cdr
       (* [address, <dalin>], [address, <pair-like>] *)
       xx|swap|xx
-      help,nested-list->dalin
+      help:nested-list->dalin
       Exit
     ; define-recursive-function
 
@@ -3870,7 +4015,7 @@
       drop <dalin>
       dup2 (* leave the return value *)
       null
-      help,nested-list->dalin
+      help:nested-list->dalin
       drop2
       Exit
     ; define-function
@@ -3946,7 +4091,7 @@
     : Message:[value,dalin]-associate,type-error,in-the-middle
     ; define-constant-string
 
-    : help,[value,dalin]-associate
+    : help:[value,dalin]-associate
       (* [value, type], head[address, <dalin-like>], or [Null, <null>] --
          associate-pair[address, <pair-like>] or [Null, <null>] *)
       dup <null> == if
@@ -3965,7 +4110,7 @@
         xx|swap|xx drop2
         car Exit
       then
-      ->  help,[value,dalin]-associate
+      ->  help:[value,dalin]-associate
       Exit
     ; define-recursive-function
 
@@ -3977,7 +4122,7 @@
         dup print-type-tag cr
         debuger Exit
       then
-      help,[value,dalin]-associate
+      help:[value,dalin]-associate
       Exit
     ; define-function
 
@@ -4186,7 +4331,7 @@
 ** read-dalin & write-dalin
 *** read-*dalin
     #+begin_src cicada :tangle ../play/english-core.ccd
-    : help,read-*dalin
+    : help:read-*dalin
       (* tail[address, <dalin>] -- head[address, <dalin>] *)
       (* where:
            the <- of ``tail'' is setted,
@@ -4209,14 +4354,14 @@
         xx|swap|xx  set-car!
         cons        set-cdr!
       ^_^
-      help,read-*dalin
+      help:read-*dalin
       Exit
     ; define-recursive-function
 
 
     : read-*dalin (* -- head[address, <dalin>] *)
       null
-      help,read-*dalin
+      help:read-*dalin
       Exit
     ; define-function
 
@@ -4224,14 +4369,14 @@
     #+end_src
 *** write-*dalin
     #+begin_src cicada :tangle ../play/english-core.ccd
-    : help,write-*dalin
+    : help:write-*dalin
       (* [address, <dalin>] -- *)
       dup2 dalin*? if
         car write Exit
       then
       dup2
         car write
-      -> help,write-*dalin Exit
+      -> help:write-*dalin Exit
     ; define-recursive-function
 
 
@@ -4249,7 +4394,7 @@
         debuger Exit
       then
       Bra:square print-string write-space
-      help,write-*dalin
+      help:write-*dalin
       Ket:square print-string write-space
       Exit
     ; define-function
@@ -4327,7 +4472,7 @@
        which is very funny
 *** stack->list
     #+begin_src cicada :tangle ../play/english-core.ccd
-    : help,stack-LIAF->list
+    : help:stack-LIAF->list
       (* ..., number --  *)
       (* LambdaStack::
          [address, <list>] -- *)
@@ -4341,7 +4486,7 @@
       dup2
         get-back [cdr,cons]! drop2
       ready
-      help,stack-LIAF->list
+      help:stack-LIAF->list
       Exit
     ; define-recursive-function
 
@@ -4354,12 +4499,12 @@
       swap <fixnum>  cons drop <list>  [car,cons]!
       dup2 ready (* leave the return *)
       ready
-        help,stack-LIAF->list
+        help:stack-LIAF->list
       get-back Exit
     ; define-function
 
 
-    : help,stack-FIAF->list
+    : help:stack-FIAF->list
       (* ..., number -- *)
       (* LambdaStack::
          [address, <list>] -- [address, <list>] *)
@@ -4370,7 +4515,7 @@
       sub1
       swap <fixnum>  cons drop <list>  [car,cons]!
       get-back [cons,cdr]! ready
-      help,stack-FIAF->list
+      help:stack-FIAF->list
       Exit
     ; define-recursive-function
 
@@ -4381,14 +4526,14 @@
       then
       null
       ready
-        help,stack-FIAF->list
+        help:stack-FIAF->list
       get-back
       Exit
     ; define-function
     #+end_src
 *** stack->dalin
     #+begin_src cicada :tangle ../play/english-core.ccd
-    : help,stack-LIAF->dalin
+    : help:stack-LIAF->dalin
       (* ..., number -- [address, <list>] *)
       (* LambdaStack::
          [address, <list>] -- *)
@@ -4407,7 +4552,7 @@
       get-back
         xx|swap|xx ^_^
       ready
-      help,stack-LIAF->dalin
+      help:stack-LIAF->dalin
       Exit
     ; define-recursive-function
 
@@ -4418,12 +4563,12 @@
       then
       null
       ready
-      help,stack-LIAF->dalin
+      help:stack-LIAF->dalin
       Exit
     ; define-function
 
 
-    : help,stack-FIAF->dalin
+    : help:stack-FIAF->dalin
       (* ..., number -- [address, <list>] *)
       (* LambdaStack::
          [address, <list>] -- *)
@@ -4440,7 +4585,7 @@
       get-back
         ^_^ <-
       ready
-      help,stack-FIAF->dalin
+      help:stack-FIAF->dalin
       Exit
     ; define-recursive-function
 
@@ -4455,7 +4600,7 @@
       [car,cons]!
         null set-cdr-to-{cdr.x}!
       ready
-      help,stack-FIAF->dalin
+      help:stack-FIAF->dalin
       Exit
     ; define-function
     #+end_src
@@ -4477,7 +4622,7 @@
        --> "
     : Message:stack<-FIAF-list,type-error ; define-constant-string
 
-    : help,stack<-FIAF-list
+    : help:stack<-FIAF-list
       (* -- ... *)
       (* LambdaStack::
          [address, <list>] -- *)
@@ -4495,7 +4640,7 @@
       then
       drop (* drop a <not-pair-like> type-tag *)
       (* leave the value of the [value, <not-pair-like>] *)
-      help,stack<-FIAF-list
+      help:stack<-FIAF-list
       Exit
     ; define-recursive-function
 
@@ -4507,7 +4652,7 @@
         debuger Exit
       then
       ready
-      help,stack<-FIAF-list
+      help:stack<-FIAF-list
       Exit
     ; define-function
     #+end_src
@@ -5077,7 +5222,7 @@
     3. lambda will use ``bound-variable-wodyli''
 *** read-wodyli
     #+begin_src cicada :tangle ../play/english-core.ccd
-    : help,with-word,read-wody-or-bound-variable
+    : help:with-word,read-wody-or-bound-variable
       (* -- [address, <list>] *)
       (* LambdaStack::
          -- wody[address, length] *)
@@ -5096,14 +5241,14 @@
       then
       dup2 Mid:dot equal-string? if
         drop2
-        help,with-word,read-wody-or-bound-variable car
+        help:with-word,read-wody-or-bound-variable car
         (* this means { 1 . 2 3 } will be read as { 1 . 2 } *)
         Exit
       then
       execute-word,for-list-reader
       cons drop <list>
         xx|swap|xx  set-car!
-          help,with-word,read-wody-or-bound-variable
+          help:with-word,read-wody-or-bound-variable
         set-cdr!
       Exit
     ; define-recursive-function
@@ -5118,27 +5263,27 @@
       string-hash->index <symbol>
       cons drop pop-lambda-stack
         [car,cons]!
-          help,with-word,read-wody-or-bound-variable
+          help:with-word,read-wody-or-bound-variable
         [cons,cdr]!
       get-back
       (* return the next ``wody'' word
-         it must be handled in help,read-wodyli *)
+         it must be handled in help:read-wodyli *)
       Exit
     ; define-function
 
 
 
-    :" help,read-wodyli said:
+    :" help:read-wodyli said:
        ``My function type is
          (* [address, <wodyli>], word[address, length] -- head[address, <wodyli>] *)
          the `word' must be `)' or denotes `wody' or denotes `bound-variable'
          But the following is what I meet
          I will not touch it and call debuger''
        --> "
-    : Message:help,read-wodyli,error ; define-constant-string
+    : Message:help:read-wodyli,error ; define-constant-string
 
     (* a ``with-word'' reader *)
-    : help,read-wodyli
+    : help:read-wodyli
       (* [address, <wodyli>], word[address, length] -- head[address, <wodyli>] *)
       (* where:
            the <- of [address, <wodyli>] is setted,
@@ -5158,7 +5303,7 @@
         dup2 string-denote-bound-variable? if
           <bound-variable> push-lambda-stack
         else
-          Message:help,read-wodyli,error print-string
+          Message:help:read-wodyli,error print-string
           print-string cr
           debuger Exit
         then
@@ -5173,7 +5318,7 @@
         cons        set-cdr!
       ^_^
       xx|swap|xx
-      help,read-wodyli
+      help:read-wodyli
       Exit
     ; define-recursive-function
 
@@ -5186,7 +5331,7 @@
         (* return ``null'' on ( ) *)
         drop2 Exit
       then
-      help,read-wodyli
+      help:read-wodyli
       Exit
     ; define-function
 
@@ -5212,20 +5357,20 @@
       then
       dup2
         car write
-      cdr help,write-list
+      cdr help:write-list
       Exit
     ; define-function
 
 
 
-    : help,write-wodyli
+    : help:write-wodyli
       (* [address, <wodyli>] -- *)
       dup <null> == if
         drop2 Exit
       then
       dup2
         car write
-      -> help,write-wodyli Exit
+      -> help:write-wodyli Exit
     ; define-recursive-function
 
 
@@ -5244,7 +5389,7 @@
         debuger Exit
       then
       Bra:round print-string write-space
-      help,write-wodyli
+      help:write-wodyli
       Ket:round print-string write-space
       Exit
     ; define-function
@@ -5378,7 +5523,7 @@
     ; define-function
 
     (* if wished
-     ,*   one needs to use help,symbol-REPL to do the recursive
+     ,*   one needs to use help:symbol-REPL to do the recursive
      ,*   and reset the two pointers in symbol-REPL
      ,* Return-stack-top reset-return-stack-pointer
      ,* Argument-stack-top reset-argument-stack-pointer *)
@@ -5534,7 +5679,7 @@
     #+end_src
 *** bound-variable-wodyli-subtraction (for calculating lambda-scope)
     #+begin_src cicada :tangle ../play/english-core.ccd
-    : help,bound-variable-wodyli-subtraction
+    : help:bound-variable-wodyli-subtraction
       (* LambdaStack::
          (a-b) [address, <wodyli>] -- *)
       (* b [address, <wodyli>], a [address, <wodyli>] --
@@ -5556,7 +5701,7 @@
         (* if this bound-variable is ``blocked'',
            it should not be ``cons'' to the new bound-variable-wodyli *)
         drop2 (* drop the associate-pair *)
-        ->  help,bound-variable-wodyli-subtraction Exit
+        ->  help:bound-variable-wodyli-subtraction Exit
       then
       drop2 (* drop the associate-pair *)
       (* b [address, <wodyli>], a [address, <wodyli>] *)
@@ -5569,7 +5714,7 @@
         xx|swap|xx  ^_^
         (* so the order of bound-variable-wodyli will be preserved *)
       ready
-      ->  help,bound-variable-wodyli-subtraction Exit
+      ->  help:bound-variable-wodyli-subtraction Exit
     ; define-recursive-function
 
 
@@ -5589,7 +5734,7 @@
       xx|swap|xx
       (* b [address, <wodyli>], a [address, <wodyli>] *)
       (* LambdaStack::  [Null, <null>] *)
-      help,bound-variable-wodyli-subtraction
+      help:bound-variable-wodyli-subtraction
       Exit
     ; define-function
 
@@ -5643,7 +5788,7 @@
      ,*)
 
 
-    : help,lambda,set-bound-variables (* calculating lambda-scope *)
+    : help:lambda,set-bound-variables (* calculating lambda-scope *)
       (* [address, <wodyli>], [address, <dalin>] -- *)
       dup <null> == if
         (* drop all the arguments here *)
@@ -5656,7 +5801,7 @@
         (* types of value other then <symbol>
            will be leaved in the lambda-body as they are *)
         drop2
-        <-  help,lambda,set-bound-variables Exit
+        <-  help:lambda,set-bound-variables Exit
       then
 
       (* [address, <wodyli>], [address, <dalin>], [index, <symbol>] *)
@@ -5668,18 +5813,18 @@
              just leave them in the lambda-body as they are *)
           drop2 (* drop [Null, <null>] *)
           drop2 (* drop [index, <symbol>] *)
-          <-  help,lambda,set-bound-variables Exit
+          <-  help:lambda,set-bound-variables Exit
         then
         [value,dalin]-associate
         dup <null> == if
           (* symbol-denote-bound-variable that can not be bound by this lambda
              will be leaved in the lambda-body as they are *)
           drop2
-          <-  help,lambda,set-bound-variables Exit
+          <-  help:lambda,set-bound-variables Exit
         then
         (* [address, <wodyli>], [address, <dalin>], [address, <bound-variable>] *)
         [cons,car]!
-        <-  help,lambda,set-bound-variables Exit
+        <-  help:lambda,set-bound-variables Exit
       then
 
       (* [address, <wodyli>], [address, <dalin>], [index, <symbol>] *)
@@ -5694,28 +5839,28 @@
         dup2
         meet-lambda-abstraction-in-lambda-body-dalin?
         false? if
-          help,lambda,set-bound-variables Exit
+          help:lambda,set-bound-variables Exit
         then
         (* [address, <wodyli>], [address, <dalin>] *)
-          (* prepare the arguments for a non-tail-recursive call of help,lambda,set-bound-variables *)
+          (* prepare the arguments for a non-tail-recursive call of help:lambda,set-bound-variables *)
           xx|over|xx xx|over|xx
             car bound-variable-wodyli-subtraction
           xx|over|xx
-            (* note that: the 2ed arg of help,lambda,set-bound-variables is a tail-dalin *)
+            (* note that: the 2ed arg of help:lambda,set-bound-variables is a tail-dalin *)
             <-  car  dalin->tail
-          help,lambda,set-bound-variables
+          help:lambda,set-bound-variables
           (* after then : *)
-          <- <-  help,lambda,set-bound-variables Exit
+          <- <-  help:lambda,set-bound-variables Exit
       then
 
       (* [address, <wodyli>], [address, <dalin>], [index, <symbol>] *)
       (* here is general symbol *)
       drop2
-      <-  help,lambda,set-bound-variables Exit
+      <-  help:lambda,set-bound-variables Exit
     ; define-recursive-function
 
 
-    : help,lambda,set-function-body
+    : help:lambda,set-function-body
       (* [address, <wodyli>], [address, <dalin>] -- *)
       dup <null> == if
         (* drop all the arguments here *)
@@ -5727,7 +5872,7 @@
         (* types of value other then <symbol>
            will be leaved in the lambda-body as they are *)
         drop2
-        <-  help,lambda,set-function-body Exit
+        <-  help:lambda,set-function-body Exit
       then
       (* [address, <wodyli>], [address, <dalin>], [index, <symbol>] *)
       dup2 symbol-denote-lambda-argument? if
@@ -5735,16 +5880,16 @@
            will be leaved in the lambda-body as they are
            they will be handled by ``apply'' *)
         drop2
-        <-  help,lambda,set-function-body Exit
+        <-  help:lambda,set-function-body Exit
       then
       (* [address, <wodyli>], [address, <dalin>], [index, <symbol>] *)
       dup2 symbol-denote-bound-variable? if
         (* i.e. symbols like ``:x''
            will be leaved in the lambda-body as they are
-           ``help,lambda,set-bound-variables'' take care of them
+           ``help:lambda,set-bound-variables'' take care of them
            when ``apply'' is executed there should be none of them *)
         drop2
-        <-  help,lambda,set-function-body Exit
+        <-  help:lambda,set-function-body Exit
       then
       (* [address, <wodyli>], [address, <dalin>], [index, <symbol>] *)
       (* here is general symbol *)
@@ -5756,13 +5901,13 @@
       cons drop <explainer-pair>
         [cdr,cons]!  [car,cons]!
       [cons,car]!
-      <-  help,lambda,set-function-body Exit
+      <-  help:lambda,set-function-body Exit
     ; define-recursive-function
 
 
 
 
-    : help,lambda,make-lambda-function
+    : help:lambda,make-lambda-function
       (* [address, <wodyli>], [address, <dalin>] --
          [address, <lambda>] *)
       cons drop <lambda>
@@ -5832,11 +5977,11 @@
       (* [address, <wodyli>], [address, <dalin>],
          [address, <wodyli>], tail[address, <dalin>] *)
       xx|over|xx  xx|over|xx
-      help,lambda,set-bound-variables
+      help:lambda,set-bound-variables
       (* multi-pass *)
-      help,lambda,set-function-body
+      help:lambda,set-function-body
       (* [address, <wodyli>], [address, <dalin>] *)
-      help,lambda,make-lambda-function
+      help:lambda,make-lambda-function
       Exit
     ; define-function
 
@@ -5938,7 +6083,7 @@
       Exit
     ; define-function
     #+end_src
-*** help,apply,eval-lambda-body
+*** help:apply,eval-lambda-body
     #+begin_src cicada :tangle ../play/english-core.ccd
     (* the following function
        do side-effect to the car of the lambda-body-stack *)
@@ -5973,17 +6118,17 @@
     ; define-function
 
 
-    :" help,apply,eval-lambda-body said:
+    :" help:apply,eval-lambda-body said:
        ``My function type is (* unknow -- unknow *)
          I call `lambda-forth' to do side-effect on lambda-body-stack
          The symbol I meet should always DenoteLambdaArgument
          But I meet the following symbol
          I will not touch it and call debuger''
        --> "
-    : Message:help,apply,eval-lambda-body,error,symbol
+    : Message:help:apply,eval-lambda-body,error,symbol
     ; define-constant-string
 
-    : help,apply,eval-lambda-body
+    : help:apply,eval-lambda-body
       (* unknow -- unknow *)
       lambda-forth
       dup <end-of-one-lambda-body> == if
@@ -5996,7 +6141,7 @@
       dup <bound-variable> == if
         cdr
         stack<-FIAF-list
-        help,apply,eval-lambda-body
+        help:apply,eval-lambda-body
         Exit
       then
 
@@ -6006,7 +6151,7 @@
         cdr
         drop (* drop type-tag: <explainer> *)
         execute
-        help,apply,eval-lambda-body
+        help:apply,eval-lambda-body
         Exit
       then
 
@@ -6017,10 +6162,10 @@
           drop (* drop <symbol> *)
           index-hashback->string
           execute-word
-          help,apply,eval-lambda-body
+          help:apply,eval-lambda-body
           Exit
         then
-        Message:help,apply,eval-lambda-body,error,symbol print-string
+        Message:help:apply,eval-lambda-body,error,symbol print-string
         dup2 write cr
         debuger
         Exit
@@ -6030,7 +6175,7 @@
            [666, <fixnum>] *)
       dup <fixnum> == if
         drop (* drop type-tag: <fixnum> *)
-        help,apply,eval-lambda-body
+        help:apply,eval-lambda-body
         Exit
       then
 
@@ -6040,7 +6185,7 @@
            [address, <wodyli>]
          and all other types
          leave the value and the type in the stack *)
-      help,apply,eval-lambda-body
+      help:apply,eval-lambda-body
       Exit
     ; define-recursive-function
     #+end_src
@@ -6058,7 +6203,7 @@
      ,*)
 
 
-    : help-to-rec,help,apply,set-variables
+    : help-to-rec,help:apply,set-variables
       (* ArgumentStack::
          ..., [address, <lambda-argument-N>] -- *)
       (* LambdaStack::
@@ -6075,15 +6220,15 @@
       (* [address, <lambda-argument-N>], [..., <bound-variable>] *)
       xx|swap|xx   cdr
       [cons,cdr]!  drop2
-      help-to-rec,help,apply,set-variables
+      help-to-rec,help:apply,set-variables
       Exit
     ; define-recursive-function
 
 
-    : help,apply,set-variables
+    : help:apply,set-variables
       (* ..., [address, <lambda-argument>], [address, <wodyli>] -- *)
       ready
-        help-to-rec,help,apply,set-variables
+        help-to-rec,help:apply,set-variables
       get-back drop2 Exit
     ; define-function
 
@@ -6105,11 +6250,11 @@
         car dup <null> == if
           drop2
         else
-          help,apply,set-variables
+          help:apply,set-variables
         then
         get-back  cdr
         push,lambda-body-stack
-        help,apply,eval-lambda-body
+        help:apply,eval-lambda-body
         Exit
       then
       Message:apply,type-error print-string
@@ -6544,6 +6689,608 @@
       Exit
     ; define-function
     #+end_src
+* >< *editor*
+** x & k
+   - x :: 被读入的text是被结构化地保存的
+          显示的时候也可以根据结构高亮
+   - x :: 每个命令都是一个 string-processing function
+          有一个命令的缓冲区 也就是说并不是每个命令都会马上被执行
+          这样在显示方面就要多费些功夫
+          显示与命令的执行分离
+          命令的执行也通过缓冲区与这些命令作为 string-processing function 的功能分离
+          这样整个文本编辑器就是cicada的string-processing的应用了
+          只是在cicada的string-processing上面添加了一个函数缓冲还有显示而已
+          cicada的string-processing中的函数有两种类型
+          一种是副作用类型的
+          一种是利用原有的字符串构造新的字符串的(函数式编程范式)
+          我将首先只实现函数式的那一种
+          也就是说对于一个字符串 插入 删除 替换 等操作都会生成一个全新的字符串
+          这也许非常耗费内存 但是其能行性值得被实验一下
+          注意
+          我必须利用缓冲下来的很多命令来形成一个字符处理函数
+          ;-- 这样就需要设计一个"编辑命令"到"字符串处理数"的转换器
+          ;-- 然而这样的在两个层次之间做转换的转换器的存在的前提是
+          ;-- 必须对两个层次都作出特殊的设计
+          因为每个字符处理函数都是要申请很多内存 来保存一行字符的
+          这也要求我设计很多新的字符串处理的语法
+          还要实现对这些语法的处理
+          这是最难的部分
+          注意
+          另一个重要的 操作是 匹配
+          它的函数类型与上面的不同
+          注意
+          这里可能需要加强cicada对字符串的实现方式
+          尤其是需要考虑gc
+   - k :: 太好了!
+          你已经有一个大致的思路了
+          我们可以先假装gc没有问题然后去实现这些想法试试
+   - x :: 没错
+          我之前说过
+          字符串处理 模块系统 文档系统 文本编辑器 都应该被同时设计
+          但是现在我明白了
+          应该被同时设计的是
+          字符串处理 和 文本编辑器
+          而 模块系统 文档系统 其实应该与集成开发环境的用户接口一起设计
+          模块系统涉及到对命名空间的控制
+          当用hash-table来实现find的时候这并不难做到
+          模块系统还涉及到 如何定义什么是一个模块
+          非常简单 就是一个词的集合而已 其中可以有 任何类型的词
+** x & k 2
+   - x :: 还有一个重要的需要考虑的问题就是关于文本编辑的数据类型
+          我想对于下手实现我还有些犹豫
+          就是因为这个数据类型我还没有设计好
+   - k :: 这里需要借鉴emacs
+          尽管对字符串的处理将是函数式的
+          但是对于文本编辑器而言数据类型将以dalin和wodyli为核心
+   - x :: 没错
+          现在很多wodyli处理函数还没有写好
+          在实现文本编辑器的过程中我会完善它们
+          我的设计是这样的
+          就文本编辑而言核心的数据结构将是被结构化的文本
+          每个语言mode都必须实现自己的parser
+          [mode] :: string =parser=> structured-string
+          类比过去这里类似buffer的数据结构就是structured-string
+          每个structured-string都会有附属于它的ScreenBuffer
+          将会有附属于structured-string的editing-pointer
+          对于每个mode必须还有一个专门用于显示的函数
+          structured-string =structure-displayer=> ScreenBuffer
+          这个函数还必须处理editing-pointer
+          以让它与ScreenBuffer的Cursor对应
+   - k :: 这样其实就形成了一个mode的模板
+          也许我们应该重新命名这些概念
+          不叫mode而叫做structure
+          这里的structure其实就是sexp不是吗?
+          只不过list被换成了dalin
+          以适应对文本的副作用
+   - x :: 而且我有wodyli
+          它是专门用来补足sexp不适合用来自定义数据结构这一弱点的
+** note
+   1. the loop :
+      1) read a key (a char)
+      2) according to some global variables
+         dispatch a key to a function and execute
+         the execution of a function
+         will edit the datastructure for text
+         and  edit the datastructure for display
+      3) update display
+      4) loop
+      so it is a ``REDL''
+   2. two datastructures for cicada-editor
+      one for text
+      one for display
+   3. key binding :
+      every key can be bound to any function
+** string->line-dalin
+   every mode has its parser
+   string->line-dalin is the parser of fundamental-mode
+   #+begin_src cicada
+   : find-char-address
+     (* char, [address, length] -- address or -1 *)
+     dup zero? if
+       drop2 drop
+       One negate
+       Exit
+     then
+     tail-and-head-of-string
+     x|over|xxx == if
+       drop swap drop
+       sub1 Exit
+     then
+     find-char-address
+     Exit
+   ; define-recursive-function
+
+   : find-char-index
+     (* char, [address, length] -- index or -1 *)
+     (* index start from Zero *)
+     over
+     xxx|swap|x
+     find-char-address
+     dup Zero < if
+       swap drop Exit
+     then
+     swap -
+     Exit
+   ; define-function
+
+
+   (* little test:
+    ,* 'k' s" k" find-char-index . (\* 0 *\) cr
+    ,* 'k' s" kkk" find-char-index . (\* 0 *\) cr
+    ,* 'k' s" skkk" find-char-index . (\* 1 *\) cr
+    ,* 'k' s"  kkk" find-char-index . (\* 1 *\) cr
+    ,* 'k' s" 0123456789k" find-char-index . (\* 10 *\) cr
+    ,* 'k' s" 0123456789" find-char-index . (\* -1 *\) cr
+    ,*)
+
+
+
+   : help:string->line-dalin
+     (* [address, length] -- head[address, <dalin>] *)
+     (* LambdaStack:: [address, <dalin>] -- *)
+     dup zero? if
+       get-back
+       dup2
+         cdr null [cons,cdr]!
+         drop2
+       head<-dalin
+       Exit
+     then
+     dup2
+     'linefeed' xx|over|x find-char-index
+     dup Zero < if
+       (* this means if a string is not end with 'linefeed'
+          a 'linefeed' will be added at the end *)
+       drop
+       dup substring
+       xx|tuck|x
+       swap copy-byte-string
+       <substring>
+       cons drop <dalin>
+       [car,cons]!
+         cons null [cons,cdr]!
+       [cons,cdr]!
+       get-back
+       xx|swap|xx
+       ^_^
+       head<-dalin
+       Exit
+     then
+     (* [address, length], index-of-linefeed *)
+     x|over|xx over + add1
+     xxx|swap|x (* leave the new address *)
+     swap over - sub1
+     xx|swap|x (* leave the new length *)
+     (* [new address, new length], address, index-of-linefeed *)
+     dup zero? if
+       (* 'linefeed' is the 1st char of the string
+          so we meet an empty line, it will be stored as `null' in dalin *)
+       drop2
+       null
+     else
+       (* index-of-linefeed is just the length of substring *)
+       dup substring
+       xx|tuck|x
+       swap copy-byte-string
+       <substring>
+     then
+     cons drop <dalin>
+     [car,cons]!
+       cons null [cons,cdr]!
+     [cons,cdr]!
+     get-back
+       xx|swap|xx
+       ^_^
+     ready
+     help:string->line-dalin
+     Exit
+   ; define-recursive-function
+
+   : string->line-dalin
+     (* [address, length] -- head[address, <dalin>] *)
+     (* which parses a string and return a dalin of substring
+        one substring denotes one line of text
+        empty line is stored as `null' in dalin *)
+     null ready
+     help:string->line-dalin
+     Exit
+   ; define-function
+   #+end_src
+** test: string->line-dalin
+   #+begin_src cicada
+   s" kkk" string->line-dalin
+   car print-type-tag (* <substring> *) cr
+   dup get-length-of-string
+   print-string (* kkk *) cr
+
+   s" kkk
+   " string->line-dalin
+   dup2 dalin*? . (* 1 *) cr
+   car print-type-tag (* <substring> *) cr
+   dup get-length-of-string
+   print-string (* kkk *) cr
+
+   s" kkk
+   aaa" string->line-dalin
+   dup2 dalin*? . (* 0 *) cr
+   dup2
+   car print-type-tag (* <substring> *) cr
+   dup get-length-of-string
+   print-string (* kkk *) cr
+   ->
+   car print-type-tag (* <substring> *) cr
+   dup get-length-of-string
+   print-string (* aaa *) cr
+
+   s" kkk
+   aaa
+   " string->line-dalin
+   dup2 dalin*? . (* 0 *) cr
+   dup2
+   car print-type-tag (* <substring> *) cr
+   dup get-length-of-string
+   print-string (* kkk *) cr
+   ->
+   car print-type-tag (* <substring> *) cr
+   dup get-length-of-string
+   print-string (* aaa *) cr
+   #+end_src
+** >< reduce text-editing to line-editing
+   #+begin_src cicada
+   (* buffer: ==
+        [address]
+      line: ==
+        buffer[address, length], cursors[address, <list>]
+      where:
+        cursor is a Zero-based-index, from Zero to length *)
+
+
+   0 : Var,LineBuffer ; define-variable
+
+   Here fetch Var,LineBuffer save
+   1000 Here add-save
+
+   : LineBuffer (*  -- buffer[address] *)
+     Var,LineBuffer fetch
+     Exit
+   ; define-function
+
+
+   0 : Var,Tmp,LineBuffer ; define-variable
+
+   Here fetch Var,Tmp,LineBuffer save
+   1000 Here add-save
+
+   : Tmp,LineBuffer (*  -- buffer[address] *)
+     Var,Tmp,LineBuffer fetch
+     Exit
+   ; define-function
+
+
+   : copyStringToBuffer
+     (* string[address, length], buffer[address] --
+        buffer[address, length] *)
+     push-lambda-stack
+     tuck
+     pop-lambda-stack dup push-lambda-stack
+     swap copy-byte-string
+     pop-lambda-stack
+     swap
+     Exit
+   ; define-function
+
+   : copyStringToLine
+     (* string[address, length], buffer[address] --
+        buffer[address, length], cursors[address, <list>] *)
+     copyStringToBuffer
+     cons drop <list>
+     Zero <fixnum>
+     [cons,car]!
+     Exit
+   ; define-function
+
+
+   : line,move-cursor-right
+     (* buffer[address, length], cursors[address, <list>], number --
+        buffer[address, length], cursors[address, <list>] *)
+     xx|over|x car drop (* drop <fixnum> *)
+     +  <fixnum> [cons,car]!
+     Exit
+   ; define-function
+
+   : line,move-cursor-left
+     (* buffer[address, length], cursors[address, <list>], number --
+        buffer[address, length], cursors[address, <list>] *)
+     xx|over|x car drop (* drop <fixnum> *)
+     -  <fixnum> [cons,car]!
+     Exit
+   ; define-function
+
+   : line,move-cursor-to-col
+     (* buffer[address, length], cursors[address, <list>], index --
+        buffer[address, length], cursors[address, <list>] *)
+     <fixnum> [cons,car]!
+     Exit
+   ; define-function
+
+
+   (* ><><><
+      the following two functions need better factoring *)
+
+   : insertString
+     (* string[address, length],
+        buffer[address, length], cursors[address, <list>] --
+        buffer[address, length], cursors[address, <list>] *)
+     dup2 ready
+     xx|over|xx ready
+     car drop (* drop <fixnum> *)
+     tuck -
+     xx|swap|x +
+       dup push-lambda-stack (* address of middle buffer *)
+     swap
+     Tmp,LineBuffer copyStringToBuffer
+     xx|swap|xx
+     pop-lambda-stack copyStringToBuffer
+       dup push-lambda-stack (* length of string *)
+     + copyStringToBuffer
+     drop2
+     pop-lambda-stack
+     get-back x|swap|xx dup push-lambda-stack
+     +
+     pop-lambda-stack
+     get-back
+     x|tuck|xx car drop (* <fixnum> *)
+     + <fixnum> [cons,car]!
+     Exit
+   ; define-function
+
+   (*
+    ,* test:
+    ,* s"  xxx "
+    ,* s"  kkk " LineBuffer copyStringToLine
+    ,* 2 line,move-cursor-right
+    ,* insertString
+    ,* car write (\* 7 *\) cr
+    ,* print-string (\*  k xxx kk  *\) cr
+    ,*)
+
+   : insertChar
+     (* char,
+        buffer[address, length], cursors[address, <list>] --
+        buffer[address, length], cursors[address, <list>] *)
+     dup2 ready
+     xx|over|xx ready
+     car drop (* drop <fixnum> *)
+     tuck -
+     xx|swap|x +
+       dup push-lambda-stack (* address of middle buffer *)
+     swap
+     Tmp,LineBuffer copyStringToBuffer
+     x|swap|xx
+     pop-lambda-stack tuck save-byte
+     add1
+     copyStringToBuffer
+     drop2
+     get-back add1
+     get-back dup2 car drop (* <fixnum> *)
+     add1 <fixnum> [cons,car]!
+     Exit
+   ; define-function
+
+
+   (*
+    ,* test:
+    ,* 'x'
+    ,* s"  kkk " LineBuffer copyStringToLine
+    ,* 2 line,move-cursor-right
+    ,* insertChar
+    ,* car write (\* 3 *\) cr
+    ,* print-string (\*  kxkk  *\) cr
+    ,*)
+
+
+   : deleteChars
+     (* buffer[address, length], cursors[address, <list>], number --
+        buffer[address, length], cursors[address, <list>] *)
+     xx|tuck|x
+     xx|swap|x dup2 ready
+     car drop (* drop <fixnum> *)
+     +
+     (* buffer[address, length], number, number + cursors *)
+     xx|swap|x  -
+     (* buffer[address], number + cursors, length - number *)
+     x|over|xx swap ready
+     (* buffer[address], number + cursors *)
+     +
+     xx|swap|x
+
+     Exit
+   ; define-function
+
+   : line,kill-line (* erase-half-line-to-end *)
+     (* buffer[address, length], cursors[address, <list>] --
+        buffer[address, length], cursors[address, <list>] *)
+     Exit
+   ; define-function
+
+
+
+
+
+
+
+   (*
+    ,* : text,move-cursor-up (\* number -- *\)
+    ,* ; define-function
+    ,*
+    ,* : text,move-cursor-down (\* number -- *\)
+    ,* ; define-function
+    ,*
+    ,* : text,move-cursor-down-&-to-the-begin-of-line (\* number -- *\)
+    ,* ; define-function
+    ,*
+    ,* : text,move-cursor-up-&-to-the-begin-of-line (\* number -- *\)
+    ,* ; define-function
+    ,*)
+
+
+
+
+   (*
+    ,* : text,move-cursor-to-row (\* row-index -- *\)
+    ,* ; define-function
+    ,*
+    ,* : text,move-cursor-to-row-&-col (\* row-index, col-index -- *\)
+    ,* ; define-function
+    ,*)
+
+
+   (* the position of the cursor
+    ,* is also as an argument of the following functions
+    ,* but the cursor do not move when these functions are executed
+    ,*)
+
+
+
+   (*
+    ,* : delete-lines (\* number -- *\)
+    ,* ; define-function
+    ,*)
+
+
+
+   (*
+    ,* : erase-half-screen-to-end (\* -- *\)
+    ,* ; define-function
+    ,*
+    ,* : erase-half-screen-to-start (\* -- *\)
+    ,* ; define-function
+    ,*
+    ,* : erase-screen (\* -- *\)
+    * ; define-function
+    *)
+   #+end_src
+** >< tryREDL
+   just use the ``read-char''
+   #+begin_src cicada
+   :" 1234567890"
+   : InitString,for-update-display ; define-constant-string
+
+   InitString,for-update-display
+   : Var-string,for-update-display ; define
+
+
+   : update-display
+     (*  --  *)
+     terminal,clearScreen
+     Var-string,for-update-display
+     fetch2 print-string cr
+     Exit
+   ; define-function
+
+
+   :" kkk
+   : tryREDL (*  --  *)
+     setTerminalToReadKey
+     help:tryREDL
+     Exit
+   ; define-function
+   "
+   : String-for,kkk ; define-constant-string
+
+   :" kkk" string-hash->index
+   : Symbol-index:kkk ; define-constant
+   : kkk (*  -- *)
+     String-for,kkk
+     Var-string,for-update-display
+     save2
+     Exit
+   ; define-function
+
+   :" aaa
+
+   : help:tryREDL (*  --  *)
+     (* D *)
+     update-display
+     (* R *)
+     read-char  (* write-space write-dec-number cr *)
+     (* E *)
+     char->function-name-symbol
+     executeSymbol
+     (* L *)
+     help:tryREDL
+     Exit
+   ; define-recursive-function
+   "
+   : String-for,aaa
+   ; define-constant-string
+
+   :" aaa" string-hash->index
+   : Symbol-index:aaa ; define-constant
+   : aaa (*  -- *)
+     String-for,aaa
+     Var-string,for-update-display
+     save2
+     Exit
+   ; define-function
+
+
+
+   (* in the future this funciton must see a lot of global variables *)
+   : char->function-name-symbol
+     (* char -- [index, <symbol>] *)
+     dup 'k' == if
+       drop Symbol-index:kkk <symbol> Exit
+     then
+     dup 'a' == if
+       drop Symbol-index:aaa <symbol> Exit
+     then
+     Exit
+   ; define-function
+
+
+   :" executeSymbol said:
+      ``My function-type is (* [index, <symbol>] -- unknown *)
+        But I meet the following type
+        I will not touch it and call debuger.''
+      --> "
+   : Message:executeSymbol,type-error ; define-constant-string
+   : executeSymbol (* [index, <symbol>] -- unknown *)
+     dup <symbol> =/= if
+       Message:executeSymbol,type-error print-string
+       dup print-type-tag cr
+       debuger
+       Exit
+     then
+     drop (* drop <symbol> *)
+     index-hashback->string
+     execute-word
+     Exit
+   ; define-function
+
+
+
+   : help:tryREDL (*  --  *)
+     (* D *)
+     update-display
+     (* R *)
+     read-char
+     (* E *)
+     char->function-name-symbol
+     executeSymbol
+     (* L *)
+     help:tryREDL
+     Exit
+   ; define-recursive-function
+
+   : tryREDL (*  --  *)
+     setTerminalToReadKey
+     help:tryREDL
+     Exit
+   ; define-function
+
+   : t tryREDL Exit ; define-function
+   #+end_src
 * *misc*
 ** >< memory allocation
 *** note
@@ -6638,607 +7385,4 @@
 
    cr
    #+end_src
-** --------------------------------------
-** cicada-editor
-*** x & k
-    - x :: 被读入的text是被结构化地保存的
-           显示的时候也可以根据结构高亮
-    - x :: 每个命令都是一个 string-processing function
-           有一个命令的缓冲区 也就是说并不是每个命令都会马上被执行
-           这样在显示方面就要多费些功夫
-           显示与命令的执行分离
-           命令的执行也通过缓冲区与这些命令作为 string-processing function 的功能分离
-           这样整个文本编辑器就是cicada的string-processing的应用了
-           只是在cicada的string-processing上面添加了一个函数缓冲还有显示而已
-           cicada的string-processing中的函数有两种类型
-           一种是副作用类型的
-           一种是利用原有的字符串构造新的字符串的(函数式编程范式)
-           我将首先只实现函数式的那一种
-           也就是说对于一个字符串 插入 删除 替换 等操作都会生成一个全新的字符串
-           这也许非常耗费内存 但是其能行性值得被实验一下
-           注意
-           我必须利用缓冲下来的很多命令来形成一个字符处理函数
-           ;-- 这样就需要设计一个"编辑命令"到"字符串处理数"的转换器
-           ;-- 然而这样的在两个层次之间做转换的转换器的存在的前提是
-           ;-- 必须对两个层次都作出特殊的设计
-           因为每个字符处理函数都是要申请很多内存 来保存一行字符的
-           这也要求我设计很多新的字符串处理的语法
-           还要实现对这些语法的处理
-           这是最难的部分
-           注意
-           另一个重要的 操作是 匹配
-           它的函数类型与上面的不同
-           注意
-           这里可能需要加强cicada对字符串的实现方式
-           尤其是需要考虑gc
-    - k :: 太好了!
-           你已经有一个大致的思路了
-           我们可以先假装gc没有问题然后去实现这些想法试试
-    - x :: 没错
-           我之前说过
-           字符串处理 模块系统 文档系统 文本编辑器 都应该被同时设计
-           但是现在我明白了
-           应该被同时设计的是
-           字符串处理 和 文本编辑器
-           而 模块系统 文档系统 其实应该与集成开发环境的用户接口一起设计
-           模块系统涉及到对命名空间的控制
-           当用hash-table来实现find的时候这并不难做到
-           模块系统还涉及到 如何定义什么是一个模块
-           非常简单 就是一个词的集合而已 其中可以有 任何类型的词
-*** x & k 2
-    - x :: 还有一个重要的需要考虑的问题就是关于文本编辑的数据类型
-           我想对于下手实现我还有些犹豫
-           就是因为这个数据类型我还没有设计好
-    - k :: 这里需要借鉴emacs
-           尽管对字符串的处理将是函数式的
-           但是对于文本编辑器而言数据类型将以dalin和wodyli为核心
-    - x :: 没错
-           现在很多wodyli处理函数还没有写好
-           在实现文本编辑器的过程中我会完善它们
-           我的设计是这样的
-           就文本编辑而言核心的数据结构将是被结构化的文本
-           每个语言mode都必须实现自己的parser
-           [mode] :: string =parser=> structured-string
-           类比过去这里类似buffer的数据结构就是structured-string
-           每个structured-string都会有附属于它的ScreenBuffer
-           将会有附属于structured-string的editing-pointer
-           对于每个mode必须还有一个专门用于显示的函数
-           structured-string =structure-displayer=> ScreenBuffer
-           这个函数还必须处理editing-pointer
-           以让它与ScreenBuffer的Cursor对应
-    - k :: 这样其实就形成了一个mode的模板
-           也许我们应该重新命名这些概念
-           不叫mode而叫做structure
-           这里的structure其实就是sexp不是吗?
-           只不过list被换成了dalin
-           以适应对文本的副作用
-    - x :: 而且我有wodyli
-           它是专门用来补足sexp不适合用来自定义数据结构这一弱点的
-*** note
-    1. the loop :
-       1) read a key (a char)
-       2) according to some global variables
-          dispatch a key to a function and execute
-          the execution of a function
-          will edit the datastructure for text
-          and  edit the datastructure for display
-       3) update display
-       4) loop
-       so it is a ``REDL''
-    2. two datastructures for cicada-editor
-       one for text
-       one for display
-    3. key binding :
-       every key can be bound to any function
-*** string->line-dalin
-    every mode has its parser
-    string->line-dalin is the parser of fundamental-mode
-    #+begin_src cicada
-    : find-char-address
-      (* char, [address, length] -- address or -1 *)
-      dup zero? if
-        drop2 drop
-        One negate
-        Exit
-      then
-      tail-and-head-of-string
-      x|over|xxx == if
-        drop swap drop
-        sub1 Exit
-      then
-      find-char-address
-      Exit
-    ; define-recursive-function
-
-    : find-char-index
-      (* char, [address, length] -- index or -1 *)
-      (* index start from Zero *)
-      over
-      xxx|swap|x
-      find-char-address
-      dup Zero < if
-        swap drop Exit
-      then
-      swap -
-      Exit
-    ; define-function
-
-
-    (* little test:
-     ,* 'k' s" k" find-char-index . (\* 0 *\) cr
-     ,* 'k' s" kkk" find-char-index . (\* 0 *\) cr
-     ,* 'k' s" skkk" find-char-index . (\* 1 *\) cr
-     ,* 'k' s"  kkk" find-char-index . (\* 1 *\) cr
-     ,* 'k' s" 0123456789k" find-char-index . (\* 10 *\) cr
-     ,* 'k' s" 0123456789" find-char-index . (\* -1 *\) cr
-     ,*)
-
-
-
-    : help,string->line-dalin
-      (* [address, length] -- head[address, <dalin>] *)
-      (* LambdaStack:: [address, <dalin>] -- *)
-      dup zero? if
-        get-back
-        dup2
-          cdr null [cons,cdr]!
-          drop2
-        head<-dalin
-        Exit
-      then
-      dup2
-      'linefeed' xx|over|x find-char-index
-      dup Zero < if
-        (* this means if a string is not end with 'linefeed'
-           a 'linefeed' will be added at the end *)
-        drop
-        dup substring
-        xx|tuck|x
-        swap copy-byte-string
-        <substring>
-        cons drop <dalin>
-        [car,cons]!
-          cons null [cons,cdr]!
-        [cons,cdr]!
-        get-back
-        xx|swap|xx
-        ^_^
-        head<-dalin
-        Exit
-      then
-      (* [address, length], index-of-linefeed *)
-      x|over|xx over + add1
-      xxx|swap|x (* leave the new address *)
-      swap over - sub1
-      xx|swap|x (* leave the new length *)
-      (* [new address, new length], address, index-of-linefeed *)
-      dup zero? if
-        (* 'linefeed' is the 1st char of the string
-           so we meet an empty line, it will be stored as `null' in dalin *)
-        drop2
-        null
-      else
-        (* index-of-linefeed is just the length of substring *)
-        dup substring
-        xx|tuck|x
-        swap copy-byte-string
-        <substring>
-      then
-      cons drop <dalin>
-      [car,cons]!
-        cons null [cons,cdr]!
-      [cons,cdr]!
-      get-back
-        xx|swap|xx
-        ^_^
-      ready
-      help,string->line-dalin
-      Exit
-    ; define-recursive-function
-
-    : string->line-dalin
-      (* [address, length] -- head[address, <dalin>] *)
-      (* which parses a string and return a dalin of substring
-         one substring denotes one line of text
-         empty line is stored as `null' in dalin *)
-      null ready
-      help,string->line-dalin
-      Exit
-    ; define-function
-    #+end_src
-*** test: string->line-dalin
-    #+begin_src cicada
-    s" kkk" string->line-dalin
-    car print-type-tag (* <substring> *) cr
-    dup get-length-of-string
-    print-string (* kkk *) cr
-
-    s" kkk
-    " string->line-dalin
-    dup2 dalin*? . (* 1 *) cr
-    car print-type-tag (* <substring> *) cr
-    dup get-length-of-string
-    print-string (* kkk *) cr
-
-    s" kkk
-    aaa" string->line-dalin
-    dup2 dalin*? . (* 0 *) cr
-    dup2
-    car print-type-tag (* <substring> *) cr
-    dup get-length-of-string
-    print-string (* kkk *) cr
-    ->
-    car print-type-tag (* <substring> *) cr
-    dup get-length-of-string
-    print-string (* aaa *) cr
-
-    s" kkk
-    aaa
-    " string->line-dalin
-    dup2 dalin*? . (* 0 *) cr
-    dup2
-    car print-type-tag (* <substring> *) cr
-    dup get-length-of-string
-    print-string (* kkk *) cr
-    ->
-    car print-type-tag (* <substring> *) cr
-    dup get-length-of-string
-    print-string (* aaa *) cr
-    #+end_src
-*** >< reduce text-editing to line-editing
-    #+begin_src cicada
-    (* buffer: ==
-         [address]
-       line: ==
-         buffer[address, length], cursors[address, <list>]
-       where:
-         cursor is a Zero-based-index, from Zero to length *)
-
-
-    0 : Var,LineBuffer ; define-variable
-
-    Here fetch Var,LineBuffer save
-    1000 Here add-save
-
-    : LineBuffer (*  -- buffer[address] *)
-      Var,LineBuffer fetch
-      Exit
-    ; define-function
-
-
-    0 : Var,Tmp,LineBuffer ; define-variable
-
-    Here fetch Var,Tmp,LineBuffer save
-    1000 Here add-save
-
-    : Tmp,LineBuffer (*  -- buffer[address] *)
-      Var,Tmp,LineBuffer fetch
-      Exit
-    ; define-function
-
-
-    : copyStringToBuffer
-      (* string[address, length], buffer[address] --
-         buffer[address, length] *)
-      push-lambda-stack
-      tuck
-      pop-lambda-stack dup push-lambda-stack
-      swap copy-byte-string
-      pop-lambda-stack
-      swap
-      Exit
-    ; define-function
-
-    : copyStringToLine
-      (* string[address, length], buffer[address] --
-         buffer[address, length], cursors[address, <list>] *)
-      copyStringToBuffer
-      cons drop <list>
-      Zero <fixnum>
-      [cons,car]!
-      Exit
-    ; define-function
-
-
-    : line,move-cursor-right
-      (* buffer[address, length], cursors[address, <list>], number --
-         buffer[address, length], cursors[address, <list>] *)
-      xx|over|x car drop (* drop <fixnum> *)
-      +  <fixnum> [cons,car]!
-      Exit
-    ; define-function
-
-    : line,move-cursor-left
-      (* buffer[address, length], cursors[address, <list>], number --
-         buffer[address, length], cursors[address, <list>] *)
-      xx|over|x car drop (* drop <fixnum> *)
-      -  <fixnum> [cons,car]!
-      Exit
-    ; define-function
-
-    : line,move-cursor-to-col
-      (* buffer[address, length], cursors[address, <list>], index --
-         buffer[address, length], cursors[address, <list>] *)
-      <fixnum> [cons,car]!
-      Exit
-    ; define-function
-
-
-    (* ><><><
-       the following two functions need better factoring *)
-
-    : insertString
-      (* string[address, length],
-         buffer[address, length], cursors[address, <list>] --
-         buffer[address, length], cursors[address, <list>] *)
-      dup2 ready
-      xx|over|xx ready
-      car drop (* drop <fixnum> *)
-      tuck -
-      xx|swap|x +
-        dup push-lambda-stack (* address of middle buffer *)
-      swap
-      Tmp,LineBuffer copyStringToBuffer
-      xx|swap|xx
-      pop-lambda-stack copyStringToBuffer
-        dup push-lambda-stack (* length of string *)
-      + copyStringToBuffer
-      drop2
-      pop-lambda-stack
-      get-back x|swap|xx dup push-lambda-stack
-      +
-      pop-lambda-stack
-      get-back
-      x|tuck|xx car drop (* <fixnum> *)
-      + <fixnum> [cons,car]!
-      Exit
-    ; define-function
-
-    (*
-     ,* test:
-     ,* s"  xxx "
-     ,* s"  kkk " LineBuffer copyStringToLine
-     ,* 2 line,move-cursor-right
-     ,* insertString
-     ,* car write (\* 7 *\) cr
-     ,* print-string (\*  k xxx kk  *\) cr
-     ,*)
-
-    : insertChar
-      (* char,
-         buffer[address, length], cursors[address, <list>] --
-         buffer[address, length], cursors[address, <list>] *)
-      dup2 ready
-      xx|over|xx ready
-      car drop (* drop <fixnum> *)
-      tuck -
-      xx|swap|x +
-        dup push-lambda-stack (* address of middle buffer *)
-      swap
-      Tmp,LineBuffer copyStringToBuffer
-      x|swap|xx
-      pop-lambda-stack tuck save-byte
-      add1
-      copyStringToBuffer
-      drop2
-      get-back add1
-      get-back dup2 car drop (* <fixnum> *)
-      add1 <fixnum> [cons,car]!
-      Exit
-    ; define-function
-
-
-    (*
-     ,* test:
-     ,* 'x'
-     ,* s"  kkk " LineBuffer copyStringToLine
-     ,* 2 line,move-cursor-right
-     ,* insertChar
-     ,* car write (\* 3 *\) cr
-     ,* print-string (\*  kxkk  *\) cr
-     ,*)
-
-
-    : deleteChars
-      (* buffer[address, length], cursors[address, <list>], number --
-         buffer[address, length], cursors[address, <list>] *)
-      xx|tuck|x
-      xx|swap|x dup2 ready
-      car drop (* drop <fixnum> *)
-      +
-      (* buffer[address, length], number, number + cursors *)
-      xx|swap|x  -
-      (* buffer[address], number + cursors, length - number *)
-      x|over|xx swap ready
-      (* buffer[address], number + cursors *)
-      +
-      xx|swap|x
-
-      Exit
-    ; define-function
-
-    : line,kill-line (* erase-half-line-to-end *)
-      (* buffer[address, length], cursors[address, <list>] --
-         buffer[address, length], cursors[address, <list>] *)
-      Exit
-    ; define-function
-
-
-
-
-
-
-
-    (*
-     ,* : text,move-cursor-up (\* number -- *\)
-     ,* ; define-function
-     ,*
-     ,* : text,move-cursor-down (\* number -- *\)
-     ,* ; define-function
-     ,*
-     ,* : text,move-cursor-down-&-to-the-begin-of-line (\* number -- *\)
-     ,* ; define-function
-     ,*
-     ,* : text,move-cursor-up-&-to-the-begin-of-line (\* number -- *\)
-     ,* ; define-function
-     ,*)
-
-
-
-
-    (*
-     ,* : text,move-cursor-to-row (\* row-index -- *\)
-     ,* ; define-function
-     ,*
-     ,* : text,move-cursor-to-row-&-col (\* row-index, col-index -- *\)
-     ,* ; define-function
-     ,*)
-
-
-    (* the position of the cursor
-     ,* is also as an argument of the following functions
-     ,* but the cursor do not move when these functions are executed
-     ,*)
-
-
-
-    (*
-     ,* : delete-lines (\* number -- *\)
-     ,* ; define-function
-     ,*)
-
-
-
-    (*
-     ,* : erase-half-screen-to-end (\* -- *\)
-     ,* ; define-function
-     ,*
-     ,* : erase-half-screen-to-start (\* -- *\)
-     ,* ; define-function
-     ,*
-     ,* : erase-screen (\* -- *\)
-     * ; define-function
-     *)
-    #+end_src
-*** >< tryREDL
-    just use the ``read-char''
-    #+begin_src cicada
-    :" 1234567890"
-    : InitString,for-update-display ; define-constant-string
-
-    InitString,for-update-display
-    : Var-string,for-update-display ; define
-
-
-    : update-display
-      (*  --  *)
-      terminal,clearScreen
-      Var-string,for-update-display
-      fetch2 print-string cr
-      Exit
-    ; define-function
-
-
-    :" kkk
-    : tryREDL (*  --  *)
-      setTerminalToReadKey
-      help,tryREDL
-      Exit
-    ; define-function
-    "
-    : String-for,kkk ; define-constant-string
-
-    :" kkk" string-hash->index
-    : Symbol-index:kkk ; define-constant
-    : kkk (*  -- *)
-      String-for,kkk
-      Var-string,for-update-display
-      save2
-      Exit
-    ; define-function
-
-    :" aaa
-
-    : help,tryREDL (*  --  *)
-      (* D *)
-      update-display
-      (* R *)
-      read-char  (* write-space write-dec-number cr *)
-      (* E *)
-      char->function-name-symbol
-      executeSymbol
-      (* L *)
-      help,tryREDL
-      Exit
-    ; define-recursive-function
-    "
-    : String-for,aaa
-    ; define-constant-string
-
-    :" aaa" string-hash->index
-    : Symbol-index:aaa ; define-constant
-    : aaa (*  -- *)
-      String-for,aaa
-      Var-string,for-update-display
-      save2
-      Exit
-    ; define-function
-
-
-
-    (* in the future this funciton must see a lot of global variables *)
-    : char->function-name-symbol
-      (* char -- [index, <symbol>] *)
-      dup 'k' == if
-        drop Symbol-index:kkk <symbol> Exit
-      then
-      dup 'a' == if
-        drop Symbol-index:aaa <symbol> Exit
-      then
-      Exit
-    ; define-function
-
-
-    :" executeSymbol said:
-       ``My function-type is (* [index, <symbol>] -- unknown *)
-         But I meet the following type
-         I will not touch it and call debuger.''
-       --> "
-    : Message:executeSymbol,type-error ; define-constant-string
-    : executeSymbol (* [index, <symbol>] -- unknown *)
-      dup <symbol> =/= if
-        Message:executeSymbol,type-error print-string
-        dup print-type-tag cr
-        debuger
-        Exit
-      then
-      drop (* drop <symbol> *)
-      index-hashback->string
-      execute-word
-      Exit
-    ; define-function
-
-
-
-    : help,tryREDL (*  --  *)
-      (* D *)
-      update-display
-      (* R *)
-      read-char
-      (* E *)
-      char->function-name-symbol
-      executeSymbol
-      (* L *)
-      help,tryREDL
-      Exit
-    ; define-recursive-function
-
-    : tryREDL (*  --  *)
-      setTerminalToReadKey
-      help,tryREDL
-      Exit
-    ; define-function
-
-    : t tryREDL Exit ; define-function
-    #+end_src
 * ==================================================

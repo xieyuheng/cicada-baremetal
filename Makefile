@@ -126,10 +126,16 @@ CBR-cicada:
 	make run-cicada    &&\
 	echo "	 "
 
+virtualbox-vmdk:
+	@
+	cd play
+	qemu-img convert -O vmdk cicada.image cicada.vmdk
+
 clean:
 	@
 	rm -f		       \
 	play/*.bin	       \
 	play/*.image	       \
+	play/*.vmdk	       \
 	*~ */*~ */*/*~ */*/*/*~	 */*/*/*/*~    &&\
 	echo -e "\E[33;1m [ok] clean directory \E[0m"

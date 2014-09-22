@@ -9,6 +9,14 @@ cicada is a very simple programming language,
 it is a stack-based and functional language,
 the design of cicada is influenced by scheme and forth and joy.
 
+what is the purpose cicada project ?
+======================================
+the purpose of the cicada project is
+> to provide support
+> about programming language and math
+> to programmable devices
+> for the creative spirit in everyone's mind ^_^
+
 what is state of this project currently ?
 ======================================
 operating system for x86_64 : ``architecturals/x86-64/``
