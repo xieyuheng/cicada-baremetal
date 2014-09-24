@@ -10,10 +10,6 @@
    SizeOfKernel = 512 ;; unit :: k
    LocationOfKernel = 32*1024
    MagicNumberOfKernel = 26881h
-
-   SizeOfEnglishCore = 512 ;; unit :: k
-   LocationOfEnglishCore = 4*1024*1024
-   MagicNumberOfEnglishCore = "(* m"
    #+end_src
 ** equ
    #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
@@ -28,14 +24,17 @@
 ** start16
 *** note
     1. set up GDT in 16 bits mode
+    2. at the beginning
+       set stack to LocationOfKernel
+       it grows to lower address
 *** implementation
     #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
     use16
     org LocationOfKernel
-    
+
     start16:
             cli
-    
+
             xor ax, ax
             mov ds, ax
             mov es, ax
@@ -43,22 +42,22 @@
             mov gs, ax
             mov ss, ax
             mov sp, LocationOfKernel
-    
+
             ;; Make sure the screen is set to 80*25 text mode
             mov ax, 3
             int 0x10
-    
+
             ;; Disable blinking
             mov ax, 0x1003
             mov bx, 0x0000
             int 0x10
-    
+
             ;; hide the hardware cursor
             mov ax, 0x0200                  ; VIDEO - SET CURSOR POSITION
             mov bx, 0x0000                  ; Page number
             mov dx, 0x2000                  ; Row / Column
             int 0x10
-    
+
             ;; enable the A20 gate
             set_A20:
                in al, 0x64
@@ -72,14 +71,14 @@
                jnz check_A20
                mov al, 0xDF
                out 0x60, al
-    
+
             lgdt    [cs:GDTR]
-    
+
             ;; switch to protected mode
             mov     eax, cr0
             bts     eax, 0                   ; bit-index-0 set
             mov     cr0, eax
-    
+
             jmp     CODE_SELECTOR_32:start32
     #+end_src
 *** GDT
@@ -88,7 +87,7 @@
     GDTR:
        dw GDT_END - GDT - 1                  ;; index of the last byte in table
        dq GDT                                ;; linear address of GDT
-    
+
        ;; ;; base-address is a 32 bit value containing the linear address where the segment begins.
        ;; ;; limit is a 20 bit value tells the maximum addressable unit (either in 1 byte units, or in pages)
        ;; ;;   Hence, if you choose page granularity (4 KiB) in the flags
@@ -100,10 +99,10 @@
        ;; ;; access       [ 8 bits] :: 5       == 10010010b
        ;; ;  0     1     2  3  4  5          6          7
        ;; db 0ffh, 0ffh, 0, 0, 0, 10010010b, 11001111b, 0
-    
+
        ;; for all of the following desciptors :
        ;;  limit = 0fffffh,  base = 0h
-    
+
     align 16
     GDT:
        ;; descriptor-0 is always unused
@@ -126,7 +125,7 @@
        db 0, 0, 0, 0, 0, 10011010b, 00100000b, 0
        db 0, 0, 0, 0, 0, 10010010b, 00100000b, 0
     GDT_END:
-    
+
     NULL_SELECTOR = 0
     DATA_SELECTOR_32 = (1 shl 3)    ; flat data selector (ring 0)
     CODE_SELECTOR_32 = (2 shl 3)    ; 32-bit code selector (ring 0)
@@ -136,6 +135,7 @@
 ** start32
 *** note
     1. set up paging in 32 bits mode
+    2.        
 *** note about paging
     1. paging : page translation
     2. paging in pmode :
@@ -391,7 +391,7 @@
     IDTR:
       dw 256*16 - 1 ;; index of the last byte in table
       dq 0          ;; linear address of IDT
-    
+
     ;; not like the GDT, the IDT is created by code at address 0
     ;; an IDT entry is called a gate
     ;; the size of a gate in 64 bits mode is 16 bytes
@@ -400,7 +400,7 @@
     ;; reserved              [ 8 bits] :: 4 == 0
     ;; attributes-and-type   [ 8 bits] :: 5 ==
     ;; reserved              [32 bits] :: 12,13,14,15,16 == 0
-    
+
     align 16
     exception_gate_placeholder:
       dw exception_placeholder and 0ffffh ;; 0,1
@@ -410,7 +410,7 @@
       db 10001111b                        ;; 5
       dw exception_placeholder shr (2*8)  ;; 6,7,8,9
       dd exception_placeholder shr (6*8)  ;; 10,11
-    
+
     align 16
     interrupt_gate_placeholder:
       dw interrupt_placeholder and 0ffffh ;; 0,1
@@ -420,14 +420,14 @@
       db 10001110b                        ;; 5
       dw interrupt_placeholder shr (2*8)  ;; 6,7,8,9
       dd interrupt_placeholder shr (6*8)  ;; 10,11
-    
+
     ;; ISR :: Interrupt Service Routine
-    
+
     align 16
     exception_placeholder:
             cli
             hlt
-    
+
     align 16
     interrupt_placeholder:
             iretq
@@ -444,12 +444,12 @@
    define ArgumentStackPointer r13
    define GreyPairStackPointer r12
    ;; =================================
-   
+
    define ExplainerPointer     rax
    define TemporaryRegister    r11
    define TemporaryRegister2   r10
-   
-   
+
+
    macro pushReturnStack Register {
           sub ReturnStackPointer, CellWidth
           mov [ReturnStackPointer], Register
@@ -458,7 +458,7 @@
           mov Register, [ReturnStackPointer]
           add ReturnStackPointer, CellWidth
           }
-   
+
    macro pushArgumentStack Register {
           sub ArgumentStackPointer, CellWidth
           mov [ArgumentStackPointer], Register
@@ -467,8 +467,8 @@
           mov Register, [ArgumentStackPointer]
           add ArgumentStackPointer, CellWidth
           }
-   
-   
+
+
    ;; macro pushReturnStack Register {
    ;;    lea ReturnStackPointer, [ReturnStackPointer - CellWidth]
    ;;    mov [ReturnStackPointer], Register
@@ -477,7 +477,7 @@
    ;;    mov Register, [ReturnStackPointer]
    ;;    lea ReturnStackPointer, [ReturnStackPointer + CellWidth]
    ;;    }
-   
+
    ;; macro pushArgumentStack Register {
    ;;    lea ArgumentStackPointer, [ArgumentStackPointer - CellWidth]
    ;;    mov [ArgumentStackPointer], Register
@@ -510,20 +510,20 @@
    ;;    word[explainer] == address in a word where the address-of-explainer is stored
    ;;    word[explainer] == address in a word before the function-body
    ;;    word[explainer] == address in a word as the head of a function-body
-   
-   
+
+
    ;; note that:
    ;;   there are only two ways to jump to a explainer
    ;;   1. next
    ;;   2. execute
-   
-   
+
+
    ;; not matter what way you use to set :
    ;;   [ExplainerPointer] == address-of-explainer (of a word you want to jump to)
    ;; then :
    ;;   jmp qword[ExplainerPointer]
    ;; it will works just well !!!
-   
+
    ;; specially, about ``next'',
    ;; the way we use to set :
    ;;   [ExplainerPointer] == address-of-explainer (of a word you want to jump to)
@@ -534,18 +534,18 @@
    ;; set [NextWordPointer] == word-to-jump[explainer]  correctly
    ;; then call ``next''
    ;; it will works just well !!!
-   
-   
+
+
    ;; 1. this ``next'' do tail-call-optimization
    ;; 2. in the following FASM marco, anonymous label of FASM is used
    ;;    (of course, label in marco must be anonymous !)
    ;;    hence, when using anonymous labels in assembly,
    ;;    they can not across ``next'' !
-   
-   
+
+
    macro next {
           local not_at_the_end_of_function_body
-   
+
           mov ExplainerPointer, [NextWordPointer]
           add NextWordPointer, CellWidth
           cmp qword[NextWordPointer], Exit
@@ -557,14 +557,14 @@
           ;; maybe need more optimization,
           ;; for the above ``popReturnStack NextWordPointer'' may be
           ;; followed by ``pushReturnStack NextWordPointer'' (in explainFunctionBody)
-   
-   
-   
+
+
+
    ;; initial Link to point to NULL
    Link = 0
-   
-   
-   
+
+
+
    macro defWord WordString, Word {
    ;;--------------------------------------
    WordStringHeaderOf#Word:
@@ -597,8 +597,8 @@
    macro defWordEnd Word {
    EndOfFunctionBodyOf#Word:
    }
-   
-   
+
+
    ;; 1. if ``next'' meet ``Exit'',
    ;;    ``next'' will ``popReturnStack NextWordPointer''
    ;; 2. on the other hand,
@@ -606,9 +606,9 @@
    ;;    who ``pushReturnStack NextWordPointer''
    ;; 3. so, it is these two functions, ``next'' and ``explainFunctionBody'',
    ;;    which handle the nested function calls
-   
-   
-   
+
+
+
    ;; assembly code have no explainer
    macro defCode WordString, Word {
    ;;--------------------------------------
@@ -637,14 +637,14 @@
    AssemblerCodeOf#Word:
            ;; here follows the assembly code
            }
-   
-   
-   
-   
-   
-   
+
+
+
+
+
+
    macro defVar WordString, InitialValue, Word {
-   
+
    ;;--------------------------------------
    WordStringHeaderOf#Word:
            xx (EndOfWordStringOf#Word - WordStringOf#Word)
@@ -671,11 +671,11 @@
            xx InitialValue
    ;;--------------------------------------
            }
-   
-   
-   
-   
-   
+
+
+
+
+
    macro defConst WordString, InitialValue, Word {
    ;;--------------------------------------
    WordStringHeaderOf#Word:
@@ -703,11 +703,11 @@
            xx InitialValue
    ;;--------------------------------------
            }
-   
-   
-   
-   
-   
+
+
+
+
+
    ;; in stack:
    ;;   string[address, length]
    ;; in memory:
@@ -792,6 +792,89 @@
           xx initialize
           xx basicREPL
    #+end_src
+** basic-REPL
+   REPL for cicada is ``read execute (maybe print) loop''
+   #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+   defWord "basic-REPL", basicREPL
+          ;; (* unknown -- unknown *)
+          xx TheReturnStackTop, resetReturnStackPointer
+          xx TheArgumentStackTop, resetArgumentStackPointer
+          xx readWordForRuntime
+          xx executeWord
+          xx branch, -3
+          ;; must not end with Exit here
+   defWordEnd basicREPL
+
+
+   ;; defWord "execute-word", executeWord
+   ;;    ;; (* string[address, length] -- unknown *)
+   ;;    xx dup2, stringDenoteNumber?, false?branch, 4
+   ;;    xx   number, drop
+   ;;    xx   Exit
+   ;;    xx find, dup, zero?branch, 4
+   ;;    xx   wordLinkToWordExplainer, execute
+   ;;    xx   Exit
+   ;;    xx drop, printErrorInfoForExecuteWord
+   ;;    xx Exit
+   ;; defWordEnd executeWord
+
+
+   defWord "execute-word", executeWord
+          ;; (* string[address, length] -- unknown *)
+          xx dup2, stringDenoteNumber?, false?branch, 4
+          xx   number, drop
+          xx   Exit
+          xx dup2, find, dup, zero?branch, 6
+          xx   xxswapx, drop2
+          xx   wordLinkToWordExplainer, execute
+          xx   Exit
+          xx drop ;; drop zore
+          xx Message_undefined_word, printString
+          xx printString, printNewline
+          xx Exit
+   defWordEnd executeWord
+
+   defConstString "Message:undefined-word", "   UNDEFINED WORD: ", Message_undefined_word
+   #+end_src
+* *initialize*
+** initialize
+   #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+   defWord "initialize", initialize
+          ;; (* -- *)
+          xx closeInterrupt
+
+          xx createBarekeyboard
+
+          ;; text mode is configured by kernelloader
+          ;; it is ok to just use it
+          xx configureColorPalette
+          xx clearScreen
+          xx resetCurrentCursor
+
+          xx loadCoreFile
+
+          xx openInterrupt
+
+          xx Exit
+   defWordEnd initialize
+   #+end_src
+** loadCoreFile
+   #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+   defCode "load-core-file", loadCoreFile
+          ;; (* -- *)
+          mov rsi, LocationOfEnglishCore
+          mov rdi, InputBuffer
+          mov rcx, SizeOfEnglishCore
+          rep movsb
+          ;; reset [ReadingBoundary + CellWidth]
+          mov [ReadingBoundary + CellWidth], rdi
+          next   
+   
+   align 16
+   LocationOfEnglishCore:
+      file 'english-core.ccd' 
+   SizeOfEnglishCore = ($ - LocationOfEnglishCore) ;; unit :: byte
+   #+end_src
 ** interrupt
 *** closeInterrupt & openInterrupt
     #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
@@ -799,7 +882,7 @@
        ;; (* -- *)
        cli
        next
-    
+
     defCode "open-interrupt", openInterrupt
        ;; (* -- *)
        sti
@@ -825,24 +908,24 @@
     ; -----------------------------------------------------------------------------
     ; keyboard interrupt. IRQ 0x01, INT 0x21
     ; This IRQ runs whenever there is input on the keyboard
-    
+
     mapMemory
     ;; ------------------------------------------
     ;; should be big enough, for no size error check
     SizeOfScancodeQueue = 1024
-  
+
     ScancodeQueue labeling
             preserve SizeOfScancodeQueue
 
-    
+
     align 16
     barekeyboard:
             push rax
             push rcx
-    
+
             xor rax, rax
             in al, 0x60
-    
+
             mov rcx, [FrontOfScancodeQueue]
             mov byte [ScancodeQueue + rcx], al
             inc rcx
@@ -851,17 +934,17 @@
             xor rcx, rcx
     @@:
             mov [FrontOfScancodeQueue], rcx
-    
+
             ;; the interrupt is over
             mov al, 20h
             out 20h, al
             ;call os_smp_wakeup_all          ; A terrible hack
-    
+
             pop rcx
             pop rax
-    
+
             iretq
-    
+
 
     ;; two indexes of the array as pointers
     ;; Rear < Front
@@ -869,7 +952,7 @@
     RearOfScancodeQueue:  dq 0
     align 16
     FrontOfScancodeQueue: dq 1
-    
+
     defWord "create-barekeyboard", createBarekeyboard
        ;; (* -- *)
        ;; create the function to handle keyboard interrupt
@@ -879,87 +962,66 @@
        xx Exit
     defWordEnd createBarekeyboard
     #+end_src
-* *initialize*
-  #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
-  defWord "initialize", initialize
-         ;; (* -- *)
-         xx closeInterrupt
-  
-         xx createBarekeyboard
-  
-         ;; text mode is configured by kernelloader
-         ;; it is ok to just use it
-         xx configureColorPalette
-         xx clearScreen
-         xx resetCurrentCursor
-  
-         xx magicCheckCoreFile
-         xx loadCoreFile
-
-         xx openInterrupt
-  
-         xx Exit
-  defWordEnd initialize
-  
-  
-  Palette:
-  ;; These colors are in RGB format
-  ;; Each color byte is actually 6 bits (0x00 - 0x3F)
-  db 0x00, 0x00, 0x00     ;;  0 Black
-  db 0x33, 0x00, 0x00     ;;  1 Red
-  db 0x0F, 0x26, 0x01     ;;  2 Green
-  db 0x0D, 0x19, 0x29     ;;  3 Blue
-  db 0x31, 0x28, 0x00     ;;  4 Orange
-  db 0x1D, 0x14, 0x1E     ;;  5 Purple
-  db 0x01, 0x26, 0x26     ;;  6 Teal
-  db 0x2A, 0x2A, 0x2A     ;;  7 Light Gray
-  db 0x15, 0x15, 0x15     ;;  8 Dark Gray
-  db 0x3B, 0x0A, 0x0A     ;;  9 Bright Red
-  db 0x22, 0x38, 0x0D     ;; 10 Bright Green
-  db 0x1C, 0x27, 0x33     ;; 11 Bright Blue
-  db 0x3F, 0x3A, 0x13     ;; 12 Yellow
-  db 0x2B, 0x1F, 0x2A     ;; 13 Bright Purple
-  db 0x0D, 0x38, 0x38     ;; 14 Bright Teal
-  db 0x3F, 0x3F, 0x3F     ;; 15 White
-  
-  
-  defCode "configure-color-palette", configureColorPalette
-         ;; (* -- *)
-         xor eax, eax
-         mov dx, 0x03C8                  ; DAC Address Write Mode Register
-         out dx, al
-         mov dx, 0x03C9                  ; DAC Data Register
-         mov rbx, 16                     ; 16 lines
-  .nextline:
-         mov rcx, 16                     ; 16 colors
-         mov rsi, Palette
-  .nexttritone:
-         lodsb
-         out dx, al
-         lodsb
-         out dx, al
-         lodsb
-         out dx, al
-         dec rcx
-         cmp rcx, 0
-         jne .nexttritone
-         dec rbx
-         cmp rbx, 0
-         jne .nextline                    ; Set the next 16 colors to the same
-         mov eax, 0x14                   ; Fix for color 6
-         mov dx, 0x03c8                  ; DAC Address Write Mode Register
-         out dx, al
-         mov dx, 0x03c9                  ; DAC Data Register
-         mov rsi, Palette
-         add rsi, 18
-         lodsb
-         out dx, al
-         lodsb
-         out dx, al
-         lodsb
-         out dx, al
-         next
-  #+end_src
+** configureColorPalette
+   #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+   Palette:
+   ;; These colors are in RGB format
+   ;; Each color byte is actually 6 bits (0x00 - 0x3F)
+   db 0x00, 0x00, 0x00     ;;  0 Black
+   db 0x33, 0x00, 0x00     ;;  1 Red
+   db 0x0F, 0x26, 0x01     ;;  2 Green
+   db 0x0D, 0x19, 0x29     ;;  3 Blue
+   db 0x31, 0x28, 0x00     ;;  4 Orange
+   db 0x1D, 0x14, 0x1E     ;;  5 Purple
+   db 0x01, 0x26, 0x26     ;;  6 Teal
+   db 0x2A, 0x2A, 0x2A     ;;  7 Light Gray
+   db 0x15, 0x15, 0x15     ;;  8 Dark Gray
+   db 0x3B, 0x0A, 0x0A     ;;  9 Bright Red
+   db 0x22, 0x38, 0x0D     ;; 10 Bright Green
+   db 0x1C, 0x27, 0x33     ;; 11 Bright Blue
+   db 0x3F, 0x3A, 0x13     ;; 12 Yellow
+   db 0x2B, 0x1F, 0x2A     ;; 13 Bright Purple
+   db 0x0D, 0x38, 0x38     ;; 14 Bright Teal
+   db 0x3F, 0x3F, 0x3F     ;; 15 White
+   
+   
+   defCode "configure-color-palette", configureColorPalette
+          ;; (* -- *)
+          xor eax, eax
+          mov dx, 0x03C8                  ; DAC Address Write Mode Register
+          out dx, al
+          mov dx, 0x03C9                  ; DAC Data Register
+          mov rbx, 16                     ; 16 lines
+   .nextline:
+          mov rcx, 16                     ; 16 colors
+          mov rsi, Palette
+   .nexttritone:
+          lodsb
+          out dx, al
+          lodsb
+          out dx, al
+          lodsb
+          out dx, al
+          dec rcx
+          cmp rcx, 0
+          jne .nexttritone
+          dec rbx
+          cmp rbx, 0
+          jne .nextline                    ; Set the next 16 colors to the same
+          mov eax, 0x14                   ; Fix for color 6
+          mov dx, 0x03c8                  ; DAC Address Write Mode Register
+          out dx, al
+          mov dx, 0x03c9                  ; DAC Data Register
+          mov rsi, Palette
+          add rsi, 18
+          lodsb
+          out dx, al
+          lodsb
+          out dx, al
+          lodsb
+          out dx, al
+          next
+   #+end_src
 * *primitive functions*
 ** Var & Const
    #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
@@ -2061,7 +2123,7 @@
       add ExplainerPointer, CellWidth
       pushArgumentStack ExplainerPointer
       next
-   
+
    align 16
    explainConst:
       ;; ( -- value )
@@ -2069,7 +2131,7 @@
       mov TemporaryRegister, [ExplainerPointer]
       pushArgumentStack TemporaryRegister
       next
-   
+
    align 16
    explainFunctionBody:
       pushReturnStack NextWordPointer
@@ -2078,7 +2140,7 @@
       add ExplainerPointer, CellWidth
       mov NextWordPointer, ExplainerPointer
       next
-   
+
    align 16
    explainConstString:
       ;; ( -- string[address, length] )
@@ -2088,23 +2150,23 @@
       pushArgumentStack ExplainerPointer
       pushArgumentStack TemporaryRegister
       next
-   
-   
-   
+
+
+
    defCode "execute", execute
      ;; ( word[address of explainer] -- )
      popArgumentStack ExplainerPointer
      jmp qword[ExplainerPointer]
-   
+
    ;; not matter what way you use to set :
    ;;   [ExplainerPointer] == address-of-explainer (of a word you want to jump to)
    ;; then :
    ;;   jmp qword[ExplainerPointer]
    ;; it will works just well !!!
-   
-   
-   
-   
+
+
+
+
    ;; the following Exit helps tail-call-optimization
    ;; it just let you decide where is the end of FunctionBody
    ;; in a FunctionBody, the ``Exit'' as a word will never be called
@@ -2113,7 +2175,7 @@
    ;;   Exit
    ;;   readWord Exit find wordLinkToWordExplainer
    ;;   *)
-   
+
    defConst "Function-body-explainer",   explainFunctionBody, FunctionBodyExplainer
    defConst "Variable-explainer",        explainVar,          VarExplainer
    defConst "Constant-explainer",        explainConst,        ConstExplainer
@@ -2138,10 +2200,10 @@
    ;; ==
    ;;   | type-bit-63 | ... | type-bit-1 | type-bit-0 |
    ;; type-bit-0 is for HiddenWord
-   
+
    define WordType_HiddenMask 00000001h
-   
-   
+
+
    defWord "word-link->word-string", wordLinkToWordString
       ;; (* link[address] -- string[address, length] *)
       xx literal, CellWidth
@@ -2152,7 +2214,7 @@
       xx swap, fetch
       xx Exit
    defWordEnd wordLinkToWordString
-   
+
    defWord "help,find", help_find
       ;; (* wordString[address, length], link[address] -- word[address of link] or Zero *)
       xx dup, zero?, false?branch, 4
@@ -2165,15 +2227,15 @@
       xx help_find
       xx Exit
    defWordEnd help_find
-   
+
    defWord "find", find
       ;; (* wordString[address, length] -- word[address of link] or Zero *)
       xx FirstWordInDictionary, fetch
       xx help_find
       xx Exit
    defWordEnd find
-   
-   
+
+
    ;; usage;
    ;; 1 2 readWord + find wordLinkToWordExplainer execute . (* 3 *)
    defWord "word-link->word-explainer", wordLinkToWordExplainer
@@ -2196,7 +2258,7 @@
       xx Here ,save
       xx Exit
    defWordEnd appendNumberToHere
-   
+
    ;; note that:
    ;; a string in stack is string[address, length]
    ;; a string in memory is ||  1 : length  ||  n : string  ||
@@ -2211,8 +2273,8 @@
       ;; update Here
       xx Here, fetch, addition, Here, save
       xx Exit
-   defWordEnd appendStringToHere    
-   
+   defWordEnd appendStringToHere
+
    defWord "create-word-header", createWordHeader
       ;; (* byString *)
       ;; (* string[address, length] -- word[address of link] *)
@@ -2226,8 +2288,8 @@
       xx appendNumberToHere ;; address-of-name-string-header
       xx Exit
    defWordEnd createWordHeader
-   
-   
+
+
    defWord "create-word-header-for-function", createWordHeaderForFunction
       ;; (* string[address, length] -- word[address of link] *)
       xx Here, fetch, xxswapx ;; for address-of-name-string-header
@@ -2241,9 +2303,9 @@
       xx appendNumberToHere ;; address-of-name-string-header
       xx Exit
    defWordEnd createWordHeaderForFunction
-   
-   
-   
+
+
+
    defWord "append-word-description-to-here", appendWordDescriptionToHere
       ;; (* wordList[address, the number of words] -- *)
       xx dup, zero?branch, 16;-- GOTO: drop2
@@ -2253,14 +2315,14 @@
       ;; reading-error reported by ``number'' is not handled
       xx number, drop, appendNumberToHere
       xx branch, -12;-- GOTO: the beginning
-   
+
       xx find, wordLinkToWordExplainer, appendNumberToHere
       xx branch, -17;-- GOTO: the beginning
-   
+
       xx drop2
       xx Exit
    defWordEnd appendWordDescriptionToHere
-   
+
    defWord "add-new-word-to-dictionary", addNewWordToDictionary
       ;; reset FirstWordInDictionary to point to the newly defined word
       ;; (* word[address of link] -- *)
@@ -2271,7 +2333,7 @@
       xx FirstWordInDictionary, save
       xx Exit
    defWordEnd addNewWordToDictionary
-   
+
    defWord "set-size-of-function-body", setSizeOfFunctionBody
       ;; (* wordList[address, the number of words], word[address of link] --
       ;;    wordList[address, the number of words], word[address of link] *)
@@ -2283,7 +2345,7 @@
       xx save
       xx Exit
    defWordEnd setSizeOfFunctionBody
-   
+
    defWord "define-function", defineFunction
       ;; (* wordList[address, the number of words] -- *)
       ;; to create a new word
@@ -2641,17 +2703,17 @@
     mapMemory
     ;; ------------------------------------------
     SizeOfInputBuffer = 3*1024*1024
-    
+
     InputBuffer labeling
             preserve SizeOfInputBuffer
     EndOfInputBuffer labeling
-    
-    
+
+
     defConst "Size-of-input-buffer",  SizeOfInputBuffer,  TheSizeOfInputBuffer
     defConst "Input-buffer",          InputBuffer,        TheInputBuffer
     defConst "End-of-input-buffer",   EndOfInputBuffer,   TheEndOfInputBuffer
-    
-    
+
+
     ;; 1. two global variables for reading
     ;;    I can easily support `evalString' by change these two variables
     ;; 2. note that, there is no char in the address of a ``ReadingBoundary''
@@ -2662,8 +2724,8 @@
     ;;    and call ``inputLine'' to fetch more chars
     ;;    and loop back
     defVar "Current-reading",  InputBuffer, CurrentReading
-    defVar "Reading-boundary", InputBuffer, ReadingBoundary      
-       
+    defVar "Reading-boundary", InputBuffer, ReadingBoundary
+
     defWord "read-char", readChar
        ;; (*  -- char *)
        xx CurrentReading, fetch
@@ -2697,8 +2759,8 @@
        xx ReadingBoundary, addSave
        xx drop
        xx branch, -31
-    defWordEnd readChar        
-       
+    defWordEnd readChar
+
     defWord "not-reading-from-input-buffer?", notReadingFromInputBuffer?
        ;; (* -- True of False *)
        xx CurrentReading, fetch
@@ -2711,8 +2773,8 @@
        xx   Exit
        xx False
        xx Exit
-    defWordEnd notReadingFromInputBuffer?        
-       
+    defWordEnd notReadingFromInputBuffer?
+
     defWord "to-read-from-input-buffer", toReadFromInputBuffer
        ;; (* -- *)
        xx TheInputBuffer, CurrentReading, save
@@ -2725,7 +2787,7 @@
     #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
     ;; the size of a ScreenBuffer is equal to the size of the screen
     ;; which is 80*25*2
-    
+
     mapMemory
     ;; ------------------------------------------
     ;; the size of a ScreenBuffer is equal to the size of the screen
@@ -2734,14 +2796,14 @@
     ;; the size of its cursor is 2 bytes
     SizeOfScreenBuffer = 80*25*2
     SizeOfCursor = 8
-    
+
     Cursor0_InAssembly labeling
             preserve SizeOfCursor
     ScreenBuffer0_InAssembly labeling
             preserve SizeOfScreenBuffer
-    
+
     defConst "screen-buffer-0", ScreenBuffer0_InAssembly, ScreenBuffer0
-    
+
     defCode "scroll-screen-buffer", scrollScreenBuffer
        ;; (* screen buffer[address] -- *)
        ;; scrolls a screen Buffer up by one line
@@ -2762,7 +2824,7 @@
        mov cx, 80
        rep stosw                       ; Store word in AX to RDI, RCX times
        next
-    
+
     defCode "clear-screen-buffer", clearScreenBuffer
        ;; (* screen buffer[address] -- *)
        popArgumentStack rdi              ; Address for start of frame buffer
@@ -3036,7 +3098,7 @@
        xx drop
        xx branch, -10
     defWordEnd readFirstNonBlankChar
-    
+
     defWord "read-non-blank-char", readNonBlankChar
        ;; (* -- FirstNonBlankChar or Zero *)
        xx readChar, dup
@@ -3055,58 +3117,58 @@
     ;; note that, Subsequent calls will overwrite BufferForReadWord
     ;; this is why there is another function ``readWordForRuntime''
     MaxWordLength = 1024
-    
+
     BufferForReadWord labeling
             preserve MaxWordLength
-    
+
     BufferForReadWordForRuntime labeling
             preserve MaxWordLength
-    
-       
+
+
     defWord "read-word", readWord
        ;; (*  -- wordString[address, length] *)
        ;; 1. skips any blanks (spaces, tabs, newlines)
        ;; 2. calls readChar to read characters into BufferForReadWord
        ;;    until it hits a blank
        ;; 3. returns the address of BufferForReadWord and length on the stack
-       
+
        xx literal, BufferForReadWord ;; (* leave return one of the values *)
        xx Zero                       ;; (* leave length counter *)
-       
+
        xx literal, BufferForReadWord
        xx readFirstNonBlankChar
        xx over, saveByte, add1
        xx swap, add1, swap
-       
+
        xx readNonBlankChar, dup, zero?branch, 9
        xx   over, saveByte, add1
        xx   swap, add1, swap
        xx   branch, -11
-       
+
        xx drop2
        xx Exit
-    defWordEnd readWord               
-       
+    defWordEnd readWord
+
     defWord "read-word-for-runtime", readWordForRuntime
        ;; (*  -- wordString[address, length] *)
        ;; 1. skips any blanks (spaces, tabs, newlines)
        ;; 2. calls readChar to read characters into BufferForReadWord
        ;;    until it hits a blank
        ;; 3. returns the address of BufferForReadWord and length on the stack
-       
+
        xx literal, BufferForReadWordForRuntime ;; (* leave return one of the values *)
        xx Zero                                 ;; (* leave length counter *)
-       
+
        xx literal, BufferForReadWordForRuntime
        xx readFirstNonBlankChar
        xx over, saveByte, add1
        xx swap, add1, swap
-       
+
        xx readNonBlankChar, dup, zero?branch, 9
        xx   over, saveByte, add1
        xx   swap, add1, swap
        xx   branch, -11
-       
+
        xx drop2
        xx Exit
     defWordEnd readWordForRuntime
@@ -3117,26 +3179,26 @@
     ;; ------------------------------------------
     ;; note that, Subsequent calls will overwrite BasicStringBuffer
     MaxStringLength = 1024*1024
-    
+
     BasicStringBuffer labeling
             preserve MaxStringLength
-          
-    defConst "Basic-string-buffer", BasicStringBuffer, TheBasicStringBuffer     
-       
+
+    defConst "Basic-string-buffer", BasicStringBuffer, TheBasicStringBuffer
+
     defWord "read-string-into-buffer", readStringInToBuffer
        ;; (*  -- string[address of BasicStringBuffer, length] *)
        xx literal, BasicStringBuffer ;; (* leave return one of the values *)
        xx Zero                         ;; (* leave length counter *)
-       
+
        xx literal, BasicStringBuffer
-       
+
        xx readChar, dup
        xx literal, 34 ;; ASCII_doublequote
        xx equal?, notFalse?branch, 9
        xx   over, saveByte, add1
        xx   swap, add1, swap
        xx   branch, -14
-       
+
        xx drop2
        xx Exit
     defWordEnd readStringInToBuffer
@@ -3360,65 +3422,65 @@
     ;;   ||  1 : length-of-Word-2     ||
     ;;   ||  b : Word-2--as-a-string  ||
     ;;   ...
-    
+
     mapMemory
     ;; ------------------------------------------
     ;; note that, Subsequent calls will overwrite BufferForReadWordListForLexicographer
     SizeOfBufferForReadWordListForLexicographer = 2*1024*1024
-    
+
     BufferForReadWordListForLexicographer labeling
             preserve SizeOfBufferForReadWordListForLexicographer
-      
+
     defConstString "Ket:cosemi", ";", Ket_cosemi
     defConstString "Ket:fuzhe", "者", Ket_fuzhe
-    
+
     defVar "Next-word-for-read-word-list-for-lexicographer", BufferForReadWordListForLexicographer, NextWordForReadWordListForLexicographer
-    
+
     defWord "read-word-list-for-lexicographer", readWordListForLexicographer
        ;; (* read a WordList from stdin (ForLexicographer) *)
        ;; (* -- wordList[address, the number of words] *)
-    
+
        ;; (* initialize NextWordForReadWordListForLexicographer *)
        xx literal, BufferForReadWordListForLexicographer
        xx NextWordForReadWordListForLexicographer
        xx save
-    
+
        ;; (* leave return value: [buffer-address, counter] *)
        xx literal, BufferForReadWordListForLexicographer
        xx Zero
-    
+
        xx readWord
-    
+
        xx dup2
        xx CommentBeginString, equalString?, false?branch, 5
        xx drop2, ignoreComment, branch, -9
-    
+
        xx dup2
        xx Ket_cosemi, equalString?, false?branch, 3
        xx drop2
        xx Exit
-    
+
        xx dup2
        xx Ket_fuzhe, equalString?, false?branch, 3
        xx drop2
        xx Exit
-    
+
        xx addWordToListForLexicographer
        xx add1
        xx branch, -27
     defWordEnd readWordListForLexicographer
-    
+
     defWord ":", readWordListForLexicographer_Bra_cosemi
        xx readWordListForLexicographer
        xx Exit
     defWordEnd readWordListForLexicographer_Bra_cosemi
-    
+
     defWord "夫", readWordListForLexicographer_Bra_fuzhe
        xx readWordListForLexicographer
        xx Exit
     defWordEnd readWordListForLexicographer_Bra_fuzhe
-    
-    
+
+
     defWord "add-word-to-list-for-lexicographer", addWordToListForLexicographer
        ;; ( wordString[address, length] -- )
        ;; leave a length behind, for update NextWordForReadWordListForLexicographer at the end
@@ -3448,39 +3510,6 @@
           out 0x64, al                    ; Send the reboot call to the keyboard controller
           jmp .loop
    #+end_src
-** loadCoreFile
-   #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
-   defWord "magic-check-core-file", magicCheckCoreFile
-          ;; (* -- *)
-          xx literal, LocationOfEnglishCore, fetch
-          xx literal, "(* magic"
-          xx equal?, false?branch, 2
-          xx   Exit
-          xx literal, "M", writeChar
-          xx literal, "a", writeChar
-          xx literal, "g", writeChar
-          xx literal, "i", writeChar
-          xx literal, "c", writeChar
-          xx literal, " ", writeChar
-          xx literal, "f", writeChar
-          xx literal, "a", writeChar
-          xx literal, "i", writeChar
-          xx literal, "l", writeChar
-          xx halt
-          xx Exit
-   defWordEnd magicCheckCoreFile
-
-
-   defCode "load-core-file", loadCoreFile
-          ;; (* -- *)
-          mov rsi, LocationOfEnglishCore
-          mov rdi, InputBuffer
-          mov rcx, (SizeOfEnglishCore*1024)
-          rep movsb
-          ;; reset [ReadingBoundary + CellWidth]
-          mov [ReadingBoundary + CellWidth], rdi
-          next
-   #+end_src
 ** assemblyDebug
    #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
    defWord ".", printLittleNumber
@@ -3493,50 +3522,6 @@
           xx Exit
    defWordEnd printLittleNumber
    #+end_src
-* *basic-REPL*
-  REPL for cicada is ``read execute (maybe print) loop''
-  #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
-  defWord "basic-REPL", basicREPL
-         ;; (* unknown -- unknown *)
-         xx TheReturnStackTop, resetReturnStackPointer
-         xx TheArgumentStackTop, resetArgumentStackPointer
-         xx readWordForRuntime
-         xx executeWord
-         xx branch, -3
-         ;; must not end with Exit here
-  defWordEnd basicREPL
-
-
-  ;; defWord "execute-word", executeWord
-  ;;    ;; (* string[address, length] -- unknown *)
-  ;;    xx dup2, stringDenoteNumber?, false?branch, 4
-  ;;    xx   number, drop
-  ;;    xx   Exit
-  ;;    xx find, dup, zero?branch, 4
-  ;;    xx   wordLinkToWordExplainer, execute
-  ;;    xx   Exit
-  ;;    xx drop, printErrorInfoForExecuteWord
-  ;;    xx Exit
-  ;; defWordEnd executeWord
-
-
-  defWord "execute-word", executeWord
-         ;; (* string[address, length] -- unknown *)
-         xx dup2, stringDenoteNumber?, false?branch, 4
-         xx   number, drop
-         xx   Exit
-         xx dup2, find, dup, zero?branch, 6
-         xx   xxswapx, drop2
-         xx   wordLinkToWordExplainer, execute
-         xx   Exit
-         xx drop ;; drop zore
-         xx Message_undefined_word, printString
-         xx printString, printNewline
-         xx Exit
-  defWordEnd executeWord
-
-  defConstString "Message:undefined-word", "   UNDEFINED WORD: ", Message_undefined_word
-  #+end_src
 * *ending*
 ** memory allocation
 *** PairConstructionsArray
@@ -3560,34 +3545,34 @@
     CdrBytesSize = 16
     ConsBytesSize = ClrBytesSize + CarBytesSize + CdrBytesSize
     NumberOfPairConstructions = 100 * 1024
-    
+
             preserve ClrBytesSize
     InFrontOfTheFirstPairConstruction labeling
             preserve (CarBytesSize + CdrBytesSize)
-    
+
             preserve ClrBytesSize
     FirstPairConstruction labeling
             preserve (CarBytesSize + CdrBytesSize)
-    
+
             ;; ==========================
             preserve ((NumberOfPairConstructions - 2) * ConsBytesSize)
             ;; ==========================
-    
+
             preserve ClrBytesSize
     LastPairConstruction labeling
-            preserve (CarBytesSize + CdrBytesSize)    
-              
+            preserve (CarBytesSize + CdrBytesSize)
+
      defConst "Clr-bytes-size"  , ClrBytesSize  , TheClrBytesSize
      defConst "Car-bytes-size"  , CarBytesSize  , TheCarBytesSize
      defConst "Cdr-bytes-size"  , CdrBytesSize  , TheCdrBytesSize
-     defConst "Cons-bytes-size" , ConsBytesSize , TheConsBytesSize    
-    
+     defConst "Cons-bytes-size" , ConsBytesSize , TheConsBytesSize
+
      defConst "Number-of-pair-constructions", NumberOfPairConstructions, TheNumberOfPairConstructions
-    
+
      defConst "In-front-of-the-first-pair-construction", InFrontOfTheFirstPairConstruction, TheInFrontOfTheFirstPairConstruction
      defConst "First-pair-construction", FirstPairConstruction, TheFirstPairConstruction
      defConst "Last-pair-construction",  LastPairConstruction,  TheLastPairConstruction
-    
+
      defVar "Current-free-pair-construction", FirstPairConstruction, CurrentFreePairConstruction
      #+end_src
 *** HashTableForSymbol
@@ -3597,7 +3582,7 @@
     mapMemory
     ;; ------------------------------------------
     ;; HashTableForSymbol
-    
+
     ;; a SymbolEntry (unit : byte)
     ;; ===========================
     ;;  ||   8 : SymbolValue   ||
@@ -3606,7 +3591,7 @@
     ;; ---------------------------
     ;;  || 56+ : SymbolString  ||
     ;; ===========================
-    
+
     SymbolLengthBytesSize = 1
     SymbolValueBytesSize  = 8
     SymbolStringBytesSize = 56+0
@@ -3620,24 +3605,24 @@
     ;; NumberOfSymbolEntrys = 997
     ;; NumberOfSymbolEntrys = 499
     ;; NumberOfSymbolEntrys = 230 ;; for a special test
-    
+
     FirstSymbolEntry labeling
             preserve SymbolEntryBytesSize
-    
+
             ;; ========================
             preserve ((NumberOfSymbolEntrys - 2) * SymbolEntryBytesSize)
             ;; ========================
-    
+
     LastSymbolEntry labeling
             preserve SymbolEntryBytesSize
-    
+
     defConst "Number-of-symbol-entrys",  NumberOfSymbolEntrys,  TheNumberOfSymbolEntrys
     defConst "Symbol-value-bytes-size",  SymbolValueBytesSize,  TheSymbolValueBytesSize
     defConst "Symbol-length-bytes-size", SymbolLengthBytesSize, TheSymbolLengthBytesSize
     defConst "Symbol-string-bytes-size", SymbolStringBytesSize, TheSymbolStringBytesSize
     defConst "Symbol-max-length",        SymbolMaxLength,       TheSymbolMaxLength
     defConst "Symbol-entry-bytes-size",  SymbolEntryBytesSize,  TheSymbolEntryBytesSize
-    
+
     defConst "First-symbol-entry", FirstSymbolEntry, TheFirstSymbolEntry
     defConst "Last-symbol-entry",  LastSymbolEntry,  TheLastSymbolEntry
         #+end_src
@@ -3647,17 +3632,17 @@
     ;; ------------------------------------------
     ;; two StringHeaps
     SizeOfStringHeap = 5*1024*1024
-    
+
     StringHeap1 labeling
             preserve SizeOfStringHeap
     EndOfStringHeap1 labeling
-    
+
     StringHeap2 labeling
             preserve SizeOfStringHeap
     EndOfStringHeap2 labeling
-       
+
     defConst "Size-of-string-heap", SizeOfStringHeap, TheSizeOfStringHeap
-    
+
     defConst "String-heap-1", StringHeap1, TheStringHeap1
     defConst "String-heap-2", StringHeap2, TheStringHeap2
     #+end_src
@@ -3666,10 +3651,10 @@
     mapMemory
     ;; ------------------------------------------
     SizeOfBufferForLoadFile = 1024*1024
-    
+
     BufferForLoadFile labeling
                  preserve SizeOfBufferForLoadFile
-    
+
     defConst "Buffer-for-load-file", BufferForLoadFile, TheBufferForLoadFile
     defConst "Size-of-buffer-for-load-file", SizeOfBufferForLoadFile, TheSizeOfBufferForLoadFile
     #+end_src
@@ -3685,58 +3670,58 @@
     mapMemory
     ;; ReturnStack
     SizeOfReturnStack = 100*1024*8
-    
+
     ReturnStackBottom labeling
             preserve SizeOfReturnStack
     ReturnStackTop labeling
             preserve 100*8
-    
+
     mapMemory
     ;; ArgumentStack
     SizeOfArgumentStack = 100*1024*8
-    
+
     ArgumentStackBottom labeling
             preserve SizeOfArgumentStack
     ArgumentStackTop labeling
             preserve 100*8
-    
+
     mapMemory
     ;; GreyPairStack
     SizeOfGreyPairStack = 100*1024*8
-    
+
     GreyPairStackBottom labeling
             preserve SizeOfGreyPairStack
     GreyPairStackTop labeling
             preserve 100*8
-    
+
     mapMemory
     ;; LambdaStack
     SizeOfLambdaStack = 100*1024*8
-    
+
     LambdaStackBottom labeling
             preserve SizeOfLambdaStack
     LambdaStackTop labeling
             preserve 100*8
-    
+
     mapMemory
     ;; StackForEvalString
     SizeOfStackForEvalString = 1024*8
-    
+
     StackForEvalStringBottom labeling
             preserve SizeOfStackForEvalString
     StackForEvalStringTop labeling
             preserve 100*8
-    
-    
+
+
     defConst "Return-stack-top",    ReturnStackTop,    TheReturnStackTop
     defConst "Return-stack-bottom", ReturnStackBottom, TheReturnStackBottom
-    
+
     defConst "Argument-stack-top",    ArgumentStackTop,    TheArgumentStackTop
     defConst "Argument-stack-bottom", ArgumentStackBottom, TheArgumentStackBottom
-    
+
     defConst "Lambda-stack-top", LambdaStackTop, TheLambdaStackTop
     defConst "Lambda-stack-bottom", LambdaStackBottom, TheLambdaStackBottom
-    
+
     defConst "Stack-for-eval-string-bottom", StackForEvalStringBottom, TheStackForEvalStringBottom
     defConst "Stack-for-eval-string-top", StackForEvalStringTop, TheStackForEvalStringTop
     #+end_src

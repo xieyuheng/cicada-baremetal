@@ -1,10 +1,6 @@
 SizeOfKernel = 512 ;; unit :: k
 LocationOfKernel = 32*1024
 MagicNumberOfKernel = 26881h
-
-SizeOfEnglishCore = 512 ;; unit :: k
-LocationOfEnglishCore = 4*1024*1024
-MagicNumberOfEnglishCore = "(* m"
 ;; in fasm, ``dup'' is a reserved word
 dup equ duplicate
 
@@ -683,6 +679,78 @@ cicada_virtual_machine:
 cicada_begin_thread:
        xx initialize
        xx basicREPL
+defWord "basic-REPL", basicREPL
+       ;; (* unknown -- unknown *)
+       xx TheReturnStackTop, resetReturnStackPointer
+       xx TheArgumentStackTop, resetArgumentStackPointer
+       xx readWordForRuntime
+       xx executeWord
+       xx branch, -3
+       ;; must not end with Exit here
+defWordEnd basicREPL
+
+
+;; defWord "execute-word", executeWord
+;;    ;; (* string[address, length] -- unknown *)
+;;    xx dup2, stringDenoteNumber?, false?branch, 4
+;;    xx   number, drop
+;;    xx   Exit
+;;    xx find, dup, zero?branch, 4
+;;    xx   wordLinkToWordExplainer, execute
+;;    xx   Exit
+;;    xx drop, printErrorInfoForExecuteWord
+;;    xx Exit
+;; defWordEnd executeWord
+
+
+defWord "execute-word", executeWord
+       ;; (* string[address, length] -- unknown *)
+       xx dup2, stringDenoteNumber?, false?branch, 4
+       xx   number, drop
+       xx   Exit
+       xx dup2, find, dup, zero?branch, 6
+       xx   xxswapx, drop2
+       xx   wordLinkToWordExplainer, execute
+       xx   Exit
+       xx drop ;; drop zore
+       xx Message_undefined_word, printString
+       xx printString, printNewline
+       xx Exit
+defWordEnd executeWord
+
+defConstString "Message:undefined-word", "   UNDEFINED WORD: ", Message_undefined_word
+defWord "initialize", initialize
+       ;; (* -- *)
+       xx closeInterrupt
+
+       xx createBarekeyboard
+
+       ;; text mode is configured by kernelloader
+       ;; it is ok to just use it
+       xx configureColorPalette
+       xx clearScreen
+       xx resetCurrentCursor
+
+       xx loadCoreFile
+
+       xx openInterrupt
+
+       xx Exit
+defWordEnd initialize
+defCode "load-core-file", loadCoreFile
+       ;; (* -- *)
+       mov rsi, LocationOfEnglishCore
+       mov rdi, InputBuffer
+       mov rcx, SizeOfEnglishCore
+       rep movsb
+       ;; reset [ReadingBoundary + CellWidth]
+       mov [ReadingBoundary + CellWidth], rdi
+       next   
+
+align 16
+LocationOfEnglishCore:
+   file 'english-core.ccd' 
+SizeOfEnglishCore = ($ - LocationOfEnglishCore) ;; unit :: byte
 defCode "close-interrupt", closeInterrupt
    ;; (* -- *)
    cli
@@ -712,7 +780,7 @@ mapMemory
 ;; ------------------------------------------
 ;; should be big enough, for no size error check
 SizeOfScancodeQueue = 1024
-  
+
 ScancodeQueue labeling
         preserve SizeOfScancodeQueue
 
@@ -760,27 +828,6 @@ defWord "create-barekeyboard", createBarekeyboard
    xx createGate
    xx Exit
 defWordEnd createBarekeyboard
-defWord "initialize", initialize
-       ;; (* -- *)
-       xx closeInterrupt
-
-       xx createBarekeyboard
-
-       ;; text mode is configured by kernelloader
-       ;; it is ok to just use it
-       xx configureColorPalette
-       xx clearScreen
-       xx resetCurrentCursor
-
-       xx magicCheckCoreFile
-       xx loadCoreFile
-
-       xx openInterrupt
-
-       xx Exit
-defWordEnd initialize
-
-
 Palette:
 ;; These colors are in RGB format
 ;; Each color byte is actually 6 bits (0x00 - 0x3F)
@@ -1973,7 +2020,7 @@ defWord "append-string-to-here", appendStringToHere
    ;; update Here
    xx Here, fetch, addition, Here, save
    xx Exit
-defWordEnd appendStringToHere    
+defWordEnd appendStringToHere
 
 defWord "create-word-header", createWordHeader
    ;; (* byString *)
@@ -2377,8 +2424,8 @@ defConst "End-of-input-buffer",   EndOfInputBuffer,   TheEndOfInputBuffer
 ;;    and call ``inputLine'' to fetch more chars
 ;;    and loop back
 defVar "Current-reading",  InputBuffer, CurrentReading
-defVar "Reading-boundary", InputBuffer, ReadingBoundary      
-   
+defVar "Reading-boundary", InputBuffer, ReadingBoundary
+
 defWord "read-char", readChar
    ;; (*  -- char *)
    xx CurrentReading, fetch
@@ -2412,8 +2459,8 @@ defWord "read-char", readChar
    xx ReadingBoundary, addSave
    xx drop
    xx branch, -31
-defWordEnd readChar        
-   
+defWordEnd readChar
+
 defWord "not-reading-from-input-buffer?", notReadingFromInputBuffer?
    ;; (* -- True of False *)
    xx CurrentReading, fetch
@@ -2426,8 +2473,8 @@ defWord "not-reading-from-input-buffer?", notReadingFromInputBuffer?
    xx   Exit
    xx False
    xx Exit
-defWordEnd notReadingFromInputBuffer?        
-   
+defWordEnd notReadingFromInputBuffer?
+
 defWord "to-read-from-input-buffer", toReadFromInputBuffer
    ;; (* -- *)
    xx TheInputBuffer, CurrentReading, save
@@ -2747,51 +2794,51 @@ BufferForReadWord labeling
 BufferForReadWordForRuntime labeling
         preserve MaxWordLength
 
-   
+
 defWord "read-word", readWord
    ;; (*  -- wordString[address, length] *)
    ;; 1. skips any blanks (spaces, tabs, newlines)
    ;; 2. calls readChar to read characters into BufferForReadWord
    ;;    until it hits a blank
    ;; 3. returns the address of BufferForReadWord and length on the stack
-   
+
    xx literal, BufferForReadWord ;; (* leave return one of the values *)
    xx Zero                       ;; (* leave length counter *)
-   
+
    xx literal, BufferForReadWord
    xx readFirstNonBlankChar
    xx over, saveByte, add1
    xx swap, add1, swap
-   
+
    xx readNonBlankChar, dup, zero?branch, 9
    xx   over, saveByte, add1
    xx   swap, add1, swap
    xx   branch, -11
-   
+
    xx drop2
    xx Exit
-defWordEnd readWord               
-   
+defWordEnd readWord
+
 defWord "read-word-for-runtime", readWordForRuntime
    ;; (*  -- wordString[address, length] *)
    ;; 1. skips any blanks (spaces, tabs, newlines)
    ;; 2. calls readChar to read characters into BufferForReadWord
    ;;    until it hits a blank
    ;; 3. returns the address of BufferForReadWord and length on the stack
-   
+
    xx literal, BufferForReadWordForRuntime ;; (* leave return one of the values *)
    xx Zero                                 ;; (* leave length counter *)
-   
+
    xx literal, BufferForReadWordForRuntime
    xx readFirstNonBlankChar
    xx over, saveByte, add1
    xx swap, add1, swap
-   
+
    xx readNonBlankChar, dup, zero?branch, 9
    xx   over, saveByte, add1
    xx   swap, add1, swap
    xx   branch, -11
-   
+
    xx drop2
    xx Exit
 defWordEnd readWordForRuntime
@@ -2802,23 +2849,23 @@ MaxStringLength = 1024*1024
 
 BasicStringBuffer labeling
         preserve MaxStringLength
-      
-defConst "Basic-string-buffer", BasicStringBuffer, TheBasicStringBuffer     
-   
+
+defConst "Basic-string-buffer", BasicStringBuffer, TheBasicStringBuffer
+
 defWord "read-string-into-buffer", readStringInToBuffer
    ;; (*  -- string[address of BasicStringBuffer, length] *)
    xx literal, BasicStringBuffer ;; (* leave return one of the values *)
    xx Zero                         ;; (* leave length counter *)
-   
+
    xx literal, BasicStringBuffer
-   
+
    xx readChar, dup
    xx literal, 34 ;; ASCII_doublequote
    xx equal?, notFalse?branch, 9
    xx   over, saveByte, add1
    xx   swap, add1, swap
    xx   branch, -14
-   
+
    xx drop2
    xx Exit
 defWordEnd readStringInToBuffer
@@ -3041,7 +3088,7 @@ SizeOfBufferForReadWordListForLexicographer = 2*1024*1024
 
 BufferForReadWordListForLexicographer labeling
         preserve SizeOfBufferForReadWordListForLexicographer
-  
+
 defConstString "Ket:cosemi", ";", Ket_cosemi
 defConstString "Ket:fuzhe", "者", Ket_fuzhe
 
@@ -3115,36 +3162,6 @@ defCode "reboot", reboot
        mov al, 0xFE
        out 0x64, al                    ; Send the reboot call to the keyboard controller
        jmp .loop
-defWord "magic-check-core-file", magicCheckCoreFile
-       ;; (* -- *)
-       xx literal, LocationOfEnglishCore, fetch
-       xx literal, "(* magic"
-       xx equal?, false?branch, 2
-       xx   Exit
-       xx literal, "M", writeChar
-       xx literal, "a", writeChar
-       xx literal, "g", writeChar
-       xx literal, "i", writeChar
-       xx literal, "c", writeChar
-       xx literal, " ", writeChar
-       xx literal, "f", writeChar
-       xx literal, "a", writeChar
-       xx literal, "i", writeChar
-       xx literal, "l", writeChar
-       xx halt
-       xx Exit
-defWordEnd magicCheckCoreFile
-
-
-defCode "load-core-file", loadCoreFile
-       ;; (* -- *)
-       mov rsi, LocationOfEnglishCore
-       mov rdi, InputBuffer
-       mov rcx, (SizeOfEnglishCore*1024)
-       rep movsb
-       ;; reset [ReadingBoundary + CellWidth]
-       mov [ReadingBoundary + CellWidth], rdi
-       next
 defWord ".", printLittleNumber
        xx literal, '0'
        xx addition, writeChar
@@ -3154,46 +3171,6 @@ defWord ".", printLittleNumber
        xx writeChar
        xx Exit
 defWordEnd printLittleNumber
-defWord "basic-REPL", basicREPL
-       ;; (* unknown -- unknown *)
-       xx TheReturnStackTop, resetReturnStackPointer
-       xx TheArgumentStackTop, resetArgumentStackPointer
-       xx readWordForRuntime
-       xx executeWord
-       xx branch, -3
-       ;; must not end with Exit here
-defWordEnd basicREPL
-
-
-;; defWord "execute-word", executeWord
-;;    ;; (* string[address, length] -- unknown *)
-;;    xx dup2, stringDenoteNumber?, false?branch, 4
-;;    xx   number, drop
-;;    xx   Exit
-;;    xx find, dup, zero?branch, 4
-;;    xx   wordLinkToWordExplainer, execute
-;;    xx   Exit
-;;    xx drop, printErrorInfoForExecuteWord
-;;    xx Exit
-;; defWordEnd executeWord
-
-
-defWord "execute-word", executeWord
-       ;; (* string[address, length] -- unknown *)
-       xx dup2, stringDenoteNumber?, false?branch, 4
-       xx   number, drop
-       xx   Exit
-       xx dup2, find, dup, zero?branch, 6
-       xx   xxswapx, drop2
-       xx   wordLinkToWordExplainer, execute
-       xx   Exit
-       xx drop ;; drop zore
-       xx Message_undefined_word, printString
-       xx printString, printNewline
-       xx Exit
-defWordEnd executeWord
-
-defConstString "Message:undefined-word", "   UNDEFINED WORD: ", Message_undefined_word
 mapMemory
 ;; ------------------------------------------
 ;; PairConstructionsArray
@@ -3228,12 +3205,12 @@ FirstPairConstruction labeling
 
         preserve ClrBytesSize
 LastPairConstruction labeling
-        preserve (CarBytesSize + CdrBytesSize)    
-          
+        preserve (CarBytesSize + CdrBytesSize)
+
  defConst "Clr-bytes-size"  , ClrBytesSize  , TheClrBytesSize
  defConst "Car-bytes-size"  , CarBytesSize  , TheCarBytesSize
  defConst "Cdr-bytes-size"  , CdrBytesSize  , TheCdrBytesSize
- defConst "Cons-bytes-size" , ConsBytesSize , TheConsBytesSize    
+ defConst "Cons-bytes-size" , ConsBytesSize , TheConsBytesSize
 
  defConst "Number-of-pair-constructions", NumberOfPairConstructions, TheNumberOfPairConstructions
 
@@ -3300,7 +3277,7 @@ EndOfStringHeap1 labeling
 StringHeap2 labeling
         preserve SizeOfStringHeap
 EndOfStringHeap2 labeling
-   
+
 defConst "Size-of-string-heap", SizeOfStringHeap, TheSizeOfStringHeap
 
 defConst "String-heap-1", StringHeap1, TheStringHeap1

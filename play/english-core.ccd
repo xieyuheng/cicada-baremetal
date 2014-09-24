@@ -1,4 +1,3 @@
-(* magic check *)
 : define-variable,by-string
   (* initial-value, String[address, length] -- *)
   create-word-header

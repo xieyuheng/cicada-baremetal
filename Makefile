@@ -56,15 +56,6 @@ compile-cicada-kernel:
 	cd play                                   
 	fasm -m 500000 cicada-kernel.fasm cicada-kernel.bin
 
-# burn-cicada.image:
-# 	@ 
-# 	cd play
-# 	rm -f cicada.image                                                   &&\
-# 	dd if=/dev/zero of=cicada.image bs=2M count=1			     &&\
-# 	dd if=bootloader.bin    of=cicada.image bs=512  conv=notrunc         &&\
-# 	dd if=cicada-kernel.bin of=cicada.image obs=1K seek=128 conv=notrunc &&\
-# 	dd if=english-core.ccd	of=cicada.image obs=1K seek=640 conv=notrunc 
-
 burn-cicada.image:
 	@ 
 	cd play
@@ -86,20 +77,6 @@ build-cicada:
 	make write-programs-to-cicada.image	 &&\
 	echo "	 "
 
-# run-cicada:
-# 	@ 
-# 	cd play
-# 	qemu-system-x86_64			   \
-# 	  -enable-kvm				   \
-# 	  -vga std				   \
-# 	  -smp 4				   \
-# 	  -m 1G 				   \
-# 	  -drive id=disk,file=cicada.image,if=none \
-# 	  -device ich9-ahci,id=ahci		   \
-# 	  -device ide-drive,drive=disk,bus=ahci.0  \
-# 	  -net nic,model=i82551                    \
-# 	  -monitor stdio
-
 run-cicada:
 	@ 
 	cd play
@@ -108,12 +85,6 @@ run-cicada:
 	  -vga std				   \
 	  -m 1G 				   \
 	  -fda cicada.image
-
-# dangerous-burn-sda6-with-cicada.image:
-# 	@ 
-# 	make build-cicada                            &&\
-# 	cd play                                      &&\
-# 	sudo dd if=cicada.image of=/dev/sda6 bs=2M        			  
 
 dangerous-burn-sdb-with-cicada.image:
 	@ 

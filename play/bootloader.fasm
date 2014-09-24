@@ -1,20 +1,12 @@
 loadKernel? equ yes
-loadEnglishCore? equ yes
-
 checkMagicNumberOfKernel? equ yes
-checkMagicNumberOfEnglishCore? equ yes
 
 FirstSector = 0
 
 SizeOfKernel = 512 ;; unit :: k
-LocationOfKernel_inFloppy = 128 ;; unit :: k
-LocationOfKernel_inMemory = 32*1024
+LocationOfKernel_inFloppy = 128     ;; unit :: k
+LocationOfKernel_inMemory = 32*1024 ;; unit :: b
 MagicNumberOfKernel = 26881h
-
-SizeOfEnglishCore = 512 ;; unit :: k
-LocationOfEnglishCore_inFloppy = LocationOfKernel_inFloppy + SizeOfKernel ;; unit :: k
-LocationOfEnglishCore_inMemory = 4*1024*1024
-MagicNumberOfEnglishCore = "(* m"
 
 org 7c00h
 
@@ -165,20 +157,6 @@ if checkMagicNumberOfKernel? eq yes
         mov ebx, LocationOfKernel_inMemory + SizeOfKernel*1024 - 4
         mov eax, [ebx]
         cmp eax, MagicNumberOfKernel
-        jne magic_fail
-end if
-
-if loadEnglishCore? eq yes
-        mov ebx, (LocationOfEnglishCore_inFloppy * 2)
-        mov eax, (SizeOfEnglishCore)*2
-        mov edi, LocationOfEnglishCore_inMemory
-        call readsectors
-end if
-
-if checkMagicNumberOfEnglishCore? eq yes
-        mov ebx, LocationOfEnglishCore_inMemory
-        mov eax, [ebx]
-        cmp eax, MagicNumberOfEnglishCore
         jne magic_fail
 end if
 

@@ -5,10 +5,6 @@
 
 * ==================================================
 * *basic*
-** magic check
-   #+begin_src cicada :tangle ../play/english-core.ccd 
-   (* magic check *)
-   #+end_src
 ** define-variable & define-constant (new lexicographers)
 *** implementation
     #+begin_src cicada :tangle ../play/english-core.ccd 
