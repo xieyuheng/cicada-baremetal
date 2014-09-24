@@ -186,7 +186,7 @@
    正如 我用 list-processing 来实现 lambda-calculus 一样
    并且我想 object-oriented 这种编程范式也许更适合用来实现 digrap
    但是 问题是 新的语法元素必须被引进
-   这也许可以通过写一个不同的 REPL 来实现   
+   这也许可以通过写一个不同的 REPL 来实现
 ** about literal
    1. 解释器对 literal 的使用方式应该改变
       我需要能够在 function-body 中使用``数字''
@@ -194,8 +194,8 @@
    2. 我需要取消对 Base 的使用
       因为这个全局变量其实并不好用
       我需要设计新对不同进位制的数字的读取方式
-   3. 以个 REPL 的性质很像是 bra-ket 中的 一个 bra      
-      symbol-REPL 作为 bra 
+   3. 以个 REPL 的性质很像是 bra-ket 中的 一个 bra
+      symbol-REPL 作为 bra
       所对应的 ket 可以是 bye,symbol-REPL
    4. 各个 REPL 和 bra 之间
       必须能够灵活的相互递归调用

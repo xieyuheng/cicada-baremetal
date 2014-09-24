@@ -56,14 +56,19 @@ compile-cicada-kernel:
 	cd play                                   
 	fasm -m 500000 cicada-kernel.fasm cicada-kernel.bin
 
+# burn-cicada.image:
+# 	@ 
+# 	cd play
+# 	rm -f cicada.image                                                   &&\
+# 	dd if=/dev/zero of=cicada.image bs=2M count=1			     &&\
+# 	dd if=bootloader.bin    of=cicada.image bs=512  conv=notrunc         &&\
+# 	dd if=cicada-kernel.bin of=cicada.image obs=1K seek=128 conv=notrunc &&\
+# 	dd if=english-core.ccd	of=cicada.image obs=1K seek=640 conv=notrunc 
+
 burn-cicada.image:
 	@ 
 	cd play
-	rm -f cicada.image                                                     &&\
-	dd if=/dev/zero of=cicada.image bs=2M count=1			       &&\
-	dd if=bootloader.bin    of=cicada.image bs=512  conv=notrunc           &&\
-	dd if=cicada-kernel.bin of=cicada.image obs=1K seek=128 conv=notrunc &&\
-	dd if=english-core.ccd	of=cicada.image obs=1K seek=640 conv=notrunc 
+	fasm cicada.fasm
 
 write-programs-to-cicada.image:
 	@ 

@@ -1,0 +1,12 @@
+;; to output as .image
+format binary as 'image'
+
+org 0
+
+file 'bootloader.bin'
+times (128 * 1024) - ($-$$) db 0
+
+file 'cicada-kernel.bin'
+times (640 * 1024) - ($-$$) db 0
+
+file 'english-core.ccd'

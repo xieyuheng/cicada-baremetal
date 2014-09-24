@@ -790,3 +790,19 @@
    SectorBuffer: ;; 512 bytes buffer to read one sector at a time
    #+end_src
 * ==================================================
+* about the image
+  #+begin_src fasm :tangle ../../play/cicada.fasm
+  ;; to output as .image
+  format binary as 'image'
+
+  org 0
+
+  file 'bootloader.bin'
+  times (128 * 1024) - ($-$$) db 0
+
+  file 'cicada-kernel.bin'
+  times (640 * 1024) - ($-$$) db 0
+
+  file 'english-core.ccd'
+  #+end_src
+* ==================================================
