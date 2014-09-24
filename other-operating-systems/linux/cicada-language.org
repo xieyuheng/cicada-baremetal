@@ -2,61 +2,7 @@
 #+AUTHOR: XIE Yuheng
 #+EMAIL: xyheme@gmail.com
 
-
 * ==================================================
-* TODO
-  1. tab completion in the REPL
-     (or in text editor)
-  2. 实现对多种实现技术的定制
-  3. 重新思考某些术语和命名方式   
-  4. 更改所谓的线程技术
-     以支持汇编扩展
-     然后利用会汇编扩展的良好支持来优化某些代码
-  5. syscalls should be written in assembly
-     cicada should design it's own abstractions of IO
-     this can help cicada to be portable
-  6. 在核心就直接使用hash-table来find
-     但是list还是必要的
-     因为这样就能保持对字典的灵活控制
-  7. better interface for lambda
-  8. memory allocation
-  9. rename functions about terminal
-  10. use hash-table to lookup dictionary
-      then mutually recursive call
-  11. wodyli processing
-      then digrap in cicada
-  12. flow-point number
-  13. >< maybe substitute word to execute in lambda-body
-  14. >< maybe syntax-check
-  15. >< modern pattern-match  HOW ???
-  16. better interface for debuger
-  17. TAIL-CALL-OPTIMIZATION in apply lambda-body
-  18. more protection on allocated memory
-  19. cicada-assembler
-  20. cicada-editor
-  21. APL-like array-processing
-  22. needs better sexp-reader&write
-      design a better way
-      to use local-label to from list-with-circuit
-* ==================================================
-* TEN COMMANDMENTS OF ASSEMBLY
-  1. you can break any commandment when necessary
-  2. when you want to use a ``Const'' or a ``Var'' in assembly
-     use it as the following example:
-     - define a Const:
-       defConst "LinuxProgramHeaderAddress", 0, LinuxProgramHeaderAddress
-     - use a Const:
-       mov [LinuxProgramHeaderAddress + CellWidth], rsp
-     - define a Var:
-       defVar "Here",  0, Here
-     - use a Var:
-       mov [Here + CellWidth], TemporaryRegister
-  3. when you want to expose a label defined in assembly to cicada
-     do it as the following example:
-     defConst "UserDataSegment", UserDataSegment, TheUserDataSegment
-  4. in assembly every cicada function should be defined only once
-     the order of function definition can be arbitrary
-* --------------------------------------------------
 * prepare
 ** linux_syscalls
    #+begin_src fasm :tangle ./play/linux_syscalls.fasm

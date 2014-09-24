@@ -1,0 +1,289 @@
+#+TITLE: note about cicada project
+#+AUTHOR: XIE Yuheng
+#+EMAIL: xyheme@gmail.com
+
+
+* ==================================================
+* TODO
+  1. move memory map to there functions
+  2. 按照计划重新结构化 cicada-kernel 的汇编代码
+     使得核心部分的汇编代码更结构化
+     并更加易于移植
+  4. 重写linux版本
+  5. 生成中文字典 交给 Recaler
+  6. 支持 windows
+     让 Recaler 能够 使用
+     (包括 emacs 还有 fasm 的)
+* ==================================================
+* cicada-ideas
+  1. vision art with Recaler
+* ==================================================
+* language-cores/
+** english-core file:./language-cores/english-core.org
+*** TODO
+    1. better interface for lambda
+    2. use hash-table to lookup dictionary
+       then mutually recursive call
+    3. 用hash-table来find
+       这些不必实现在汇编代码中
+       因为 list还是必要的
+       因为这样就能保持对字典的灵活控制
+       所以 需要写一些函数把
+       字典重新加载到 hash-table 中
+    4. need to redesign the way to do test
+       should tangle test to separated file
+       for i do not have my org-mode now
+    5. wodyli processing
+       then digrap in cicada
+    6. tab completion in the REPL
+       (or in text editor)
+    7. let functions in assembly-code
+       be able to call functions in cicada-style-assembly-code
+    8. 实现对多种实现技术的定制
+    9. 重新思考某些术语和命名方式
+    10. 更改所谓的线程技术
+        以支持汇编扩展
+        然后利用会汇编扩展的良好支持来优化某些代码
+    11. cicada should design it's own abstractions of IO
+        this can help cicada to be portable
+    12. memory allocation
+    13. flow-point number
+    14. >< maybe substitute word to execute in lambda-body
+    15. >< maybe syntax-check
+    16. >< modern pattern-match  HOW ???
+    17. better interface for debuger
+    18. TAIL-CALL-OPTIMIZATION in apply lambda-body
+    19. more protection on allocated memory
+        maybe use paging
+    20. cicada-assembler
+    21. cicada-editor
+    22. APL-like array-processing
+    23. needs better sexp-reader&write
+        design a better way
+        to use local-label to from list-with-circuit
+*** TEN COMMANDMENTS OF CICADA
+    1. you can break any commandment when necessary
+    2. in cicada every function can be redefined
+       the later definition will override the former definition
+       the order of function definition is very important
+    3. in cicada, a ``word'' can not begin with [0-9]
+       and can not begin with a `-' follows [0-9]
+    4. ``The whole point of Forth was that
+       you didn't write programs in Forth
+       you wrote vocabularies in Forth.
+       When you devised an application
+       you wrote a hundred words or so that discussed the application
+       and you used those hundred words
+       to write a one line definition to solve the application.
+       It is not easy to find those hundred words,
+       but they exist,
+       they always exist.''
+*** 以名释性
+    (string-reference <string> <index>)
+    (string-compare <string1> <string2>)
+    (string-append <string1> <string2>)
+    发现命名是一个问题
+    每个动词比如compare
+    可以是 string-compare 或 list-compare
+    这就要求在命名上给每个函数加上数据类型的前缀
+    作为特殊的前缀
+    也许应该用 string:compare 而不是 string-compare
+    这种看来劳神的前缀的需要是因为
+    我不允许函数名的重载
+    如果我统一这种对数据类型前缀的使用
+    那么 动态类型的量 和 非动态类型的量
+    之间命名规则的冲突也就被化解了
+    也许 string-append 应该被叫做 string:^_^
+    就像 ^_^ 在 dalin 中的效果一样
+    但是这两种函数之间又有区别
+    重要的区别是
+    他们是返回新的数据还是在原来数据的基础上做副作用
+    我还可以用对命名函数的约定来
+    让函数的名字体现更多的函数的性质
+    也就是说 cicada 的一个特点是
+    ``以名释性''
+    这是实现起来最简单的
+    但是需要设计良好的命名规则
+    在给函数取名字的时候
+    写代码的人也要花一些功夫思考
+    才能让这个名字恰当地体现函数的性质
+    同时最重要的是
+    这种方案
+    可以在最大程度上减轻人们在读代码的时候的
+    认知上的负担
+    ------------------
+    但是有一些重要的函数比如 write
+    还是需要取处理不同类型的量
+*** IDE
+    另外还有 IDE
+    通过语法高亮和 mimi-buffer
+    来帮助代码的阅读者来
+    获知名词和动词的语义
+    与命名规则一样
+    这一切都是为了
+    减轻``代码的阅读者的认知上的负担''
+*** the naming conventions in cicada
+    回顾一下 cicada 中现在所使用的命名规则
+    做一个系统的笔记
+    这也将方便将来文档的撰写
+    1. 首先是关于 primitive functions
+       它们的命名都是简单的用"-"来连词的
+       尽管这里也有类似数据类型的概念
+       比如string[address, length]
+       没有复杂的跟类型有关的前缀
+    2. 也就是说"-"是用来把单个的word链接成短语的
+    3. 而在 *basic* 中
+       还用到了","
+       它是用来把短语链接成短句的
+       比如 ``define-variable,by-string''
+       在这个例子中 ``by-string'' 表明了
+       这个函数的参数的数据类型
+    4. ":"被用作前缀的链接符
+       比如 ``Message:bye'' 和 ``Key-word:then''
+       首字母大写表明他们是名词性的
+       这些常量或变量前缀单单指明了
+       这个名词的功能
+       而没有指明这个名词的实现细节
+       >< 这种特性是好的吗?
+       这是好的 如果 人们总能简单地从这些描述特性的词中推测出这些名词的实现细节
+       这是不好的 如果 这种推测并不平凡和简单 而带来了额外的认知上的负担
+    5. 对名词而言
+       第一个简单的跟类型无关的描述函数功能的前缀是"help:"
+       也就是说前缀的使用方式是相当自由的
+       >< 我不应该做更细致的标准式来削弱这种自由性吗?
+    6. 前缀是可以有多个的
+       比如"help:string:copy"
+*** about programming paradigms
+    - imperative
+      to describe computation in terms of statements
+      that change a program state
+      in much the same way that imperative mood in natural languages
+      expresses commands to take action
+    - object-oriented
+      computation should be viewed as an intrinsic capability of objects
+      that can be invoked by sending messages
+      其重要的特点是这样的模型非常节省用来定义函数的命名空间
+      这样是以数据结构为中心的
+      函数 (算法或对数据结构的处理过程) 在思想观念上的重要性 屈居次位
+      这是在尝试
+      让我们的编程行为适应我们对这个世界的最通俗的非结构化的理解
+      我们能够辨别我们在这个世界上所观察到的各种物体(对象)
+      并且我们总在以某种方式与这些对象交流
+      每个对象是一个内蕴的独立的个体
+      并且在我们的观察过程中
+      我们给对象分类
+      分类在这里其实是不重要的
+      - 这是因为分类不是一个系统的方法
+        分类的过程可以是相当任意的
+        不同的分类者 去分类 同一个对象的集合时
+        按照他们的理解方式的不同 他们会作出不同的分类
+        看看生物学就知道了
+      重要的是每个内蕴的个体
+    - functional
+      computation should be viewed as functions act on their arguments
+      并且这些函数的行为 要具有数学意义上的函数的某些重要特性
+      这是以算法为中心的
+      这是在尝试
+      用我们的数学知识来帮助我们编程
+      而数学代表了我们对这个世界的结构化的理解
+      我们观察这个世界
+      然后用数学的语言还有数学的方法论总结我们的观察结果
+      如果 说数学的方法论是"纯粹客观的" 太过有争议
+      那么 说这种方法论相比较与其他的编程范式更加具有客观性
+      是没有错的
+*** about string processing
+    1. 我可以实现一些适用于用来写
+       string-reader 和 string-writer
+       的基础函数
+       使得用户很容易在 cicada 中实现自己所希望的这类函数
+       string-writer 用于 格式输出 之类的东西
+*** object-oriented
+    其实 利用 list-processing 我可以在 cicada 中加入对 object-oriented (class and message-passing) 的支持
+    正如 我用 list-processing 来实现 lambda-calculus 一样
+    并且我想 object-oriented 这种编程范式也许更适合用来实现 digrap
+    但是 问题是 新的语法元素必须被引进
+    这也许可以通过写一个不同的 REPL 来实现
+*** about literal
+    1. 解释器对 literal 的使用方式应该改变
+       我需要能够在 function-body 中使用``数字''
+       而不是使用``literal 数字''
+    2. 我需要取消对 Base 的使用
+       因为这个全局变量其实并不好用
+       我需要设计新对不同进位制的数字的读取方式
+    3. 以个 REPL 的性质很像是 bra-ket 中的 一个 bra
+       symbol-REPL 作为 bra
+       所对应的 ket 可以是 bye,symbol-REPL
+    4. 各个 REPL 和 bra 之间
+       必须能够灵活的相互递归调用
+       我没能实现很好的机制来完成这一点
+    5. 并且我现在应该把 REPL 和 bra-ket 的实现方式统一起来
+       我以前并没有意识到它们是完全相同的东西
+       它们之前确实有区别
+       但是我应该把它们的共同点提取出来
+       >< 这种``对共同点的提取''
+       用函数的 factoring 做起来
+       和用 class 的继承做起来 相比
+       感觉有什么不同 ???
+* ==================================================
+* architecturals/
+** x86-64/bootloader file:./architecturals/x86-64/bootloader.org
+** x86-64/cicada-kernel file:./architecturals/x86-64/cicada-kernel.org
+*** TODO
+    1. in lmode, how to set up the "attributes-and-type" field in an entry of IDT ?
+    2. SMP support
+    3. learn more from baremetal-OS
+    4. convert the code about storage & BMFS from old-asm to forth-like-asm
+       to examine the bug of "readsectors"
+    5. fix "bye"
+    6. design game-like UI in text mode
+    7. rewrite cicada to make it standard and portable
+       (this will always be TODO)
+*** TEN COMMANDMENTS OF ASSEMBLY
+    1. you can break any commandment when necessary
+    2. when you want to use a ``Const'' or a ``Var'' in assembly
+           use it as the following example:
+           - define a Const:
+         defConst "LinuxProgramHeaderAddress", 0, LinuxProgramHeaderAddress
+           - use a Const:
+         mov [LinuxProgramHeaderAddress + CellWidth], rsp
+           - define a Var:
+         defVar "Here",  0, Here
+           - use a Var:
+         mov [Here + CellWidth], TemporaryRegister
+    3. when you want to expose a label defined in assembly to cicada
+           do it as the following example:
+           defConst "UserDataArea", UserDataArea, TheUserDataArea
+    4. in assembly every cicada function should be defined only once
+           the order of function definition can be arbitrary
+*** about the structure of the code
+    1. 汇编代码所实现的是一个 可扩展的虚拟机
+       代码 可以分为4部分 :
+       1) 初始化CPU和硬件的代码
+       2) 基本的 从CPU所提供的汇编指令集中
+          提取出来的 ``primitive functions''
+       3) 关于基本输入输出的
+          这一部分用来形成REPL
+       4) 关于函数定义的
+          这一部分用来实现在解释器中对函数的编译
+    2. 我需要按照上面的分类
+       来重新组织代码的结构
+       并且形成一个这个``可扩展的虚拟机''的标准
+       并且形成一个统一的接口用来实现上面的"3.4."这两部分
+       这些都是为了今后 向其他硬件移植而做准备的
+       当然
+       同时也是为了让代码的宏观的逻辑结构更清晰    
+* ==================================================
+* other-operating-systems/
+** linux/ file:./other-operating-systems/linux/cicada-language.org
+*** note
+    1. 在写一个文本编辑器之前
+       我不得不以linux为自己的工作环境
+       1) 利用 emacs 
+          我可以快速地测试 language-cores
+       2) 利用 linux 中的图形环境 和 中文字体
+          我可以 继续研究 蝉语的中文语法
+    2. 但是需要注意的是
+       我非常厌恶C语言和其系列
+       所以 cicada 的linux版本
+       将尽量与linux中C的传统撇清关系
+* ==================================================

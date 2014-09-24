@@ -1,4 +1,4 @@
-#!/home/xyh/cicada/play/cicada
+#!/path/to/cicada
 
 :" [2J"
 : TerminalSequence,clearScreen ; defineConstString

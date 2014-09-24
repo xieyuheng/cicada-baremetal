@@ -4,218 +4,14 @@
 
 
 * ==================================================
-* TODO
-  1. need to redesign the way to do test
-     should tangle test to separated file
-     for i do not have my org-mode now
-  2. wodyli processing
-     then digrap in cicada
-  3. tab completion in the REPL
-     (or in text editor)
-  4. better basic interface of the OS
-  5. let functions in assembly-code
-     be able to call functions in cicada-style-assembly-code
-  6. 实现对多种实现技术的定制
-  7. 重新思考某些术语和命名方式
-  8. 更改所谓的线程技术
-     以支持汇编扩展
-     然后利用会汇编扩展的良好支持来优化某些代码
-  9. cicada should design it's own abstractions of IO
-     this can help cicada to be portable
-  10. 在核心就直接使用hash-table来find
-      但是list还是必要的
-      因为这样就能保持对字典的灵活控制
-  11. better interface for lambda
-  12. memory allocation
-  13. use hash-table to lookup dictionary
-      then mutually recursive call
-  14. flow-point number
-  15. >< maybe substitute word to execute in lambda-body
-  16. >< maybe syntax-check
-  17. >< modern pattern-match  HOW ???
-  18. better interface for debuger
-  19. TAIL-CALL-OPTIMIZATION in apply lambda-body
-  20. more protection on allocated memory
-      maybe use paging
-  21. cicada-assembler
-  22. cicada-editor
-  23. APL-like array-processing
-  24. needs better sexp-reader&write
-      design a better way
-      to use local-label to from list-with-circuit
-* ==================================================
-* *note*
-** TEN COMMANDMENTS OF CICADA
-   1. you can break any commandment when necessary
-   2. in cicada every function can be redefined
-      the later definition will override the former definition
-      the order of function definition is very important
-   3. in cicada, a ``word'' can not begin with [0-9]
-      and can not begin with a `-' follows [0-9]
-   4. ``The whole point of Forth was that
-      you didn't write programs in Forth
-      you wrote vocabularies in Forth.
-      When you devised an application
-      you wrote a hundred words or so that discussed the application
-      and you used those hundred words
-      to write a one line definition to solve the application.
-      It is not easy to find those hundred words,
-      but they exist,
-      they always exist.''
-** 以名释性
-   (string-reference <string> <index>)
-   (string-compare <string1> <string2>)
-   (string-append <string1> <string2>)
-   发现命名是一个问题
-   每个动词比如compare
-   可以是 string-compare 或 list-compare
-   这就要求在命名上给每个函数加上数据类型的前缀
-   作为特殊的前缀
-   也许应该用 string:compare 而不是 string-compare
-   这种看来劳神的前缀的需要是因为
-   我不允许函数名的重载
-   如果我统一这种对数据类型前缀的使用
-   那么 动态类型的量 和 非动态类型的量
-   之间命名规则的冲突也就被化解了
-   也许 string-append 应该被叫做 string:^_^
-   就像 ^_^ 在 dalin 中的效果一样
-   但是这两种函数之间又有区别
-   重要的区别是
-   他们是返回新的数据还是在原来数据的基础上做副作用
-   我还可以用对命名函数的约定来
-   让函数的名字体现更多的函数的性质
-   也就是说 cicada 的一个特点是
-   ``以名释性''
-   这是实现起来最简单的
-   但是需要设计良好的命名规则
-   在给函数取名字的时候
-   写代码的人也要花一些功夫思考
-   才能让这个名字恰当地体现函数的性质
-   同时最重要的是
-   这种方案
-   可以在最大程度上减轻人们在读代码的时候的
-   认知上的负担
-   ------------------
-   但是有一些重要的函数比如 write
-   还是需要取处理不同类型的量
-** IDE
-   另外还有 IDE
-   通过语法高亮和 mimi-buffer
-   来帮助代码的阅读者来
-   获知名词和动词的语义
-   与命名规则一样
-   这一切都是为了
-   减轻``代码的阅读者的认知上的负担''
-** the naming conventions in cicada
-   回顾一下 cicada 中现在所使用的命名规则
-   做一个系统的笔记
-   这也将方便将来文档的撰写
-   1. 首先是关于 primitive functions
-      它们的命名都是简单的用"-"来连词的
-      尽管这里也有类似数据类型的概念
-      比如string[address, length]
-      没有复杂的跟类型有关的前缀
-   2. 也就是说"-"是用来把单个的word链接成短语的
-   3. 而在 *basic* 中
-      还用到了","
-      它是用来把短语链接成短句的
-      比如 ``define-variable,by-string''
-      在这个例子中 ``by-string'' 表明了
-      这个函数的参数的数据类型
-   4. ":"被用作前缀的链接符
-      比如 ``Message:bye'' 和 ``Key-word:then''
-      首字母大写表明他们是名词性的
-      这些常量或变量前缀单单指明了
-      这个名词的功能
-      而没有指明这个名词的实现细节
-      >< 这种特性是好的吗?
-      这是好的 如果 人们总能简单地从这些描述特性的词中推测出这些名词的实现细节
-      这是不好的 如果 这种推测并不平凡和简单 而带来了额外的认知上的负担
-   5. 对名词而言
-      第一个简单的跟类型无关的描述函数功能的前缀是"help:"
-      也就是说前缀的使用方式是相当自由的
-      >< 我不应该做更细致的标准式来削弱这种自由性吗?
-   6. 前缀是可以有多个的
-      比如"help:string:copy"
-** about programming paradigms
-   - imperative
-     to describe computation in terms of statements
-     that change a program state
-     in much the same way that imperative mood in natural languages
-     expresses commands to take action
-   - object-oriented
-     computation should be viewed as an intrinsic capability of objects
-     that can be invoked by sending messages
-     其重要的特点是这样的模型非常节省用来定义函数的命名空间
-     这样是以数据结构为中心的
-     函数 (算法或对数据结构的处理过程) 在思想观念上的重要性 屈居次位
-     这是在尝试
-     让我们的编程行为适应我们对这个世界的最通俗的非结构化的理解
-     我们能够辨别我们在这个世界上所观察到的各种物体(对象)
-     并且我们总在以某种方式与这些对象交流
-     每个对象是一个内蕴的独立的个体
-     并且在我们的观察过程中
-     我们给对象分类
-     分类在这里其实是不重要的
-     - 这是因为分类不是一个系统的方法
-       分类的过程可以是相当任意的
-       不同的分类者 去分类 同一个对象的集合时
-       按照他们的理解方式的不同 他们会作出不同的分类
-       看看生物学就知道了
-     重要的是每个内蕴的个体
-   - functional
-     computation should be viewed as functions act on their arguments
-     并且这些函数的行为 要具有数学意义上的函数的某些重要特性
-     这是以算法为中心的
-     这是在尝试
-     用我们的数学知识来帮助我们编程
-     而数学代表了我们对这个世界的结构化的理解
-     我们观察这个世界
-     然后用数学的语言还有数学的方法论总结我们的观察结果
-     如果 说数学的方法论是"纯粹客观的" 太过有争议
-     那么 说这种方法论相比较与其他的编程范式更加具有客观性
-     是没有错的
-** about string processing
-   1. 我可以实现一些适用于用来写
-      string-reader 和 string-writer
-      的基础函数
-      使得用户很容易在 cicada 中实现自己所希望的这类函数
-      string-writer 用于 格式输出 之类的东西
-** object-oriented
-   其实 利用 list-processing 我可以在 cicada 中加入对 object-oriented (class and message-passing) 的支持
-   正如 我用 list-processing 来实现 lambda-calculus 一样
-   并且我想 object-oriented 这种编程范式也许更适合用来实现 digrap
-   但是 问题是 新的语法元素必须被引进
-   这也许可以通过写一个不同的 REPL 来实现
-** about literal
-   1. 解释器对 literal 的使用方式应该改变
-      我需要能够在 function-body 中使用``数字''
-      而不是使用``literal 数字''
-   2. 我需要取消对 Base 的使用
-      因为这个全局变量其实并不好用
-      我需要设计新对不同进位制的数字的读取方式
-   3. 以个 REPL 的性质很像是 bra-ket 中的 一个 bra
-      symbol-REPL 作为 bra
-      所对应的 ket 可以是 bye,symbol-REPL
-   4. 各个 REPL 和 bra 之间
-      必须能够灵活的相互递归调用
-      我没能实现很好的机制来完成这一点
-   5. 并且我现在应该把 REPL 和 bra-ket 的实现方式统一起来
-      我以前并没有意识到它们是完全相同的东西
-      它们之前确实有区别
-      但是我应该把它们的共同点提取出来
-      >< 这种``对共同点的提取''
-      用函数的 factoring 做起来
-      和用 class 的继承做起来 相比
-      感觉有什么不同 ???
 * *basic*
 ** magic check
-   #+begin_src cicada :tangle ../play/english-core.ccd
+   #+begin_src cicada :tangle ../play/english-core.ccd 
    (* magic check *)
    #+end_src
 ** define-variable & define-constant (new lexicographers)
 *** implementation
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     : define-variable,by-string
       (* initial-value, String[address, length] -- *)
       create-word-header
@@ -269,7 +65,7 @@
     #+end_src
 ** fixnum
 *** implementation
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     : /mod (* a, b -- quotient, a mod b *)
       mod/ swap
       Exit
@@ -296,7 +92,7 @@
     10 3 mod . (* 1 *)
     #+end_src
 ** ASCII chars
-   #+begin_src cicada :tangle ../play/english-core.ccd
+   #+begin_src cicada :tangle ../play/english-core.ccd 
    9   : 'tab'      ; define-constant
    10  : 'linefeed' ; define-constant
    10  : 'newline'  ; define-constant
@@ -408,7 +204,7 @@
    #+end_src
 ** ><>< string & define-constant-string (new lexicographer)
 *** implementation
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     (* ><><>< string of 0 length is a not handled  error *)
     : head-of-string (* string[address, length] -- first char *)
       drop fetch-byte
@@ -472,7 +268,7 @@
     bug:
     if there is one ``if,then'' pair mismatch
     there will be crazy bug which is very hard to test !!
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     : define-recursive-function (* wordList[address, the number of words] -- *)
       tail-and-head-of-word-list
       create-word-header-for-function
@@ -653,7 +449,7 @@
     6 6 .12 cr
     #+end_src
 ** predicates
-   #+begin_src cicada :tangle ../play/english-core.ccd
+   #+begin_src cicada :tangle ../play/english-core.ccd 
    : special-key-word? (* word[explainer] -- True or False *)
      dup literal literal           == if drop True Exit then
      dup literal branch            == if drop True Exit then
@@ -681,7 +477,7 @@
        instead of just using lambda-abstraction
 *** implementation
 **** write-dec-number
-     #+begin_src cicada :tangle ../play/english-core.ccd
+     #+begin_src cicada :tangle ../play/english-core.ccd 
      : write-dec-number-char (* byte -- *)
        '0' + write-char
        Exit
@@ -725,7 +521,7 @@
      ; define-function
      #+end_src
 **** write-bin-number
-     #+begin_src cicada :tangle ../play/english-core.ccd
+     #+begin_src cicada :tangle ../play/english-core.ccd 
      : write-bin-number-char (* byte -- *)
        '0' + write-char
        Exit
@@ -769,7 +565,7 @@
      ; define-function
      #+end_src
 **** write-oct-number
-     #+begin_src cicada :tangle ../play/english-core.ccd
+     #+begin_src cicada :tangle ../play/english-core.ccd 
      : write-oct-number-char (* byte -- *)
        '0' + write-char
        Exit
@@ -813,7 +609,7 @@
      ; define-function
      #+end_src
 **** write-hex-number
-     #+begin_src cicada :tangle ../play/english-core.ccd
+     #+begin_src cicada :tangle ../play/english-core.ccd 
      : write-hex-number-char (* byte -- *)
        dup Ten < if
          '0' + write-char Exit
@@ -895,7 +691,7 @@
      ; define-function
      #+end_src
 **** write-aph-number
-     #+begin_src cicada :tangle ../play/english-core.ccd
+     #+begin_src cicada :tangle ../play/english-core.ccd 
      : write-aph-number-char (* byte -- *)
        dup Ten < if
          '0' + write-char Exit
@@ -977,7 +773,7 @@
      ; define-function
      #+end_src
 **** usage
-     #+begin_src cicada :tangle ../play/english-core.ccd
+     #+begin_src cicada :tangle ../play/english-core.ccd 
      : .unsigned (* fixnum -- *)
        write-dec-number
        'space' write-char
@@ -1116,7 +912,7 @@
        we should handle type error as possible as we could
     2. the ``IdentificationOf#Word'' in ``def*'' macros is for ``debuger''
 *** implementation
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     : count-return-stack (* -- the length of ReturnStack *)
       Return-stack-top fetch-return-stack-pointer -
       Eight /
@@ -1388,7 +1184,7 @@
     ; define-function
     #+end_src
 *** simple trace
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     : trace (* n -- *)
       debuger,fetch-from-return-stack
       trace-function
@@ -1464,7 +1260,7 @@
        will call debuger if it meets a undefined word
     2. there will be syntax-check after the implementation of ``list''
 *** implementation
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     : print-word-list (* WordList[address, the number of words] -- *)
       dup zero? if
         drop2
@@ -1627,7 +1423,7 @@
       so I let Symbol-max-length == 64 - 8 == 56
       only first Symbol-max-length of the string is used by the hash-function
 ** string-hash->index & index-hashback->string
-   #+begin_src cicada :tangle ../play/english-core.ccd
+   #+begin_src cicada :tangle ../play/english-core.ccd 
    (* a Symbol-entry [unit : byte]
     ,* ==========================
     ,*  ||   8 : Symbol-value   ||
@@ -1895,7 +1691,7 @@
       then, when I want to treat this <xxx-list> as a <list>
       I just ``drop <list>''
 ** implementation
-   #+begin_src cicada :tangle ../play/english-core.ccd
+   #+begin_src cicada :tangle ../play/english-core.ccd 
    (* if 1 is setted to a symbol, this symbol is a fixnum like data type
       if 2 is setted to a symbol, this symbol is a pair like data type *)
 
@@ -2047,7 +1843,7 @@
 ** dictionary operations
 *** >< note
 *** implementation
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     (*
      ,* a word in the dictionary [unit : Cell-width = 8 bytes]
      ,*   ||  1 : name-string-header-which-contains-the-length-of-name-string  ||
@@ -2119,7 +1915,7 @@
     3. instead of allocate this stack in assembly
        I can also use list-processing to implement it
 *** implementation
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     Lambda-stack-top : Lambda-stack-pointer ; define-variable
 
     : push-lambda-stack
@@ -2175,7 +1971,7 @@
          to save the length of the string
 ** dynamic-allocation of string
 *** try,copy-substring,from->to
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     (* example of a substring stored in string-heap :
        || 4 : length of substring  ||
        || n : substring  ||
@@ -2364,7 +2160,7 @@
      *)
     #+end_src
 *** read-string
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     : read-non-string-ending-char (* -- FirstNonBlankChar or Zero *)
       read-char
       dup '"' == if
@@ -2429,7 +2225,7 @@
     3. cdr : contents of the decrement part of a PairConstruction
        as the second typed-value of a pair
 *** the construction & clr, car, cdr
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     (* the construction of pair : [unit : byte]
      ,* clr:
      ,*     ||  1 : color     ||
@@ -2503,7 +2299,7 @@
     a black pair in GreyPairStackTop is as a ``grey'' pair
     a grey-pair denotes front of the spreading black sub-graph
     these nodes maybe at the junction of black and white (maybe not)
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     0 : White ; define-constant
     1 : Black ; define-constant
 
@@ -2534,7 +2330,7 @@
     ; define-function
     #+end_src
 *** marking
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     : white-color-for-marking? (* color-byte -- True or False *)
       Color-offset-for-marking fetch-bit White == Exit
     ; define-function
@@ -2620,7 +2416,7 @@
     in cicada, to make the gc to be incremental
     there are many strategies you can use
     the following shows one of them
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     : set!
       (* VarForTypedValue[address], [value, type] -- VarForTypedValue[address] *)
       dup <pair-like>? if
@@ -2795,7 +2591,7 @@
     #+end_src
 *** marking & define
     define and set! are the interface of dynamic-typed-value
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     (* recall
      ,* a word in the dictionary [unit : Cell-width = 8 bytes]
      ,*   ||  1 : name-string-header-which-contains-the-length-of-name-string  ||
@@ -2849,7 +2645,7 @@
     ; define-function
     #+end_src
 *** finding & cons : constructor of <pair>
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     (* the following functions are helping cons *)
 
     : clear-color-bit-of-pair-for-cleaning (* pair[address] -- pair[address] *)
@@ -3042,7 +2838,7 @@
     ; define-function
     #+end_src
 *** substring & string : constructor of <substring> & <string>
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     : read-string (* -- [address, <string>] *)
       cons drop (* drop <pair> *) <string>
       s" drop (* drop length *) <substring>
@@ -3093,7 +2889,7 @@
     ; define-function
     #+end_src
 *** about test
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     (* for test *)
     : print-type-of-it (* type -- *)
       print-type-tag ':' write-char write-space Exit
@@ -3413,7 +3209,7 @@
        this calls can not be compiled into the function-bodys of them
        unless I introduce new syntaxes
 *** implementation
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     :" {" : Bra:flower ; define-constant-string
     :" }" : Ket:flower ; define-constant-string
 
@@ -3430,7 +3226,7 @@
     #+end_src
 ** write
 *** implementation
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     :" write-list"    : Message:write-list   ; define-constant-string
     :" write-*dalin"  : Message:write-*dalin ; define-constant-string
     :" write-wodyli"  : Message:write-wodyli ; define-constant-string
@@ -3512,7 +3308,7 @@
        I try to avoid many modes in REPL
        but now the list-leader brings me back to the classic forth
 *** execute-word,for-list-reader
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     : string-denote-list-reader?
       (* string[address, length] -- True or False *)
       dup2 Bra:flower equal-string? if
@@ -3550,7 +3346,7 @@
     ; define-function
     #+end_src
 *** list-escape-REPL
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     : list-escape-REPL
       (* could  be: unknown -- unknown *)
       (* should be:  -- [value, type] *)
@@ -3582,7 +3378,7 @@
     : (esc list-escape-REPL Exit ; define-function
     #+end_src
 *** read-list
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     : read-list (* -- [address, <list>] *)
       read-word
       dup2 Ket:flower equal-string? if
@@ -3605,7 +3401,7 @@
     : { read-list Exit ; define-function
     #+end_src
 *** write-list
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     : help:write-list (* [address, <list>] or [Null, <null>] -- *)
       dup <null> == if
         drop2 Exit
@@ -3674,7 +3470,7 @@
 *** >< note
     the name of the following functions should be changed
 *** implementation
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     :" set-car-to-{car}! said:
        ``My function-type is (* [address, <pair-like>] -- [address, <pair-like>] *)
          But the type I received is the following,
@@ -3825,7 +3621,7 @@
     #+end_src
 ** dalin processing
 *** <- & ->
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     :" <- said:
        ``My function-type is (* [address, <dalin-like>] -- [address, <dalin>] *)
          But the type I received is the following,
@@ -3860,7 +3656,7 @@
     ; define-function
     #+end_src
 *** list->dalin
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     (* note that:
        in the following, I am using side-effect to change a existed list
        but NOT to form a new dalin from scratch *)
@@ -3954,7 +3750,7 @@
     ; define-function
     #+end_src
 *** *dalin? & dalin*?
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     : *dalin? (* [address, <dalin>] -- True or False *)
       <- null? if
         True Exit
@@ -3970,7 +3766,7 @@
     ; define-function
     #+end_src
 *** nested-list->dalin
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     : help:nested-list->dalin
       (* [address, <dalin>], left[address, <dalin>] -- [address, <dalin>] *)
       (* or *)
@@ -4021,7 +3817,7 @@
     ; define-function
     #+end_src
 *** dalin->tail & head<-dalin
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     :" dalin->tail said:
        ``My function-type is
          (* [address, <dalin-like>] -- tail[address, <dalin-like>] *)
@@ -4068,7 +3864,7 @@
     ; define-recursive-function
     #+end_src
 *** [value,dalin]-associate & [value,dalin]-member?
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     :" [value,dalin]-associate said:
        ``My function-type is
          (* [value, type], head[address, <dalin-like>] --
@@ -4145,7 +3941,7 @@
     the following function is very important
     it for dalin is as the ``cons'' for list
     but also really different
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     :" ^_^ said:
        ``My function-type is
          (*  left[address, <dalin-like>], rigth[address, <dalin-like>] --
@@ -4330,7 +4126,7 @@
     #+end_src
 ** read-dalin & write-dalin
 *** read-*dalin
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     : help:read-*dalin
       (* tail[address, <dalin>] -- head[address, <dalin>] *)
       (* where:
@@ -4368,7 +4164,7 @@
     : [ read-*dalin Exit ; define-function
     #+end_src
 *** write-*dalin
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     : help:write-*dalin
       (* [address, <dalin>] -- *)
       dup2 dalin*? if
@@ -4471,7 +4267,7 @@
        LIAF version uses the LambdaStack
        which is very funny
 *** stack->list
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     : help:stack-LIAF->list
       (* ..., number --  *)
       (* LambdaStack::
@@ -4532,7 +4328,7 @@
     ; define-function
     #+end_src
 *** stack->dalin
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     : help:stack-LIAF->dalin
       (* ..., number -- [address, <list>] *)
       (* LambdaStack::
@@ -4605,7 +4401,7 @@
     ; define-function
     #+end_src
 *** list->stack
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     :" stack<-FIAF-list said:
        ``My function type is (* [address, <list>] -- ... *)
          the list should be a list of <not-pair-like> value
@@ -4695,7 +4491,7 @@
     #+end_src
 ** symbol types
 *** helper funciton
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     : char-denote-number,or-alphabet,or-out-of-ascii?
       (* char -- True of False *)
       dup literal 48 < if     drop False Exit
@@ -4716,7 +4512,7 @@
     ; define-function
     #+end_src
 *** Bound-variable
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     (* `:' followed by a number or alphabet is a symbolDenoteBoundVariable
        ascii: 48 -- 57, 65 -- 90, 97 -- 122, 128 -- ...
        this set maybe change in the future *)
@@ -4905,7 +4701,7 @@
     ; define-function
     #+end_src
 *** Wody
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     (* string begin with a number or alphabet
        and end with `:' following a number or alphabet
        is a symbolDenoteWody *)
@@ -4950,7 +4746,7 @@
     ; define-function
     #+end_src
 *** LambdaArgument
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     (* `<' plus a string-denote-bound-variable,one *)
     : string-denote-lambda-argument,one?
       (* [address, length] -- True or False *)
@@ -5221,7 +5017,7 @@
     2. wodyli is a dalin of list
     3. lambda will use ``bound-variable-wodyli''
 *** read-wodyli
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     : help:with-word,read-wody-or-bound-variable
       (* -- [address, <list>] *)
       (* LambdaStack::
@@ -5338,7 +5134,7 @@
     : ( read-wodyli Exit ; define-function
     #+end_src
 *** write-wody & write-wodyli
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     :" write-wody-or-bound-variable said:
        ``My function-type is (* [address, <wody> or <bound-variable>] -- *)
          But the 1st argument is the following
@@ -5412,7 +5208,7 @@
     2. to handle <:x <::x <:::x <::::x
     3. print better ErrorInfo for ExecuteWord
 *** implementation
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     : <lambda-argument-one>   ; define-pair-like-data-type
     : <lambda-argument-two>   ; define-pair-like-data-type
     : <lambda-argument-three> ; define-pair-like-data-type
@@ -5557,7 +5353,7 @@
     cr
     #+end_src
 ** using the symbol-REPL now !
-   #+begin_src cicada :tangle ../play/english-core.ccd
+   #+begin_src cicada :tangle ../play/english-core.ccd 
    symbol-REPL
    #+end_src
 * *lambda-calculus*
@@ -5605,7 +5401,7 @@
      note that you can only use bound-variable (such as ::x :n) in a lambda-body
      bot NOT a dalin or list or wodyli
 *** data-types
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     : <lambda>               ; define-pair-like-data-type
     : <explainer-pair>       ; define-pair-like-data-type
     : <explainer>            ; define-data-type
@@ -5613,7 +5409,7 @@
 *** helper functions
     used to decide the type error of lambda
     and to decide when I need to calculate lambda-scope
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     : bound-variable-wodyli?
       (* head[address, <wodyli>] -- True or False *)
       dup <wodyli> =/= if
@@ -5678,7 +5474,7 @@
      *)
     #+end_src
 *** bound-variable-wodyli-subtraction (for calculating lambda-scope)
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     : help:bound-variable-wodyli-subtraction
       (* LambdaStack::
          (a-b) [address, <wodyli>] -- *)
@@ -5752,7 +5548,7 @@
      *)
     #+end_src
 *** lambda
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     :" lambda" string-hash->index
     : Symbol-index:lambda ; define-constant
 
@@ -6055,7 +5851,7 @@
        也许这种效果能被有趣地利用起来
     3. maybe I can support cc here !
 *** lambda-body-stack
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     (* note that:
          when a explainer is been executed
          only the arguments of the word to be explained
@@ -6084,7 +5880,7 @@
     ; define-function
     #+end_src
 *** help:apply,eval-lambda-body
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     (* the following function
        do side-effect to the car of the lambda-body-stack *)
 
@@ -6190,7 +5986,7 @@
     ; define-recursive-function
     #+end_src
 *** apply
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     (* examples of <lambda-argument>:
          { :x       . { 1 } }
          { ::null   . { Null <null> } }
@@ -6264,7 +6060,7 @@
     ; define-function
     #+end_src
 *** syntax sugar
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.ccd 
     : @
       (* ...,
          [address, <lambda-argument>],
@@ -7328,7 +7124,7 @@
 ** ok & bye
    for the REPL is actually a REL which does not print
    so I provide a word to check that the cicada is working properly
-   #+begin_src cicada :tangle ../play/english-core.ccd
+   #+begin_src cicada :tangle ../play/english-core.ccd 
    :" yes"
    : Message:yes ; define-constant-string
    : ok (* -- *)

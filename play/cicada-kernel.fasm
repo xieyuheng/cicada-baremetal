@@ -11,252 +11,341 @@ dup equ duplicate
 ;; 64-bits
 xx equ dq
 CellWidth equ 8
-;; all unit are byte
-;; LowestMemoryAddress always can not be use to save value
+use16
+org LocationOfKernel
 
-;; ==========================================
-LowestMemoryAddress = 100*1024*1024
-FirstLowestMemoryAddress = LowestMemoryAddress
+start16:
+        cli
 
-labeling equ = LowestMemoryAddress
-preserve equ LowestMemoryAddress = LowestMemoryAddress +
-mayData  equ LowestMemoryAddress = LowestMemoryAddress + (16 - (LowestMemoryAddress mod 16))
+        xor ax, ax
+        mov ds, ax
+        mov es, ax
+        mov fs, ax
+        mov gs, ax
+        mov ss, ax
+        mov sp, LocationOfKernel
 
+        ;; Make sure the screen is set to 80*25 text mode
+        mov ax, 3
+        int 0x10
 
-mayData
-;; ------------------------------------------
-;; should be big enough, for no size error check
-SizeOfScancodeQueue = 1024
+        ;; Disable blinking
+        mov ax, 0x1003
+        mov bx, 0x0000
+        int 0x10
 
-ScancodeQueue labeling
-        preserve SizeOfScancodeQueue
+        ;; hide the hardware cursor
+        mov ax, 0x0200                  ; VIDEO - SET CURSOR POSITION
+        mov bx, 0x0000                  ; Page number
+        mov dx, 0x2000                  ; Row / Column
+        int 0x10
 
+        ;; enable the A20 gate
+        set_A20:
+           in al, 0x64
+           test al, 0x02
+           jnz set_A20
+           mov al, 0xD1
+           out 0x64, al
+        check_A20:
+           in al, 0x64
+           test al, 0x02
+           jnz check_A20
+           mov al, 0xDF
+           out 0x60, al
 
-mayData
-;; ------------------------------------------
-SizeOfInputBuffer = 3*1024*1024
+        lgdt    [cs:GDTR]
 
-InputBuffer labeling
-        preserve SizeOfInputBuffer
-EndOfInputBuffer labeling
+        ;; switch to protected mode
+        mov     eax, cr0
+        bts     eax, 0                   ; bit-index-0 set
+        mov     cr0, eax
 
+        jmp     CODE_SELECTOR_32:start32
+align 16
+GDTR:
+   dw GDT_END - GDT - 1                  ;; index of the last byte in table
+   dq GDT                                ;; linear address of GDT
 
-mayData
-;; ------------------------------------------
-;; the size of a ScreenBuffer is equal to the size of the screen
-;; which is 80*25*2 bytes
-;; and cursor and ScreenBuffer are in the same structure
-;; the size of its cursor is 2 bytes
-SizeOfScreenBuffer = 80*25*2
-SizeOfCursor = 8
+   ;; ;; base-address is a 32 bit value containing the linear address where the segment begins.
+   ;; ;; limit is a 20 bit value tells the maximum addressable unit (either in 1 byte units, or in pages)
+   ;; ;;   Hence, if you choose page granularity (4 KiB) in the flags
+   ;; ;;   and set the limit value to 0fffffh the segment will span the full 4 GiB address space
+   ;; ;; example :
+   ;; ;; base-address [32 bits] :: 2,3,4,7 == 0
+   ;; ;; limit        [20 bits] :: 0,1,l6  == 0fffffh
+   ;; ;; flags        [ 4 bits] :: h6      == 1100b
+   ;; ;; access       [ 8 bits] :: 5       == 10010010b
+   ;; ;  0     1     2  3  4  5          6          7
+   ;; db 0ffh, 0ffh, 0, 0, 0, 10010010b, 11001111b, 0
 
-Cursor0_InAssembly labeling
-        preserve SizeOfCursor
-ScreenBuffer0_InAssembly labeling
-        preserve SizeOfScreenBuffer
+   ;; for all of the following desciptors :
+   ;;  limit = 0fffffh,  base = 0h
 
+align 16
+GDT:
+   ;; descriptor-0 is always unused
+   dq 0
+   ;; descriptor-1
+   ;; flat data desciptor
+   ;;  flags = 1000b,  access = 10010010b ;; most accessible for data desciptor
+   db 0ffh, 0ffh, 0, 0, 0, 10010010b, 10001111b, 0
+   ;; descriptor-2
+   ;; 32 bits code desciptor
+   ;;  flags = 1100b,  access = 10011010b ;; most accessible for code desciptor
+   db 0ffh, 0ffh, 0, 0, 0, 10011010b, 11001111b, 0
+   ;; descriptor-3
+   ;; 64 bits code desciptor
+   ;; for long mode
+   ;; bit-index-1 of the flags of the GDT code desciptor must be set
+   ;; bit-index-2 of the flags of the GDT code desciptor must be clear (as it would be for a 16-bit code segment)
+   ;; so we have the following
+   ;;  flags = 0010b,  access = 10011010b ;; most accessible for code desciptor
+   db 0, 0, 0, 0, 0, 10011010b, 00100000b, 0
+   db 0, 0, 0, 0, 0, 10010010b, 00100000b, 0
+GDT_END:
 
-mayData
-;; ------------------------------------------
-;; note that, Subsequent calls will overwrite BufferForReadWord
-;; this is why there is another function ``readWordForRuntime''
-MaxWordLength = 1024
+NULL_SELECTOR = 0
+DATA_SELECTOR_32 = (1 shl 3)    ; flat data selector (ring 0)
+CODE_SELECTOR_32 = (2 shl 3)    ; 32-bit code selector (ring 0)
+CODE_SELECTOR_64 = (3 shl 3)    ; 64-bit code selector (ring 0)
+DATA_SELECTOR_64 = (4 shl 3)    ; 64-bit code selector (ring 0)
+align 16
+use32
 
-BufferForReadWord labeling
-        preserve MaxWordLength
+start32:
+        ;; load 4 GB data descriptor to all data segment registers
+        mov     ax, DATA_SELECTOR_32
+        mov     ds, ax
+        mov     es, ax
+        mov     fs, ax
+        mov     gs, ax
+        mov     ss, ax
 
-BufferForReadWordForRuntime labeling
-        preserve MaxWordLength
+        ;; about paging :
+        ;; make 4G identity page
+        ;; by setting up :
+        ;; 1 PageTable4 with 1 entries
+        ;; 1 PageTable3 with 4 entries
+        ;; 4 PageTable2 with 512 entries each
+        ;; 6*4K == 24K of memory are needed to set up these tables
 
+        SizeOfPageTable = 4*1024
+        SizeOfPage = 2*1024*1024
+        PageTable4 = 1*1024*1024
+        PageTable3 = PageTable4 + SizeOfPageTable
+        PageTable2 = PageTable3 + SizeOfPageTable
 
-mayData
-;; ------------------------------------------
-;; note that, Subsequent calls will overwrite BasicStringBuffer
-MaxStringLength = 1024*1024
+        ;; clear 6*4k for paging tables
+        mov     edi, PageTable4
+        mov     ecx, (6*4*1024)/4     ; 4*1024 for one table
+        xor     eax, eax
+        rep     stosd
 
-BasicStringBuffer labeling
-        preserve MaxStringLength
+        ;; make 1 PageTable4 with 1 entry
+        mov dword [PageTable4], PageTable3 + 00000111b
 
+        ;; make 1 PageTable3 with 4 entries
+        mov     edi, PageTable3
+        mov     eax, PageTable2 + 111b
+        mov     ecx, 4 ; number of entries
+make_PageTable3_entries:
+        stosd
+        add     edi, 4
+        add     eax, SizeOfPageTable
+        loop    make_PageTable3_entries
 
-mayData
-;; ------------------------------------------
-;; note that, Subsequent calls will overwrite BufferForReadWordListForLexicographer
-SizeOfBufferForReadWordListForLexicographer = 2*1024*1024
+        ;; make 4 PageTable2 with 512 entries each
+        mov     edi, PageTable2
+        mov     eax, 0 + 10000111b
+        mov     ecx, 4*512 ; number of entries
+make_PageTable2_entries:
+        stosd
+        add     edi, 4
+        add     eax, SizeOfPage
+        loop    make_PageTable2_entries
 
-BufferForReadWordListForLexicographer labeling
-        preserve SizeOfBufferForReadWordListForLexicographer
+        ;; load PageTable4 to cr3
+        mov     eax, PageTable4
+        mov     cr3, eax
 
+        ;; enable PAE :: physical address extensions
+        mov     eax, cr4
+        bts     eax, 5
+        mov     cr4, eax
 
-mayData
-;; ------------------------------------------
-;; PairConstructionsArray
-;;   (unit : byte)
-;; ========================
-;;   ||  1 : color     ||
-;; ------------------------
-;;   ||  8 : type tag  ||
-;;   ||  8 : value     ||
-;; ------------------------
-;;   ||  8 : type tag  ||
-;;   ||  8 : value     ||
-;; ========================
-mayData
-ClrBytesSize = 1
-CarBytesSize = 16
-CdrBytesSize = 16
-ConsBytesSize = ClrBytesSize + CarBytesSize + CdrBytesSize
-NumberOfPairConstructions = 100 * 1024
+        ;; enable long mode by setting EFER MSR
+        ;; MSR :: model specific register
+        mov     ecx, 0C0000080h
+        rdmsr
+        bts     eax, 8
+        wrmsr
 
-;;         rb ClrBytesSize
-;; InFrontOfTheFirstPairConstruction:
-;;         rb (CarBytesSize + CdrBytesSize)
+        ;; enable paging
+        mov     eax, cr0
+        bts     eax, 31
+        mov     cr0, eax
 
-;;         rb ClrBytesSize
-;; FirstPairConstruction:
-;;         rb (CarBytesSize + CdrBytesSize)
+        ;; and then we are in 32 bits compatibility mode (which is part of lmode)
+        ;; must load a SELECTOR with which the flags are setted for lmode
+        ;; as the following "jmp" do :
+        mov     ax, CODE_SELECTOR_64
+        mov     ds, ax
+        mov     es, ax
+        mov     fs, ax
+        mov     gs, ax
+        mov     ax, DATA_SELECTOR_64
+        mov     ss, ax
+        jmp     CODE_SELECTOR_64:start64
+align 16
+use64
 
+start64:
+        ;; Flush Cache
+        wbinvd
 
+        ;; Enable Cache
+        mov rax, cr0
+        btr rax, 29                     ; resets (i.e. clear) No Write Thru (Bit 29)
+        btr rax, 30                     ; resets (i.e. clear) CD (Bit 30)
+        mov cr0, rax
 
-;;         rb ClrBytesSize
-;; LastPairConstruction:
-;;         rb (CarBytesSize + CdrBytesSize)
+        ;; about PIC and IRQ
+        ;; ICW :: initialization command word (actually byte)
 
-        preserve ClrBytesSize
-InFrontOfTheFirstPairConstruction labeling
-        preserve (CarBytesSize + CdrBytesSize)
+        ;; ICW1
+        mov     al, 10001b
+        out     20h, al
+        mov     al, 10001b
+        out     0A0h, al
 
-        preserve ClrBytesSize
-FirstPairConstruction labeling
-        preserve (CarBytesSize + CdrBytesSize)
+        ;; ICW2
+        ;; IRQ 0-7: from interrupts 32
+        mov     al, 32
+        out     21h, al
+        ;; IRQ 8-15: from interrupts 32 + 8
+        mov     al, 32 + 8
+        out     0A1h, al
 
-        ;; ==========================
-        preserve ((NumberOfPairConstructions - 2) * ConsBytesSize)
-        ;; ==========================
+        ;; ICW3
+        ;; connected PIC1 with PIC2
+        mov     al, 100b
+        out     21h, al
+        mov     al, 10b
+        out     0A1h, al
 
-        preserve ClrBytesSize
-LastPairConstruction labeling
-        preserve (CarBytesSize + CdrBytesSize)
+        ;; ICW4
+        ;; x86 environment and manual EOI
+        mov     al, 1
+        out     21h, al
+        out     0A1h, al
 
+        ;; OCW :: operation control word (actually byte)
+        ;; OCW is used to enable/disable IRQ and to signal an interrupt is over
 
-mayData
-;; ------------------------------------------
-;; HashTableForSymbol
+        ;; enable IRQ 1:keyboard
+        in      al, 21h
+        mov     al, 11111101b
+        out     21h, al
+        in      al, 0A1h
+        mov     al, 11111111b
+        out     0A1h, al
 
-;; a SymbolEntry (unit : byte)
-;; ===========================
-;;  ||   8 : SymbolValue   ||
-;; ---------------------------
-;;  ||   1 : SymbolLength  ||
-;; ---------------------------
-;;  || 56+ : SymbolString  ||
-;; ===========================
+        ;; create IDT (at linear address 0)
+        ;; not like the GDT, the IDT is created by code at address 0
+        ;; an IDT entry is called a gate
 
-SymbolLengthBytesSize = 1
-SymbolValueBytesSize  = 8
-SymbolStringBytesSize = 56+0
-SymbolMaxLength       = 56
-SymbolEntryBytesSize = SymbolValueBytesSize + SymbolLengthBytesSize + SymbolStringBytesSize
-;; NumberOfSymbolEntrys = 1000003
-;; NumberOfSymbolEntrys = 1000033
-;; NumberOfSymbolEntrys = 1000333
-;; NumberOfSymbolEntrys = 100003
-NumberOfSymbolEntrys = 100333
-;; NumberOfSymbolEntrys = 997
-;; NumberOfSymbolEntrys = 499
-;; NumberOfSymbolEntrys = 230 ;; for a special test
+        ;; at first placeholder is used
+        ;; then one should call create_gate to creat each gate
 
-FirstSymbolEntry labeling
-        preserve SymbolEntryBytesSize
+        xor     edi, edi
 
-        ;; ========================
-        preserve ((NumberOfSymbolEntrys - 2) * SymbolEntryBytesSize)
-        ;; ========================
+        mov     ecx, 32
+make_exception_gate_placeholders:
+        mov     esi, exception_gate_placeholder
+        movsq
+        movsq
+        loop    make_exception_gate_placeholders
 
-LastSymbolEntry labeling
-        preserve SymbolEntryBytesSize
+        mov     ecx, 256 - 32
+make_interrupt_gate_placeholders:
+        mov     esi, interrupt_gate_placeholder
+        movsq
+        movsq
+        loop    make_interrupt_gate_placeholders
 
+        lidt    [IDTR]
 
-mayData
-;; ------------------------------------------
-;; two StringHeaps
-SizeOfStringHeap = 5*1024*1024
+        jmp cicada_virtual_machine
+align 16
+; create_gate
+; rax = address of handler
+; rdi = gate # to configure
+create_gate:
+        push rdi
+        push rax
 
-StringHeap1 labeling
-        preserve SizeOfStringHeap
-EndOfStringHeap1 labeling
+        shl rdi, 4                      ; quickly multiply rdi by 16
+        stosw                           ; store the low word (15..0)
+        shr rax, 16
+        add rdi, 4                      ; skip the gate marker
+        stosw                           ; store the high word (31..16)
+        shr rax, 16
+        stosd                           ; store the high dword (63..32)
 
-StringHeap2 labeling
-        preserve SizeOfStringHeap
-EndOfStringHeap2 labeling
+        pop rax
+        pop rdi
+        ret
+align 16
+IDTR:
+  dw 256*16 - 1 ;; index of the last byte in table
+  dq 0          ;; linear address of IDT
 
+;; not like the GDT, the IDT is created by code at address 0
+;; an IDT entry is called a gate
+;; the size of a gate in 64 bits mode is 16 bytes
+;; offset                [64 bits] :: 0,1,6,7,8,9,10,11 ==
+;; code-segment-selector [16 bits] :: 2,3 ==
+;; reserved              [ 8 bits] :: 4 == 0
+;; attributes-and-type   [ 8 bits] :: 5 ==
+;; reserved              [32 bits] :: 12,13,14,15,16 == 0
 
-mayData
-;; ------------------------------------------
-SizeOfBufferForLoadFile = 1024*1024
+align 16
+exception_gate_placeholder:
+  dw exception_placeholder and 0ffffh ;; 0,1
+  dw CODE_SELECTOR_64                 ;; 2,3
+  db 0                                ;; 4
+  ;db 10001110b                        ;; 5
+  db 10001111b                        ;; 5
+  dw exception_placeholder shr (2*8)  ;; 6,7,8,9
+  dd exception_placeholder shr (6*8)  ;; 10,11
 
-BufferForLoadFile labeling
-             preserve SizeOfBufferForLoadFile
+align 16
+interrupt_gate_placeholder:
+  dw interrupt_placeholder and 0ffffh ;; 0,1
+  dw CODE_SELECTOR_64                 ;; 2,3
+  db 0                                ;; 4
+  ;db 10001111b                        ;; 5
+  db 10001110b                        ;; 5
+  dw interrupt_placeholder shr (2*8)  ;; 6,7,8,9
+  dd interrupt_placeholder shr (6*8)  ;; 10,11
 
+;; ISR :: Interrupt Service Routine
 
-;; ------------------------------------------
-;; ------------------------------------------
+align 16
+exception_placeholder:
+        cli
+        hlt
 
-mayData
-;; ReturnStack
-SizeOfReturnStack = 100*1024*8
-
-ReturnStackBottom labeling
-        preserve SizeOfReturnStack
-ReturnStackTop labeling
-        preserve 100*8
-
-mayData
-;; ArgumentStack
-SizeOfArgumentStack = 100*1024*8
-
-ArgumentStackBottom labeling
-        preserve SizeOfArgumentStack
-ArgumentStackTop labeling
-        preserve 100*8
-
-mayData
-;; GreyPairStack
-SizeOfGreyPairStack = 100*1024*8
-
-GreyPairStackBottom labeling
-        preserve SizeOfGreyPairStack
-GreyPairStackTop labeling
-        preserve 100*8
-
-mayData
-;; LambdaStack
-SizeOfLambdaStack = 100*1024*8
-
-LambdaStackBottom labeling
-        preserve SizeOfLambdaStack
-LambdaStackTop labeling
-        preserve 100*8
-
-mayData
-;; StackForEvalString
-SizeOfStackForEvalString = 1024*8
-
-StackForEvalStringBottom labeling
-        preserve SizeOfStackForEvalString
-StackForEvalStringTop labeling
-        preserve 100*8
-
-mayData
-;; ------------------------------------------
-UserDataArea labeling
-EndOfUserDataArea = 1*1024*1024*1024
-;; ==========================================
+align 16
+interrupt_placeholder:
+        iretq
 ;; if you want to extend cicada in assembly,
 ;; the following four registers must not be used
 ;; =================================
 define NextWordPointer      r15
 define ReturnStackPointer   r14
-define ArgumentStackPointer   r13
+define ArgumentStackPointer r13
 define GreyPairStackPointer r12
 ;; =================================
 
@@ -554,337 +643,18 @@ ConstStringValueOf#Word:
 EndOfConstStringValueOf#Word:
 ;;--------------------------------------
         }
-use16
-org LocationOfKernel
+;; all unit are byte
+;; LowestMemoryAddress always can be use to save value
 
-start16:
-        cli
+;; ==========================================
+LowestMemoryAddress = 100*1024*1024
+FirstLowestMemoryAddress = LowestMemoryAddress
 
-        xor ax, ax
-        mov ds, ax
-        mov es, ax
-        mov fs, ax
-        mov gs, ax
-        mov ss, ax
-        mov sp, LocationOfKernel
-
-        ;; Make sure the screen is set to 80*25 text mode
-        mov ax, 3
-        int 0x10
-
-        ;; Disable blinking
-        mov ax, 0x1003
-        mov bx, 0x0000
-        int 0x10
-
-        ;; hide the hardware cursor
-        mov ax, 0x0200                  ; VIDEO - SET CURSOR POSITION
-        mov bx, 0x0000                  ; Page number
-        mov dx, 0x2000                  ; Row / Column
-        int 0x10
-
-        ;; enable the A20 gate
-        set_A20:
-           in al, 0x64
-           test al, 0x02
-           jnz set_A20
-           mov al, 0xD1
-           out 0x64, al
-        check_A20:
-           in al, 0x64
-           test al, 0x02
-           jnz check_A20
-           mov al, 0xDF
-           out 0x60, al
-
-        lgdt    [cs:GDTR]
-
-        ;; switch to protected mode
-        mov     eax, cr0
-        bts     eax, 0                   ; bit-index-0 set
-        mov     cr0, eax
-
-        jmp     CODE_SELECTOR_32:start32
+labeling  equ = LowestMemoryAddress
+preserve  equ LowestMemoryAddress = LowestMemoryAddress +
+mapMemory equ LowestMemoryAddress = LowestMemoryAddress + (16 - (LowestMemoryAddress mod 16))
 align 16
-GDTR:
-   dw GDT_END - GDT - 1                  ;; index of the last byte in table
-   dq GDT                                ;; linear address of GDT
-
-   ;; ;; base-address is a 32 bit value containing the linear address where the segment begins.
-   ;; ;; limit is a 20 bit value tells the maximum addressable unit (either in 1 byte units, or in pages)
-   ;; ;;   Hence, if you choose page granularity (4 KiB) in the flags
-   ;; ;;   and set the limit value to 0fffffh the segment will span the full 4 GiB address space
-   ;; ;; example :
-   ;; ;; base-address [32 bits] :: 2,3,4,7 == 0
-   ;; ;; limit        [20 bits] :: 0,1,l6  == 0fffffh
-   ;; ;; flags        [ 4 bits] :: h6      == 1100b
-   ;; ;; access       [ 8 bits] :: 5       == 10010010b
-   ;; ;  0     1     2  3  4  5          6          7
-   ;; db 0ffh, 0ffh, 0, 0, 0, 10010010b, 11001111b, 0
-
-   ;; for all of the following desciptors :
-   ;;  limit = 0fffffh,  base = 0h
-
-align 16
-GDT:
-   ;; descriptor-0 is always unused
-   dq 0
-   ;; descriptor-1
-   ;; flat data desciptor
-   ;;  flags = 1000b,  access = 10010010b ;; most accessible for data desciptor
-   db 0ffh, 0ffh, 0, 0, 0, 10010010b, 10001111b, 0
-   ;; descriptor-2
-   ;; 32 bits code desciptor
-   ;;  flags = 1100b,  access = 10011010b ;; most accessible for code desciptor
-   db 0ffh, 0ffh, 0, 0, 0, 10011010b, 11001111b, 0
-   ;; descriptor-3
-   ;; 64 bits code desciptor
-   ;; for long mode
-   ;; bit-index-1 of the flags of the GDT code desciptor must be set
-   ;; bit-index-2 of the flags of the GDT code desciptor must be clear (as it would be for a 16-bit code segment)
-   ;; so we have the following
-   ;;  flags = 0010b,  access = 10011010b ;; most accessible for code desciptor
-   db 0, 0, 0, 0, 0, 10011010b, 00100000b, 0
-   db 0, 0, 0, 0, 0, 10010010b, 00100000b, 0
-GDT_END:
-
-NULL_SELECTOR = 0
-DATA_SELECTOR_32 = (1 shl 3)    ; flat data selector (ring 0)
-CODE_SELECTOR_32 = (2 shl 3)    ; 32-bit code selector (ring 0)
-CODE_SELECTOR_64 = (3 shl 3)    ; 64-bit code selector (ring 0)
-DATA_SELECTOR_64 = (4 shl 3)    ; 64-bit code selector (ring 0)
-align 16
-use32
-
-start32:
-        ;; load 4 GB data descriptor to all data segment registers
-        mov     ax, DATA_SELECTOR_32
-        mov     ds, ax
-        mov     es, ax
-        mov     fs, ax
-        mov     gs, ax
-        mov     ss, ax
-
-        ;; about paging :
-        ;; make 4G identity page
-        ;; by setting up :
-        ;; 1 PageTable4 with 1 entries
-        ;; 1 PageTable3 with 4 entries
-        ;; 4 PageTable2 with 512 entries each
-        ;; 6*4K == 24K of memory are needed to set up these tables
-
-        SizeOfPageTable = 4*1024
-        SizeOfPage = 2*1024*1024
-        PageTable4 = 1*1024*1024
-        PageTable3 = PageTable4 + SizeOfPageTable
-        PageTable2 = PageTable3 + SizeOfPageTable
-
-        ;; clear 6*4k for paging tables
-        mov     edi, PageTable4
-        mov     ecx, (6*4*1024)/4     ; 4*1024 for one table
-        xor     eax, eax
-        rep     stosd
-
-        ;; make 1 PageTable4 with 1 entry
-        mov dword [PageTable4], PageTable3 + 00000111b
-
-        ;; make 1 PageTable3 with 4 entries
-        mov     edi, PageTable3
-        mov     eax, PageTable2 + 111b
-        mov     ecx, 4 ; number of entries
-make_PageTable3_entries:
-        stosd
-        add     edi, 4
-        add     eax, SizeOfPageTable
-        loop    make_PageTable3_entries
-
-        ;; make 4 PageTable2 with 512 entries each
-        mov     edi, PageTable2
-        mov     eax, 0 + 10000111b
-        mov     ecx, 4*512 ; number of entries
-make_PageTable2_entries:
-        stosd
-        add     edi, 4
-        add     eax, SizeOfPage
-        loop    make_PageTable2_entries
-
-        ;; load PageTable4 to cr3
-        mov     eax, PageTable4
-        mov     cr3, eax
-
-        ;; enable PAE :: physical address extensions
-        mov     eax, cr4
-        bts     eax, 5
-        mov     cr4, eax
-
-        ;; enable long mode by setting EFER MSR
-        ;; MSR :: model specific register
-        mov     ecx, 0C0000080h
-        rdmsr
-        bts     eax, 8
-        wrmsr
-
-        ;; enable paging
-        mov     eax, cr0
-        bts     eax, 31
-        mov     cr0, eax
-
-        ;; and then we are in 32 bits compatibility mode (which is part of lmode)
-        ;; must load a SELECTOR with which the flags are setted for lmode
-        ;; as the following "jmp" do :
-        mov     ax, CODE_SELECTOR_64
-        mov     ds, ax
-        mov     es, ax
-        mov     fs, ax
-        mov     gs, ax
-        mov     ax, DATA_SELECTOR_64
-        mov     ss, ax
-        jmp     CODE_SELECTOR_64:start64
-align 16
-use64
-
-start64:
-        ;; Flush Cache
-        wbinvd
-
-        ;; Enable Cache
-        mov rax, cr0
-        btr rax, 29                     ; resets (i.e. clear) No Write Thru (Bit 29)
-        btr rax, 30                     ; resets (i.e. clear) CD (Bit 30)
-        mov cr0, rax
-
-        ;; about PIC and IRQ
-        ;; ICW :: initialization command word (actually byte)
-
-        ;; ICW1
-        mov     al, 10001b
-        out     20h, al
-        mov     al, 10001b
-        out     0A0h, al
-
-        ;; ICW2
-        ;; IRQ 0-7: from interrupts 32
-        mov     al, 32
-        out     21h, al
-        ;; IRQ 8-15: from interrupts 32 + 8
-        mov     al, 32 + 8
-        out     0A1h, al
-
-        ;; ICW3
-        ;; connected PIC1 with PIC2
-        mov     al, 100b
-        out     21h, al
-        mov     al, 10b
-        out     0A1h, al
-
-        ;; ICW4
-        ;; x86 environment and manual EOI
-        mov     al, 1
-        out     21h, al
-        out     0A1h, al
-
-        ;; OCW :: operation control word (actually byte)
-        ;; OCW is used to enable/disable IRQ and to signal an interrupt is over
-
-        ;; enable IRQ 1:keyboard
-        in      al, 21h
-        mov     al, 11111101b
-        out     21h, al
-        in      al, 0A1h
-        mov     al, 11111111b
-        out     0A1h, al
-
-        ;; create IDT (at linear address 0)
-        ;; not like the GDT, the IDT is created by code at address 0
-        ;; an IDT entry is called a gate
-
-        ;; at first placeholder is used
-        ;; then one should call create_gate to creat each gate
-
-        xor     edi, edi
-
-        mov     ecx, 32
-make_exception_gate_placeholders:
-        mov     esi, exception_gate_placeholder
-        movsq
-        movsq
-        loop    make_exception_gate_placeholders
-
-        mov     ecx, 256 - 32
-make_interrupt_gate_placeholders:
-        mov     esi, interrupt_gate_placeholder
-        movsq
-        movsq
-        loop    make_interrupt_gate_placeholders
-
-        lidt    [IDTR]
-
-        jmp cicada
-align 16
-; create_gate
-; rax = address of handler
-; rdi = gate # to configure
-create_gate:
-        push rdi
-        push rax
-
-        shl rdi, 4                      ; quickly multiply rdi by 16
-        stosw                           ; store the low word (15..0)
-        shr rax, 16
-        add rdi, 4                      ; skip the gate marker
-        stosw                           ; store the high word (31..16)
-        shr rax, 16
-        stosd                           ; store the high dword (63..32)
-
-        pop rax
-        pop rdi
-        ret
-align 16
-IDTR:
-  dw 256*16 - 1 ;; index of the last byte in table
-  dq 0          ;; linear address of IDT
-
-;; not like the GDT, the IDT is created by code at address 0
-;; an IDT entry is called a gate
-;; the size of a gate in 64 bits mode is 16 bytes
-;; offset                [64 bits] :: 0,1,6,7,8,9,10,11 ==
-;; code-segment-selector [16 bits] :: 2,3 ==
-;; reserved              [ 8 bits] :: 4 == 0
-;; attributes-and-type   [ 8 bits] :: 5 ==
-;; reserved              [32 bits] :: 12,13,14,15,16 == 0
-
-align 16
-exception_gate_placeholder:
-  dw exception_placeholder and 0ffffh ;; 0,1
-  dw CODE_SELECTOR_64                 ;; 2,3
-  db 0                                ;; 4
-  ;db 10001110b                        ;; 5
-  db 10001111b                        ;; 5
-  dw exception_placeholder shr (2*8)  ;; 6,7,8,9
-  dd exception_placeholder shr (6*8)  ;; 10,11
-
-align 16
-interrupt_gate_placeholder:
-  dw interrupt_placeholder and 0ffffh ;; 0,1
-  dw CODE_SELECTOR_64                 ;; 2,3
-  db 0                                ;; 4
-  ;db 10001111b                        ;; 5
-  db 10001110b                        ;; 5
-  dw interrupt_placeholder shr (2*8)  ;; 6,7,8,9
-  dd interrupt_placeholder shr (6*8)  ;; 10,11
-
-;; ISR :: Interrupt Service Routine
-
-align 16
-exception_placeholder:
-        cli
-        hlt
-
-align 16
-interrupt_placeholder:
-        iretq
-align 16
-cicada:
+cicada_virtual_machine:
 
        cli
 
@@ -912,11 +682,84 @@ cicada:
 
 cicada_begin_thread:
        xx initialize
-
-       xx magicCheckCoreFile
-       xx loadCoreFile
-
        xx basicREPL
+defCode "close-interrupt", closeInterrupt
+   ;; (* -- *)
+   cli
+   next
+
+defCode "open-interrupt", openInterrupt
+   ;; (* -- *)
+   sti
+   next
+defCode "create-gate", createGate
+   ;; (* gate number to configure, address of handler -- *)
+   popArgumentStack rax
+   popArgumentStack rdi
+   shl rdi, 4     ; quickly multiply rdi by 16
+   stosw          ; store the low word (15..0)
+   shr rax, 16
+   add rdi, 4     ; skip the gate marker
+   stosw          ; store the high word (31..16)
+   shr rax, 16
+   stosd          ; store the high dword (63..32)
+   next
+; -----------------------------------------------------------------------------
+; keyboard interrupt. IRQ 0x01, INT 0x21
+; This IRQ runs whenever there is input on the keyboard
+
+mapMemory
+;; ------------------------------------------
+;; should be big enough, for no size error check
+SizeOfScancodeQueue = 1024
+  
+ScancodeQueue labeling
+        preserve SizeOfScancodeQueue
+
+
+align 16
+barekeyboard:
+        push rax
+        push rcx
+
+        xor rax, rax
+        in al, 0x60
+
+        mov rcx, [FrontOfScancodeQueue]
+        mov byte [ScancodeQueue + rcx], al
+        inc rcx
+        cmp rcx, SizeOfScancodeQueue
+        jne @f
+        xor rcx, rcx
+@@:
+        mov [FrontOfScancodeQueue], rcx
+
+        ;; the interrupt is over
+        mov al, 20h
+        out 20h, al
+        ;call os_smp_wakeup_all          ; A terrible hack
+
+        pop rcx
+        pop rax
+
+        iretq
+
+
+;; two indexes of the array as pointers
+;; Rear < Front
+align 16
+RearOfScancodeQueue:  dq 0
+align 16
+FrontOfScancodeQueue: dq 1
+
+defWord "create-barekeyboard", createBarekeyboard
+   ;; (* -- *)
+   ;; create the function to handle keyboard interrupt
+   xx literal, 32+1
+   xx literal, barekeyboard
+   xx createGate
+   xx Exit
+defWordEnd createBarekeyboard
 defWord "initialize", initialize
        ;; (* -- *)
        xx closeInterrupt
@@ -928,6 +771,9 @@ defWord "initialize", initialize
        xx configureColorPalette
        xx clearScreen
        xx resetCurrentCursor
+
+       xx magicCheckCoreFile
+       xx loadCoreFile
 
        xx openInterrupt
 
@@ -992,249 +838,6 @@ defCode "configure-color-palette", configureColorPalette
        lodsb
        out dx, al
        next
-align 16
-explainVar:
-   ;; ( -- address )
-   add ExplainerPointer, CellWidth
-   pushArgumentStack ExplainerPointer
-   next
-
-align 16
-explainConst:
-   ;; ( -- value )
-   add ExplainerPointer, CellWidth
-   mov TemporaryRegister, [ExplainerPointer]
-   pushArgumentStack TemporaryRegister
-   next
-
-align 16
-explainFunctionBody:
-   pushReturnStack NextWordPointer
-   ;; to calculate the address in a word where the function-body is stored
-   ;; this address is as an ``argumt'' of explainFunctionBody
-   add ExplainerPointer, CellWidth
-   mov NextWordPointer, ExplainerPointer
-   next
-
-align 16
-explainConstString:
-   ;; ( -- string[address, length] )
-   add ExplainerPointer, CellWidth
-   mov TemporaryRegister, [ExplainerPointer]
-   add ExplainerPointer, CellWidth
-   pushArgumentStack ExplainerPointer
-   pushArgumentStack TemporaryRegister
-   next
-
-
-
-defCode "execute", execute
-  ;; ( word[address of explainer] -- )
-  popArgumentStack ExplainerPointer
-  jmp qword[ExplainerPointer]
-
-;; not matter what way you use to set :
-;;   [ExplainerPointer] == address-of-explainer (of a word you want to jump to)
-;; then :
-;;   jmp qword[ExplainerPointer]
-;; it will works just well !!!
-
-
-
-
-;; the following Exit helps tail-call-optimization
-;; it just let you decide where is the end of FunctionBody
-;; in a FunctionBody, the ``Exit'' as a word will never be called
-defConst "Exit", Exit, Exit
-;; (* so, the following numbers are the same :
-;;   Exit
-;;   readWord Exit find wordLinkToWordExplainer
-;;   *)
-
-defConst "Function-body-explainer",   explainFunctionBody, FunctionBodyExplainer
-defConst "Variable-explainer",        explainVar,          VarExplainer
-defConst "Constant-explainer",        explainConst,        ConstExplainer
-defConst "Constant-string-explainer", explainConstString,  ConstStringExplainer
-;; recall
-;; a word in the dictionary (unit : CellWidth = 8 bytes)
-;; ==
-;;    ||  1 : name-string-header-which-contains-the-length-of-name-string  ||
-;;    ||  m : name-string  ||
-;;    ||  1 : SizeOfFunctionBody  ||
-;;    ||  1 : identification  ||
-;;    ||  1 : link  ||
-;;    ||  1 : type  ||
-;;    ||  1 : address-of-name-string-header  ||
-;;    ||  1 : address-of-explainer  ||
-;;    ||  n : body  ||
-;; where
-;;   ||  1 : type  ||
-;; ==
-;;   | type-bit-63 | ... | type-bit-1 | type-bit-0 |
-;; type-bit-0 is for HiddenWord
-
-define WordType_HiddenMask 00000001h
-
-
-defWord "word-link->word-string", wordLinkToWordString
-   ;; (* link[address] -- string[address, length] *)
-   xx literal, CellWidth
-   xx Two, multiple
-   xx addition
-   xx fetch
-   xx dup, literal, CellWidth, addition
-   xx swap, fetch
-   xx Exit
-defWordEnd wordLinkToWordString
-
-defWord "help,find", help_find
-   ;; (* wordString[address, length], link[address] -- word[address of link] or Zero *)
-   xx dup, zero?, false?branch, 4
-   xx   xxswapx, drop2
-   xx   Exit
-   xx xxtuckx, wordLinkToWordString, xxoverxx, equalString?, false?branch, 3
-   xx   drop2
-   xx   Exit
-   xx xswapxx, fetch
-   xx help_find
-   xx Exit
-defWordEnd help_find
-
-defWord "find", find
-   ;; (* wordString[address, length] -- word[address of link] or Zero *)
-   xx FirstWordInDictionary, fetch
-   xx help_find
-   xx Exit
-defWordEnd find
-
-
-;; usage;
-;; 1 2 readWord + find wordLinkToWordExplainer execute . (* 3 *)
-defWord "word-link->word-explainer", wordLinkToWordExplainer
-   ;; (* word[address of link] -- word[address of explainer] or Zero *)
-   xx literal, CellWidth
-   xx Three, multiple
-   xx addition
-   xx Exit
-defWordEnd wordLinkToWordExplainer
-defWord "append-number-to-here", appendNumberToHere
-   ;; (* a 64 bits number -- *)
-   ;; reset ``Here'', which points next free memory
-   xx Here, fetch
-   xx save
-   xx Here, fetch
-   xx literal, CellWidth, addition
-   xx Here ,save
-   xx Exit
-defWordEnd appendNumberToHere
-
-;; note that:
-;; a string in stack is string[address, length]
-;; a string in memory is ||  1 : length  ||  n : string  ||
-defWord "append-string-to-here", appendStringToHere
-   ;; (* string[address, length] -- *)
-   ;; leave a length behind, for update Here
-   xx dup, xxswapx
-   ;;   ||  1 : length  ||
-   xx dup, appendNumberToHere
-   ;;   ||  n : string  ||
-   xx Here, fetch, swap, copyByteString
-   ;; update Here
-   xx Here, fetch, addition, Here, save
-   xx Exit
-defWordEnd appendStringToHere
-
-;; test: appendNumberToHere
-;; 6 , Here fetch sub8 fetch .
-
-
-defWord "create-word-header", createWordHeader
-   ;; (* byString *)
-   ;; (* string[address, length] -- word[address of link] *)
-   xx Here, fetch, xxswapx ;; for address-of-name-string-header
-   xx appendStringToHere
-   xx Here, fetch, appendNumberToHere ;; (* identification *)
-   xx Here, fetch ;; (* leave the word[link] *)
-   xx Zero, appendNumberToHere ;; (* link *)
-   xx Zero, appendNumberToHere ;; (* type *)
-   xx swap
-   xx appendNumberToHere ;; address-of-name-string-header
-   xx Exit
-defWordEnd createWordHeader
-
-
-defWord "create-word-header-for-function", createWordHeaderForFunction
-   ;; (* string[address, length] -- word[address of link] *)
-   xx Here, fetch, xxswapx ;; for address-of-name-string-header
-   xx appendStringToHere
-   xx Zero, appendNumberToHere ;; (* SizeOfFunctionBody *)
-   xx Here, fetch, appendNumberToHere ;; (* identification *)
-   xx Here, fetch ;; (* leave the word[link] *)
-   xx Zero, appendNumberToHere ;; (* link *)
-   xx Zero, appendNumberToHere ;; (* type *)
-   xx swap
-   xx appendNumberToHere ;; address-of-name-string-header
-   xx Exit
-defWordEnd createWordHeaderForFunction
-
-
-
-defWord "append-word-description-to-here", appendWordDescriptionToHere
-   ;; (* wordList[address, the number of words] -- *)
-   xx dup, zero?branch, 16;-- GOTO: drop2
-   xx tailAndHeadOfWordList
-   xx dup2, stringDenoteNumber?
-   xx false?branch, 6;-- GOTO: find
-   ;; reading-error reported by ``number'' is not handled
-   xx number, drop, appendNumberToHere
-   xx branch, -12;-- GOTO: the beginning
-
-   xx find, wordLinkToWordExplainer, appendNumberToHere
-   xx branch, -17;-- GOTO: the beginning
-
-   xx drop2
-   xx Exit
-defWordEnd appendWordDescriptionToHere
-
-defWord "add-new-word-to-dictionary", addNewWordToDictionary
-   ;; reset FirstWordInDictionary to point to the newly defined word
-   ;; (* word[address of link] -- *)
-   xx dup
-   xx FirstWordInDictionary, fetch
-   xx swap
-   xx save
-   xx FirstWordInDictionary, save
-   xx Exit
-defWordEnd addNewWordToDictionary
-
-defWord "set-size-of-function-body", setSizeOfFunctionBody
-   ;; (* wordList[address, the number of words], word[address of link] --
-   ;;    wordList[address, the number of words], word[address of link] *)
-   xx dup
-   xx literal, CellWidth, subtraction
-   xx literal, CellWidth, subtraction
-   xx xoverxx
-   xx swap
-   xx save
-   xx Exit
-defWordEnd setSizeOfFunctionBody
-
-defWord "define-function", defineFunction
-   ;; (* wordList[address, the number of words] -- *)
-   ;; to create a new word
-   ;; is to use some words to describe the new word,
-   ;; and let an explainer to explain the description of the new word.
-   ;; to define a new word
-   ;; is to add the new created word to the dictionary.
-   xx tailAndHeadOfWordList
-   xx createWordHeaderForFunction
-   xx FunctionBodyExplainer, appendNumberToHere
-   xx setSizeOfFunctionBody
-   xx xxswapx
-   xx appendWordDescriptionToHere
-   xx addNewWordToDictionary
-   xx Exit
-defWordEnd defineFunction
 defVar "Base", 10, Base
 defVar "Here",  0, Here
 
@@ -1266,6 +869,108 @@ defConst "Oct-base", 8,  OctBase
 defConst "Dec-base", 10, DecBase
 defConst "Hex-base", 16, HexBase
 defConst "Aph-base", 36, AphBase
+defCode "literal", literal
+       mov  rax, [NextWordPointer]
+       add  NextWordPointer, CellWidth
+       pushArgumentStack rax
+       cmp qword[NextWordPointer], Exit
+       jne @f
+       popReturnStack NextWordPointer
+@@:
+       next
+
+
+defCode "branch", branch
+       ;; usage(in assembly): xx branch, number
+       ;; the number denotes an offset
+       ;; the base point of the offset is the place where the number stored
+       ;; note that: in the function branch, [NextWordPointer] = offset
+       mov  TemporaryRegister, [NextWordPointer]
+       imul TemporaryRegister, CellWidth
+       add  NextWordPointer, TemporaryRegister
+
+       ;; why not: cmp qword[NextWordPointer], Exit  ???
+       cmp qword[NextWordPointer], Exit
+       ;-- IF: [NextWordPointer] =/= Exit
+       jne @f
+       ;-- EL: [NextWordPointer] == Exit
+       popReturnStack NextWordPointer
+@@:
+
+       next
+
+
+defCode "zero?branch", zero?branch
+       ;; ( n -- )
+       popArgumentStack rax
+       test rax, rax
+       jnz zero?branch_toBranch
+       mov  TemporaryRegister, [NextWordPointer]
+       imul TemporaryRegister, CellWidth
+       add  NextWordPointer, TemporaryRegister
+       jmp zero?branch_help_toBranch
+zero?branch_toBranch:
+       add NextWordPointer, CellWidth
+zero?branch_help_toBranch:
+
+       ;; why not: cmp qword[NextWordPointer], Exit  ???
+       cmp qword[NextWordPointer], Exit
+       ;-- IF: [NextWordPointer] =/= Exit
+       jne @f
+       ;-- EL: [NextWordPointer] == Exit
+       popReturnStack NextWordPointer
+@@:
+
+       next
+
+defCode "false?branch", false?branch
+       ;; ( n -- )
+       ;; false?branch is identical to zero?branch
+       ;; but we can not use defWord to define false?branch by false?branch
+       ;; for it is a special key word
+       popArgumentStack rax
+       test rax, rax
+       jnz false?branch_toBranch
+       mov  TemporaryRegister, [NextWordPointer]
+       imul TemporaryRegister, CellWidth
+       add  NextWordPointer, TemporaryRegister
+       jmp false?branch_help_toBranch
+false?branch_toBranch:
+       add NextWordPointer, CellWidth
+false?branch_help_toBranch:
+
+       ;; why not: cmp qword[NextWordPointer], Exit  ???
+       cmp qword[NextWordPointer], Exit
+       ;-- IF: [NextWordPointer] =/= Exit
+       jne @f
+       ;-- EL: [NextWordPointer] == Exit
+       popReturnStack NextWordPointer
+@@:
+
+       next
+
+defCode "not-false?branch", notFalse?branch
+       ;; ( n -- )
+       popArgumentStack rax
+       test rax, rax
+       jz notFalse?branch_toBranch
+       mov  TemporaryRegister, [NextWordPointer]
+       imul TemporaryRegister, CellWidth
+       add  NextWordPointer, TemporaryRegister
+       jmp notFalse?branch_help_toBranch
+notFalse?branch_toBranch:
+       add NextWordPointer, CellWidth
+notFalse?branch_help_toBranch:
+
+       ;; why not: cmp qword[NextWordPointer], Exit  ???
+       cmp qword[NextWordPointer], Exit
+       ;-- IF: [NextWordPointer] =/= Exit
+       jne @f
+       ;-- EL: [NextWordPointer] == Exit
+       popReturnStack NextWordPointer
+@@:
+
+       next
 defCode "drop", drop
 ;; (* a -- *)
 popArgumentStack rax
@@ -2118,179 +1823,245 @@ defWord "tail-and-head-of-word-list", tailAndHeadOfWordList
    xx headOfWordList
    xx Exit
 defWordEnd tailAndHeadOfWordList
-defCode "literal", literal
-       mov  rax, [NextWordPointer]
-       add  NextWordPointer, CellWidth
-       pushArgumentStack rax
-       cmp qword[NextWordPointer], Exit
-       jne @f
-       popReturnStack NextWordPointer
-@@:
-       next
-
-
-defCode "branch", branch
-       ;; usage(in assembly): xx branch, number
-       ;; the number denotes an offset
-       ;; the base point of the offset is the place where the number stored
-       ;; note that: in the function branch, [NextWordPointer] = offset
-       mov  TemporaryRegister, [NextWordPointer]
-       imul TemporaryRegister, CellWidth
-       add  NextWordPointer, TemporaryRegister
-
-       ;; why not: cmp qword[NextWordPointer], Exit  ???
-       cmp qword[NextWordPointer], Exit
-       ;-- IF: [NextWordPointer] =/= Exit
-       jne @f
-       ;-- EL: [NextWordPointer] == Exit
-       popReturnStack NextWordPointer
-@@:
-
-       next
-
-
-defCode "zero?branch", zero?branch
-       ;; ( n -- )
-       popArgumentStack rax
-       test rax, rax
-       jnz zero?branch_toBranch
-       mov  TemporaryRegister, [NextWordPointer]
-       imul TemporaryRegister, CellWidth
-       add  NextWordPointer, TemporaryRegister
-       jmp zero?branch_help_toBranch
-zero?branch_toBranch:
-       add NextWordPointer, CellWidth
-zero?branch_help_toBranch:
-
-       ;; why not: cmp qword[NextWordPointer], Exit  ???
-       cmp qword[NextWordPointer], Exit
-       ;-- IF: [NextWordPointer] =/= Exit
-       jne @f
-       ;-- EL: [NextWordPointer] == Exit
-       popReturnStack NextWordPointer
-@@:
-
-       next
-
-defCode "false?branch", false?branch
-       ;; ( n -- )
-       ;; false?branch is identical to zero?branch
-       ;; but we can not use defWord to define false?branch by false?branch
-       ;; for it is a special key word
-       popArgumentStack rax
-       test rax, rax
-       jnz false?branch_toBranch
-       mov  TemporaryRegister, [NextWordPointer]
-       imul TemporaryRegister, CellWidth
-       add  NextWordPointer, TemporaryRegister
-       jmp false?branch_help_toBranch
-false?branch_toBranch:
-       add NextWordPointer, CellWidth
-false?branch_help_toBranch:
-
-       ;; why not: cmp qword[NextWordPointer], Exit  ???
-       cmp qword[NextWordPointer], Exit
-       ;-- IF: [NextWordPointer] =/= Exit
-       jne @f
-       ;-- EL: [NextWordPointer] == Exit
-       popReturnStack NextWordPointer
-@@:
-
-       next
-
-defCode "not-false?branch", notFalse?branch
-       ;; ( n -- )
-       popArgumentStack rax
-       test rax, rax
-       jz notFalse?branch_toBranch
-       mov  TemporaryRegister, [NextWordPointer]
-       imul TemporaryRegister, CellWidth
-       add  NextWordPointer, TemporaryRegister
-       jmp notFalse?branch_help_toBranch
-notFalse?branch_toBranch:
-       add NextWordPointer, CellWidth
-notFalse?branch_help_toBranch:
-
-       ;; why not: cmp qword[NextWordPointer], Exit  ???
-       cmp qword[NextWordPointer], Exit
-       ;-- IF: [NextWordPointer] =/= Exit
-       jne @f
-       ;-- EL: [NextWordPointer] == Exit
-       popReturnStack NextWordPointer
-@@:
-
-       next
-defCode "close-interrupt", closeInterrupt
-   ;; (* -- *)
-   cli
+align 16
+explainVar:
+   ;; ( -- address )
+   add ExplainerPointer, CellWidth
+   pushArgumentStack ExplainerPointer
    next
-
-defCode "open-interrupt", openInterrupt
-   ;; (* -- *)
-   sti
-   next
-defCode "create-gate", createGate
-   ;; (* gate number to configure, address of handler -- *)
-   popArgumentStack rax
-   popArgumentStack rdi
-   shl rdi, 4     ; quickly multiply rdi by 16
-   stosw          ; store the low word (15..0)
-   shr rax, 16
-   add rdi, 4     ; skip the gate marker
-   stosw          ; store the high word (31..16)
-   shr rax, 16
-   stosd          ; store the high dword (63..32)
-   next
-; -----------------------------------------------------------------------------
-; keyboard interrupt. IRQ 0x01, INT 0x21
-; This IRQ runs whenever there is input on the keyboard
-
-;; SizeOfScancodeQueue = 1024 ; unit : byte
 
 align 16
-barekeyboard:
-        push rax
-        push rcx
+explainConst:
+   ;; ( -- value )
+   add ExplainerPointer, CellWidth
+   mov TemporaryRegister, [ExplainerPointer]
+   pushArgumentStack TemporaryRegister
+   next
 
-        xor rax, rax
-        in al, 0x60
-
-        mov rcx, [FrontOfScancodeQueue]
-        mov byte [ScancodeQueue + rcx], al
-        inc rcx
-        cmp rcx, SizeOfScancodeQueue
-        jne @f
-        xor rcx, rcx
-@@:
-        mov [FrontOfScancodeQueue], rcx
-
-        ;; the interrupt is over
-        mov al, 20h
-        out 20h, al
-        ;call os_smp_wakeup_all          ; A terrible hack
-
-        pop rcx
-        pop rax
-
-        iretq
-
-;; ScancodeQueue:
-;;      rb SizeOfScancodeQueue
-
-;; two indexes of the array as pointers
-;; Rear < Front
 align 16
-RearOfScancodeQueue:  dq 0
-FrontOfScancodeQueue: dq 1
+explainFunctionBody:
+   pushReturnStack NextWordPointer
+   ;; to calculate the address in a word where the function-body is stored
+   ;; this address is as an ``argumt'' of explainFunctionBody
+   add ExplainerPointer, CellWidth
+   mov NextWordPointer, ExplainerPointer
+   next
 
-defWord "create-barekeyboard", createBarekeyboard
-   ;; (* -- *)
-   ;; create the function to handle keyboard interrupt
-   xx literal, 32+1
-   xx literal, barekeyboard
-   xx createGate
+align 16
+explainConstString:
+   ;; ( -- string[address, length] )
+   add ExplainerPointer, CellWidth
+   mov TemporaryRegister, [ExplainerPointer]
+   add ExplainerPointer, CellWidth
+   pushArgumentStack ExplainerPointer
+   pushArgumentStack TemporaryRegister
+   next
+
+
+
+defCode "execute", execute
+  ;; ( word[address of explainer] -- )
+  popArgumentStack ExplainerPointer
+  jmp qword[ExplainerPointer]
+
+;; not matter what way you use to set :
+;;   [ExplainerPointer] == address-of-explainer (of a word you want to jump to)
+;; then :
+;;   jmp qword[ExplainerPointer]
+;; it will works just well !!!
+
+
+
+
+;; the following Exit helps tail-call-optimization
+;; it just let you decide where is the end of FunctionBody
+;; in a FunctionBody, the ``Exit'' as a word will never be called
+defConst "Exit", Exit, Exit
+;; (* so, the following numbers are the same :
+;;   Exit
+;;   readWord Exit find wordLinkToWordExplainer
+;;   *)
+
+defConst "Function-body-explainer",   explainFunctionBody, FunctionBodyExplainer
+defConst "Variable-explainer",        explainVar,          VarExplainer
+defConst "Constant-explainer",        explainConst,        ConstExplainer
+defConst "Constant-string-explainer", explainConstString,  ConstStringExplainer
+;; recall
+;; a word in the dictionary (unit : CellWidth = 8 bytes)
+;; ==
+;;    ||  1 : name-string-header-which-contains-the-length-of-name-string  ||
+;;    ||  m : name-string  ||
+;;    ||  1 : SizeOfFunctionBody  ||
+;;    ||  1 : identification  ||
+;;    ||  1 : link  ||
+;;    ||  1 : type  ||
+;;    ||  1 : address-of-name-string-header  ||
+;;    ||  1 : address-of-explainer  ||
+;;    ||  n : body  ||
+;; where
+;;   ||  1 : type  ||
+;; ==
+;;   | type-bit-63 | ... | type-bit-1 | type-bit-0 |
+;; type-bit-0 is for HiddenWord
+
+define WordType_HiddenMask 00000001h
+
+
+defWord "word-link->word-string", wordLinkToWordString
+   ;; (* link[address] -- string[address, length] *)
+   xx literal, CellWidth
+   xx Two, multiple
+   xx addition
+   xx fetch
+   xx dup, literal, CellWidth, addition
+   xx swap, fetch
    xx Exit
-defWordEnd createBarekeyboard
+defWordEnd wordLinkToWordString
+
+defWord "help,find", help_find
+   ;; (* wordString[address, length], link[address] -- word[address of link] or Zero *)
+   xx dup, zero?, false?branch, 4
+   xx   xxswapx, drop2
+   xx   Exit
+   xx xxtuckx, wordLinkToWordString, xxoverxx, equalString?, false?branch, 3
+   xx   drop2
+   xx   Exit
+   xx xswapxx, fetch
+   xx help_find
+   xx Exit
+defWordEnd help_find
+
+defWord "find", find
+   ;; (* wordString[address, length] -- word[address of link] or Zero *)
+   xx FirstWordInDictionary, fetch
+   xx help_find
+   xx Exit
+defWordEnd find
+
+
+;; usage;
+;; 1 2 readWord + find wordLinkToWordExplainer execute . (* 3 *)
+defWord "word-link->word-explainer", wordLinkToWordExplainer
+   ;; (* word[address of link] -- word[address of explainer] or Zero *)
+   xx literal, CellWidth
+   xx Three, multiple
+   xx addition
+   xx Exit
+defWordEnd wordLinkToWordExplainer
+defWord "append-number-to-here", appendNumberToHere
+   ;; (* a 64 bits number -- *)
+   ;; reset ``Here'', which points next free memory
+   xx Here, fetch
+   xx save
+   xx Here, fetch
+   xx literal, CellWidth, addition
+   xx Here ,save
+   xx Exit
+defWordEnd appendNumberToHere
+
+;; note that:
+;; a string in stack is string[address, length]
+;; a string in memory is ||  1 : length  ||  n : string  ||
+defWord "append-string-to-here", appendStringToHere
+   ;; (* string[address, length] -- *)
+   ;; leave a length behind, for update Here
+   xx dup, xxswapx
+   ;;   ||  1 : length  ||
+   xx dup, appendNumberToHere
+   ;;   ||  n : string  ||
+   xx Here, fetch, swap, copyByteString
+   ;; update Here
+   xx Here, fetch, addition, Here, save
+   xx Exit
+defWordEnd appendStringToHere    
+
+defWord "create-word-header", createWordHeader
+   ;; (* byString *)
+   ;; (* string[address, length] -- word[address of link] *)
+   xx Here, fetch, xxswapx ;; for address-of-name-string-header
+   xx appendStringToHere
+   xx Here, fetch, appendNumberToHere ;; (* identification *)
+   xx Here, fetch ;; (* leave the word[link] *)
+   xx Zero, appendNumberToHere ;; (* link *)
+   xx Zero, appendNumberToHere ;; (* type *)
+   xx swap
+   xx appendNumberToHere ;; address-of-name-string-header
+   xx Exit
+defWordEnd createWordHeader
+
+
+defWord "create-word-header-for-function", createWordHeaderForFunction
+   ;; (* string[address, length] -- word[address of link] *)
+   xx Here, fetch, xxswapx ;; for address-of-name-string-header
+   xx appendStringToHere
+   xx Zero, appendNumberToHere ;; (* SizeOfFunctionBody *)
+   xx Here, fetch, appendNumberToHere ;; (* identification *)
+   xx Here, fetch ;; (* leave the word[link] *)
+   xx Zero, appendNumberToHere ;; (* link *)
+   xx Zero, appendNumberToHere ;; (* type *)
+   xx swap
+   xx appendNumberToHere ;; address-of-name-string-header
+   xx Exit
+defWordEnd createWordHeaderForFunction
+
+
+
+defWord "append-word-description-to-here", appendWordDescriptionToHere
+   ;; (* wordList[address, the number of words] -- *)
+   xx dup, zero?branch, 16;-- GOTO: drop2
+   xx tailAndHeadOfWordList
+   xx dup2, stringDenoteNumber?
+   xx false?branch, 6;-- GOTO: find
+   ;; reading-error reported by ``number'' is not handled
+   xx number, drop, appendNumberToHere
+   xx branch, -12;-- GOTO: the beginning
+
+   xx find, wordLinkToWordExplainer, appendNumberToHere
+   xx branch, -17;-- GOTO: the beginning
+
+   xx drop2
+   xx Exit
+defWordEnd appendWordDescriptionToHere
+
+defWord "add-new-word-to-dictionary", addNewWordToDictionary
+   ;; reset FirstWordInDictionary to point to the newly defined word
+   ;; (* word[address of link] -- *)
+   xx dup
+   xx FirstWordInDictionary, fetch
+   xx swap
+   xx save
+   xx FirstWordInDictionary, save
+   xx Exit
+defWordEnd addNewWordToDictionary
+
+defWord "set-size-of-function-body", setSizeOfFunctionBody
+   ;; (* wordList[address, the number of words], word[address of link] --
+   ;;    wordList[address, the number of words], word[address of link] *)
+   xx dup
+   xx literal, CellWidth, subtraction
+   xx literal, CellWidth, subtraction
+   xx xoverxx
+   xx swap
+   xx save
+   xx Exit
+defWordEnd setSizeOfFunctionBody
+
+defWord "define-function", defineFunction
+   ;; (* wordList[address, the number of words] -- *)
+   ;; to create a new word
+   ;; is to use some words to describe the new word,
+   ;; and let an explainer to explain the description of the new word.
+   ;; to define a new word
+   ;; is to add the new created word to the dictionary.
+   xx tailAndHeadOfWordList
+   xx createWordHeaderForFunction
+   xx FunctionBodyExplainer, appendNumberToHere
+   xx setSizeOfFunctionBody
+   xx xxswapx
+   xx appendWordDescriptionToHere
+   xx addNewWordToDictionary
+   xx Exit
+defWordEnd defineFunction
 defCode "empty?scan-code-queue", empty?ScancodeQueue
 ;; (* -- True or False *)
 mov rax, [RearOfScancodeQueue]
@@ -2582,131 +2353,140 @@ xx add1, swap
 xx branch, -72 ;; inputChar
 
  defWordEnd inputLine
+mapMemory
+;; ------------------------------------------
+SizeOfInputBuffer = 3*1024*1024
+
+InputBuffer labeling
+        preserve SizeOfInputBuffer
+EndOfInputBuffer labeling
+
+
 defConst "Size-of-input-buffer",  SizeOfInputBuffer,  TheSizeOfInputBuffer
- defConst "Input-buffer",          InputBuffer,        TheInputBuffer
- defConst "End-of-input-buffer",   EndOfInputBuffer,   TheEndOfInputBuffer
-
- ;; SizeOfInputBuffer = 3 * 1024 * 1024 ; bytes
+defConst "Input-buffer",          InputBuffer,        TheInputBuffer
+defConst "End-of-input-buffer",   EndOfInputBuffer,   TheEndOfInputBuffer
 
 
- ;; InputBuffer:
- ;;    rb SizeOfInputBuffer
- ;; EndOfInputBuffer:
-
- ;; 1. two global variables for reading
- ;;    I can easily support `evalString' by change these two variables
- ;; 2. note that, there is no char in the address of a ``ReadingBoundary''
- ;;    an example of ``ReadingBoundary'' is ``EndOfInputBuffer''
- ;; 3. when ``CurrentReading'' == ``ReadingBoundary''
- ;;    for the function ``readChar''
- ;;    we need to reset it to read from ``InputBuffer''
- ;;    and call ``inputLine'' to fetch more chars
- ;;    and loop back
- defVar "Current-reading",  InputBuffer, CurrentReading
- defVar "Reading-boundary", InputBuffer, ReadingBoundary
-
-
-
- defWord "read-char", readChar
-;; (*  -- char *)
-xx CurrentReading, fetch
-xx ReadingBoundary, fetch
-xx lessThan?, false?branch, 8
-;;   there is still some chars in the InputBuffer
-;;   (or any other buffer) to be processed
-xx   CurrentReading, fetch, fetchByte
-xx   One, CurrentReading, addSave
-xx   Exit
-;; all chars in InputBuffer
-;; (or any other buffer) have been processed
-xx notReadingFromInputBuffer?, false?branch, 5
-;;   add blank at the end
-;;   otherwise,  when the a string not ending with blank
-;;   ``evalString'' will not work correctly
-xx   literal, ASCII_linefeed
-xx   toReadFromInputBuffer
-xx   Exit
-;; when ``CurrentReading'' == ``ReadingBoundary''
-;; we need to reset it to read from ``InputBuffer''
-;; and call ``inputLine'' to fetch more chars
-;; and loop back
-xx toReadFromInputBuffer
-xx TheInputBuffer, TheSizeOfInputBuffer
-xx openInterrupt
-xx inputLine
-xx closeInterrupt
-;; set ReadingBoundary ==
-;;     InputBuffer + length of string that was inputed
-xx ReadingBoundary, addSave
-xx drop
-xx branch, -31
- defWordEnd readChar
-
-
- defWord "not-reading-from-input-buffer?", notReadingFromInputBuffer?
-;; (* -- True of False *)
-xx CurrentReading, fetch
-xx TheEndOfInputBuffer, greaterThan?, false?branch, 3
-xx   True
-xx   Exit
-xx CurrentReading, fetch
-xx TheInputBuffer, lessThan?, false?branch, 3
-xx   True
-xx   Exit
-xx False
-xx Exit
- defWordEnd notReadingFromInputBuffer?
-
-
- defWord "to-read-from-input-buffer", toReadFromInputBuffer
-;; (* -- *)
-xx TheInputBuffer, CurrentReading, save
-xx TheInputBuffer, ReadingBoundary, save
-xx Exit
- defWordEnd toReadFromInputBuffer
+;; 1. two global variables for reading
+;;    I can easily support `evalString' by change these two variables
+;; 2. note that, there is no char in the address of a ``ReadingBoundary''
+;;    an example of ``ReadingBoundary'' is ``EndOfInputBuffer''
+;; 3. when ``CurrentReading'' == ``ReadingBoundary''
+;;    for the function ``readChar''
+;;    we need to reset it to read from ``InputBuffer''
+;;    and call ``inputLine'' to fetch more chars
+;;    and loop back
+defVar "Current-reading",  InputBuffer, CurrentReading
+defVar "Reading-boundary", InputBuffer, ReadingBoundary      
+   
+defWord "read-char", readChar
+   ;; (*  -- char *)
+   xx CurrentReading, fetch
+   xx ReadingBoundary, fetch
+   xx lessThan?, false?branch, 8
+   ;;   there is still some chars in the InputBuffer
+   ;;   (or any other buffer) to be processed
+   xx   CurrentReading, fetch, fetchByte
+   xx   One, CurrentReading, addSave
+   xx   Exit
+   ;; all chars in InputBuffer
+   ;; (or any other buffer) have been processed
+   xx notReadingFromInputBuffer?, false?branch, 5
+   ;;   add blank at the end
+   ;;   otherwise,  when the a string not ending with blank
+   ;;   ``evalString'' will not work correctly
+   xx   literal, ASCII_linefeed
+   xx   toReadFromInputBuffer
+   xx   Exit
+   ;; when ``CurrentReading'' == ``ReadingBoundary''
+   ;; we need to reset it to read from ``InputBuffer''
+   ;; and call ``inputLine'' to fetch more chars
+   ;; and loop back
+   xx toReadFromInputBuffer
+   xx TheInputBuffer, TheSizeOfInputBuffer
+   xx openInterrupt
+   xx inputLine
+   xx closeInterrupt
+   ;; set ReadingBoundary ==
+   ;;     InputBuffer + length of string that was inputed
+   xx ReadingBoundary, addSave
+   xx drop
+   xx branch, -31
+defWordEnd readChar        
+   
+defWord "not-reading-from-input-buffer?", notReadingFromInputBuffer?
+   ;; (* -- True of False *)
+   xx CurrentReading, fetch
+   xx TheEndOfInputBuffer, greaterThan?, false?branch, 3
+   xx   True
+   xx   Exit
+   xx CurrentReading, fetch
+   xx TheInputBuffer, lessThan?, false?branch, 3
+   xx   True
+   xx   Exit
+   xx False
+   xx Exit
+defWordEnd notReadingFromInputBuffer?        
+   
+defWord "to-read-from-input-buffer", toReadFromInputBuffer
+   ;; (* -- *)
+   xx TheInputBuffer, CurrentReading, save
+   xx TheInputBuffer, ReadingBoundary, save
+   xx Exit
+defWordEnd toReadFromInputBuffer
 ;; the size of a ScreenBuffer is equal to the size of the screen
- ;; which is 80*25*2
+;; which is 80*25*2
 
- ;; ScreenBuffer0_InAssembly: rb 80*25*2
+mapMemory
+;; ------------------------------------------
+;; the size of a ScreenBuffer is equal to the size of the screen
+;; which is 80*25*2 bytes
+;; and cursor and ScreenBuffer are in the same structure
+;; the size of its cursor is 2 bytes
+SizeOfScreenBuffer = 80*25*2
+SizeOfCursor = 8
 
+Cursor0_InAssembly labeling
+        preserve SizeOfCursor
+ScreenBuffer0_InAssembly labeling
+        preserve SizeOfScreenBuffer
 
- defConst "screen-buffer-0", ScreenBuffer0_InAssembly, ScreenBuffer0
+defConst "screen-buffer-0", ScreenBuffer0_InAssembly, ScreenBuffer0
 
- defCode "scroll-screen-buffer", scrollScreenBuffer
-;; (* screen buffer[address] -- *)
-;; scrolls a screen Buffer up by one line
-;; DefaultBackColorOfChar should be used
-popArgumentStack rdi              ; Start of video text memory for row 1
-mov rsi, rdi
-add rsi, 0xA0                   ; Start of video text memory for row 2
-cld ;; clear the direction flag as we want to increment through memory
-xor rcx, rcx
-mov cx, (80 * 24)
-rep movsw                       ; Copy the Character and Attribute
-; Clear the last line in video memory
-mov bl, byte [DefaultBackColorOfChar + CellWidth]
-shl bl, 4
-mov ah, byte [DefaultForeColorOfChar + CellWidth]
-or ah, bl
-mov al, ' '
-mov cx, 80
-rep stosw                       ; Store word in AX to RDI, RCX times
-next
+defCode "scroll-screen-buffer", scrollScreenBuffer
+   ;; (* screen buffer[address] -- *)
+   ;; scrolls a screen Buffer up by one line
+   ;; DefaultBackColorOfChar should be used
+   popArgumentStack rdi              ; Start of video text memory for row 1
+   mov rsi, rdi
+   add rsi, 0xA0                   ; Start of video text memory for row 2
+   cld ;; clear the direction flag as we want to increment through memory
+   xor rcx, rcx
+   mov cx, (80 * 24)
+   rep movsw                       ; Copy the Character and Attribute
+   ; Clear the last line in video memory
+   mov bl, byte [DefaultBackColorOfChar + CellWidth]
+   shl bl, 4
+   mov ah, byte [DefaultForeColorOfChar + CellWidth]
+   or ah, bl
+   mov al, ' '
+   mov cx, 80
+   rep stosw                       ; Store word in AX to RDI, RCX times
+   next
 
-
- defCode "clear-screen-buffer", clearScreenBuffer
-;; (* screen buffer[address] -- *)
-popArgumentStack rdi              ; Address for start of frame buffer
-cld ;; clear the direction flag as we want to increment through memory
-mov bl, byte [DefaultBackColorOfChar + CellWidth]
-shl bl, 4
-mov ah, byte [DefaultForeColorOfChar + CellWidth]
-or ah, bl
-mov al, ' '
-xor rcx, rcx
-mov cx, (80 * 25)
-rep stosw                       ; Clear the screen. Store word in AX to RDI, RCX times
-next
+defCode "clear-screen-buffer", clearScreenBuffer
+   ;; (* screen buffer[address] -- *)
+   popArgumentStack rdi              ; Address for start of frame buffer
+   cld ;; clear the direction flag as we want to increment through memory
+   mov bl, byte [DefaultBackColorOfChar + CellWidth]
+   shl bl, 4
+   mov ah, byte [DefaultForeColorOfChar + CellWidth]
+   or ah, bl
+   mov al, ' '
+   xor rcx, rcx
+   mov cx, (80 * 25)
+   rep stosw                       ; Clear the screen. Store word in AX to RDI, RCX times
+   next
 defCode "update-screen", updateScreen
 ;; (* screen buffer[address] -- *)
 ;; print a screen buffer to screen
@@ -2936,110 +2716,112 @@ defWord "print-string", printString
    xx branch, -14
 defWordEnd printString
 defWord "read-first-non-blank-char", readFirstNonBlankChar
-;; (* -- FirstNonBlankChar *)
-xx readChar, dup
-xx literal, ASCII_space
-xx greaterThan?, false?branch, 2
-xx   Exit
-xx drop
-xx branch, -10
- defWordEnd readFirstNonBlankChar
+   ;; (* -- FirstNonBlankChar *)
+   xx readChar, dup
+   xx literal, ASCII_space
+   xx greaterThan?, false?branch, 2
+   xx   Exit
+   xx drop
+   xx branch, -10
+defWordEnd readFirstNonBlankChar
 
- defWord "read-non-blank-char", readNonBlankChar
-;; (* -- FirstNonBlankChar or Zero *)
-xx readChar, dup
-xx literal, ASCII_space
-xx greaterThan?, false?branch, 2
-xx   Exit
-xx drop
-xx Zero
-xx Exit
- defWordEnd readNonBlankChar
-;; MaxWordLength = 1024
+defWord "read-non-blank-char", readNonBlankChar
+   ;; (* -- FirstNonBlankChar or Zero *)
+   xx readChar, dup
+   xx literal, ASCII_space
+   xx greaterThan?, false?branch, 2
+   xx   Exit
+   xx drop
+   xx Zero
+   xx Exit
+defWordEnd readNonBlankChar
+mapMemory
+;; ------------------------------------------
+;; note that, Subsequent calls will overwrite BufferForReadWord
+;; this is why there is another function ``readWordForRuntime''
+MaxWordLength = 1024
 
- ;; BufferForReadWord:
- ;;    ;; note that, Subsequent calls will overwrite BufferForReadWord
- ;;    ;; this is why there is another function ``readWordForRuntime''
- ;;    rb MaxWordLength
+BufferForReadWord labeling
+        preserve MaxWordLength
 
- defWord "read-word", readWord
-;; (*  -- wordString[address, length] *)
-;; 1. skips any blanks (spaces, tabs, newlines)
-;; 2. calls readChar to read characters into BufferForReadWord
-;;    until it hits a blank
-;; 3. returns the address of BufferForReadWord and length on the stack
+BufferForReadWordForRuntime labeling
+        preserve MaxWordLength
 
-xx literal, BufferForReadWord ;; (* leave return one of the values *)
-xx Zero                       ;; (* leave length counter *)
+   
+defWord "read-word", readWord
+   ;; (*  -- wordString[address, length] *)
+   ;; 1. skips any blanks (spaces, tabs, newlines)
+   ;; 2. calls readChar to read characters into BufferForReadWord
+   ;;    until it hits a blank
+   ;; 3. returns the address of BufferForReadWord and length on the stack
+   
+   xx literal, BufferForReadWord ;; (* leave return one of the values *)
+   xx Zero                       ;; (* leave length counter *)
+   
+   xx literal, BufferForReadWord
+   xx readFirstNonBlankChar
+   xx over, saveByte, add1
+   xx swap, add1, swap
+   
+   xx readNonBlankChar, dup, zero?branch, 9
+   xx   over, saveByte, add1
+   xx   swap, add1, swap
+   xx   branch, -11
+   
+   xx drop2
+   xx Exit
+defWordEnd readWord               
+   
+defWord "read-word-for-runtime", readWordForRuntime
+   ;; (*  -- wordString[address, length] *)
+   ;; 1. skips any blanks (spaces, tabs, newlines)
+   ;; 2. calls readChar to read characters into BufferForReadWord
+   ;;    until it hits a blank
+   ;; 3. returns the address of BufferForReadWord and length on the stack
+   
+   xx literal, BufferForReadWordForRuntime ;; (* leave return one of the values *)
+   xx Zero                                 ;; (* leave length counter *)
+   
+   xx literal, BufferForReadWordForRuntime
+   xx readFirstNonBlankChar
+   xx over, saveByte, add1
+   xx swap, add1, swap
+   
+   xx readNonBlankChar, dup, zero?branch, 9
+   xx   over, saveByte, add1
+   xx   swap, add1, swap
+   xx   branch, -11
+   
+   xx drop2
+   xx Exit
+defWordEnd readWordForRuntime
+mapMemory
+;; ------------------------------------------
+;; note that, Subsequent calls will overwrite BasicStringBuffer
+MaxStringLength = 1024*1024
 
-xx literal, BufferForReadWord
-xx readFirstNonBlankChar
-xx over, saveByte, add1
-xx swap, add1, swap
-
-xx readNonBlankChar, dup, zero?branch, 9
-xx   over, saveByte, add1
-xx   swap, add1, swap
-xx   branch, -11
-
-xx drop2
-xx Exit
- defWordEnd readWord
-
-
-
- ;; BufferForReadWordForRuntime:
- ;;    rb MaxWordLength
-
- defWord "read-word-for-runtime", readWordForRuntime
-;; (*  -- wordString[address, length] *)
-;; 1. skips any blanks (spaces, tabs, newlines)
-;; 2. calls readChar to read characters into BufferForReadWord
-;;    until it hits a blank
-;; 3. returns the address of BufferForReadWord and length on the stack
-
-xx literal, BufferForReadWordForRuntime ;; (* leave return one of the values *)
-xx Zero                                 ;; (* leave length counter *)
-
-xx literal, BufferForReadWordForRuntime
-xx readFirstNonBlankChar
-xx over, saveByte, add1
-xx swap, add1, swap
-
-xx readNonBlankChar, dup, zero?branch, 9
-xx   over, saveByte, add1
-xx   swap, add1, swap
-xx   branch, -11
-
-xx drop2
-xx Exit
- defWordEnd readWordForRuntime
-;; MaxStringLength = 1024*1024 ;; unit : byte
-
- defConst "Basic-string-buffer", BasicStringBuffer, TheBasicStringBuffer
-
-
- ;; BasicStringBuffer:
- ;;    ;; note that, Subsequent calls will overwrite BasicStringBuffer
- ;;    rb MaxStringLength
-
- defWord "read-string-into-buffer", readStringInToBuffer
-;; (*  -- string[address of BasicStringBuffer, length] *)
-xx literal, BasicStringBuffer ;; (* leave return one of the values *)
-xx Zero                         ;; (* leave length counter *)
-
-xx literal, BasicStringBuffer
-
-xx readChar, dup
-xx literal, 34 ;; ASCII_doublequote
-xx equal?, notFalse?branch, 9
-xx   over, saveByte, add1
-xx   swap, add1, swap
-xx   branch, -14
-
-xx drop2
-xx Exit
- defWordEnd readStringInToBuffer
+BasicStringBuffer labeling
+        preserve MaxStringLength
+      
+defConst "Basic-string-buffer", BasicStringBuffer, TheBasicStringBuffer     
+   
+defWord "read-string-into-buffer", readStringInToBuffer
+   ;; (*  -- string[address of BasicStringBuffer, length] *)
+   xx literal, BasicStringBuffer ;; (* leave return one of the values *)
+   xx Zero                         ;; (* leave length counter *)
+   
+   xx literal, BasicStringBuffer
+   
+   xx readChar, dup
+   xx literal, 34 ;; ASCII_doublequote
+   xx equal?, notFalse?branch, 9
+   xx   over, saveByte, add1
+   xx   swap, add1, swap
+   xx   branch, -14
+   
+   xx drop2
+   xx Exit
+defWordEnd readStringInToBuffer
 ;; The function uses the variable BASE as the radix
  ;; If the word starts with a '-' character then the returned value is negative
 
@@ -3252,12 +3034,14 @@ xx Exit
 ;;   ||  b : Word-2--as-a-string  ||
 ;;   ...
 
-;; note that:
-;;    Subsequent calls will overwrite BufferForReadWordListForLexicographer
+mapMemory
+;; ------------------------------------------
+;; note that, Subsequent calls will overwrite BufferForReadWordListForLexicographer
+SizeOfBufferForReadWordListForLexicographer = 2*1024*1024
 
-;; BufferForReadWordListForLexicographer:
-;;    rb 1024*1024
-
+BufferForReadWordListForLexicographer labeling
+        preserve SizeOfBufferForReadWordListForLexicographer
+  
 defConstString "Ket:cosemi", ";", Ket_cosemi
 defConstString "Ket:fuzhe", "者", Ket_fuzhe
 
@@ -3361,6 +3145,15 @@ defCode "load-core-file", loadCoreFile
        ;; reset [ReadingBoundary + CellWidth]
        mov [ReadingBoundary + CellWidth], rdi
        next
+defWord ".", printLittleNumber
+       xx literal, '0'
+       xx addition, writeChar
+       xx literal, 32
+       xx writeChar
+       xx literal, 32
+       xx writeChar
+       xx Exit
+defWordEnd printLittleNumber
 defWord "basic-REPL", basicREPL
        ;; (* unknown -- unknown *)
        xx TheReturnStackTop, resetReturnStackPointer
@@ -3401,15 +3194,9 @@ defWord "execute-word", executeWord
 defWordEnd executeWord
 
 defConstString "Message:undefined-word", "   UNDEFINED WORD: ", Message_undefined_word
-defWord ".", printLittleNumber
-       xx literal, '0'
-       xx addition, writeChar
-       xx literal, 32
-       xx writeChar
-       xx literal, 32
-       xx writeChar
-       xx Exit
-defWordEnd printLittleNumber
+mapMemory
+;; ------------------------------------------
+;; PairConstructionsArray
 ;;   (unit : byte)
 ;; ========================
 ;;   ||  1 : color     ||
@@ -3420,86 +3207,77 @@ defWordEnd printLittleNumber
 ;;   ||  8 : type tag  ||
 ;;   ||  8 : value     ||
 ;; ========================
+mapMemory
+ClrBytesSize = 1
+CarBytesSize = 16
+CdrBytesSize = 16
+ConsBytesSize = ClrBytesSize + CarBytesSize + CdrBytesSize
+NumberOfPairConstructions = 100 * 1024
 
+        preserve ClrBytesSize
+InFrontOfTheFirstPairConstruction labeling
+        preserve (CarBytesSize + CdrBytesSize)
 
+        preserve ClrBytesSize
+FirstPairConstruction labeling
+        preserve (CarBytesSize + CdrBytesSize)
 
-;; ClrBytesSize = 1
-;; CarBytesSize = 16
-;; CdrBytesSize = 16
-;; ConsBytesSize = ClrBytesSize + CarBytesSize + CdrBytesSize
-;; ;; NumberOfPairConstructions = 1024
-;; NumberOfPairConstructions = 100 * 1024 ;; about 3.3M
+        ;; ==========================
+        preserve ((NumberOfPairConstructions - 2) * ConsBytesSize)
+        ;; ==========================
 
+        preserve ClrBytesSize
+LastPairConstruction labeling
+        preserve (CarBytesSize + CdrBytesSize)    
+          
+ defConst "Clr-bytes-size"  , ClrBytesSize  , TheClrBytesSize
+ defConst "Car-bytes-size"  , CarBytesSize  , TheCarBytesSize
+ defConst "Cdr-bytes-size"  , CdrBytesSize  , TheCdrBytesSize
+ defConst "Cons-bytes-size" , ConsBytesSize , TheConsBytesSize    
 
-;;         rb ClrBytesSize
-;; InFrontOfTheFirstPairConstruction:
-;;         rb (CarBytesSize + CdrBytesSize)
+ defConst "Number-of-pair-constructions", NumberOfPairConstructions, TheNumberOfPairConstructions
 
-;;         rb ClrBytesSize
-;; FirstPairConstruction:
-;;         rb (CarBytesSize + CdrBytesSize)
+ defConst "In-front-of-the-first-pair-construction", InFrontOfTheFirstPairConstruction, TheInFrontOfTheFirstPairConstruction
+ defConst "First-pair-construction", FirstPairConstruction, TheFirstPairConstruction
+ defConst "Last-pair-construction",  LastPairConstruction,  TheLastPairConstruction
 
-;;         ;; ==========================
-;;         rb (NumberOfPairConstructions - 2) * ConsBytesSize
-;;         ;; ==========================
+ defVar "Current-free-pair-construction", FirstPairConstruction, CurrentFreePairConstruction
+mapMemory
+;; ------------------------------------------
+;; HashTableForSymbol
 
-;;         rb ClrBytesSize
-;; LastPairConstruction:
-;;         rb (CarBytesSize + CdrBytesSize)
+;; a SymbolEntry (unit : byte)
+;; ===========================
+;;  ||   8 : SymbolValue   ||
+;; ---------------------------
+;;  ||   1 : SymbolLength  ||
+;; ---------------------------
+;;  || 56+ : SymbolString  ||
+;; ===========================
 
+SymbolLengthBytesSize = 1
+SymbolValueBytesSize  = 8
+SymbolStringBytesSize = 56+0
+SymbolMaxLength       = 56
+SymbolEntryBytesSize = SymbolValueBytesSize + SymbolLengthBytesSize + SymbolStringBytesSize
+;; NumberOfSymbolEntrys = 1000003
+;; NumberOfSymbolEntrys = 1000033
+;; NumberOfSymbolEntrys = 1000333
+;; NumberOfSymbolEntrys = 100003
+NumberOfSymbolEntrys = 100333
+;; NumberOfSymbolEntrys = 997
+;; NumberOfSymbolEntrys = 499
+;; NumberOfSymbolEntrys = 230 ;; for a special test
 
+FirstSymbolEntry labeling
+        preserve SymbolEntryBytesSize
 
+        ;; ========================
+        preserve ((NumberOfSymbolEntrys - 2) * SymbolEntryBytesSize)
+        ;; ========================
 
-
-
-defConst "Clr-bytes-size"  , ClrBytesSize  , TheClrBytesSize
-defConst "Car-bytes-size"  , CarBytesSize  , TheCarBytesSize
-defConst "Cdr-bytes-size"  , CdrBytesSize  , TheCdrBytesSize
-defConst "Cons-bytes-size" , ConsBytesSize , TheConsBytesSize
-
-
-defConst "Number-of-pair-constructions", NumberOfPairConstructions, TheNumberOfPairConstructions
-
-defConst "In-front-of-the-first-pair-construction", InFrontOfTheFirstPairConstruction, TheInFrontOfTheFirstPairConstruction
-defConst "First-pair-construction", FirstPairConstruction, TheFirstPairConstruction
-defConst "Last-pair-construction",  LastPairConstruction,  TheLastPairConstruction
-
-defVar "Current-free-pair-construction", FirstPairConstruction, CurrentFreePairConstruction
-;; ;; a SymbolEntry (unit : byte)
-;; ;; ===========================
-;; ;;  ||   8 : SymbolValue   ||
-;; ;; ---------------------------
-;; ;;  ||   1 : SymbolLength  ||
-;; ;; ---------------------------
-;; ;;  || 56+ : SymbolString  ||
-;; ;; ===========================
-
-;; SymbolLengthBytesSize = 1
-;; SymbolValueBytesSize  = 8
-;; SymbolStringBytesSize = 56+0
-;; SymbolMaxLength       = 56
-;; SymbolEntryBytesSize = SymbolValueBytesSize + SymbolLengthBytesSize + SymbolStringBytesSize
-;; ;; NumberOfSymbolEntrys = 1000003
-;; ;; NumberOfSymbolEntrys = 1000033
-;; ;; NumberOfSymbolEntrys = 1000333
-;; ;; NumberOfSymbolEntrys = 100003
-;; NumberOfSymbolEntrys = 100333
-;; ;; NumberOfSymbolEntrys = 997
-;; ;; NumberOfSymbolEntrys = 499
-;; ;; NumberOfSymbolEntrys = 230 ;; for a special test
-
-
-
-;; FirstSymbolEntry:
-;;         rb SymbolEntryBytesSize
-
-;;         ;; ========================
-;;         rb (NumberOfSymbolEntrys - 2) * SymbolEntryBytesSize
-;;         ;; ========================
-
-;; LastSymbolEntry:
-;;         rb SymbolEntryBytesSize
-
+LastSymbolEntry labeling
+        preserve SymbolEntryBytesSize
 
 defConst "Number-of-symbol-entrys",  NumberOfSymbolEntrys,  TheNumberOfSymbolEntrys
 defConst "Symbol-value-bytes-size",  SymbolValueBytesSize,  TheSymbolValueBytesSize
@@ -3508,89 +3286,95 @@ defConst "Symbol-string-bytes-size", SymbolStringBytesSize, TheSymbolStringBytes
 defConst "Symbol-max-length",        SymbolMaxLength,       TheSymbolMaxLength
 defConst "Symbol-entry-bytes-size",  SymbolEntryBytesSize,  TheSymbolEntryBytesSize
 
-
 defConst "First-symbol-entry", FirstSymbolEntry, TheFirstSymbolEntry
 defConst "Last-symbol-entry",  LastSymbolEntry,  TheLastSymbolEntry
-;; SizeOfStringHeap = 5 * 1024 * 1024 ;; unit: byte
+mapMemory
+;; ------------------------------------------
+;; two StringHeaps
+SizeOfStringHeap = 5*1024*1024
 
-;; StringHeap1:
-;;         rb SizeOfStringHeap
-;; EndOfStringHeap1:
+StringHeap1 labeling
+        preserve SizeOfStringHeap
+EndOfStringHeap1 labeling
 
-;; StringHeap2:
-;;         rb SizeOfStringHeap
-;; EndOfStringHeap2:
-
+StringHeap2 labeling
+        preserve SizeOfStringHeap
+EndOfStringHeap2 labeling
+   
 defConst "Size-of-string-heap", SizeOfStringHeap, TheSizeOfStringHeap
 
 defConst "String-heap-1", StringHeap1, TheStringHeap1
 defConst "String-heap-2", StringHeap2, TheStringHeap2
-;; SizeOfBufferForLoadFile = 1024 * 1024 ;; unit : byte
+mapMemory
+;; ------------------------------------------
+SizeOfBufferForLoadFile = 1024*1024
 
-;; BufferForLoadFile:
-;;          rb SizeOfBufferForLoadFile
+BufferForLoadFile labeling
+             preserve SizeOfBufferForLoadFile
 
 defConst "Buffer-for-load-file", BufferForLoadFile, TheBufferForLoadFile
 defConst "Size-of-buffer-for-load-file", SizeOfBufferForLoadFile, TheSizeOfBufferForLoadFile
+mapMemory
 ;; ReturnStack
-;; SizeOfReturnStack = 100 * 1024 ;; unit: CellWidth
+SizeOfReturnStack = 100*1024*8
 
-;; ReturnStackBottom:
-;;         rq SizeOfReturnStack
-;; ReturnStackTop:
-;;         rq 10
+ReturnStackBottom labeling
+        preserve SizeOfReturnStack
+ReturnStackTop labeling
+        preserve 100*8
+
+mapMemory
+;; ArgumentStack
+SizeOfArgumentStack = 100*1024*8
+
+ArgumentStackBottom labeling
+        preserve SizeOfArgumentStack
+ArgumentStackTop labeling
+        preserve 100*8
+
+mapMemory
+;; GreyPairStack
+SizeOfGreyPairStack = 100*1024*8
+
+GreyPairStackBottom labeling
+        preserve SizeOfGreyPairStack
+GreyPairStackTop labeling
+        preserve 100*8
+
+mapMemory
+;; LambdaStack
+SizeOfLambdaStack = 100*1024*8
+
+LambdaStackBottom labeling
+        preserve SizeOfLambdaStack
+LambdaStackTop labeling
+        preserve 100*8
+
+mapMemory
+;; StackForEvalString
+SizeOfStackForEvalString = 1024*8
+
+StackForEvalStringBottom labeling
+        preserve SizeOfStackForEvalString
+StackForEvalStringTop labeling
+        preserve 100*8
+
 
 defConst "Return-stack-top",    ReturnStackTop,    TheReturnStackTop
 defConst "Return-stack-bottom", ReturnStackBottom, TheReturnStackBottom
 
-
-;; ArgumentStack
-;; SizeOfArgumentStack = 100 * 1024 ;; unit: CellWidth
-
-;; ArgumentStackBottom:
-;;         rq SizeOfArgumentStack
-;; ArgumentStackTop:
-;;         rq 10
-
 defConst "Argument-stack-top",    ArgumentStackTop,    TheArgumentStackTop
 defConst "Argument-stack-bottom", ArgumentStackBottom, TheArgumentStackBottom
-
-
-;; GreyPairStack
-;; SizeOfGreyPairStack = 100 * 1024 ;; unit: CellWidth
-
-;; GreyPairStackBottom:
-;;         rq SizeOfGreyPairStack
-;; GreyPairStackTop:
-;;         rq 1
-
-
-;; LambdaStack
-;; SizeOfLambdaStack = 100 * 1024 ;; unit: CellWidth
-
-;; LambdaStackBottom:
-;;         rq SizeOfLambdaStack
-;; LambdaStackTop:
-;;         rq 1
 
 defConst "Lambda-stack-top", LambdaStackTop, TheLambdaStackTop
 defConst "Lambda-stack-bottom", LambdaStackBottom, TheLambdaStackBottom
 
-;; StackForEvalString
-;; SizeOfStackForEvalString = 1024 ;; unit: CellWidth
-
-;; StackForEvalStringBottom:
-;;         rq SizeOfStackForEvalString
-;; StackForEvalStringTop:
-;;         rq 1
-
 defConst "Stack-for-eval-string-bottom", StackForEvalStringBottom, TheStackForEvalStringBottom
 defConst "Stack-for-eval-string-top", StackForEvalStringTop, TheStackForEvalStringTop
-;; SizeOfUserDataArea = 100 * 1024 ;; unit: byte
-
-;; UserDataArea:
-;;         rb SizeOfUserDataArea
-;; EndOfUserDataArea:
+mapMemory
+;; ------------------------------------------
+UserDataArea labeling
+EndOfUserDataArea = 1*1024*1024*1024
 
 defConst "User-data-area", UserDataArea, TheUserDataArea
 defConst "End-of-user-data-area", EndOfUserDataArea, TheEndOfUserDataArea
