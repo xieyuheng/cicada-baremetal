@@ -3,7 +3,7 @@ checkMagicNumberOfKernel? equ yes
 
 FirstSector = 0
 
-SizeOfKernel = 512 ;; unit :: k
+SizeOfKernel = 320 ;; unit :: k
 LocationOfKernel_inFloppy = 128     ;; unit :: k
 LocationOfKernel_inMemory = 32*1024 ;; unit :: b
 MagicNumberOfKernel = 26881h

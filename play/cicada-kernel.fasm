@@ -1,4 +1,4 @@
-SizeOfKernel = 512 ;; unit :: k
+SizeOfKernel = 320 ;; unit :: k
 LocationOfKernel = 32*1024
 MagicNumberOfKernel = 26881h
 ;; in fasm, ``dup'' is a reserved word
@@ -50,6 +50,8 @@ start16:
            mov al, 0xDF
            out 0x60, al
 
+        call init_VESA_VBE
+
         lgdt    [cs:GDTR]
 
         ;; switch to protected mode
@@ -58,6 +60,75 @@ start16:
         mov     cr0, eax
 
         jmp     CODE_SELECTOR_32:start32
+;; VESA :: Video Electronics Standards Association
+;; VBE :: VESA BIOS Extension     
+align 16
+init_VESA_VBE:
+   mov di, VBEInfoBlock
+   mov ax, 4f00h
+   int 10h
+   mov word [VBEInfoBlock.ReturnStatus], ax
+
+   mov di, VBEModeInfoBlock
+   mov ax, 4f01h
+   int 10h
+   mov word [VBEModeInfoBlock.ReturnStatus], ax
+
+   ret       
+
+align 16
+VBEInfoBlock.ReturnStatus: 
+   rb 2
+
+align 16
+VBEInfoBlock:
+   rb 512
+
+
+align 16
+VBEModeInfoBlock.ReturnStatus: 
+   rb 2
+align 16
+VBEModeInfoBlock:
+   rb 256
+
+;; VESA
+;; Mandatory information for all VBE revisions
+VBEModeInfoBlock.ModeAttributes         = VBEModeInfoBlock + 0        ; DW - mode attributes
+VBEModeInfoBlock.WinAAttributes         = VBEModeInfoBlock + 2        ; DB - window A attributes
+VBEModeInfoBlock.WinBAttributes         = VBEModeInfoBlock + 3        ; DB - window B attributes
+VBEModeInfoBlock.WinGranularity         = VBEModeInfoBlock + 4        ; DW - window granularity in KB
+VBEModeInfoBlock.WinSize                = VBEModeInfoBlock + 6        ; DW - window size in KB
+VBEModeInfoBlock.WinASegment            = VBEModeInfoBlock + 8        ; DW - window A start segment
+VBEModeInfoBlock.WinBSegment            = VBEModeInfoBlock + 10       ; DW - window B start segment
+VBEModeInfoBlock.WinFuncPtr             = VBEModeInfoBlock + 12       ; DD - real mode pointer to window function
+VBEModeInfoBlock.BytesPerScanLine       = VBEModeInfoBlock + 16       ; DW - bytes per scan line
+;; Mandatory information for VBE 1.2 and above
+VBEModeInfoBlock.XResolution            = VBEModeInfoBlock + 18       ; DW - horizontal resolution in pixels or characters
+VBEModeInfoBlock.YResolution            = VBEModeInfoBlock + 20       ; DW - vertical resolution in pixels or characters
+VBEModeInfoBlock.XCharSize              = VBEModeInfoBlock + 22       ; DB - character cell width in pixels
+VBEModeInfoBlock.YCharSize              = VBEModeInfoBlock + 23       ; DB - character cell height in pixels
+VBEModeInfoBlock.NumberOfPlanes         = VBEModeInfoBlock + 24       ; DB - number of memory planes
+VBEModeInfoBlock.BitsPerPixel           = VBEModeInfoBlock + 25       ; DB - bits per pixel
+VBEModeInfoBlock.NumberOfBanks          = VBEModeInfoBlock + 26       ; DB - number of banks
+VBEModeInfoBlock.MemoryModel            = VBEModeInfoBlock + 27       ; DB - memory model type
+VBEModeInfoBlock.BankSize               = VBEModeInfoBlock + 28       ; DB - bank size in KB
+VBEModeInfoBlock.NumberOfImagePages     = VBEModeInfoBlock + 29       ; DB - number of image pages
+VBEModeInfoBlock.Reserved               = VBEModeInfoBlock + 30       ; DB - reserved (0x00 for VBE 1.0-2.0, 0x01 for VBE 3.0)
+;; Direct Color fields (required for direct/6 and YUV/7 memory models)
+VBEModeInfoBlock.RedMaskSize            = VBEModeInfoBlock + 31       ; DB - size of direct color red mask in bits
+VBEModeInfoBlock.RedFieldPosition       = VBEModeInfoBlock + 32       ; DB - bit position of lsb of red mask
+VBEModeInfoBlock.GreenMaskSize          = VBEModeInfoBlock + 33       ; DB - size of direct color green mask in bits
+VBEModeInfoBlock.GreenFieldPosition     = VBEModeInfoBlock + 34       ; DB - bit position of lsb of green mask
+VBEModeInfoBlock.BlueMaskSize           = VBEModeInfoBlock + 35       ; DB - size of direct color blue mask in bits
+VBEModeInfoBlock.BlueFieldPosition      = VBEModeInfoBlock + 36       ; DB - bit position of lsb of blue mask
+VBEModeInfoBlock.RsvdMaskSize           = VBEModeInfoBlock + 37       ; DB - size of direct color reserved mask in bits
+VBEModeInfoBlock.RsvdFieldPosition      = VBEModeInfoBlock + 38       ; DB - bit position of lsb of reserved mask
+VBEModeInfoBlock.DirectColorModeInfo    = VBEModeInfoBlock + 39       ; DB - direct color mode attributes
+;; Mandatory information for VBE 2.0 and above
+VBEModeInfoBlock.PhysBasePtr            = VBEModeInfoBlock + 40       ; DD - physical address for flat memory frame buffer
+VBEModeInfoBlock.Reserved1              = VBEModeInfoBlock + 44       ; DD - Reserved - always set to 0
+VBEModeInfoBlock.Reserved2              = VBEModeInfoBlock + 48       ; DD - Reserved - always set to 0
 align 16
 GDTR:
    dw GDT_END - GDT - 1                  ;; index of the last byte in table
@@ -106,6 +177,7 @@ DATA_SELECTOR_32 = (1 shl 3)    ; flat data selector (ring 0)
 CODE_SELECTOR_32 = (2 shl 3)    ; 32-bit code selector (ring 0)
 CODE_SELECTOR_64 = (3 shl 3)    ; 64-bit code selector (ring 0)
 DATA_SELECTOR_64 = (4 shl 3)    ; 64-bit code selector (ring 0)
+times (31 * 1024) - ($-$$) db 0
 align 16
 use32
 
@@ -643,7 +715,7 @@ EndOfConstStringValueOf#Word:
 ;; LowestMemoryAddress always can be use to save value
 
 ;; ==========================================
-LowestMemoryAddress = 100*1024*1024
+LowestMemoryAddress = 32*1024*1024
 FirstLowestMemoryAddress = LowestMemoryAddress
 
 labeling  equ = LowestMemoryAddress
@@ -1435,11 +1507,42 @@ defCode "save-byte", saveByte
    mov byte[rbx], al
    next
 
+defCode "save-two-bytes", saveTwoBytes
+   ;; ( value, address -- )
+   popArgumentStack rbx
+   popArgumentStack rax
+   mov word [rbx], ax
+   next
+
+defCode "save-four-bytes", saveFourBytes
+   ;; ( value, address -- )
+   popArgumentStack rbx
+   popArgumentStack rax
+   mov dword [rbx], eax
+   next
+
+
 defCode "fetch-byte", fetchByte
    ;; ( address -- value )
    popArgumentStack rbx
    xor rax, rax
    mov al, byte[rbx]
+   pushArgumentStack rax
+   next
+
+defCode "fetch-two-bytes", fetchTwoBytes
+   ;; ( address -- value )
+   popArgumentStack rbx
+   xor rax, rax
+   mov ax, word[rbx]
+   pushArgumentStack rax
+   next
+
+defCode "fetch-four-bytes", fetchFourBytes
+   ;; ( address -- value )
+   popArgumentStack rbx
+   xor rax, rax
+   mov eax, dword[rbx]
    pushArgumentStack rax
    next
 
@@ -3171,6 +3274,7 @@ defWord ".", printLittleNumber
        xx writeChar
        xx Exit
 defWordEnd printLittleNumber
+defConst "Address-of-VBE-info-block", VBEInfoBlock, Assembly_VBEInfoBlock
 mapMemory
 ;; ------------------------------------------
 ;; PairConstructionsArray

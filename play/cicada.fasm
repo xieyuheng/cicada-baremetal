@@ -1,10 +1,15 @@
+SizeOfKernel = 320 ;; unit :: k
+LocationOfKernel_inFloppy = 128     ;; unit :: k
+LocationOfKernel_inMemory = 32*1024 ;; unit :: b
+MagicNumberOfKernel = 26881h
+
 ;; to output as .image
 format binary as 'image'
 
 org 0
 
 file 'bootloader.bin'
-times (128 * 1024) - ($-$$) db 0
+times (LocationOfKernel_inFloppy * 1024) - ($-$$) db 0
 
 file 'cicada-kernel.bin'
-times (640 * 1024) - ($-$$) db 0
+times ((LocationOfKernel_inFloppy + SizeOfKernel) * 1024) - ($-$$) db 0

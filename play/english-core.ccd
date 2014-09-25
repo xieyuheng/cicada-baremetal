@@ -721,6 +721,17 @@
   write-some-space
   Exit
 ; define-recursive-function
+: print-string,null-terminated
+  (* null-terminated-string[address] -- *)
+  dup fetch-byte zero? if
+    drop
+    Exit
+  then
+  dup fetch-byte write-char
+  add1
+  print-string,null-terminated
+  Exit
+; define-recursive-function
 : count-return-stack (* -- the length of ReturnStack *)
   Return-stack-top fetch-return-stack-pointer -
   Eight /
@@ -1487,21 +1498,23 @@ String-heap-2 : Current-free-string-address,to   ; define-variable
  *   Dec-base Base save
  *)
 
-: fetch-four-bytes (* address -- value *)
-  Zero fetch-argument-stack-pointer
-  x|over|xx swap
-  Four copy-byte-string
-  swap drop
-  Exit
-; define-function
-
-: save-four-bytes (* value, address -- *)
-  swap fetch-argument-stack-pointer
-  x|over|xx
-  Four copy-byte-string
-  drop2
-  Exit
-; define-function
+(*
+ * : fetch-four-bytes (\* address -- value *\)
+ *   Zero fetch-argument-stack-pointer
+ *   x|over|xx swap
+ *   Four copy-byte-string
+ *   swap drop
+ *   Exit
+ * ; define-function
+ *
+ * : save-four-bytes (\* value, address -- *\)
+ *   swap fetch-argument-stack-pointer
+ *   x|over|xx
+ *   Four copy-byte-string
+ *   drop2
+ *   Exit
+ * ; define-function
+ *)
 
 (*
  * test:
@@ -4552,6 +4565,171 @@ null : lambda-body-stack ; define
      ---------------------------
      unknow *)
   ready apply Exit
+; define-function
+(* OEM :: original equipment manufacturer *)
+(* DAC :: Digital to Analogue Converter *)
+(*
+ * VBE return status ::
+ *   AL == 4Fh:  Function is supported
+ *   AL != 4Fh:  Function is not supported
+ *   AH == 00h:  Function call successful
+ *   AH == 01h:  Function call failed
+ *   AH == 02h:  Function is not supported in the current hardware configuration
+ *   AH == 03h:  Function call invalid in current video mode
+ *
+ *   ReturnStatus
+ * VBEInfoBlock ::
+ *   VBESignature        4 bytes :: 'VESA'   VBE Signature
+ *   VBEVersion          2 bytes :: 0300h    VBE Version
+ *   OEMStringPtr        4 bytes :: ?        VbeFarPtr to OEM String
+ *   Capabilities        4 bytes :: ?        Capabilities of graphics controller
+ *   VideoModePtr        4 bytes :: ?        VbeFarPtr to VideoModeList
+ *   TotalMemory         2 bytes :: ?        Number of 64kb memory blocks Added for VBE 2.0+
+ *   OEMSoftwareRev      2 bytes :: ?        VBE implementation Software revision
+ *   OEMVendorNamePtr    4 bytes :: ?        VbeFarPtr to Vendor Name String
+ *   OEMProductNamePtr   4 bytes :: ?        VbeFarPtr to Product Name String
+ *   OEMProductRevPtr    4 bytes :: ?        VbeFarPtr to Product Revision String
+ *   Reserved            222 bytes :: ?      Reserved for VBE implementation scratch area
+ *   OEMData             256 bytes :: ?      Data Area for OEM Strings
+ *)  
+
+:" VBE signature : "
+: Message:VBE-signature ; define-constant-string
+
+:" VBE version : "
+: Message:VBE-version ; define-constant-string
+
+:" original equipment manufacturer : "
+: Message:original-equipment-manufacturer ; define-constant-string
+
+:" capabilities : "
+: Message:capabilities ; define-constant-string
+
+:" video mode number list : "
+: Message:video-mode-number-list ; define-constant-string
+
+:" total memory : 64K * "
+: Message:total-memory ; define-constant-string
+
+:" vendor name : "
+: Message:vendor-name ; define-constant-string
+
+:" product name : "
+: Message:product-name ; define-constant-string
+
+:" product version : "
+: Message:product-version ; define-constant-string
+
+: help:info-of-VBE,video-mode-list
+  (* address of video-mode-list -- *)
+  dup
+  fetch-two-bytes literal 65535 == if
+    drop
+    Exit
+  then
+  dup
+    fetch-two-bytes
+    write-hex-number 
+    write-space
+  add2
+  help:info-of-VBE,video-mode-list
+  Exit
+; define-recursive-function
+
+: [segment:offset]->[address]
+  (* 4 bytes segment:offset -- address *)
+  dup
+    literal 16 shift-right
+    literal 4 shift-left
+  swap
+    literal 48 shift-left
+    literal 48 shift-right
+  +
+  Exit
+; define-function
+
+: info-of-VBE
+  (* -- *)
+  Address-of-VBE-info-block
+
+  (* VBESignature        4 bytes :: 'VESA'   VBE Signature *)
+  Message:VBE-signature print-string
+    dup Four print-string write-space
+    cr
+  Four +
+
+  (* VBEVersion          2 bytes :: 0300h    VBE Version *)
+  Message:VBE-version print-string
+  One +
+    dup fetch-byte write-dec-number
+    '.' write-char
+  One -
+    dup fetch-byte write-dec-number
+    cr
+  Two +
+
+  (* OEMStringPtr        4 bytes :: ?        VbeFarPtr to OEM String *)
+  Message:original-equipment-manufacturer print-string
+    dup fetch-four-bytes
+    [segment:offset]->[address]
+    print-string,null-terminated
+    cr
+  Four +
+
+  (* Capabilities        4 bytes :: ?        Capabilities of graphics controller *)
+  Message:capabilities print-string
+    dup fetch-four-bytes write-bin-number
+    cr
+  Four +
+
+  (* VideoModePtr        4 bytes :: ?        VbeFarPtr to VideoModeList *)
+  Message:video-mode-number-list print-string
+    dup fetch-four-bytes
+    [segment:offset]->[address]
+    help:info-of-VBE,video-mode-list
+    cr
+  Four +
+
+  (* TotalMemory         2 bytes :: ?        Number of 64kb memory blocks Added for VBE 2.0+ *)
+  Message:total-memory print-string
+    dup fetch-two-bytes write-dec-number
+    cr
+  Two +
+
+  (* OEMSoftwareRev      2 bytes :: ?        VBE implementation Software revision *)
+  Two +
+
+  (* OEMVendorNamePtr    4 bytes :: ?        VbeFarPtr to Vendor Name String *)
+  Message:vendor-name print-string
+    dup fetch-four-bytes
+    [segment:offset]->[address]
+    print-string,null-terminated
+    cr
+  Four +
+
+  (* OEMProductNamePtr   4 bytes :: ?        VbeFarPtr to Product Name String *)
+  Message:product-name print-string
+    dup fetch-four-bytes
+    [segment:offset]->[address]
+    print-string,null-terminated
+    cr
+  Four +
+
+  (* OEMProductRevPtr    4 bytes :: ?        VbeFarPtr to Product Revision String *)
+  Message:product-version print-string
+    dup fetch-four-bytes
+    [segment:offset]->[address]
+    print-string,null-terminated
+    cr
+  Four +
+
+  drop
+  Exit
+; define-function
+
+: kkk (* -- *)
+  info-of-VBE
+  Exit
 ; define-function
 :" yes"
 : Message:yes ; define-constant-string

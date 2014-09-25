@@ -7,7 +7,7 @@
 * *preface*
 ** about the size of and kernel
    #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
-   SizeOfKernel = 512 ;; unit :: k
+   SizeOfKernel = 320 ;; unit :: k
    LocationOfKernel = 32*1024
    MagicNumberOfKernel = 26881h
    #+end_src
@@ -27,14 +27,20 @@
     2. at the beginning
        set stack to LocationOfKernel
        it grows to lower address
+    3. then the LocationOfKernel == 32K
+       the code of start16
+       should not be larger then 32K
+       then, in 16 bits mode,
+       we can ignore the segment registers
+       ang just use the the first 64K 
 *** implementation
     #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
     use16
     org LocationOfKernel
-
+    
     start16:
             cli
-
+    
             xor ax, ax
             mov ds, ax
             mov es, ax
@@ -42,22 +48,22 @@
             mov gs, ax
             mov ss, ax
             mov sp, LocationOfKernel
-
+    
             ;; Make sure the screen is set to 80*25 text mode
             mov ax, 3
             int 0x10
-
+    
             ;; Disable blinking
             mov ax, 0x1003
             mov bx, 0x0000
             int 0x10
-
+    
             ;; hide the hardware cursor
             mov ax, 0x0200                  ; VIDEO - SET CURSOR POSITION
             mov bx, 0x0000                  ; Page number
             mov dx, 0x2000                  ; Row / Column
             int 0x10
-
+    
             ;; enable the A20 gate
             set_A20:
                in al, 0x64
@@ -71,15 +77,128 @@
                jnz check_A20
                mov al, 0xDF
                out 0x60, al
-
+    
+            call init_VESA_VBE
+    
             lgdt    [cs:GDTR]
-
+    
             ;; switch to protected mode
             mov     eax, cr0
             bts     eax, 0                   ; bit-index-0 set
             mov     cr0, eax
-
+    
             jmp     CODE_SELECTOR_32:start32
+    #+end_src
+*** ><
+    #+begin_src fasm
+            mov edi, VBEModeInfoBlock       ; VBE data will be stored at this address
+            mov ax, 0x4F01                  ; GET SuperVGA MODE INFORMATION - http://www.ctyme.com/intr/rb-0274.htm
+            ; CX queries the mode, it should be in the form 0x41XX as bit 14 is set for LFB and bit 8 is set for VESA mode
+            ; 0x4112 is 640x480x24bit, 0x4129 should be 32bit
+            ; 0x4115 is 800x600x24bit, 0x412E should be 32bit
+            ; 0x4118 is 1024x768x24bit, 0x4138 should be 32bit
+            ; 0x411B is 1280x1024x24bit, 0x413D should be 32bit
+            ; 0x0103 (800x600x256) VBE 1.2+
+            mov cx, 0x0103                  ; Put your desired mode here
+            mov bx, cx                      ; Mode is saved to BX for the set command later
+            int 0x10
+    
+            cmp ax, 0x004F                  ; Return value in AX should equal 0x004F if command supported and successful
+            jne VBEfail
+    
+            cmp byte [VBEModeInfoBlock.BitsPerPixel], 24    ; Make sure this matches the number of bits for the mode!
+            ;cmp byte [VBEModeInfoBlock.BitsPerPixel], 32    ; Make sure this matches the number of bits for the mode!
+    
+            jne VBEfail                     ; If set bit mode was unsuccessful then bail out
+    
+            or bx, 0x4000                   ; Use linear/flat frame buffer model (set bit 14)
+            mov ax, 0x4F02                  ; SET SuperVGA VIDEO MODE - http://www.ctyme.com/intr/rb-0275.htm
+            int 0x10
+    
+            cmp ax, 0x004F                  ; Return value in AX should equal 0x004F if supported and successful
+            jne VBEfail
+            jmp VBEdone
+    
+    VBEfail:
+            mov si, msg_novesa
+            call print_string_16
+            xor ax, ax
+            mov byte [cfg_vesa], al         ; Clear the VESA config as it was not successful
+    
+    VBEdone:
+            ret    
+    #+end_src
+*** VESA/VBE
+    #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+    ;; VESA :: Video Electronics Standards Association
+    ;; VBE :: VESA BIOS Extension     
+    align 16
+    init_VESA_VBE:
+       mov di, VBEInfoBlock
+       mov ax, 4f00h
+       int 10h
+       mov word [VBEInfoBlock.ReturnStatus], ax
+
+       mov di, VBEModeInfoBlock
+       mov ax, 4f01h
+       int 10h
+       mov word [VBEModeInfoBlock.ReturnStatus], ax
+
+       ret       
+    
+    align 16
+    VBEInfoBlock.ReturnStatus: 
+       rb 2
+
+    align 16
+    VBEInfoBlock:
+       rb 512
+
+
+    align 16
+    VBEModeInfoBlock.ReturnStatus: 
+       rb 2
+    align 16
+    VBEModeInfoBlock:
+       rb 256
+
+    ;; VESA
+    ;; Mandatory information for all VBE revisions
+    VBEModeInfoBlock.ModeAttributes         = VBEModeInfoBlock + 0        ; DW - mode attributes
+    VBEModeInfoBlock.WinAAttributes         = VBEModeInfoBlock + 2        ; DB - window A attributes
+    VBEModeInfoBlock.WinBAttributes         = VBEModeInfoBlock + 3        ; DB - window B attributes
+    VBEModeInfoBlock.WinGranularity         = VBEModeInfoBlock + 4        ; DW - window granularity in KB
+    VBEModeInfoBlock.WinSize                = VBEModeInfoBlock + 6        ; DW - window size in KB
+    VBEModeInfoBlock.WinASegment            = VBEModeInfoBlock + 8        ; DW - window A start segment
+    VBEModeInfoBlock.WinBSegment            = VBEModeInfoBlock + 10       ; DW - window B start segment
+    VBEModeInfoBlock.WinFuncPtr             = VBEModeInfoBlock + 12       ; DD - real mode pointer to window function
+    VBEModeInfoBlock.BytesPerScanLine       = VBEModeInfoBlock + 16       ; DW - bytes per scan line
+    ;; Mandatory information for VBE 1.2 and above
+    VBEModeInfoBlock.XResolution            = VBEModeInfoBlock + 18       ; DW - horizontal resolution in pixels or characters
+    VBEModeInfoBlock.YResolution            = VBEModeInfoBlock + 20       ; DW - vertical resolution in pixels or characters
+    VBEModeInfoBlock.XCharSize              = VBEModeInfoBlock + 22       ; DB - character cell width in pixels
+    VBEModeInfoBlock.YCharSize              = VBEModeInfoBlock + 23       ; DB - character cell height in pixels
+    VBEModeInfoBlock.NumberOfPlanes         = VBEModeInfoBlock + 24       ; DB - number of memory planes
+    VBEModeInfoBlock.BitsPerPixel           = VBEModeInfoBlock + 25       ; DB - bits per pixel
+    VBEModeInfoBlock.NumberOfBanks          = VBEModeInfoBlock + 26       ; DB - number of banks
+    VBEModeInfoBlock.MemoryModel            = VBEModeInfoBlock + 27       ; DB - memory model type
+    VBEModeInfoBlock.BankSize               = VBEModeInfoBlock + 28       ; DB - bank size in KB
+    VBEModeInfoBlock.NumberOfImagePages     = VBEModeInfoBlock + 29       ; DB - number of image pages
+    VBEModeInfoBlock.Reserved               = VBEModeInfoBlock + 30       ; DB - reserved (0x00 for VBE 1.0-2.0, 0x01 for VBE 3.0)
+    ;; Direct Color fields (required for direct/6 and YUV/7 memory models)
+    VBEModeInfoBlock.RedMaskSize            = VBEModeInfoBlock + 31       ; DB - size of direct color red mask in bits
+    VBEModeInfoBlock.RedFieldPosition       = VBEModeInfoBlock + 32       ; DB - bit position of lsb of red mask
+    VBEModeInfoBlock.GreenMaskSize          = VBEModeInfoBlock + 33       ; DB - size of direct color green mask in bits
+    VBEModeInfoBlock.GreenFieldPosition     = VBEModeInfoBlock + 34       ; DB - bit position of lsb of green mask
+    VBEModeInfoBlock.BlueMaskSize           = VBEModeInfoBlock + 35       ; DB - size of direct color blue mask in bits
+    VBEModeInfoBlock.BlueFieldPosition      = VBEModeInfoBlock + 36       ; DB - bit position of lsb of blue mask
+    VBEModeInfoBlock.RsvdMaskSize           = VBEModeInfoBlock + 37       ; DB - size of direct color reserved mask in bits
+    VBEModeInfoBlock.RsvdFieldPosition      = VBEModeInfoBlock + 38       ; DB - bit position of lsb of reserved mask
+    VBEModeInfoBlock.DirectColorModeInfo    = VBEModeInfoBlock + 39       ; DB - direct color mode attributes
+    ;; Mandatory information for VBE 2.0 and above
+    VBEModeInfoBlock.PhysBasePtr            = VBEModeInfoBlock + 40       ; DD - physical address for flat memory frame buffer
+    VBEModeInfoBlock.Reserved1              = VBEModeInfoBlock + 44       ; DD - Reserved - always set to 0
+    VBEModeInfoBlock.Reserved2              = VBEModeInfoBlock + 48       ; DD - Reserved - always set to 0
     #+end_src
 *** GDT
     #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
@@ -87,7 +206,7 @@
     GDTR:
        dw GDT_END - GDT - 1                  ;; index of the last byte in table
        dq GDT                                ;; linear address of GDT
-
+    
        ;; ;; base-address is a 32 bit value containing the linear address where the segment begins.
        ;; ;; limit is a 20 bit value tells the maximum addressable unit (either in 1 byte units, or in pages)
        ;; ;;   Hence, if you choose page granularity (4 KiB) in the flags
@@ -99,10 +218,10 @@
        ;; ;; access       [ 8 bits] :: 5       == 10010010b
        ;; ;  0     1     2  3  4  5          6          7
        ;; db 0ffh, 0ffh, 0, 0, 0, 10010010b, 11001111b, 0
-
+    
        ;; for all of the following desciptors :
        ;;  limit = 0fffffh,  base = 0h
-
+    
     align 16
     GDT:
        ;; descriptor-0 is always unused
@@ -125,12 +244,22 @@
        db 0, 0, 0, 0, 0, 10011010b, 00100000b, 0
        db 0, 0, 0, 0, 0, 10010010b, 00100000b, 0
     GDT_END:
-
+    
     NULL_SELECTOR = 0
     DATA_SELECTOR_32 = (1 shl 3)    ; flat data selector (ring 0)
     CODE_SELECTOR_32 = (2 shl 3)    ; 32-bit code selector (ring 0)
     CODE_SELECTOR_64 = (3 shl 3)    ; 64-bit code selector (ring 0)
     DATA_SELECTOR_64 = (4 shl 3)    ; 64-bit code selector (ring 0)
+    #+end_src
+*** set the size of start16 to 31K
+    to do this is to make sure 
+    that the code of start16 do not larger then 32K
+    actually I set the size of start16 to 31K
+    just for convenient
+    for the ``jmp'' at the end of start16 
+    still has to address the label ``start32''
+    #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+    times (31 * 1024) - ($-$$) db 0
     #+end_src
 ** start32
 *** note
@@ -751,7 +880,7 @@
   ;; LowestMemoryAddress always can be use to save value
 
   ;; ==========================================
-  LowestMemoryAddress = 100*1024*1024
+  LowestMemoryAddress = 32*1024*1024
   FirstLowestMemoryAddress = LowestMemoryAddress
 
   labeling  equ = LowestMemoryAddress
@@ -963,7 +1092,7 @@
     defWordEnd createBarekeyboard
     #+end_src
 ** configureColorPalette
-   #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+   #+begin_src fasm :tangle ../../play/cicada-kernel.fasm 
    Palette:
    ;; These colors are in RGB format
    ;; Each color byte is actually 6 bits (0x00 - 0x3F)
@@ -1547,7 +1676,7 @@
           next
        #+end_src
 ** memory
-       #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+       #+begin_src fasm :tangle ../../play/cicada-kernel.fasm 
        ;; ``save'' and ``fetch'' default to a CellWidth (== 8 bytes)
        ;; the rule of ``fetch2'' and so on are:
        ;;   in memory:
@@ -1560,14 +1689,14 @@
        ;; of course we have:
        ;;   fetch2 : memory=copy=>stack
        ;;   save2  : stack->memory
-
+       
        defCode "save", save
           ;; ( value, address -- )
           popArgumentStack rbx
           popArgumentStack rax
           mov qword[rbx], rax
           next
-
+       
        defCode "save2", save2
           ;; ( value-2, value-1, address -- )
           popArgumentStack rbx
@@ -1576,16 +1705,16 @@
           popArgumentStack rax
           mov qword[rbx + CellWidth], rax
           next
-
-
-
+       
+       
+       
        defCode "fetch", fetch
           ;; ( address -- value )
           popArgumentStack  rbx
           mov rax, qword[rbx]
           pushArgumentStack rax
           next
-
+       
        defCode "fetch2", fetch2
           ;; ( address -- value-1, value-2 )
           popArgumentStack  rbx
@@ -1594,31 +1723,46 @@
           mov rax, qword[rbx]
           pushArgumentStack rax
           next
-
-
-
+       
+       
+       
        defCode "add-save", addSave
           ;; ( number to add, address -- )
           popArgumentStack rbx
           popArgumentStack rax
           add qword[rbx], rax
           next
-
+       
        defCode "sub-save", subSave
           ;; ( number to add, address -- )
           popArgumentStack rbx
           popArgumentStack rax
           sub qword[rbx], rax
           next
-
-
+       
+       
        defCode "save-byte", saveByte
           ;; ( value, address -- )
           popArgumentStack rbx
           popArgumentStack rax
           mov byte[rbx], al
           next
-
+       
+       defCode "save-two-bytes", saveTwoBytes
+          ;; ( value, address -- )
+          popArgumentStack rbx
+          popArgumentStack rax
+          mov word [rbx], ax
+          next
+       
+       defCode "save-four-bytes", saveFourBytes
+          ;; ( value, address -- )
+          popArgumentStack rbx
+          popArgumentStack rax
+          mov dword [rbx], eax
+          next
+       
+       
        defCode "fetch-byte", fetchByte
           ;; ( address -- value )
           popArgumentStack rbx
@@ -1626,10 +1770,26 @@
           mov al, byte[rbx]
           pushArgumentStack rax
           next
-
-
-
-
+       
+       defCode "fetch-two-bytes", fetchTwoBytes
+          ;; ( address -- value )
+          popArgumentStack rbx
+          xor rax, rax
+          mov ax, word[rbx]
+          pushArgumentStack rax
+          next
+       
+       defCode "fetch-four-bytes", fetchFourBytes
+          ;; ( address -- value )
+          popArgumentStack rbx
+          xor rax, rax
+          mov eax, dword[rbx]
+          pushArgumentStack rax
+          next
+       
+       
+       
+       
        defCode "copy-byte", copyByte
           ;; ( source address, destination address --
           ;;   source address + 1, destination address + 1 )
@@ -1640,7 +1800,7 @@
           pushArgumentStack rdi                       ;; destination address is incremented by stosb
           inc qword[ArgumentStackPointer + CellWidth] ;; increment source address
           next
-
+       
        defCode "copy-byte-string", copyByteString
           ;; ( source address, destination address, length -- )
           popArgumentStack rcx
@@ -1895,24 +2055,24 @@
           popArgumentStack rcx
           shl qword[ArgumentStackPointer], cl
           next
-
+       
        defCode "shift-right", shiftRight
           ;; ( fixnum, step -- fixnum / 2^step )
           popArgumentStack rcx
           shr qword[ArgumentStackPointer], cl
           next
-
+       
        defCode "shift-right-preserve-sign", shiftRightPreserveSign
           ;; ( fixnum, step -- new fixnum )
           popArgumentStack rcx
           sar qword[ArgumentStackPointer], cl
           next
-
-
-
+       
+       
+       
        ;; note that:
        ;; ``double'' is 128 bit value here
-
+       
        ;; "shld"
        ;; shifts bits of the destination operand to the left
        ;; by the number of bits specified in third operand,
@@ -1932,8 +2092,8 @@
           shl rax, cl
           pushArgumentStack rax
           next
-
-
+       
+       
        ;; "shrd"
        ;; shifts bits of the destination operand to the right,
        ;; while shifting
@@ -1952,7 +2112,7 @@
           pushArgumentStack rax
           pushArgumentStack rbx
           next
-
+       
        defCode "double-shift-right-preserve-sign", doubleShiftRightPreserveSign
           ;; ( fixnum-1, fixnum-2, step --
           ;;   new fixnum-1, new fixnum-2 )
@@ -1964,16 +2124,16 @@
           pushArgumentStack rax
           pushArgumentStack rbx
           next
-
-
-
-
+       
+       
+       
+       
        defCode "rotate-left", rotateLeft
           ;; ( fixnum, step -- new fixnum )
           popArgumentStack rcx
           rol qword[ArgumentStackPointer], cl
           next
-
+       
        defCode "rotate-right", rotateRight
           ;; ( fixnum, step -- new fixnum )
           popArgumentStack rcx
@@ -3522,6 +3682,10 @@
           xx Exit
    defWordEnd printLittleNumber
    #+end_src
+** VESA VBE
+   #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+   defConst "Address-of-VBE-info-block", VBEInfoBlock, Assembly_VBEInfoBlock   
+   #+end_src
 * *ending*
 ** memory allocation
 *** PairConstructionsArray
@@ -3742,7 +3906,7 @@
    defConst "The-latest-word-in-assembly", 0, TheLatestWordInAssembly
    #+end_src
 ** set the size & the magic number
-   #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+   #+begin_src fasm :tangle ../../play/cicada-kernel.fasm 
    times (SizeOfKernel * 1024) - ($-$$) - 4 db 0
    dd MagicNumberOfKernel  ;; 4 bytes
    #+end_src
