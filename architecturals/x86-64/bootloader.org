@@ -27,21 +27,21 @@
    #+begin_src fasm :tangle ../../play/bootloader.fasm
    loadKernel? equ yes
    checkMagicNumberOfKernel? equ yes
-   
+
    FirstSector = 0
-   
+
    SizeOfKernel = 320 ;; unit :: k
    LocationOfKernel_inFloppy = 128     ;; unit :: k
    LocationOfKernel_inMemory = 32*1024 ;; unit :: b
    MagicNumberOfKernel = 26881h
-   
+
    org 7c00h
-   
+
            jmp short start
            nop
-   
+
    ;; basic information about the FAT file system
-   
+
    DiskNameString db "cicada  "
    BytesPerSector = 512
      dw BytesPerSector
@@ -101,8 +101,8 @@
      ;; 32 bit random number,
    VolumeLabelString    db "cicada     " ;; 11 bytes
    FileSystemNameString db "FAT12   "    ;; 8  bytes
-   
-   
+
+
    start:
            cli
            mov [DriveNumber], dl           ; BIOS passes drive number in DL
@@ -113,34 +113,34 @@
            mov gs, ax
            mov ss, ax
            mov sp, 7c00h
-   
+
            ;; * entering unreal mode *
-   
+
            push ds          ; save real mode
-   
+
            lgdt [gdtinfo]   ; load gdt register
-   
+
            mov eax, cr0     ; switch to pmode
            or al, 00000001b
            mov cr0, eax
-   
-   
+
+
            ;; In protected mode
            ;; the bits 3-15 in the segment register are an index into the descriptor table
            mov bx, 1000b          ; select descriptor 1
            mov ds, bx
-   
-   
+
+
            and al, 11111110b      ; switch to rmode
            mov cr0, eax
-   
-   
+
+
            pop ds           ; get back old segment
-   
+
            ;; * end of entering unreal mode *
-   
+
            sti
-   
+
            ;; NOTE: A few early BIOSes are reported to improperly set DL
            cmp dl, 0
            je no_change
@@ -155,10 +155,10 @@
            mov word [AddressOfNumberOfHeads], dx
    no_change:
            mov eax, 0                               ; Needed for some older BIOSes
-   
+
            mov si, msg_Load
            call print_string_16
-   
+
            ;; ; Enable the A20 gate
            ;; set_A20:
            ;;         in al, 0x64
@@ -172,33 +172,33 @@
            ;;         jnz check_A20
            ;;         mov al, 0xDF
            ;;         out 0x60, al
-   
+
    if loadKernel? eq yes
            mov ebx, (LocationOfKernel_inFloppy * 2)
            mov eax, (SizeOfKernel)*2
            mov edi, LocationOfKernel_inMemory
            call readsectors
    end if
-   
+
    if checkMagicNumberOfKernel? eq yes
            mov ebx, LocationOfKernel_inMemory + SizeOfKernel*1024 - 4
            mov eax, [ebx]
            cmp eax, MagicNumberOfKernel
            jne magic_fail
    end if
-   
+
            mov si, msg_LoadDone
            call print_string_16
-   
+
            jmp 0x0000:LocationOfKernel_inMemory
-   
+
    magic_fail:
            mov si, msg_MagicFail
            call print_string_16
    halt:
            cli
            hlt
-   
+
    ;------------------------------------------------------------------------------
    ; read sectors from a disk to RAM, using LBA
    ; IN:   EBX = starting sector index to read
@@ -207,21 +207,21 @@
    ; OUT:  EBX = EBX + number of sectors that were read
    ;       EDI = EDI + (number of sectors read * 512)
    readsectors:
-   
+
    .more:
            call read_one_sector_to_SectorBuffer
            jc .more
            call copy_SectorBuffer_to_high_address
-   
+
            inc ebx
-   
+
            dec eax
            cmp eax, 0
            jne .more
-   
+
            ret
    ;------------------------------------------------------------------------------
-   
+
    ;------------------------------------------------------------------------------
    ; copy SectorBuffer to high address
    ; IN:   EDI - high address
@@ -229,33 +229,33 @@
    copy_SectorBuffer_to_high_address:
            push bx
            push dx
-   
+
            xor bx, bx
    .more:
-   
+
            mov dx, word [bx+SectorBuffer]
            mov word [ds:edi], dx
-   
+
            inc bx
            inc bx
-   
+
            inc edi
            inc edi
-   
+
            cmp bx, 512
            je .done
            jmp .more
-   
+
    .done:
            pop dx
            pop bx
-   
+
            mov si, msg_Copying
            call print_string_16
-   
+
            ret
    ;------------------------------------------------------------------------------
-   
+
    ;------------------------------------------------------------------------------
    ; Read a sector from a disk to SectorBuffer, using LBA
    ; IN:   EBX - Low word of 64-bit DOS sector number
@@ -267,9 +267,9 @@
            push edx
            push esi
            push edi
-   
+
            mov ax, bx
-   
+
            ;; cl = sector
            xor dx, dx
            div word [AddressOfSectorsPerTrack]
@@ -278,45 +278,45 @@
            ;; physical head start at 0
            inc dl
            mov cl, dl
-   
+
            mov ax, bx
-   
+
            ;; dh = head
            xor dx, dx
            div word [AddressOfSectorsPerTrack]
            xor dx, dx
            div word [AddressOfNumberOfHeads]
            mov dh, dl
-   
+
            ;; ch = cylinder
            mov ch, al
-   
+
            mov al, 1                     ; one sector
            mov dl, [DriveNumber]         ; from the Drive
            mov bx, SectorBuffer          ; to SectorBuffer
            mov ah, 2
            int 13h
-   
+
            pop edi
            pop esi
            pop edx
            pop ecx
            pop ebx
            pop eax
-   
+
            jnc @f                          ; jump if no error
            mov si, msg_BIOS_read_error
            call print_string_16
            stc
            ret
-   
+
    @@:
            mov si, msg_Loading
            call print_string_16
            clc
            ret
    ;------------------------------------------------------------------------------
-   
+
    ;------------------------------------------------------------------------------
    ; 16-bit function to print a string to the screen
    ; IN:   SI - Address of start of string
@@ -333,7 +333,7 @@
            popa
            ret
    ;------------------------------------------------------------------------------
-   
+
    ;------------------------------------------------------------------------------
    fatal_disk_error:
        mov si, msg_fatal_disk_error
@@ -341,12 +341,12 @@
        cli
        hlt
    ;------------------------------------------------------------------------------
-   
+
    ;; -------------------------------------------------------
    gdtinfo:
       dw gdt_end - gdt - 1   ;last byte in table
       dd gdt                 ;start of table
-   
+
    gdt:
      ;;; descriptor-0 is always unused
      dd 0,0
@@ -358,17 +358,17 @@
      ;  0     1     2  3  4  5          6          7
      db 0xff, 0xff, 0, 0, 0, 10010010b, 11001111b, 0
    gdt_end:
-   
+
    ;; ----------------------------------------------------
    msg_Load:       db "loading cicada", 13, 10, 0
    msg_Loading:    db "*", 0
    msg_Copying:    db "+", 0
    msg_LoadDone:   db "done", 13, 10, "Executing", 0
    msg_MagicFail:  db "magic fail", 13, 10, 0
-   
+
    msg_fatal_disk_error: db "fatal disk error", 0
    msg_BIOS_read_error: db "X", 0
-   
+
    ;DriveNumber:    db 0x00
    ;AddressOfSectorsPerTrack: dw 18
    ;AddressOfNumberOfHeads: dw 2
@@ -379,11 +379,11 @@
    ;; db 0xEB, 0xFF, 0xFF, 0xFF
    ;; db 0x00, 0x00, 0x00, 0x00
    ;; db 0xFF, 0xFF, 0xFF, 0xFF
-   
+
    times 510-($-$$) db 0
       db 0x55
       db 0xAA
-   
+
    SectorBuffer: ;; 512 bytes buffer to read one sector at a time
    #+end_src
 * [OLD] bootloader
@@ -747,14 +747,11 @@
    #+end_src
 * ==================================================
 * about the image
-  #+begin_src fasm :tangle ../../play/cicada.fasm
+  #+begin_src fasm :tangle ../../play/cicada-image.fasm
   SizeOfKernel = 320 ;; unit :: k
   LocationOfKernel_inFloppy = 128     ;; unit :: k
   LocationOfKernel_inMemory = 32*1024 ;; unit :: b
   MagicNumberOfKernel = 26881h
-
-  ;; to output as .image
-  format binary as 'image'
 
   org 0
 

@@ -19,17 +19,14 @@ the purpose of the cicada project is
 
 what is state of this project currently ?
 ======================================
+cicada for linux : ``other-operating-systems/linux/``
+>   which is currently under active development.
+
 operating system for x86_64 : ``architecturals/x86-64/``
 >   which is currently under active development.
 
 [coming soon] operating system for ARM : ``architecturals/arm/``
 >   which will be running on raspberry pi.
-
-[old] port to linux : ``other-operating-systems/linux/``
->   which is using an old core of this cicada language,
->   of which syntax and naming conventions are different.
->   if no requests from users,
->   this version might not be supported by me anymore.
 
 how to install and run ?
 ======================================

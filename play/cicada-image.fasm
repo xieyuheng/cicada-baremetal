@@ -1,0 +1,12 @@
+SizeOfKernel = 320 ;; unit :: k
+LocationOfKernel_inFloppy = 128     ;; unit :: k
+LocationOfKernel_inMemory = 32*1024 ;; unit :: b
+MagicNumberOfKernel = 26881h
+
+org 0
+
+file 'bootloader.bin'
+times (LocationOfKernel_inFloppy * 1024) - ($-$$) db 0
+
+file 'cicada-kernel.bin'
+times ((LocationOfKernel_inFloppy + SizeOfKernel) * 1024) - ($-$$) db 0

@@ -1,0 +1,1063 @@
+#+TITLE: english core
+#+AUTHOR: XIE Yuheng
+#+EMAIL: xyheme@gmail.com
+
+
+* ==================================================
+* ok & bye
+  for the REPL is actually a REL which does not print
+  so I provide a word to check that the cicada is working properly
+  #+begin_src cicada
+  :" yes"
+  : String,yes ; defineConstString
+  : ok (* -- *)
+    String,yes printString
+    writeSpace
+    Exit
+  ; defineFunction
+
+  :" byebye ^_^"
+  : String,byebye ; defineConstString
+  : bye (* -- THE END *)
+    writeSpace
+    String,byebye printString
+    Zero sys,exit
+    Exit
+  ; defineFunction
+  #+end_src
+* ==================================================
+* loadFile
+** note
+1. to load a file is to
+   read the file into a buffer and eval the buffer
+** implementation
+#+begin_src cicada
+: loadFile
+  (* file-name-string[address, length] --
+     buffer[address, length been readed] *)
+  BufferForLoadFile
+  SizeOfBufferForLoadFile
+  readFileToBuffer
+  evalString
+  Exit
+; defineFunction
+#+end_src
+** test
+#+begin_src cicada
+s" ./test/terminal-escape-sequences.ccd"
+loadFile
+#+end_src
+* loadInitFile (at the end of core loading)
+** note
+1. init files are specified by command line arguments
+** implementation
+#+begin_src cicada
+: NumberOfCommandLineArguments (* -- number *)
+  LinuxProgramHeaderAddress fetch One -
+  Exit
+; defineFunction
+
+
+:" getCommandLineArgument said:
+   ``My function type is (* number -- [address, length] *)
+     but the following number is biger than the NumberOfCommandLineArguments
+     I will not touch it and call debuger''
+   --> "
+: String,getCommandLineArgument,error
+; defineConstString
+
+: getCommandLineArgument
+  (* number -- [address, length] *)
+  dup NumberOfCommandLineArguments > if
+    String,getCommandLineArgument,error printString
+    dup writeDecNumber
+    writeSpace '>' writeChar writeSpace
+    NumberOfCommandLineArguments writeDecNumber
+    cr
+    debuger Exit
+  then
+  LinuxProgramHeaderAddress
+  CellWidth x|swap|xx add1 * + fetch
+  dup lengthOfZeroEndingString
+  Exit
+; defineFunction
+
+
+One : Count,loadInitFile ; defineVar
+
+: loadInitFile
+  (* -- unknown *)
+  Count,loadInitFile fetch
+  NumberOfCommandLineArguments > if
+    Exit
+  then
+  Count,loadInitFile fetch
+  dup
+  add1 Count,loadInitFile save
+    getCommandLineArgument loadFile
+  loadInitFile
+  Exit
+; defineRecursiveFunction
+
+loadInitFile
+#+end_src
+** test
+#+begin_src cicada
+NumberOfCommandLineArguments . cr
+1 getCommandLineArgument printString cr
+2 getCommandLineArgument printString cr
+3 getCommandLineArgument printString cr
+4 getCommandLineArgument printString cr
+#+end_src
+* ==================================================
+* key->numberREPL
+  #+begin_src cicada
+  :" key->numberREPL said: ``Goodbye! ^_^''"
+  : String,key->numberREPL,Goodbye ; defineConstString
+
+  :" key->numberREPL said:
+     ``Welcome to this key->numberREPL ^_^
+       I will help you to find out that
+         what number or sequence of numbers
+         your computer send to your terminal
+         when you press a key.
+       If you want to exit this REPL, please press `enter'. '' "
+  : String,key->numberREPL,Welcome ; defineConstString
+
+
+  : help,key->numberREPL (* -- *)
+    readChar
+    dup literal 10 == if
+      drop
+      String,key->numberREPL,Goodbye printString cr
+      cr
+      Exit
+    then
+    writeSpace writeSpace writeDecNumber cr
+    help,key->numberREPL
+    Exit
+  ; defineRecursiveFunction
+
+  : key->numberREPL (* -- *)
+    cr
+    String,key->numberREPL,Welcome printString cr
+    setTerminalToReadKey
+    help,key->numberREPL
+    setTerminalBackToReadLine
+    Exit
+  ; defineFunction
+  #+end_src
+* terminal
+** esc
+#+begin_src cicada
+(*
+   esc%            Start sequence selecting character set
+   esc%@                      Select default (ISO 646 / ISO 8859-1)
+   esc%G                      Select UTF-8
+   esc%8                      Select UTF-8 (obsolete)
+
+   esc(            Start sequence defining G0 character set
+   esc(B                      Select default (ISO 8859-1 mapping)
+   esc(0                      Select VT100 graphics mapping
+   esc(U                      Select null mapping - straight to character ROM
+   esc(K                      Select user mapping - the map that is loaded by the utility mapscrn(8).
+
+   esc)            Start sequence defining G1 (followed by one of B, 0, U, K, as above).
+
+ ,*)
+
+
+(*
+ ,* 'esc' writeChar  'c' writeChar  (\* Reset *\)
+ ,* 'esc' writeChar  'M' writeChar  (\* Reverse linefeed *\)
+ ,*)
+
+: esc[ (* -- *)
+  'esc' writeChar '[' writeChar Exit
+; defineFunction
+
+: crazy-E (* -- *)
+  (* screen alignment test - fill screen with E's *)
+  'esc' writeChar '#' writeChar '8' writeChar  Exit
+; defineFunction
+#+end_src
+** move cursor
+#+begin_src cicada
+: save-cursor-location (* -- *)
+  (* esc[s or esc7 *)
+  esc[ 's' writeChar Exit
+; defineFunction
+
+: fetch-cursor-location (* -- *)
+  (* esc[u or esc8 *)
+  esc[ 'u' writeChar Exit
+; defineFunction
+
+
+
+: move-cursor-up (* number -- *)
+  (* esc[_A *)
+  esc[  writeDecNumber  'A' writeChar  Exit
+; defineFunction
+
+: move-cursor-down (* number -- *)
+  (* esc[_B or esc[_e *)
+  esc[  writeDecNumber  'B' writeChar  Exit
+; defineFunction
+
+: move-cursor-right (* number -- *)
+  (* esc[_C or esc[_a *)
+  esc[  writeDecNumber  'C' writeChar  Exit
+; defineFunction
+
+: move-cursor-left (* number -- *)
+  (* esc[_D *)
+  esc[  writeDecNumber  'D' writeChar  Exit
+; defineFunction
+
+
+(* to the following two functions,
+   Zero as arg is the same as One *)
+: move-cursor-down-&-to-the-begin-of-line (* number -- *)
+  (* esc[_E *)
+  esc[  writeDecNumber  'E' writeChar  Exit
+; defineFunction
+
+: move-cursor-up-&-to-the-begin-of-line (* number -- *)
+  (* esc[_F *)
+  esc[  writeDecNumber  'F' writeChar  Exit
+; defineFunction
+
+
+
+(* the following indexes are begin at 1 *)
+
+: move-cursor-to-col (* col-index -- *)
+  (* esc[_` or esc[_G *)
+  esc[  writeDecNumber  '`' writeChar  Exit
+; defineFunction
+
+: move-cursor-to-row (* row-index -- *)
+  (* esc[_d *)
+  esc[  writeDecNumber  'd' writeChar  Exit
+; defineFunction
+
+: move-cursor-to-row-&-col (* row-index, col-index -- *)
+  (* esc[_;_H or esc[_;_f *)
+  esc[
+  swap writeDecNumber  ';' writeChar
+  writeDecNumber  'H' writeChar
+  Exit
+; defineFunction
+#+end_src
+** erase & delete
+#+begin_src cicada
+(* the position of the cursor
+ ,* is also as an argument of the following functions
+ ,* but the cursor do not move when these functions are executed
+ ,*)
+
+: erase-chars (* number -- *)
+  (* esc[_X *)
+  esc[  writeDecNumber  'X' writeChar  Exit
+; defineFunction
+
+
+
+: delete-chars (* number -- *)
+  (* esc[_P *)
+  esc[  writeDecNumber  'P' writeChar  Exit
+; defineFunction
+
+: delete-lines (* number -- *)
+  (* esc[_M *)
+  esc[  writeDecNumber  'M' writeChar  Exit
+; defineFunction
+
+
+
+: erase-half-screen-to-end (* -- *)
+  (* esc[0J *)
+  esc[ '0' writeChar 'J' writeChar  Exit
+; defineFunction
+
+: erase-half-screen-to-start (* -- *)
+  (* esc[1J *)
+  esc[ '1' writeChar 'J' writeChar  Exit
+; defineFunction
+
+: erase-screen (* -- *)
+  (* esc[2J *)
+  esc[ '2' writeChar 'J' writeChar  Exit
+; defineFunction
+
+
+
+: erase-half-line-to-end (* -- *)
+  (* esc[0K *)
+  esc[ '0' writeChar 'K' writeChar  Exit
+; defineFunction
+
+: erase-half-line-to-start (* -- *)
+  (* esc[1K *)
+  esc[ '1' writeChar 'K' writeChar  Exit
+; defineFunction
+
+: erase-line (* -- *)
+  (* esc[2K *)
+  esc[ '2' writeChar 'K' writeChar  Exit
+; defineFunction
+#+end_src
+** set*
+#+begin_src cicada
+(* the default of the following three are `off' *)
+
+: set-display-mode,to-display-control-chars (* -- *)
+  (* esc[3h *)
+  esc[ '3' writeChar 'h' writeChar  Exit
+; defineFunction
+
+: set-display-mode,to-insert-mode
+  (* esc[4h *)
+  esc[ '4' writeChar 'h' writeChar  Exit
+; defineFunction
+
+: set-display-mode,to-auto-follow-echo
+  (* esc[20h *)
+  esc[ '2' writeChar '0' writeChar 'h' writeChar  Exit
+; defineFunction
+
+
+
+: set-scrolling-row-region (* top, bottom -- *)
+  (* esc[_;_r *)
+  (* the cursor will be set to 1,1 after then *)
+  esc[
+  swap  writeDecNumber ';' writeChar
+  writeDecNumber 'r' writeChar
+  Exit
+; defineFunction
+
+
+
+: set-display-attribute (* number -- *)
+  (* esc[_m *)
+  esc[ writeDecNumber 'm' writeChar Exit
+; defineFunction
+
+0  : DisplayAttribute,set,all-to-default ; defineConst
+
+1  : DisplayAttribute,set,bold ; defineConst
+22 : DisplayAttribute,off,bold ; defineConst
+
+3  : DisplayAttribute,set,italicized ; defineConst
+23 : DisplayAttribute,off,italicized ; defineConst
+
+2  : DisplayAttribute,set,half-bright ; defineConst
+21 : DisplayAttribute,off,half-bright ; defineConst
+(* >< no use in xterm or urxvt ??? *)
+
+4  : DisplayAttribute,set,underscore  ; defineConst
+24 : DisplayAttribute,off,underscore  ; defineConst
+(* simulated with color on a color display
+   the colors used to simulate half-bright or underline are set using esc]___ *)
+
+5  : DisplayAttribute,set,blink ; defineConst
+25 : DisplayAttribute,off,blink ; defineConst
+
+7  : DisplayAttribute,set,reverse-color ; defineConst
+27 : DisplayAttribute,off,reverse-color ; defineConst
+
+8  : DisplayAttribute,set,hidden ; defineConst
+28 : DisplayAttribute,off,hidden ; defineConst
+
+
+(*
+ ,* 10
+ ,* reset selected mapping, display control flag, and toggle meta flag (ECMA-48 says "primary font").
+ ,* 11
+ ,* select null mapping, set display control flag, reset toggle meta flag (ECMA-48 says "first alternate font").
+ ,* 12
+ ,* select null mapping, set display control flag, set toggle meta flag (ECMA-48 says "second alternate font").
+ ,*
+ ,* The toggle meta flag causes the high bit of a byte to be toggled before the mapping table translation is done.
+ ,*)
+
+
+(* color test:
+
+ ,* (\* foreground :: *\)
+ ,* 30 esc[_m black
+ ,* 31 esc[_m red
+ ,* 32 esc[_m green
+ ,* 33 esc[_m brown
+ ,* 34 esc[_m blue
+ ,* 35 esc[_m magenta
+ ,* 36 esc[_m cyan
+ ,* 37 esc[_m white
+ ,* 38 esc[_m default-color & underscore on
+ ,* 39 esc[_m default-color & underscore off
+ ,* (\* 16-color foreground :: *\)
+ ,* 90 esc[_m black
+ ,* 91 esc[_m red
+ ,* 92 esc[_m green
+ ,* 93 esc[_m yellow
+ ,* 94 esc[_m blue
+ ,* 95 esc[_m magenta
+ ,* 96 esc[_m cyan
+ ,* 97 esc[_m white
+
+ ,* (\* background :: *\)
+ ,* 40 esc[_m black
+ ,* 41 esc[_m red
+ ,* 42 esc[_m green
+ ,* 43 esc[_m yellow
+ ,* 44 esc[_m blue
+ ,* 45 esc[_m magenta
+ ,* 46 esc[_m cyan
+ ,* 47 esc[_m white
+ ,* 49 esc[_m default color
+ ,* (\* 16-color background :: *\)
+ ,* 100 esc[_m black
+ ,* 101 esc[_m red
+ ,* 102 esc[_m green
+ ,* 103 esc[_m yellow
+ ,* 104 esc[_m blue
+ ,* 105 esc[_m magenta
+ * 106 esc[_m cyan
+ * 107 esc[_m white
+
+ *)
+#+end_src
+** test
+#+begin_src cicada
+:" cicada language is interesting ^_^"
+: String,cicada-language-is-interesting ; defineConstString
+
+: cicada-language-is-interesting (* -- *)
+  erase-screen
+  Six Six move-cursor-to-row-&-col
+    literal 93 set-display-attribute (* foreground yellow *)
+    DisplayAttribute,set,blink set-display-attribute
+    DisplayAttribute,set,underscore set-display-attribute
+  String,cicada-language-is-interesting printString cr
+    DisplayAttribute,off,underscore set-display-attribute
+    DisplayAttribute,off,blink set-display-attribute
+    literal 39 set-display-attribute (* foreground default-color *)
+  Exit
+; defineFunction
+
+cicada-language-is-interesting
+#+end_src
+* >< cicada-editor
+** note
+   1. the loop :
+      1) read a key (a char)
+      2) according to some global variables
+         dispatch a key to a function and execute
+         the execution of a function
+         will edit the datastructure for text
+         and  edit the datastructure for display
+      3) update display
+      4) loop
+      so it is a ``REDL''
+   2. two datastructures for cicada-editor
+      one for text
+      one for display
+   3. key binding :
+      every key can be bound to any function
+** string->line-dalin
+   as a parser of fundamental-mode
+   #+begin_src cicada
+   : find-char-address
+     (* char, [address, length] -- address or -1 *)
+     dup zero? if
+       drop2 drop
+       One negate
+       Exit
+     then
+     tailAndHeadOfString
+     x|over|xxx == if
+       drop swap drop
+       sub1 Exit
+     then
+     find-char-address
+     Exit
+   ; defineRecursiveFunction
+
+   : find-char-index
+     (* char, [address, length] -- index or -1 *)
+     (* index start from Zero *)
+     over
+     xxx|swap|x
+     find-char-address
+     dup Zero < if
+       swap drop Exit
+     then
+     swap -
+     Exit
+   ; defineFunction
+
+
+   (* little test:
+    ,* 'k' s" k" find-char-index . (\* 0 *\) cr
+    ,* 'k' s" kkk" find-char-index . (\* 0 *\) cr
+    ,* 'k' s" skkk" find-char-index . (\* 1 *\) cr
+    ,* 'k' s"  kkk" find-char-index . (\* 1 *\) cr
+    ,* 'k' s" 0123456789k" find-char-index . (\* 10 *\) cr
+    ,* 'k' s" 0123456789" find-char-index . (\* -1 *\) cr
+    ,*)
+
+
+
+   : help,string->line-dalin
+     (* [address, length] -- head[address, <dalin>] *)
+     (* LambdaStack:: [address, <dalin>] -- *)
+     dup zero? if
+       getBack
+       dup2
+         cdr null [cons,cdr]!
+         drop2
+       head<-dalin
+       Exit
+     then
+     dup2
+     'linefeed' xx|over|x find-char-index
+     dup Zero < if
+       (* this means if a string is not end with 'linefeed'
+          a 'linefeed' will be added at the end *)
+       drop
+       dup substring
+       xx|tuck|x
+       swap copyByteString
+       <substring>
+       cons drop <dalin>
+       [car,cons]!
+         cons null [cons,cdr]!
+       [cons,cdr]!
+       getBack
+       xx|swap|xx
+       ^_^
+       head<-dalin
+       Exit
+     then
+     (* [address, length], index-of-linefeed *)
+     x|over|xx over + add1
+     xxx|swap|x (* leave the new address *)
+     swap over - sub1
+     xx|swap|x (* leave the new length *)
+     (* [new address, new length], address, index-of-linefeed *)
+     dup zero? if
+       (* 'linefeed' is the 1st char of the string
+          so we meet an empty line, it will be stored as `null' in dalin *)
+       drop2
+       null
+     else
+       (* index-of-linefeed is just the length of substring *)
+       dup substring
+       xx|tuck|x
+       swap copyByteString
+       <substring>
+     then
+     cons drop <dalin>
+     [car,cons]!
+       cons null [cons,cdr]!
+     [cons,cdr]!
+     getBack
+       xx|swap|xx
+       ^_^
+     ready
+     help,string->line-dalin
+     Exit
+   ; defineRecursiveFunction
+
+   : string->line-dalin
+     (* [address, length] -- head[address, <dalin>] *)
+     (* which parses a string and return a dalin of substring
+        one substring denotes one line of text
+        empty line is stored as `null' in dalin *)
+     null ready
+     help,string->line-dalin
+     Exit
+   ; defineFunction
+   #+end_src
+** test: string->line-dalin
+   #+begin_src cicada
+   s" kkk" string->line-dalin
+   car printTypeTag (* <substring> *) cr
+   dup getLengthOfString
+   printString (* kkk *) cr
+
+   s" kkk
+   " string->line-dalin
+   dup2 dalin*? . (* 1 *) cr
+   car printTypeTag (* <substring> *) cr
+   dup getLengthOfString
+   printString (* kkk *) cr
+
+   s" kkk
+   aaa" string->line-dalin
+   dup2 dalin*? . (* 0 *) cr
+   dup2
+   car printTypeTag (* <substring> *) cr
+   dup getLengthOfString
+   printString (* kkk *) cr
+   ->
+   car printTypeTag (* <substring> *) cr
+   dup getLengthOfString
+   printString (* aaa *) cr
+
+   s" kkk
+   aaa
+   " string->line-dalin
+   dup2 dalin*? . (* 0 *) cr
+   dup2
+   car printTypeTag (* <substring> *) cr
+   dup getLengthOfString
+   printString (* kkk *) cr
+   ->
+   car printTypeTag (* <substring> *) cr
+   dup getLengthOfString
+   printString (* aaa *) cr
+   #+end_src
+** >< reduce text-editing to line-editing
+   #+begin_src cicada
+   (* buffer: ==
+        [address]
+      line: ==
+        buffer[address, length], cursors[address, <list>]
+      where:
+        cursor is a Zero-based-index, from Zero to length *)
+
+
+   0 : Var,LineBuffer ; defineVar
+
+   Here fetch Var,LineBuffer save
+   1000 Here addSave
+
+   : LineBuffer (*  -- buffer[address] *)
+     Var,LineBuffer fetch
+     Exit
+   ; defineFunction
+
+
+   0 : Var,Tmp,LineBuffer ; defineVar
+
+   Here fetch Var,Tmp,LineBuffer save
+   1000 Here addSave
+
+   : Tmp,LineBuffer (*  -- buffer[address] *)
+     Var,Tmp,LineBuffer fetch
+     Exit
+   ; defineFunction
+
+
+   : copyStringToBuffer
+     (* string[address, length], buffer[address] --
+        buffer[address, length] *)
+     pushLambdaStack
+     tuck
+     popLambdaStack dup pushLambdaStack
+     swap copyByteString
+     popLambdaStack
+     swap
+     Exit
+   ; defineFunction
+
+   : copyStringToLine
+     (* string[address, length], buffer[address] --
+        buffer[address, length], cursors[address, <list>] *)
+     copyStringToBuffer
+     cons drop <list>
+     Zero <fixnum>
+     [cons,car]!
+     Exit
+   ; defineFunction
+
+
+   : line,move-cursor-right
+     (* buffer[address, length], cursors[address, <list>], number --
+        buffer[address, length], cursors[address, <list>] *)
+     xx|over|x car drop (* drop <fixnum> *)
+     +  <fixnum> [cons,car]!
+     Exit
+   ; defineFunction
+
+   : line,move-cursor-left
+     (* buffer[address, length], cursors[address, <list>], number --
+        buffer[address, length], cursors[address, <list>] *)
+     xx|over|x car drop (* drop <fixnum> *)
+     -  <fixnum> [cons,car]!
+     Exit
+   ; defineFunction
+
+   : line,move-cursor-to-col
+     (* buffer[address, length], cursors[address, <list>], index --
+        buffer[address, length], cursors[address, <list>] *)
+     <fixnum> [cons,car]!
+     Exit
+   ; defineFunction
+
+
+   (* ><><><
+      the following two functions need better factoring *)
+
+   : insertString
+     (* string[address, length],
+        buffer[address, length], cursors[address, <list>] --
+        buffer[address, length], cursors[address, <list>] *)
+     dup2 ready
+     xx|over|xx ready
+     car drop (* drop <fixnum> *)
+     tuck -
+     xx|swap|x +
+       dup pushLambdaStack (* address of middle buffer *)
+     swap
+     Tmp,LineBuffer copyStringToBuffer
+     xx|swap|xx
+     popLambdaStack copyStringToBuffer
+       dup pushLambdaStack (* length of string *)
+     + copyStringToBuffer
+     drop2
+     popLambdaStack
+     getBack x|swap|xx dup pushLambdaStack
+     +
+     popLambdaStack
+     getBack
+     x|tuck|xx car drop (* <fixnum> *)
+     + <fixnum> [cons,car]!
+     Exit
+   ; defineFunction
+
+   (*
+    ,* test:
+    ,* s"  xxx "
+    ,* s"  kkk " LineBuffer copyStringToLine
+    ,* 2 line,move-cursor-right
+    ,* insertString
+    ,* car write (\* 7 *\) cr
+    ,* printString (\*  k xxx kk  *\) cr
+    ,*)
+
+   : insertChar
+     (* char,
+        buffer[address, length], cursors[address, <list>] --
+        buffer[address, length], cursors[address, <list>] *)
+     dup2 ready
+     xx|over|xx ready
+     car drop (* drop <fixnum> *)
+     tuck -
+     xx|swap|x +
+       dup pushLambdaStack (* address of middle buffer *)
+     swap
+     Tmp,LineBuffer copyStringToBuffer
+     x|swap|xx
+     popLambdaStack tuck saveByte
+     add1
+     copyStringToBuffer
+     drop2
+     getBack add1
+     getBack dup2 car drop (* <fixnum> *)
+     add1 <fixnum> [cons,car]!
+     Exit
+   ; defineFunction
+
+
+   (*
+    ,* test:
+    ,* 'x'
+    ,* s"  kkk " LineBuffer copyStringToLine
+    ,* 2 line,move-cursor-right
+    ,* insertChar
+    ,* car write (\* 3 *\) cr
+    ,* printString (\*  kxkk  *\) cr
+    ,*)
+
+
+   : deleteChars
+     (* buffer[address, length], cursors[address, <list>], number --
+        buffer[address, length], cursors[address, <list>] *)
+     xx|tuck|x
+     xx|swap|x dup2 ready
+     car drop (* drop <fixnum> *)
+     +
+     (* buffer[address, length], number, number + cursors *)
+     xx|swap|x  -
+     (* buffer[address], number + cursors, length - number *)
+     x|over|xx swap ready
+     (* buffer[address], number + cursors *)
+     +
+     xx|swap|x
+
+     Exit
+   ; defineFunction
+
+   : line,kill-line (* erase-half-line-to-end *)
+     (* buffer[address, length], cursors[address, <list>] --
+        buffer[address, length], cursors[address, <list>] *)
+     Exit
+   ; defineFunction
+
+
+
+
+
+
+
+   (*
+    ,* : text,move-cursor-up (\* number -- *\)
+    ,* ; defineFunction
+    ,*
+    ,* : text,move-cursor-down (\* number -- *\)
+    ,* ; defineFunction
+    ,*
+    ,* : text,move-cursor-down-&-to-the-begin-of-line (\* number -- *\)
+    ,* ; defineFunction
+    ,*
+    ,* : text,move-cursor-up-&-to-the-begin-of-line (\* number -- *\)
+    ,* ; defineFunction
+    ,*)
+
+
+
+
+   (*
+    ,* : text,move-cursor-to-row (\* row-index -- *\)
+    ,* ; defineFunction
+    ,*
+    ,* : text,move-cursor-to-row-&-col (\* row-index, col-index -- *\)
+    ,* ; defineFunction
+    ,*)
+
+
+   (* the position of the cursor
+    ,* is also as an argument of the following functions
+    ,* but the cursor do not move when these functions are executed
+    ,*)
+
+
+
+   (*
+    ,* : delete-lines (\* number -- *\)
+    ,* ; defineFunction
+    ,*)
+
+
+
+   (*
+    ,* : erase-half-screen-to-end (\* -- *\)
+    ,* ; defineFunction
+    ,*
+    ,* : erase-half-screen-to-start (\* -- *\)
+    ,* ; defineFunction
+    ,*
+    ,* : erase-screen (\* -- *\)
+    * ; defineFunction
+    *)
+   #+end_src
+* x & k
+  - x :: 被读入的text是被结构化地保存的
+         显示的时候也可以根据结构高亮
+  - x :: 每个命令都是一个 string-processing function
+         有一个命令的缓冲区 也就是说并不是每个命令都会马上被执行
+         这样在显示方面就要多费些功夫
+         显示与命令的执行分离
+         命令的执行也通过缓冲区与这些命令作为 string-processing function 的功能分离
+         这样整个文本编辑器就是cicada的string-processing的应用了
+         只是在cicada的string-processing上面添加了一个函数缓冲还有显示而已
+         cicada的string-processing中的函数有两种类型
+         一种是副作用类型的
+         一种是利用原有的字符串构造新的字符串的(函数式编程范式)
+         我将首先只实现函数式的那一种
+         也就是说对于一个字符串 插入 删除 替换 等操作都会生成一个全新的字符串
+         这也许非常耗费内存 但是其能行性值得被实验一下
+         注意
+         我必须利用缓冲下来的很多命令来形成一个字符处理函数
+         因为每个字符处理函数都是要申请很多内存 来保存一行字符的
+         这也要求我设计很多新的字符串处理的语法
+         还要实现对这些语法的处理
+         这是最难的部分
+         注意
+         另一个重要的 操作是 匹配
+         它的函数类型与上面的不同
+         注意
+         这里可能需要加强cicada对字符串的实现方式
+         尤其是需要考虑gc
+  - k :: 太好了!
+         你已经有一个大致的思路了
+         我们可以先假装gc没有问题然后去实现这些想法试试
+  - x :: 没错
+         我之前说过
+         字符串处理 模块系统 文档系统 文本编辑器 都应该被同时设计
+         但是现在我明白了
+         应该被同时设计的是
+         字符串处理 和 文本编辑器
+         而 模块系统 文档系统 其实应该与集成开发环境的用户接口一起设计
+         模块系统涉及到对命名空间的控制
+         当用hash-table来实现find的时候这并不难做到
+         模块系统还涉及到 如何定义什么是一个模块
+         非常简单 就是一个词的集合而已 其中可以有 任何类型的词
+* x & k 2
+  - x :: 写好文本编辑器之后我就可以把文档写在我设计的类org-mode中了
+         并且有语法高亮
+         并且我可以自己设计文档的格式
+         设计自己的markdown
+* >< tryREDL
+  just use the ``readChar''
+  #+begin_src cicada
+  :" 1234567890"
+  : InitString,for-update-display ; defineConstString
+
+  InitString,for-update-display
+  : Var-string,for-update-display ; define
+
+
+  : update-display
+    (*  --  *)
+    terminal,clearScreen
+    Var-string,for-update-display
+    fetch2 printString cr
+    Exit
+  ; defineFunction
+
+
+  :" kkk
+  : tryREDL (*  --  *)
+    setTerminalToReadKey
+    help,tryREDL
+    Exit
+  ; defineFunction
+  "
+  : String-for,kkk ; defineConstString
+
+  :" kkk" string-hash->index
+  : SymbolIndex,kkk ; defineConst
+  : kkk (*  -- *)
+    String-for,kkk
+    Var-string,for-update-display
+    save2
+    Exit
+  ; defineFunction
+
+  :" aaa
+
+  : help,tryREDL (*  --  *)
+    (* D *)
+    update-display
+    (* R *)
+    readChar  (* writeSpace writeDecNumber cr *)
+    (* E *)
+    char->function-name-symbol
+    executeSymbol
+    (* L *)
+    help,tryREDL
+    Exit
+  ; defineRecursiveFunction
+  "
+  : String-for,aaa
+  ; defineConstString
+
+  :" aaa" string-hash->index
+  : SymbolIndex,aaa ; defineConst
+  : aaa (*  -- *)
+    String-for,aaa
+    Var-string,for-update-display
+    save2
+    Exit
+  ; defineFunction
+
+
+
+  (* in the future this funciton must see a lot of global variables *)
+  : char->function-name-symbol
+    (* char -- [index, <symbol>] *)
+    dup 'k' == if
+      drop SymbolIndex,kkk <symbol> Exit
+    then
+    dup 'a' == if
+      drop SymbolIndex,aaa <symbol> Exit
+    then
+    Exit
+  ; defineFunction
+
+
+  :" executeSymbol said:
+     ``My function-type is (* [index, <symbol>] -- unknown *)
+       But I meet the following type
+       I will not touch it and call debuger.''
+     --> "
+  : String,executeSymbol,type-error ; defineConstString
+  : executeSymbol (* [index, <symbol>] -- unknown *)
+    dup <symbol> =/= if
+      String,executeSymbol,type-error printString
+      dup printTypeTag cr
+      debuger
+      Exit
+    then
+    drop (* drop <symbol> *)
+    index-hashback->string
+    executeWord
+    Exit
+  ; defineFunction
+
+
+
+  : help,tryREDL (*  --  *)
+    (* D *)
+    update-display
+    (* R *)
+    readChar
+    (* E *)
+    char->function-name-symbol
+    executeSymbol
+    (* L *)
+    help,tryREDL
+    Exit
+  ; defineRecursiveFunction
+
+  : tryREDL (*  --  *)
+    setTerminalToReadKey
+    help,tryREDL
+    Exit
+  ; defineFunction
+
+  : t tryREDL Exit ; defineFunction
+  #+end_src
+* ==================================================
+* welcome
+  #+begin_src cicada
+  :"    welcome to cicada ^_^"
+  : String,welcome ; defineConstString
+  : welcome (* -- *)
+    String,welcome printString cr
+    Exit
+  ; defineFunction
+
+  cr
+
+  welcome
+
+  cr
+
+  (* report the UserDataSegment size *)
+  ."  the size of UserDataSegment is: " cr
+  writeSpace
+  EndOfUserDataSegment  UserDataSegment  -  writeDecNumber
+  ."  bytes" cr
+
+  writeSpace
+  EndOfUserDataSegment  Here fetch  -  writeDecNumber
+  ."  bytes free" cr
+
+  writeSpace
+  Here fetch  UserDataSegment  -  writeDecNumber
+  ."  bytes used" cr
+
+  cr
+
+  ."  you are in symbolREPL
+   in this REPL some types of symbol will be processed specially" cr
+
+  cr
+  #+end_src
+* ==================================================

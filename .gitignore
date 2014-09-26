@@ -10,7 +10,7 @@
 */*/*/*#*
 */*/*/*/*#*
 
-play/bmfs
+play/cicada
 play/*.sys
 play/*.bin
 play/*.image
