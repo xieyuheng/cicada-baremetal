@@ -5,15 +5,13 @@
 
 * ==================================================
 * TODO
-  1. move memory map to there functions
-  2. 按照计划重新结构化 cicada-kernel 的汇编代码
-     使得核心部分的汇编代码更结构化
-     并更加易于移植
-  4. 重写linux版本
-  5. 生成中文字典 交给 Recaler
-  6. 支持 windows
-     让 Recaler 能够 使用
-     (包括 emacs 还有 fasm 的)
+  1. 把 lambda-stack 放到 汇编代码中
+     使得 字典编撰者 能够使用它
+  2. 重写语法 基本的 字典编撰者
+  3. fix the load-file function of linux version
+  4. 生成中文字典 交给 Recaler
+  5. 支持 windows 及其环境下的开发
+  6. 支持 Mac 及其环境下的开发
 * ==================================================
 * cicada-ideas
   1. vision art with Recaler
