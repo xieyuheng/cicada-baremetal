@@ -1,11 +1,6 @@
-#+TITLE:     cicada project
 #+AUTHOR:    XIE Yuheng
 #+EMAIL:     xyheme@gmail.com
 
-
-* WARNING
-  system is very unstable currently,
-  please do NOT use it for something that requires stability.
 
 * what is cicada ?
   cicada is a very simple programming language,
@@ -13,18 +8,46 @@
   the design of cicada is influenced by scheme and forth and joy.
 
 * what is the purpose cicada project ?
-  the purpose of the cicada project is <br/>
-  to provide support                   <br/>
-  about programming language and math  <br/>
-  to programmable devices              <br/>
-  for the creative spirit in everyone's mind ^_^
+  the purpose of the cicada project is
+  - to provide support
+  - about programming language and *math*
+  - to *programmable devices*
+  - for *the creative spirit* in everyone's mind ^_^  
+
+  ------------------------    
+
+  by "programmable devices",
+  I intend to capture the most general concept.
+  devices better be programmable,
+  for they are stupid and can do less if we do not program them,
+  and in my point of view,
+  the more creative smart people program them,
+  the better the world will be ^_^.
+  cicada suits this generalized purpose,
+  for it is very easy to port cicada to any CPU,
+  and the IDE of cicada will be a simple yet powerful text-editor,
+  which will be used as an uniform programming platform across different hardwares.
+   
+  by "the creative spirit",
+  I mean that cicada is very easy to be
+  entirely understanded by anyone who has that curiosity,
+  even my 14 years old little brother.
+  and then one can use cicada to program his/her "programmable devices".
+   
+  I added "math" above,
+  simply for I love math ^_^,
+  and I will use cicada to do some math experiments,
+  to gratify my curiosity about math.
 
 * what is state of this project currently ?
-  - cicada for linux :: =other-operating-systems/linux/=
+  - cicada for linux ::
+       =other-operating-systems/linux/=
        which is currently under active development.
-  - operating system for x86_64 :: =architecturals/x86-64/=
+  - operating system for x86_64 :: 
+       =architecturals/x86-64/=
        which is currently under active development
-  - [coming soon] operating system for ARM :: =architecturals/arm/=
+  - [coming soon] operating system for ARM :: 
+       =architecturals/arm/=
        which will be running on raspberry pi.
 
 * how to install and run ?
