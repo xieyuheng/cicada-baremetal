@@ -482,7 +482,6 @@ macro popArgumentStack Register {
 ;;    ;==    [ExplainerPointer] == address-of-explainer (of word-to-jump)
 ;;    mov ExplainerPointer, [NextWordPointer]
 ;;    add NextWordPointer, CellWidth
-;;    ;; why not: cmp qword[NextWordPointer], Exit  ???
 ;;    cmp dword[NextWordPointer], Exit
 ;;    ;-- IF: [NextWordPointer] =/= Exit
 ;;    jne @f
@@ -501,8 +500,6 @@ macro popArgumentStack Register {
 macro next {
   mov ExplainerPointer, [NextWordPointer]
   add NextWordPointer, CellWidth
-  ;; mov TemporaryRegister2, Exit
-  ;; cmp qword[NextWordPointer], TemporaryRegister2
   cmp dword[NextWordPointer], Exit
   je @f
   cmp dword[NextWordPointer], 已矣
@@ -531,7 +528,7 @@ WordStringOf#Word:
 EndOfWordStringOf#Word:
 ;;--------------------------------------
 SizeOfFunctionBodyOf#Word:
-        xx (EndOfFunctionBodyOf#Word - Word)/8 - 1
+        xx (EndOfFunctionBodyOf#Word - Word)/CellWidth - 1
 ;;--------------------------------------
 IdentificationOf#Word:
         xx IdentificationOf#Word
@@ -797,9 +794,7 @@ defWordEnd executeWord
 defConstString "Message:undefined-word", "   UNDEFINED WORD: ", Message_undefined_word
 defWord "initialize", initialize
        ;; (* -- *)
-
-       xx loadCoreFile
-
+       xx loadCoreFile         
        xx Exit
 defWordEnd initialize
 defCode "load-core-file", loadCoreFile
@@ -814,7 +809,7 @@ defCode "load-core-file", loadCoreFile
 
 align 16
 LocationOfEnglishCore:
-   file 'english-core.ccd'
+   file 'english-core.cicada'
 SizeOfEnglishCore = ($ - LocationOfEnglishCore) ;; unit :: byte
 defVar "Base", 10, Base
 defVar "Here",  0, Here
@@ -1053,261 +1048,261 @@ defCode "非假则转", 非假则转
    popReturnStack NextWordPointer
    next
 defCode "drop", drop
-;; (* a -- *)
-popArgumentStack rax
-next
+   ;; (* a -- *)
+   popArgumentStack rax
+   next
 
- defCode "drop2", drop2
-;; (* a b -- *)
-popArgumentStack rax
-popArgumentStack rax
-next
+defCode "drop2", drop2
+   ;; (* a b -- *)
+   popArgumentStack rax
+   popArgumentStack rax
+   next
 
- defCode "dup", dup
-;; (* a -- a a *)
-mov  rax, [ArgumentStackPointer]
-pushArgumentStack rax
-next
+defCode "dup", dup
+   ;; (* a -- a a *)
+   mov  rax, [ArgumentStackPointer]
+   pushArgumentStack rax
+   next
 
- defCode "dup2", dup2
-;; (* a b -- a b a b *)
-mov  rbx, [ArgumentStackPointer]
-mov  rax, [ArgumentStackPointer + CellWidth]
-pushArgumentStack rax
-pushArgumentStack rbx
-next
+defCode "dup2", dup2
+   ;; (* a b -- a b a b *)
+   mov  rbx, [ArgumentStackPointer]
+   mov  rax, [ArgumentStackPointer + CellWidth]
+   pushArgumentStack rax
+   pushArgumentStack rbx
+   next
 defCode "over", over
-;; (* a b -- a b | a *)
-mov  rax, [ArgumentStackPointer + CellWidth]
-pushArgumentStack rax
-next
+   ;; (* a b -- a b | a *)
+   mov  rax, [ArgumentStackPointer + CellWidth]
+   pushArgumentStack rax
+   next
 
- defCode "x|over|xx", xoverxx
-;; (* a | b c -- a | b c | a *)
-mov  rax, [ArgumentStackPointer + (2 * CellWidth)]
-pushArgumentStack rax
-next
+defCode "x|over|xx", xoverxx
+   ;; (* a | b c -- a | b c | a *)
+   mov  rax, [ArgumentStackPointer + (2 * CellWidth)]
+   pushArgumentStack rax
+   next
 
- defCode "xx|over|x", xxoverx
-;; (* a b | c -- a b | c | a b *)
-mov  rax, [ArgumentStackPointer + (2 * CellWidth)]
-pushArgumentStack rax
-mov  rax, [ArgumentStackPointer + (2 * CellWidth)] ;; not (1 * CellWidth)
-pushArgumentStack rax
-next
+defCode "xx|over|x", xxoverx
+   ;; (* a b | c -- a b | c | a b *)
+   mov  rax, [ArgumentStackPointer + (2 * CellWidth)]
+   pushArgumentStack rax
+   mov  rax, [ArgumentStackPointer + (2 * CellWidth)] ;; not (1 * CellWidth)
+   pushArgumentStack rax
+   next
 
- defCode "xx|over|xx", xxoverxx
-;; (* a b | c d -- a b | c d | a b *)
-mov  rax, [ArgumentStackPointer + (3 * CellWidth)]
-pushArgumentStack rax
-mov  rax, [ArgumentStackPointer + (3 * CellWidth)] ;; not (2 * CellWidth)
-pushArgumentStack rax
-next
+defCode "xx|over|xx", xxoverxx
+   ;; (* a b | c d -- a b | c d | a b *)
+   mov  rax, [ArgumentStackPointer + (3 * CellWidth)]
+   pushArgumentStack rax
+   mov  rax, [ArgumentStackPointer + (3 * CellWidth)] ;; not (2 * CellWidth)
+   pushArgumentStack rax
+   next
 
- defCode "x|over|xxx", xoverxxx
-;; (* a | b c d -- a | b c d | a *)
-mov  rax, [ArgumentStackPointer + (3 * CellWidth)]
-pushArgumentStack rax
-next
+defCode "x|over|xxx", xoverxxx
+   ;; (* a | b c d -- a | b c d | a *)
+   mov  rax, [ArgumentStackPointer + (3 * CellWidth)]
+   pushArgumentStack rax
+   next
 
- defCode "xx|over|xxxx", xxoverxxxx
-;; (* a b | c d e f -- a b | c d e f | a b *)
-mov  rax, [ArgumentStackPointer + (5 * CellWidth)]
-pushArgumentStack rax
-mov  rax, [ArgumentStackPointer + (5 * CellWidth)] ;; not (4 * CellWidth)
-pushArgumentStack rax
-next
+defCode "xx|over|xxxx", xxoverxxxx
+   ;; (* a b | c d e f -- a b | c d e f | a b *)
+   mov  rax, [ArgumentStackPointer + (5 * CellWidth)]
+   pushArgumentStack rax
+   mov  rax, [ArgumentStackPointer + (5 * CellWidth)] ;; not (4 * CellWidth)
+   pushArgumentStack rax
+   next
 defCode "tuck", tuck
-;; (* a b -- b | a b *)
-popArgumentStack rbx
-popArgumentStack rax
-pushArgumentStack rbx
-pushArgumentStack rax
-pushArgumentStack rbx
-next
+   ;; (* a b -- b | a b *)
+   popArgumentStack rbx
+   popArgumentStack rax
+   pushArgumentStack rbx
+   pushArgumentStack rax
+   pushArgumentStack rbx
+   next
 
- defCode "x|tuck|xx", xtuckxx
-;; (* a | b c -- b c | a | b c *)
-popArgumentStack rcx
-popArgumentStack rbx
-popArgumentStack rax
-pushArgumentStack rbx
-pushArgumentStack rcx
-pushArgumentStack rax
-pushArgumentStack rbx
-pushArgumentStack rcx
-next
+defCode "x|tuck|xx", xtuckxx
+   ;; (* a | b c -- b c | a | b c *)
+   popArgumentStack rcx
+   popArgumentStack rbx
+   popArgumentStack rax
+   pushArgumentStack rbx
+   pushArgumentStack rcx
+   pushArgumentStack rax
+   pushArgumentStack rbx
+   pushArgumentStack rcx
+   next
 
- defCode "xx|tuck|x", xxtuckx
-;; (* a b | c -- c | a b | c *)
-popArgumentStack rcx
-popArgumentStack rbx
-popArgumentStack rax
-pushArgumentStack rcx
-pushArgumentStack rax
-pushArgumentStack rbx
-pushArgumentStack rcx
-next
+defCode "xx|tuck|x", xxtuckx
+   ;; (* a b | c -- c | a b | c *)
+   popArgumentStack rcx
+   popArgumentStack rbx
+   popArgumentStack rax
+   pushArgumentStack rcx
+   pushArgumentStack rax
+   pushArgumentStack rbx
+   pushArgumentStack rcx
+   next
 
- defCode "xx|tuck|xx", xxtuckxx
-;; (* a b | c d -- c d | a b | c d *)
-popArgumentStack rdx
-popArgumentStack rcx
-popArgumentStack rbx
-popArgumentStack rax
-pushArgumentStack rcx
-pushArgumentStack rdx
-pushArgumentStack rax
-pushArgumentStack rbx
-pushArgumentStack rcx
-pushArgumentStack rdx
-next
+defCode "xx|tuck|xx", xxtuckxx
+   ;; (* a b | c d -- c d | a b | c d *)
+   popArgumentStack rdx
+   popArgumentStack rcx
+   popArgumentStack rbx
+   popArgumentStack rax
+   pushArgumentStack rcx
+   pushArgumentStack rdx
+   pushArgumentStack rax
+   pushArgumentStack rbx
+   pushArgumentStack rcx
+   pushArgumentStack rdx
+   next
 
- defCode "xxx|tuck|x", xxxtuckx
-;; (* a b c | d -- d | a b c | d *)
-popArgumentStack rdx
-popArgumentStack rcx
-popArgumentStack rbx
-popArgumentStack rax
-pushArgumentStack rdx
-pushArgumentStack rax
-pushArgumentStack rbx
-pushArgumentStack rcx
-pushArgumentStack rdx
-next
+defCode "xxx|tuck|x", xxxtuckx
+   ;; (* a b c | d -- d | a b c | d *)
+   popArgumentStack rdx
+   popArgumentStack rcx
+   popArgumentStack rbx
+   popArgumentStack rax
+   pushArgumentStack rdx
+   pushArgumentStack rax
+   pushArgumentStack rbx
+   pushArgumentStack rcx
+   pushArgumentStack rdx
+   next
 defCode "swap", swap
-;; (* a b -- b a *)
-popArgumentStack rbx
-popArgumentStack rax
-pushArgumentStack rbx
-pushArgumentStack rax
-next
+   ;; (* a b -- b a *)
+   popArgumentStack rbx
+   popArgumentStack rax
+   pushArgumentStack rbx
+   pushArgumentStack rax
+   next
 
- defCode "x|swap|xx", xswapxx
-;; (* a | b c -- b c | a *)
-popArgumentStack rcx
-popArgumentStack rbx
-popArgumentStack rax
-pushArgumentStack rbx
-pushArgumentStack rcx
-pushArgumentStack rax
-next
+defCode "x|swap|xx", xswapxx
+   ;; (* a | b c -- b c | a *)
+   popArgumentStack rcx
+   popArgumentStack rbx
+   popArgumentStack rax
+   pushArgumentStack rbx
+   pushArgumentStack rcx
+   pushArgumentStack rax
+   next
 
- defCode "xx|swap|x", xxswapx
-;; (* a b | c -- c | a b *)
-popArgumentStack rcx
-popArgumentStack rbx
-popArgumentStack rax
-pushArgumentStack rcx
-pushArgumentStack rax
-pushArgumentStack rbx
-next
+defCode "xx|swap|x", xxswapx
+   ;; (* a b | c -- c | a b *)
+   popArgumentStack rcx
+   popArgumentStack rbx
+   popArgumentStack rax
+   pushArgumentStack rcx
+   pushArgumentStack rax
+   pushArgumentStack rbx
+   next
 
- defCode "x|swap|xxx", xswapxxx
-;; (* a | b c d -- b c d | a *)
-popArgumentStack rdx
-popArgumentStack rcx
-popArgumentStack rbx
-popArgumentStack rax
-pushArgumentStack rbx
-pushArgumentStack rcx
-pushArgumentStack rdx
-pushArgumentStack rax
-next
+defCode "x|swap|xxx", xswapxxx
+   ;; (* a | b c d -- b c d | a *)
+   popArgumentStack rdx
+   popArgumentStack rcx
+   popArgumentStack rbx
+   popArgumentStack rax
+   pushArgumentStack rbx
+   pushArgumentStack rcx
+   pushArgumentStack rdx
+   pushArgumentStack rax
+   next
 
- defCode "xxx|swap|x", xxxswapx
-;; (* a b c | d -- d | a b c *)
-popArgumentStack rdx
-popArgumentStack rcx
-popArgumentStack rbx
-popArgumentStack rax
-pushArgumentStack rdx
-pushArgumentStack rax
-pushArgumentStack rbx
-pushArgumentStack rcx
-next
+defCode "xxx|swap|x", xxxswapx
+   ;; (* a b c | d -- d | a b c *)
+   popArgumentStack rdx
+   popArgumentStack rcx
+   popArgumentStack rbx
+   popArgumentStack rax
+   pushArgumentStack rdx
+   pushArgumentStack rax
+   pushArgumentStack rbx
+   pushArgumentStack rcx
+   next
 
- defCode "xx|swap|xx", xxswapxx
-;; (* a b | c d -- c d | a b *)
-popArgumentStack rdx
-popArgumentStack rcx
-popArgumentStack rbx
-popArgumentStack rax
-pushArgumentStack rcx
-pushArgumentStack rdx
-pushArgumentStack rax
-pushArgumentStack rbx
-next
-
-
- defCode "x|swap|xxxx", xswapxxxx
-;; (* a | b c d e -- b c d e | a *)
-popArgumentStack r8 ;; e
-popArgumentStack rdx
-popArgumentStack rcx
-popArgumentStack rbx
-popArgumentStack rax
-pushArgumentStack rbx
-pushArgumentStack rcx
-pushArgumentStack rdx
-pushArgumentStack r8 ;; e
-pushArgumentStack rax
-next
-
- defCode "xxxx|swap|x", xxxxswapx
-;; (* a b c d | e --  e | a b c d *)
-popArgumentStack r8 ;; e
-popArgumentStack rdx
-popArgumentStack rcx
-popArgumentStack rbx
-popArgumentStack rax
-pushArgumentStack r8 ;; e
-pushArgumentStack rax
-pushArgumentStack rbx
-pushArgumentStack rcx
-pushArgumentStack rdx
-next
+defCode "xx|swap|xx", xxswapxx
+   ;; (* a b | c d -- c d | a b *)
+   popArgumentStack rdx
+   popArgumentStack rcx
+   popArgumentStack rbx
+   popArgumentStack rax
+   pushArgumentStack rcx
+   pushArgumentStack rdx
+   pushArgumentStack rax
+   pushArgumentStack rbx
+   next
 
 
- defCode "xx|swap|xxxx", xxswapxxxx
-;; (* a b | c d e f -- c d e f | a b *)
-popArgumentStack r9 ;; f
-popArgumentStack r8 ;; e
-popArgumentStack rdx
-popArgumentStack rcx
-popArgumentStack rbx
-popArgumentStack rax
-pushArgumentStack rcx
-pushArgumentStack rdx
-pushArgumentStack r8 ;; e
-pushArgumentStack r9 ;; f
-pushArgumentStack rax
-pushArgumentStack rbx
-next
+defCode "x|swap|xxxx", xswapxxxx
+   ;; (* a | b c d e -- b c d e | a *)
+   popArgumentStack r8 ;; e
+   popArgumentStack rdx
+   popArgumentStack rcx
+   popArgumentStack rbx
+   popArgumentStack rax
+   pushArgumentStack rbx
+   pushArgumentStack rcx
+   pushArgumentStack rdx
+   pushArgumentStack r8 ;; e
+   pushArgumentStack rax
+   next
 
- defCode "xxxx|swap|xx", xxxxswapxx
-;; (* a b c d | e f --  e f | a b c d *)
-popArgumentStack r9 ;; f
-popArgumentStack r8 ;; e
-popArgumentStack rdx
-popArgumentStack rcx
-popArgumentStack rbx
-popArgumentStack rax
-pushArgumentStack r8 ;; e
-pushArgumentStack r9 ;; f
-pushArgumentStack rax
-pushArgumentStack rbx
-pushArgumentStack rcx
-pushArgumentStack rdx
-next
+defCode "xxxx|swap|x", xxxxswapx
+   ;; (* a b c d | e --  e | a b c d *)
+   popArgumentStack r8 ;; e
+   popArgumentStack rdx
+   popArgumentStack rcx
+   popArgumentStack rbx
+   popArgumentStack rax
+   pushArgumentStack r8 ;; e
+   pushArgumentStack rax
+   pushArgumentStack rbx
+   pushArgumentStack rcx
+   pushArgumentStack rdx
+   next
+
+
+defCode "xx|swap|xxxx", xxswapxxxx
+   ;; (* a b | c d e f -- c d e f | a b *)
+   popArgumentStack r9 ;; f
+   popArgumentStack r8 ;; e
+   popArgumentStack rdx
+   popArgumentStack rcx
+   popArgumentStack rbx
+   popArgumentStack rax
+   pushArgumentStack rcx
+   pushArgumentStack rdx
+   pushArgumentStack r8 ;; e
+   pushArgumentStack r9 ;; f
+   pushArgumentStack rax
+   pushArgumentStack rbx
+   next
+
+defCode "xxxx|swap|xx", xxxxswapxx
+   ;; (* a b c d | e f --  e f | a b c d *)
+   popArgumentStack r9 ;; f
+   popArgumentStack r8 ;; e
+   popArgumentStack rdx
+   popArgumentStack rcx
+   popArgumentStack rbx
+   popArgumentStack rax
+   pushArgumentStack r8 ;; e
+   pushArgumentStack r9 ;; f
+   pushArgumentStack rax
+   pushArgumentStack rbx
+   pushArgumentStack rcx
+   pushArgumentStack rdx
+   next
 defCode "|123->321|", abcTOcba
-popArgumentStack rax
-popArgumentStack rbx
-popArgumentStack rcx
-pushArgumentStack rax
-pushArgumentStack rbx
-pushArgumentStack rcx
-next
+   popArgumentStack rax
+   popArgumentStack rbx
+   popArgumentStack rcx
+   pushArgumentStack rax
+   pushArgumentStack rbx
+   pushArgumentStack rcx
+   next
 defCode "add1", add1
    ;; (* n -- n+1 *)
    inc qword[ArgumentStackPointer]
@@ -1903,6 +1898,42 @@ defCode "empty-grey-pair-stack?", emptyGreyPairStack?
    movzx rax, al
    pushArgumentStack rax
    next
+;; 1. not to much stack-processing is needed here
+;; 2. LambdaStack can be used to save the faked-local-vars
+
+defVar "Lambda-stack-pointer", LambdaStackTop, LambdaStackPointer
+
+defWord "push-lambda-stack", pushLambdaStack
+   ;; (* ArgumentStack::  value -->
+   ;;    LambdaStack::    value *)
+   xx literal, CellWidth, LambdaStackPointer, subSave
+   xx LambdaStackPointer, fetch, save
+   xx Exit
+defWordEnd pushLambdaStack
+
+defWord "pop-lambda-stack", popLambdaStack
+   ;; (* LambdaStack::    value -->
+   ;;    ArgumentStack::  value *)
+   xx LambdaStackPointer, fetch, fetch
+   xx literal, CellWidth, LambdaStackPointer, addSave
+   xx Exit
+defWordEnd popLambdaStack
+
+defWord "ready", ready
+   ;; (* ArgumentStack::  value-a, value-b -->
+   ;;    LambdaStack::    value-a, value-b *)
+   ;; (* beware of the order of the two values *)
+   xx swap, pushLambdaStack, pushLambdaStack
+   xx Exit
+defWordEnd ready
+
+defWord "get-back", getBack
+   ;; (* beware of the order of the two values *)
+   ;; (* LambdaStack::    value-a, value-b -->
+   ;;    ArgumentStack::  value-a, value-b *)
+   xx popLambdaStack, popLambdaStack, swap
+   xx Exit
+defWordEnd getBack
 defCode "tail-of-word-list", tailOfWordList
    ;; (* wordList[address, the number of words] --
    ;;    wordList[new address, number - 1] *)
@@ -2017,7 +2048,7 @@ defConst "Constant-string-explainer", explainConstString,  ConstStringExplainer
 ;;   | type-bit-63 | ... | type-bit-1 | type-bit-0 |
 ;; type-bit-0 is for HiddenWord
 
-define WordType_HiddenMask 00000001h
+WordType_HiddenMask = 00000001h
 
 
 defWord "word-link->word-string", wordLinkToWordString
@@ -2068,7 +2099,7 @@ defWord "append-number-to-here", appendNumberToHere
    xx save
    xx Here, fetch
    xx literal, CellWidth, addition
-   xx Here ,save
+   xx Here, save
    xx Exit
 defWordEnd appendNumberToHere
 
@@ -2077,64 +2108,116 @@ defWordEnd appendNumberToHere
 ;; a string in memory is ||  1 : length  ||  n : string  ||
 defWord "append-string-to-here", appendStringToHere
    ;; (* string[address, length] -- *)
-   ;; leave a length behind, for update Here
-   xx dup, xxswapx
-   ;;   ||  1 : length  ||
-   xx dup, appendNumberToHere
-   ;;   ||  n : string  ||
-   xx Here, fetch, swap, copyByteString
+   ;; for update Here
+   xx dup, pushLambdaStack
+   xx   dup, appendNumberToHere
+   xx   Here, fetch, swap, copyByteString
    ;; update Here
+   xx popLambdaStack
    xx Here, fetch, addition, Here, save
    xx Exit
 defWordEnd appendStringToHere
 
-defWord "create-word-header", createWordHeader
-   ;; (* byString *)
+defWord "create-word-header", createWordHeader ;; by string
    ;; (* string[address, length] -- word[address of link] *)
-   xx Here, fetch, xxswapx ;; for address-of-name-string-header
-   xx appendStringToHere
-   xx Here, fetch, appendNumberToHere ;; (* identification *)
-   xx Here, fetch ;; (* leave the word[link] *)
-   xx Zero, appendNumberToHere ;; (* link *)
-   xx Zero, appendNumberToHere ;; (* type *)
-   xx swap
-   xx appendNumberToHere ;; address-of-name-string-header
+   ;; for address-of-name-string-header
+   xx Here, fetch, pushLambdaStack
+   xx   appendStringToHere
+   xx   Here, fetch, appendNumberToHere ;; (* identification *)
+   xx   Here, fetch ;; (* leave the word[link] as return-value *)
+   xx   Zero, appendNumberToHere ;; (* link *)
+   xx   Zero, appendNumberToHere ;; (* type *)
+   ;; address-of-name-string-header
+   xx popLambdaStack, appendNumberToHere
    xx Exit
 defWordEnd createWordHeader
 
-
-defWord "create-word-header-for-function", createWordHeaderForFunction
+defWord "create-word-header-for-function", createWordHeaderForFunction ;; by string
+   ;; (* SizeOfFunctionBody *) is new
    ;; (* string[address, length] -- word[address of link] *)
-   xx Here, fetch, xxswapx ;; for address-of-name-string-header
-   xx appendStringToHere
-   xx Zero, appendNumberToHere ;; (* SizeOfFunctionBody *)
-   xx Here, fetch, appendNumberToHere ;; (* identification *)
-   xx Here, fetch ;; (* leave the word[link] *)
-   xx Zero, appendNumberToHere ;; (* link *)
-   xx Zero, appendNumberToHere ;; (* type *)
-   xx swap
-   xx appendNumberToHere ;; address-of-name-string-header
+   ;; for address-of-name-string-header
+   xx Here, fetch, pushLambdaStack
+   xx   appendStringToHere
+   xx   Zero, appendNumberToHere ;; (* SizeOfFunctionBody *)
+   xx   Here, fetch, appendNumberToHere ;; (* identification *)
+   xx   Here, fetch ;; (* leave the word[link] as return-value *)
+   xx   Zero, appendNumberToHere ;; (* link *)
+   xx   Zero, appendNumberToHere ;; (* type *)
+   xx popLambdaStack, appendNumberToHere ;; address-of-name-string-header
    xx Exit
 defWordEnd createWordHeaderForFunction
 
 
+defWord "help:append-word-description-to-here,number", help_append_word_description_to_here_number
+   ;; (* string[address, length] -- *)
+   ;; reading-error reported by ``number'' is not handled
+   xx literal, literal, appendNumberToHere
+   xx number, drop, appendNumberToHere
+   xx Exit
+defWordEnd help_append_word_description_to_here_number
+
+defWord "help:append-word-description-to-here,word", help_append_word_description_to_here_word
+   ;; (* string[address, length] -- *)
+   xx find, wordLinkToWordExplainer, appendNumberToHere
+   xx Exit
+defWordEnd help_append_word_description_to_here_word
+
+defWord "help:append-word-description-to-here,literal&branch", help_append_word_description_to_here_literal_branch
+   ;; (* string[address, length] -- *)
+   xx help_append_word_description_to_here_word
+   ;; ><><>< 如果后面什么都没有了 就需要报错 但是 这里没有处理这个 error
+   xx tailAndHeadOfWordList
+   xx dup2, stringDenoteNumber?, false?branch, 5
+   xx   number, drop, appendNumberToHere
+   xx   Exit
+   xx help_append_word_description_to_here_word
+   xx Exit
+defWordEnd help_append_word_description_to_here_literal_branch
+
+defConstString "Key-word:literal", "literal", Key_word_literal
+defConstString "Key-word:branch", "branch", Key_word_branch
+defConstString "Key-word:zero?branch", "zero?branch", Key_word_zero_branch
+defConstString "Key-word:false?branch", "false?branch", Key_word_false_branch
+defConstString "Key-word:not-false?branch", "not-false?branch", Key_word_not_false_branch
+  
+defWord "string-denote-literal&branch?", stringDenoteLiteralAndBranch?
+   ;; (* string[address, length] -- True or False *)
+   xx dup2, Key_word_literal, equalString?, false?branch, 4
+   xx   drop2, True
+   xx   Exit
+   xx dup2, Key_word_branch, equalString?, false?branch, 4
+   xx   drop2, True
+   xx   Exit
+   xx dup2, Key_word_zero_branch, equalString?, false?branch, 4
+   xx   drop2, True
+   xx   Exit
+   xx dup2, Key_word_false_branch, equalString?, false?branch, 4
+   xx   drop2, True
+   xx   Exit
+   xx dup2, Key_word_not_false_branch, equalString?, false?branch, 4
+   xx   drop2, True
+   xx   Exit
+   xx drop2, False
+   xx Exit
+defWordEnd stringDenoteLiteralAndBranch?
 
 defWord "append-word-description-to-here", appendWordDescriptionToHere
    ;; (* wordList[address, the number of words] -- *)
-   xx dup, zero?branch, 16;-- GOTO: drop2
+   xx dup, zero?, false?branch, 3
+   xx   drop2
+   xx   Exit
    xx tailAndHeadOfWordList
-   xx dup2, stringDenoteNumber?
-   xx false?branch, 6;-- GOTO: find
-   ;; reading-error reported by ``number'' is not handled
-   xx number, drop, appendNumberToHere
-   xx branch, -12;-- GOTO: the beginning
-
-   xx find, wordLinkToWordExplainer, appendNumberToHere
-   xx branch, -17;-- GOTO: the beginning
-
-   xx drop2
-   xx Exit
+   xx dup2, stringDenoteLiteralAndBranch?, false?branch, 4
+   xx   help_append_word_description_to_here_literal_branch
+   xx   branch, -13
+   xx dup2, stringDenoteNumber?, false?branch, 4
+   xx   help_append_word_description_to_here_number
+   xx   branch, -20
+   ;; else
+   xx   help_append_word_description_to_here_word
+   xx   branch, -23
 defWordEnd appendWordDescriptionToHere
+
 
 defWord "add-new-word-to-dictionary", addNewWordToDictionary
    ;; reset FirstWordInDictionary to point to the newly defined word
@@ -2161,11 +2244,11 @@ defWordEnd setSizeOfFunctionBody
 
 defWord "define-function", defineFunction
    ;; (* wordList[address, the number of words] -- *)
-   ;; to create a new word
-   ;; is to use some words to describe the new word,
-   ;; and let an explainer to explain the description of the new word.
-   ;; to define a new word
-   ;; is to add the new created word to the dictionary.
+   ;;  to create a new word
+   ;;  is to use some words to describe the new word,
+   ;;  and let an explainer to explain the description of the new word.
+   ;;  to define a new word
+   ;;  is to add the new created word to the dictionary.
    xx tailAndHeadOfWordList
    xx createWordHeaderForFunction
    xx FunctionBodyExplainer, appendNumberToHere

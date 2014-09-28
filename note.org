@@ -5,13 +5,21 @@
 
 * ==================================================
 * TODO
-  1. 把 lambda-stack 放到 汇编代码中
-     使得 字典编撰者 能够使用它
-  2. 重写语法 基本的 字典编撰者
-  3. fix the load-file function of linux version
-  4. 生成中文字典 交给 Recaler
-  5. 支持 windows 及其环境下的开发
-  6. 支持 Mac 及其环境下的开发
+  1. really need a better way to do tests
+     and I need to design better test-suit
+  2. 我需要一个写在 cicada 内的汇编器的 一个重要理由 是
+     我需要 统一 命名规则
+  3. 就用户接口的设计而言
+     我可以把那几个 核心的栈 的图示 放在 左边的一个窗口里
+     在这之后 我就能设计 debuger 的更好的使用方式
+     但是一个问题是 当我的界面不再是一个简单的解释器的时候
+     我就不能 直接利用 emacs 了
+     也就是必须 要先写自己的 文本编辑器
+     之后才能考虑窗口 之类的问题
+  4. fix the load-file function of linux version
+  5. 生成中文字典 交给 Recaler
+  6. 支持 windows 及其环境下的开发
+  7. 支持 Mac 及其环境下的开发
 * ==================================================
 * cicada-ideas
   1. vision art with Recaler
@@ -227,14 +235,18 @@
 ** x86-64/bootloader
 ** x86-64/cicada-kernel
 *** TODO
-    1. in lmode, how to set up the "attributes-and-type" field in an entry of IDT ?
-    2. SMP support
-    3. learn more from baremetal-OS
-    4. convert the code about storage & BMFS from old-asm to forth-like-asm
+    1. 作为一个使用纯粹释性语言
+       我应该 重新 思考 对 公共的 函数库的使用方式
+    2. in lmode, how to set up the "attributes-and-type" field in an entry of IDT ?
+    3. SMP support
+       作为一个以栈为基础的语言
+       我应该重新思考 利用 多核 的方式
+    4. learn more from baremetal-OS
+    5. convert the code about storage & BMFS from old-asm to forth-like-asm
        to examine the bug of "readsectors"
-    5. fix "bye"
-    6. design game-like UI in text mode
-    7. rewrite cicada to make it standard and portable
+    6. fix "bye"
+    7. design game-like UI in text mode
+    8. rewrite cicada to make it standard and portable
        (this will always be TODO)
 *** TEN COMMANDMENTS OF ASSEMBLY
     1. you can break any commandment when necessary
@@ -273,6 +285,23 @@
 * ==================================================
 * other-operating-systems/
 ** linux/
+*** TODO
+    1. 使得 cicada 在编译时期能够使用 共享的子程库
+    2. 写一个 libc 版本的 cicada 试试
+    3. 让 cicada 在编译期 把 ld 作为一个 共享的子程 来使用
+       并学习它的接口
+       这样在解释器里我就能 动态地调用 任何 共享的子程库 中的函数了
+    4. to allow executables to dynamically access external functionality at run time
+       and thereby reduce their overall memory footprint
+       在我的操作系统中 我可以以我的方式来完成上面的这种特性
+       我只需要一个 "need" 函数 来声明 某段被解释的代码 所需要的 sub-dictionary
+       我还需要一些 处理 sub-dictionary 的函数
+       sub-dictionary 的性质 是 :
+       - 它可以有很多个
+       - 并且它所占用的 内存可以被回收的
+       - 内存的回收 可以用 类似字符串的 垃圾回收器 来完成
+       - 当全面地使用 hash 来实现 dictionary 时
+         内存的回收 也可以用 类似链表的 垃圾回收器 来完成
 *** note
     1. 在写一个文本编辑器之前
        我不得不以linux为自己的工作环境

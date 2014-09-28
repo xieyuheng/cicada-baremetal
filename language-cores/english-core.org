@@ -7,7 +7,7 @@
 * *basic*
 ** define-variable & define-constant (new lexicographers)
 *** implementation
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     : define-variable,by-string
       (* initial-value, String[address, length] -- *)
       create-word-header
@@ -61,7 +61,7 @@
     #+end_src
 ** fixnum
 *** implementation
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     : /mod (* a, b -- quotient, a mod b *)
       mod/ swap
       Exit
@@ -88,7 +88,7 @@
     10 3 mod . (* 1 *)
     #+end_src
 ** ASCII chars
-   #+begin_src cicada :tangle ../play/english-core.ccd
+   #+begin_src cicada :tangle ../play/english-core.cicada
    9   : 'tab'      ; define-constant
    10  : 'linefeed' ; define-constant
    10  : 'newline'  ; define-constant
@@ -200,7 +200,7 @@
    #+end_src
 ** ><>< string & define-constant-string (new lexicographer)
 *** implementation
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     (* ><><>< string of 0 length is a not handled  error *)
     : head-of-string (* string[address, length] -- first char *)
       drop fetch-byte
@@ -254,7 +254,7 @@
     : k ; define-constant-string
     k print-string (* xxx *)
     #+end_src
-** recursive Function & decision (new lexicographers)
+** recursive function & decision (new lexicographers)
 *** note
     one predicate can make two branchs
     three predicates can make four branchs
@@ -264,8 +264,11 @@
     bug:
     if there is one ``if,then'' pair mismatch
     there will be crazy bug which is very hard to test !!
-    #+begin_src cicada :tangle ../play/english-core.ccd
-    : define-recursive-function (* wordList[address, the number of words] -- *)
+    #+begin_src cicada :tangle ../play/english-core.cicada
+    (* the following is a basic function
+       that allow you to define recursive function with tail call optimization *)
+    : define-recursive-function
+      (* wordList[address, the number of words] -- *)
       tail-and-head-of-word-list
       create-word-header-for-function
       set-size-of-function-body
@@ -278,6 +281,10 @@
     :" if"    : Key-word:if   ; define-constant-string
     :" else"  : Key-word:else ; define-constant-string
     :" then"  : Key-word:then ; define-constant-string
+
+    (* the following is an old function
+       direct literal number is not handled
+       it is no big deal, for this function is only used once *)
 
     : append-word-description-to-here,with-if&then
       (* wordList[address, the number of words] -- *)
@@ -320,44 +327,75 @@
     ; define-function
 
 
-    (* redefine append-word-description-to-here add `else' *)
+    (* redefine append-word-description-to-here add "else"
+       this also can be viewed as a basic test of new implemented "if&then"
+       and this time, I use Lambda-stack *)
+
+    : help:append-word-description-to-here,if
+      (* string if [address, length] -- *)
+      drop2
+      literal false?branch append-number-to-here
+      Here fetch xx|swap|x
+      Zero append-number-to-here (* leave a place *)
+      Exit
+    ; define-function
+
+    : help:append-word-description-to-here,else
+      (* string else [address, length] -- *)
+      drop2
+      literal branch append-number-to-here
+      Here fetch xxx|swap|x
+      Zero append-number-to-here (* leave a place *)
+      x|swap|xx
+      Here fetch over -  Cell-width /
+      swap save
+      Exit
+    ; define-function
+
+    : help:append-word-description-to-here,then
+      (* string then [address, length] -- *)
+      drop2
+      x|swap|xx
+      Here fetch over -  Cell-width /
+      swap save
+      Exit
+    ; define-function
 
     : append-word-description-to-here
       (* wordList[address, the number of words] -- *)
       dup zero? if
-        drop2 Exit
+        drop2
+        Exit
       then
       tail-and-head-of-word-list
       dup2 Key-word:if equal-string? if
-        drop2
-        literal false?branch append-number-to-here
-        Here fetch xx|swap|x
-        Zero append-number-to-here (* leave a place *)
-        append-word-description-to-here Exit
+        help:append-word-description-to-here,if
+        append-word-description-to-here
+        Exit
       then
       dup2 Key-word:else equal-string? if
-        drop2
-        literal branch append-number-to-here
-        Here fetch xxx|swap|x
-        Zero append-number-to-here (* leave a place *)
-        x|swap|xx
-        Here fetch over -  Cell-width /
-        swap save
-        append-word-description-to-here Exit
+        help:append-word-description-to-here,else
+        append-word-description-to-here
+        Exit
       then
       dup2 Key-word:then equal-string? if
-        drop2
-        x|swap|xx
-        Here fetch over -  Cell-width /
-        swap save
-        append-word-description-to-here Exit
+        help:append-word-description-to-here,then
+        append-word-description-to-here
+        Exit
+      then
+      dup2 string-denote-literal&branch? if
+        help:append-word-description-to-here,literal&branch
+        append-word-description-to-here
+        Exit
       then
       dup2 string-denote-number? if
-        number drop append-number-to-here
-        append-word-description-to-here Exit
+        help:append-word-description-to-here,number
+        append-word-description-to-here
+        Exit
       then
-        find word-link->word-explainer append-number-to-here
-        append-word-description-to-here Exit
+      help:append-word-description-to-here,word
+      append-word-description-to-here
+      Exit
     ; define-recursive-function,with-if&then
 
 
@@ -421,16 +459,16 @@
 
 
     : .12 (* 1 2 -- *)
-      Two == if
+      2 == if
         '2' write-char
-        One == if
+        1 == if
           '1' write-char
         else
           '_' write-char
         then
       else
         '_' write-char
-        One == if
+        1 == if
           '1' write-char
         else
           '_' write-char
@@ -445,7 +483,7 @@
     6 6 .12 cr
     #+end_src
 ** predicates
-   #+begin_src cicada :tangle ../play/english-core.ccd
+   #+begin_src cicada :tangle ../play/english-core.cicada
    : special-key-word? (* word[explainer] -- True or False *)
      dup literal literal           == if drop True Exit then
      dup literal branch            == if drop True Exit then
@@ -473,7 +511,7 @@
        instead of just using lambda-abstraction
 *** implementation
 **** write-dec-number
-     #+begin_src cicada :tangle ../play/english-core.ccd
+     #+begin_src cicada :tangle ../play/english-core.cicada
      : write-dec-number-char (* byte -- *)
        '0' + write-char
        Exit
@@ -517,7 +555,7 @@
      ; define-function
      #+end_src
 **** write-bin-number
-     #+begin_src cicada :tangle ../play/english-core.ccd
+     #+begin_src cicada :tangle ../play/english-core.cicada
      : write-bin-number-char (* byte -- *)
        '0' + write-char
        Exit
@@ -561,7 +599,7 @@
      ; define-function
      #+end_src
 **** write-oct-number
-     #+begin_src cicada :tangle ../play/english-core.ccd
+     #+begin_src cicada :tangle ../play/english-core.cicada
      : write-oct-number-char (* byte -- *)
        '0' + write-char
        Exit
@@ -605,7 +643,7 @@
      ; define-function
      #+end_src
 **** write-hex-number
-     #+begin_src cicada :tangle ../play/english-core.ccd
+     #+begin_src cicada :tangle ../play/english-core.cicada
      : write-hex-number-char (* byte -- *)
        dup Ten < if
          '0' + write-char Exit
@@ -687,7 +725,7 @@
      ; define-function
      #+end_src
 **** write-aph-number
-     #+begin_src cicada :tangle ../play/english-core.ccd
+     #+begin_src cicada :tangle ../play/english-core.cicada
      : write-aph-number-char (* byte -- *)
        dup Ten < if
          '0' + write-char Exit
@@ -769,7 +807,7 @@
      ; define-function
      #+end_src
 **** usage
-     #+begin_src cicada :tangle ../play/english-core.ccd
+     #+begin_src cicada :tangle ../play/english-core.cicada
      : .unsigned (* fixnum -- *)
        write-dec-number
        'space' write-char
@@ -902,7 +940,7 @@
     -123 321 -123321 .aph,signed,capital .aph,signed,capital .aph,signed,capital
     #+end_src
 ** print-string,null-terminated
-   #+begin_src cicada :tangle ../play/english-core.ccd
+   #+begin_src cicada :tangle ../play/english-core.cicada
    : print-string,null-terminated
      (* null-terminated-string[address] -- *)
      dup fetch-byte zero? if
@@ -918,11 +956,14 @@
 * *debuger*
 ** debuger-REPL & trace-function
 *** note
-    1. after type tag encoding
+    1. "debuger" should be placed in Function-body
+       when called, it pause the calculation of the function
+       bring you into the debuger-REPL
+    2. after type tag encoding
        we should handle type error as possible as we could
-    2. the ``IdentificationOf#Word'' in ``def*'' macros is for ``debuger''
+    3. the ``IdentificationOf#Word'' in ``def*'' macros is for ``debuger''
 *** implementation
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     : count-return-stack (* -- the length of ReturnStack *)
       Return-stack-top fetch-return-stack-pointer -
       Eight /
@@ -1023,15 +1064,15 @@
     ; define-function
 
     (* ||  1 : name-string-header-which-contains-the-length-of-name-string  ||
-     ,* || m(bytes) : name-string  ||
-     ,* ||  1 : size of function body  ||
-     ,* ||  1 : identification  ||
-     ,* ||  1 : link  ||
-     ,* ||  1 : type  ||
-     ,* ||  1 : address-of-name-string-header  ||
-     ,* ||  1 : address-of-explainer  ||
-     ,* ||  n : body  ||
-     ,*)
+     * || m(bytes) : name-string  ||
+     * ||  1 : size of function body  ||
+     * ||  1 : identification  ||
+     * ||  1 : link  ||
+     * ||  1 : type  ||
+     * ||  1 : address-of-name-string-header  ||
+     * ||  1 : address-of-explainer  ||
+     * ||  n : body  ||
+     *)
 
     : word,body->id
       (* [an address of a cell in a word] -- word[identification] *)
@@ -1194,7 +1235,7 @@
     ; define-function
     #+end_src
 *** simple trace
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     : trace (* n -- *)
       debuger,fetch-from-return-stack
       trace-function
@@ -1208,7 +1249,7 @@
     : xxx (* n, m -- *)
        debuger
        +
-       literal 666 .
+       666 .
        .
        Exit
     ; define-function
@@ -1270,7 +1311,7 @@
        will call debuger if it meets a undefined word
     2. there will be syntax-check after the implementation of ``list''
 *** implementation
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     : print-word-list (* WordList[address, the number of words] -- *)
       dup zero? if
         drop2
@@ -1306,45 +1347,42 @@
     : append-word-description-to-here
       (* WordList[address, the number of words] -- *)
       dup zero? if
-        drop2 Exit
+        drop2
+        Exit
       then
       tail-and-head-of-word-list
-        dup2 Key-word:if equal-string? if
-          drop2
-          literal false?branch append-number-to-here
-          Here fetch xx|swap|x
-          Zero append-number-to-here (* leave a place *)
-          append-word-description-to-here Exit
-        then
-        dup2 Key-word:else equal-string? if
-          drop2
-          literal branch append-number-to-here
-          Here fetch xxx|swap|x
-          Zero append-number-to-here (* leave a place *)
-          x|swap|xx
-          Here fetch over -  Cell-width /
-          swap save
-          append-word-description-to-here Exit
-        then
-        dup2 Key-word:then equal-string? if
-          drop2
-          x|swap|xx
-          Here fetch over -  Cell-width /
-          swap save
-          append-word-description-to-here Exit
-        then
-        dup2 string-denote-number? if
-          number drop append-number-to-here
-          append-word-description-to-here Exit
-        then
-        dup2
-        find dup not-zero? if
-          word-link->word-explainer append-number-to-here
-          drop2 (* drop the string[address, length], which is for debuger *)
-          append-word-description-to-here
-          Exit
-        then
-        drop (* drop the Zero *)
+      dup2 Key-word:if equal-string? if
+        help:append-word-description-to-here,if
+        append-word-description-to-here
+        Exit
+      then
+      dup2 Key-word:else equal-string? if
+        help:append-word-description-to-here,else
+        append-word-description-to-here
+        Exit
+      then
+      dup2 Key-word:then equal-string? if
+        help:append-word-description-to-here,then
+        append-word-description-to-here
+        Exit
+      then
+      dup2 string-denote-literal&branch? if
+        help:append-word-description-to-here,literal&branch
+        append-word-description-to-here
+        Exit
+      then
+      dup2 string-denote-number? if
+        help:append-word-description-to-here,number
+        append-word-description-to-here
+        Exit
+      then
+      dup2 find dup not-zero? if
+        word-link->word-explainer append-number-to-here
+        drop2 (* drop the string[address, length], which is for debuger *)
+        append-word-description-to-here
+        Exit
+      then
+      drop (* drop the Zero *)
       Message:append-word-description-to-here,meet-undefined-word print-string
       print-string cr
       Message:append-word-description-to-here,length-of-the-rest-of-the-word-list
@@ -1433,16 +1471,16 @@
       so I let Symbol-max-length == 64 - 8 == 56
       only first Symbol-max-length of the string is used by the hash-function
 ** string-hash->index & index-hashback->string
-   #+begin_src cicada :tangle ../play/english-core.ccd
+   #+begin_src cicada :tangle ../play/english-core.cicada
    (* a Symbol-entry [unit : byte]
-    ,* ==========================
-    ,*  ||   8 : Symbol-value   ||
-    ,* --------------------------
-    ,*  ||   1 : Symbol-length  ||
-    ,* --------------------------
-    ,*  || 56+ : Symbol-string  ||
-    ,* ==========================
-    ,* where Symbol-max-length = 56 *)
+    * ==========================
+    *  ||   8 : Symbol-value   ||
+    * --------------------------
+    *  ||   1 : Symbol-length  ||
+    * --------------------------
+    *  || 56+ : Symbol-string  ||
+    * ==========================
+    * where Symbol-max-length = 56 *)
 
    :" an error occurs!
    index->address said:
@@ -1596,7 +1634,7 @@
       94747   5964
       89268   12035
       78310   24177
-    ,*)
+    *)
 
 
    (* test: collision *)
@@ -1626,11 +1664,11 @@
 
 
    (* I do not want to solve two funny equations about ascii-chars,
-    ,* just to test the two ``Number-of-symbol-entrys'' above !!!???
-    ,* so, to test this, I reset ``Number-of-symbol-entrys'' to 230, in assembler,
-    ,* then the greatest index == 229,
-    ,* then to test collision is to test rounding
-    ,*)
+    * just to test the two ``Number-of-symbol-entrys'' above !!!???
+    * so, to test this, I reset ``Number-of-symbol-entrys'' to 230, in assembler,
+    * then the greatest index == 229,
+    * then to test collision is to test rounding
+    *)
 
 
    :" Ac" string-hash->index . cr (* 229 *)
@@ -1701,7 +1739,7 @@
       then, when I want to treat this <xxx-list> as a <list>
       I just ``drop <list>''
 ** implementation
-   #+begin_src cicada :tangle ../play/english-core.ccd
+   #+begin_src cicada :tangle ../play/english-core.cicada
    (* if 1 is setted to a symbol, this symbol is a fixnum like data type
       if 2 is setted to a symbol, this symbol is a pair like data type *)
 
@@ -1853,25 +1891,25 @@
 ** dictionary operations
 *** >< note
 *** implementation
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     (*
-     ,* a word in the dictionary [unit : Cell-width = 8 bytes]
-     ,*   ||  1 : name-string-header-which-contains-the-length-of-name-string  ||
-     ,*   ||  m : name-string  ||
-     ,*   ||  1 : SizeOfFunctionBody ||
-     ,*   ||  1 : identification  ||
-     ,*   ||  1 : link  ||
-     ,*   ||  1 : type  ||
-     ,*   ||  1 : address-of-name-string-header  ||
-     ,*   ||  1 : address-of-explainer  ||
-     ,*   ||  n : body  ||
-     ,* where
-     ,*   ||  1 : type  ||
-     ,* ==
-     ,*   | type-bit-63 | ... | type-bit-1 | type-bit-0 |
-     ,* type-bit-0 is for HiddenWord
-     ,* type-bit-1 is for VariableOfTypedValue [DynamicVar]
-     ,*)
+     * a word in the dictionary [unit : Cell-width = 8 bytes]
+     *   ||  1 : name-string-header-which-contains-the-length-of-name-string  ||
+     *   ||  m : name-string  ||
+     *   ||  1 : SizeOfFunctionBody ||
+     *   ||  1 : identification  ||
+     *   ||  1 : link  ||
+     *   ||  1 : type  ||
+     *   ||  1 : address-of-name-string-header  ||
+     *   ||  1 : address-of-explainer  ||
+     *   ||  n : body  ||
+     * where
+     *   ||  1 : type  ||
+     * ==
+     *   | type-bit-63 | ... | type-bit-1 | type-bit-0 |
+     * type-bit-0 is for HiddenWord
+     * type-bit-1 is for VariableOfTypedValue [DynamicVar]
+     *)
 
     : last-word-in-dictionary? (* word[address of link] -- True or False *)
         zero? Exit
@@ -1914,55 +1952,6 @@
 
     ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
     ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
-
-    #+end_src
-* *Lambda-stack*
-** interface of Lambda-stack & ready
-*** note
-    1. note that
-       not to much stack-processing is needed here
-    2. LambdaStack can be used to save the faked-local-vars
-    3. instead of allocate this stack in assembly
-       I can also use list-processing to implement it
-*** implementation
-    #+begin_src cicada :tangle ../play/english-core.ccd
-    Lambda-stack-top : Lambda-stack-pointer ; define-variable
-
-    : push-lambda-stack
-      (* ArgumentStack::  value -->
-         LambdaStack::  value *)
-      Cell-width Lambda-stack-pointer add-save
-      Lambda-stack-pointer fetch save
-      Exit
-    ; define-function
-
-    : pop-lambda-stack
-      (* LambdaStack::  value -->
-         ArgumentStack::  value *)
-      Lambda-stack-pointer fetch fetch
-      Cell-width Lambda-stack-pointer sub-save
-      Exit
-    ; define-function
-
-
-    : ready (* or twoPushLambdaStack *)
-      (* ArgumentStack::  value-a, value-b -->
-         LambdaStack::  value-a, value-b *)
-      swap push-lambda-stack push-lambda-stack
-      Exit
-    ; define-function
-
-    : get-back (* or twoPopLambdaStack *)
-      (* LambdaStack::  value-a, value-b -->
-         ArgumentStack::  value-a, value-b *)
-      pop-lambda-stack pop-lambda-stack swap
-      Exit
-    ; define-function
-    #+end_src
-*** test
-    #+begin_src cicada
-    1 2 . . (* 2 1 *)
-    1 2 ready get-back . . (* 2 1 *)
     #+end_src
 * *incremental-gc of <pair> & <string>*
 ** note
@@ -1981,11 +1970,11 @@
          to save the length of the string
 ** dynamic-allocation of string
 *** try,copy-substring,from->to
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     (* example of a substring stored in string-heap :
        || 4 : length of substring  ||
        || n : substring  ||
-     ,*)
+     *)
 
     String-heap-1 : Pointer:String-heap,from ; define-variable
     String-heap-2 : Pointer:string-heap,to   ; define-variable
@@ -1994,50 +1983,50 @@
     String-heap-2 : Current-free-string-address,to   ; define-variable
 
     (*
-     ,* little experiment:
-     ,*   Hex-base Base save
-     ,*     10_10_00_00 fetch-argument-stack-pointer
-     ,*     dup
-     ,*       1 swap save-byte
-     ,*     dup
-     ,*       1 swap add1 save-byte
-     ,*     fetch .hex .hex
-     ,*   Dec-base Base save
-     ,*)
+     * little experiment:
+     *   Hex-base Base save
+     *     10_10_00_00 fetch-argument-stack-pointer
+     *     dup
+     *       1 swap save-byte
+     *     dup
+     *       1 swap add1 save-byte
+     *     fetch .hex .hex
+     *   Dec-base Base save
+     *)
 
     (*
-     ,* : fetch-four-bytes (\* address -- value *\)
-     ,*   Zero fetch-argument-stack-pointer
-     ,*   x|over|xx swap
-     ,*   Four copy-byte-string
-     ,*   swap drop
-     ,*   Exit
-     ,* ; define-function
-     ,*
-     ,* : save-four-bytes (\* value, address -- *\)
-     ,*   swap fetch-argument-stack-pointer
-     ,*   x|over|xx
-     ,*   Four copy-byte-string
-     ,*   drop2
-     ,*   Exit
-     ,* ; define-function
-     ,*)
+     * : fetch-four-bytes (\* address -- value *\)
+     *   Zero fetch-argument-stack-pointer
+     *   x|over|xx swap
+     *   Four copy-byte-string
+     *   swap drop
+     *   Exit
+     * ; define-function
+     *
+     * : save-four-bytes (\* value, address -- *\)
+     *   swap fetch-argument-stack-pointer
+     *   x|over|xx
+     *   Four copy-byte-string
+     *   drop2
+     *   Exit
+     * ; define-function
+     *)
 
     (*
-     ,* test:
-     ,*   Hex-base Base save
-     ,*    10__10_10_00_00 fetch-argument-stack-pointer
-     ,*    dup
-     ,*      1 swap save-byte
-     ,*    dup
-     ,*      1 swap add1 save-byte
-     ,*    fetch-four-bytes .hex .hex
-     ,*    10__10_10_00_00 fetch-argument-stack-pointer
-     ,*    dup
-     ,*      22_22_22_22 swap save-four-bytes
-     ,*    fetch-four-bytes .hex .hex
-     ,*   Dec-base Base save
-     ,*)
+     * test:
+     *   Hex-base Base save
+     *    10__10_10_00_00 fetch-argument-stack-pointer
+     *    dup
+     *      1 swap save-byte
+     *    dup
+     *      1 swap add1 save-byte
+     *    fetch-four-bytes .hex .hex
+     *    10__10_10_00_00 fetch-argument-stack-pointer
+     *    dup
+     *      22_22_22_22 swap save-four-bytes
+     *    fetch-four-bytes .hex .hex
+     *   Dec-base Base save
+     *)
 
     : get-length-of-string (* string[address] -- length *)
       sub4 fetch-four-bytes
@@ -2073,10 +2062,10 @@
     : try,copy-substring,from->to
       (* [address, <substring>] -- [address, <substring>] *)
       (*
-       ,* dup <substring> =/= if
-       ,*   Exit
-       ,* then
-       ,*)
+       * dup <substring> =/= if
+       *   Exit
+       * then
+       *)
       over dup
       string-in?string-heap,to if
         drop Exit
@@ -2095,15 +2084,15 @@
 
     (* test: *)
     (*
-     ,* Current-free-string-address,to fetch
-     ,*   s" xxx " dup2 print-string (\* xxx *\)
-     ,*   drop <substring>
-     ,*   try,copy-substring,from->to
-     ,*   drop2
-     ,* add4 dup
-     ,* get-length-of-string
-     ,* print-string (\* xxx *\)
-     ,*)
+     * Current-free-string-address,to fetch
+     *   s" xxx " dup2 print-string (\* xxx *\)
+     *   drop <substring>
+     *   try,copy-substring,from->to
+     *   drop2
+     * add4 dup
+     * get-length-of-string
+     * print-string (\* xxx *\)
+     *)
 
 
     : try,copy-substring,from->to,for-car
@@ -2132,39 +2121,39 @@
 
 
     (*
-     ,* {* s" xxx" drop <substring>
-     ,*    s" ppp" drop <substring> *}
-     ,*
-     ,* dup2
-     ,*   car print-type-tag cr (\* <substring> *\)
-     ,*   dup get-length-of-string
-     ,*   print-string cr (\* xxx *\)
-     ,* dup2
-     ,*   cdr print-type-tag cr (\* <substring> *\)
-     ,*   dup get-length-of-string
-     ,*   print-string cr (\* ppp *\)
-     ,*
-     ,* dup2
-     ,*   car drop .hex cr (\* >< *\)
-     ,* dup2
-     ,*   cdr drop .hex cr (\* >< *\)
-     ,*
-     ,* dup2
-     ,*   try,copy-substring,from->to,for-car
-     ,*   try,copy-substring,from->to,for-cdr
-     ,*
-     ,* dup2
-     ,*   car print-type-tag cr (\* <substring> *\)
-     ,*   dup get-length-of-string
-     ,*   print-string cr (\* xxx *\)
-     ,* dup2
-     ,*   cdr print-type-tag cr (\* <substring> *\)
-     ,*   dup get-length-of-string
-     ,*   print-string cr (\* ppp *\)
-     ,*
-     ,* (\* the two hex numbers must be different *\)
-     ,* dup2
-     ,*   car drop .hex cr (\* >< *\)
+     * {* s" xxx" drop <substring>
+     *    s" ppp" drop <substring> *}
+     *
+     * dup2
+     *   car print-type-tag cr (\* <substring> *\)
+     *   dup get-length-of-string
+     *   print-string cr (\* xxx *\)
+     * dup2
+     *   cdr print-type-tag cr (\* <substring> *\)
+     *   dup get-length-of-string
+     *   print-string cr (\* ppp *\)
+     *
+     * dup2
+     *   car drop .hex cr (\* >< *\)
+     * dup2
+     *   cdr drop .hex cr (\* >< *\)
+     *
+     * dup2
+     *   try,copy-substring,from->to,for-car
+     *   try,copy-substring,from->to,for-cdr
+     *
+     * dup2
+     *   car print-type-tag cr (\* <substring> *\)
+     *   dup get-length-of-string
+     *   print-string cr (\* xxx *\)
+     * dup2
+     *   cdr print-type-tag cr (\* <substring> *\)
+     *   dup get-length-of-string
+     *   print-string cr (\* ppp *\)
+     *
+     * (\* the two hex numbers must be different *\)
+     * dup2
+     *   car drop .hex cr (\* >< *\)
      * dup2
      *   cdr drop .hex cr (\* >< *\)
      *
@@ -2172,7 +2161,7 @@
      *)
     #+end_src
 *** read-string
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     : read-non-string-ending-char (* -- FirstNonBlankChar or Zero *)
       read-char
       dup '"' == if
@@ -2237,24 +2226,24 @@
     3. cdr : contents of the decrement part of a PairConstruction
        as the second typed-value of a pair
 *** the construction & clr, car, cdr
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     (* the construction of pair : [unit : byte]
-     ,* clr:
-     ,*     ||  1 : color     ||
-     ,* car:
-     ,*     ||  8 : type tag  ||
-     ,*     ||  8 : value     ||
-     ,* cdr:
-     ,*     ||  8 : type tag  ||
-     ,*     ||  8 : value     ||
-     ,*)
+     * clr:
+     *     ||  1 : color     ||
+     * car:
+     *     ||  8 : type tag  ||
+     *     ||  8 : value     ||
+     * cdr:
+     *     ||  8 : type tag  ||
+     *     ||  8 : value     ||
+     *)
 
     (* the following constants are defined in assembler:
-     ,* Cons-bytes-size == 33
-     ,* Clr-bytes-size  ==  1
-     ,* Car-bytes-size  == 16
-     ,* Cdr-bytes-size  == 16
-     ,*)
+     * Cons-bytes-size == 33
+     * Clr-bytes-size  ==  1
+     * Car-bytes-size  == 16
+     * Cdr-bytes-size  == 16
+     *)
 
     :" clr said:
        ``My function-type is (* [address, <pair-like>] -- color-byte *)
@@ -2311,7 +2300,7 @@
     a black pair in GreyPairStackTop is as a ``grey'' pair
     a grey-pair denotes front of the spreading black sub-graph
     these nodes maybe at the junction of black and white (maybe not)
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     0 : White ; define-constant
     1 : Black ; define-constant
 
@@ -2342,7 +2331,7 @@
     ; define-function
     #+end_src
 *** marking
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     : white-color-for-marking? (* color-byte -- True or False *)
       Color-offset-for-marking fetch-bit White == Exit
     ; define-function
@@ -2357,7 +2346,7 @@
 
 
     (* the following function is the only function who push-grey-pair-stack
-     ,* and this function is called by one,grey->black and so on *)
+     * and this function is called by one,grey->black and so on *)
     :" try,white->grey said:
        ``My function-type is (* [address, <pair-like>] -- [address, <pair-like>] *)
          But the type I received is the following,
@@ -2402,7 +2391,7 @@
 
 
     (* the following is a help-function of all,grey->black
-     ,* the GreyPairStack must not be empty when it is called *)
+     * the GreyPairStack must not be empty when it is called *)
 
     : one,grey->black (* -- *)
       pop-grey-pair-stack dup
@@ -2428,7 +2417,7 @@
     in cicada, to make the gc to be incremental
     there are many strategies you can use
     the following shows one of them
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     : set!
       (* VarForTypedValue[address], [value, type] -- VarForTypedValue[address] *)
       dup <pair-like>? if
@@ -2603,25 +2592,25 @@
     #+end_src
 *** marking & define
     define and set! are the interface of dynamic-typed-value
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     (* recall
-     ,* a word in the dictionary [unit : Cell-width = 8 bytes]
-     ,*   ||  1 : name-string-header-which-contains-the-length-of-name-string  ||
-     ,*   ||  m : name-string  ||
-     ,*   ||  1 : SizeOfFunctionBody  ||
-     ,*   ||  1 : identification  ||
-     ,*   ||  1 : link  ||
-     ,*   ||  1 : type  ||
-     ,*   ||  1 : address-of-name-string-header  ||
-     ,*   ||  1 : address-of-explainer  ||
-     ,*   ||  n : body  ||
-     ,* where
-     ,*   ||  1 : type  ||
-     ,* ==
-     ,*   | type-bit-63 | ... | type-bit-1 | type-bit-0 |
-     ,* type-bit-0 is for HiddenWord
-     ,* type-bit-1 is for VariableOfTypedValue
-     ,*)
+     * a word in the dictionary [unit : Cell-width = 8 bytes]
+     *   ||  1 : name-string-header-which-contains-the-length-of-name-string  ||
+     *   ||  m : name-string  ||
+     *   ||  1 : SizeOfFunctionBody  ||
+     *   ||  1 : identification  ||
+     *   ||  1 : link  ||
+     *   ||  1 : type  ||
+     *   ||  1 : address-of-name-string-header  ||
+     *   ||  1 : address-of-explainer  ||
+     *   ||  n : body  ||
+     * where
+     *   ||  1 : type  ||
+     * ==
+     *   | type-bit-63 | ... | type-bit-1 | type-bit-0 |
+     * type-bit-0 is for HiddenWord
+     * type-bit-1 is for VariableOfTypedValue
+     *)
 
     : create-word-header-for-typed-value
       (* string[address, length] -- word[address of link] *)
@@ -2657,7 +2646,7 @@
     ; define-function
     #+end_src
 *** finding & cons : constructor of <pair>
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     (* the following functions are helping cons *)
 
     : clear-color-bit-of-pair-for-cleaning (* pair[address] -- pair[address] *)
@@ -2692,12 +2681,12 @@
 
 
     (* a cyclic permutation
-     ,* of the two three period cyclic permutation
-     ,* in the third-order permutation group
+     * of the two three period cyclic permutation
+     * in the third-order permutation group
      Mutative-color-offset-for-finding  --> Mutative-color-offset-for-cleaning
      Mutative-color-offset-for-marking  --> Mutative-color-offset-for-finding
      Mutative-color-offset-for-cleaning --> Mutative-color-offset-for-marking
-     ,*)
+     *)
     : reset-color-offsets (* -- *)
       Mutative-color-offset-for-finding  fetch
       Mutative-color-offset-for-marking  fetch
@@ -2746,11 +2735,11 @@
        but I have to use it this way *)
 
     (* a value meet the following three conditions is an AddressOfPair
-     ,*  (the following is infix notations)
-     ,* 1. Value >= First-pair-construction
-     ,* 2. Value <= Last-pair-construction
-     ,* 3. [Value - First-pair-construction] mod Cons-bytes-size == 0
-     ,*)
+     *  (the following is infix notations)
+     * 1. Value >= First-pair-construction
+     * 2. Value <= Last-pair-construction
+     * 3. [Value - First-pair-construction] mod Cons-bytes-size == 0
+     *)
 
     : addressOfPair? (* value -- True or False *)
         dup First-pair-construction < if
@@ -2850,7 +2839,7 @@
     ; define-function
     #+end_src
 *** substring & string : constructor of <substring> & <string>
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     : read-string (* -- [address, <string>] *)
       cons drop (* drop <pair> *) <string>
       s" drop (* drop length *) <substring>
@@ -2901,7 +2890,7 @@
     ; define-function
     #+end_src
 *** about test
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     (* for test *)
     : print-type-of-it (* type -- *)
       print-type-tag ':' write-char write-space Exit
@@ -2913,8 +2902,8 @@
         then
         sub1
         cons
-          literal 555 <fixnum> set-car!
-          literal 666 <fixnum> set-cdr!
+          555 <fixnum> set-car!
+          666 <fixnum> set-cdr!
         drop2
         ask-for-lots-of-cons
         Exit
@@ -2925,8 +2914,8 @@
         then
         sub1
         cons
-          literal 555 <fixnum> set-car!
-          literal 666 <fixnum> set-cdr!
+          555 <fixnum> set-car!
+          666 <fixnum> set-cdr!
         x|swap|xx
         ask-for-lots-of-cons,leave-them-on-the-argument-stack
         Exit
@@ -3055,8 +3044,8 @@
        dup zero? if drop Exit
        then
        sub1
-       {* literal 555 <fixnum>
-          literal 666 <fixnum> *}
+       {* 555 <fixnum>
+          666 <fixnum> *}
        drop2
        ask-for-lots-of-cons
        Exit
@@ -3221,7 +3210,7 @@
        this calls can not be compiled into the function-bodys of them
        unless I introduce new syntaxes
 *** implementation
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     :" {" : Bra:flower ; define-constant-string
     :" }" : Ket:flower ; define-constant-string
 
@@ -3238,7 +3227,7 @@
     #+end_src
 ** write
 *** implementation
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     :" write-list"    : Message:write-list   ; define-constant-string
     :" write-*dalin"  : Message:write-*dalin ; define-constant-string
     :" write-wodyli"  : Message:write-wodyli ; define-constant-string
@@ -3320,7 +3309,7 @@
        I try to avoid many modes in REPL
        but now the list-leader brings me back to the classic forth
 *** execute-word,for-list-reader
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     : string-denote-list-reader?
       (* string[address, length] -- True or False *)
       dup2 Bra:flower equal-string? if
@@ -3358,7 +3347,7 @@
     ; define-function
     #+end_src
 *** list-escape-REPL
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     : list-escape-REPL
       (* could  be: unknown -- unknown *)
       (* should be:  -- [value, type] *)
@@ -3390,7 +3379,7 @@
     : (esc list-escape-REPL Exit ; define-function
     #+end_src
 *** read-list
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     : read-list (* -- [address, <list>] *)
       read-word
       dup2 Ket:flower equal-string? if
@@ -3413,7 +3402,7 @@
     : { read-list Exit ; define-function
     #+end_src
 *** write-list
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     : help:write-list (* [address, <list>] or [Null, <null>] -- *)
       dup <null> == if
         drop2 Exit
@@ -3482,7 +3471,7 @@
 *** >< note
     the name of the following functions should be changed
 *** implementation
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     :" set-car-to-{car}! said:
        ``My function-type is (* [address, <pair-like>] -- [address, <pair-like>] *)
          But the type I received is the following,
@@ -3633,7 +3622,7 @@
     #+end_src
 ** dalin processing
 *** <- & ->
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     :" <- said:
        ``My function-type is (* [address, <dalin-like>] -- [address, <dalin>] *)
          But the type I received is the following,
@@ -3668,7 +3657,7 @@
     ; define-function
     #+end_src
 *** list->dalin
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     (* note that:
        in the following, I am using side-effect to change a existed list
        but NOT to form a new dalin from scratch *)
@@ -3762,7 +3751,7 @@
     ; define-function
     #+end_src
 *** *dalin? & dalin*?
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     : *dalin? (* [address, <dalin>] -- True or False *)
       <- null? if
         True Exit
@@ -3778,7 +3767,7 @@
     ; define-function
     #+end_src
 *** nested-list->dalin
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     : help:nested-list->dalin
       (* [address, <dalin>], left[address, <dalin>] -- [address, <dalin>] *)
       (* or *)
@@ -3829,7 +3818,7 @@
     ; define-function
     #+end_src
 *** dalin->tail & head<-dalin
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     :" dalin->tail said:
        ``My function-type is
          (* [address, <dalin-like>] -- tail[address, <dalin-like>] *)
@@ -3876,7 +3865,7 @@
     ; define-recursive-function
     #+end_src
 *** [value,dalin]-associate & [value,dalin]-member?
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     :" [value,dalin]-associate said:
        ``My function-type is
          (* [value, type], head[address, <dalin-like>] --
@@ -3953,7 +3942,7 @@
     the following function is very important
     it for dalin is as the ``cons'' for list
     but also really different
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     :" ^_^ said:
        ``My function-type is
          (*  left[address, <dalin-like>], rigth[address, <dalin-like>] --
@@ -4012,7 +4001,7 @@
 
     (* test: tail[address, <dalin>] *) cr
     dup2
-      ,*dalin? . (* 0 *) cr
+      *dalin? . (* 0 *) cr
     dup2
       dalin*? . (* 1 *) cr
     dup2
@@ -4037,7 +4026,7 @@
 
     (* test: head[address, <dalin>] *) cr
     dup2
-      ,*dalin? . (* 1 *) cr
+      *dalin? . (* 1 *) cr
     dup2
       dalin*? . (* 0 *) cr
     dup2
@@ -4075,7 +4064,7 @@
 
     (* test: head[address, <dalin>] *) cr
     dup2
-      ,*dalin? . (* 1 *) cr
+      *dalin? . (* 1 *) cr
     dup2
       dalin*? . (* 0 *) cr
     dup2
@@ -4101,7 +4090,7 @@
       car
       dup print-type-tag (* <dalin> *) cr
       dup2
-        ,*dalin? . (* 1 *) cr
+        *dalin? . (* 1 *) cr
       dup2
         car print-type-tag write-space . (* <fixnum> 2 *) cr
       dup2
@@ -4138,7 +4127,7 @@
     #+end_src
 ** read-dalin & write-dalin
 *** read-*dalin
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     : help:read-*dalin
       (* tail[address, <dalin>] -- head[address, <dalin>] *)
       (* where:
@@ -4176,7 +4165,7 @@
     : [ read-*dalin Exit ; define-function
     #+end_src
 *** write-*dalin
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     : help:write-*dalin
       (* [address, <dalin>] -- *)
       dup2 dalin*? if
@@ -4279,7 +4268,7 @@
        LIAF version uses the LambdaStack
        which is very funny
 *** stack->list
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     : help:stack-LIAF->list
       (* ..., number --  *)
       (* LambdaStack::
@@ -4340,7 +4329,7 @@
     ; define-function
     #+end_src
 *** stack->dalin
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     : help:stack-LIAF->dalin
       (* ..., number -- [address, <list>] *)
       (* LambdaStack::
@@ -4413,7 +4402,7 @@
     ; define-function
     #+end_src
 *** list->stack
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     :" stack<-FIAF-list said:
        ``My function type is (* [address, <list>] -- ... *)
          the list should be a list of <not-pair-like> value
@@ -4503,28 +4492,28 @@
     #+end_src
 ** symbol types
 *** helper funciton
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     : char-denote-number,or-alphabet,or-out-of-ascii?
       (* char -- True of False *)
-      dup literal 48 < if     drop False Exit
+      dup  48 < if     drop False Exit
       then
-      dup literal 57 <= if    drop True Exit
+      dup  57 <= if    drop True Exit
       then
-      dup literal 65 < if     drop False Exit
+      dup  65 < if     drop False Exit
       then
-      dup literal 90 <= if    drop True Exit
+      dup  90 <= if    drop True Exit
       then
-      dup literal 97 < if     drop False Exit
+      dup  97 < if     drop False Exit
       then
-      dup literal 122 <= if   drop True Exit
+      dup  122 <= if   drop True Exit
       then
-      dup literal 128 < if    drop False Exit
+      dup  128 < if    drop False Exit
       then
       drop True Exit
     ; define-function
     #+end_src
 *** Bound-variable
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     (* `:' followed by a number or alphabet is a symbolDenoteBoundVariable
        ascii: 48 -- 57, 65 -- 90, 97 -- 122, 128 -- ...
        this set maybe change in the future *)
@@ -4713,7 +4702,7 @@
     ; define-function
     #+end_src
 *** Wody
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     (* string begin with a number or alphabet
        and end with `:' following a number or alphabet
        is a symbolDenoteWody *)
@@ -4758,7 +4747,7 @@
     ; define-function
     #+end_src
 *** LambdaArgument
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     (* `<' plus a string-denote-bound-variable,one *)
     : string-denote-lambda-argument,one?
       (* [address, length] -- True or False *)
@@ -5029,7 +5018,7 @@
     2. wodyli is a dalin of list
     3. lambda will use ``bound-variable-wodyli''
 *** read-wodyli
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     : help:with-word,read-wody-or-bound-variable
       (* -- [address, <list>] *)
       (* LambdaStack::
@@ -5146,7 +5135,7 @@
     : ( read-wodyli Exit ; define-function
     #+end_src
 *** write-wody & write-wodyli
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     :" write-wody-or-bound-variable said:
        ``My function-type is (* [address, <wody> or <bound-variable>] -- *)
          But the 1st argument is the following
@@ -5220,7 +5209,7 @@
     2. to handle <:x <::x <:::x <::::x
     3. print better ErrorInfo for ExecuteWord
 *** implementation
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     : <lambda-argument-one>   ; define-pair-like-data-type
     : <lambda-argument-two>   ; define-pair-like-data-type
     : <lambda-argument-three> ; define-pair-like-data-type
@@ -5255,7 +5244,7 @@
        note that:
          every value in list must have a type
          so in every list above, type of a car is setted to <fixnum>
-     ,*)
+     *)
 
     : execute-word (* string[address, length] -- unknown *)
       dup2
@@ -5331,10 +5320,10 @@
     ; define-function
 
     (* if wished
-     ,*   one needs to use help:symbol-REPL to do the recursive
-     ,*   and reset the two pointers in symbol-REPL
-     ,* Return-stack-top reset-return-stack-pointer
-     ,* Argument-stack-top reset-argument-stack-pointer *)
+     *   one needs to use help:symbol-REPL to do the recursive
+     *   and reset the two pointers in symbol-REPL
+     * Return-stack-top reset-return-stack-pointer
+     * Argument-stack-top reset-argument-stack-pointer *)
 
     : symbol-REPL (* unknown -- unknown *)
       read-word-for-runtime
@@ -5365,7 +5354,7 @@
     cr
     #+end_src
 ** using the symbol-REPL now !
-   #+begin_src cicada :tangle ../play/english-core.ccd
+   #+begin_src cicada :tangle ../play/english-core.cicada
    symbol-REPL
    #+end_src
 * *lambda-calculus*
@@ -5413,7 +5402,7 @@
      note that you can only use bound-variable (such as ::x :n) in a lambda-body
      bot NOT a dalin or list or wodyli
 *** data-types
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     : <lambda>               ; define-pair-like-data-type
     : <explainer-pair>       ; define-pair-like-data-type
     : <explainer>            ; define-data-type
@@ -5421,7 +5410,7 @@
 *** helper functions
     used to decide the type error of lambda
     and to decide when I need to calculate lambda-scope
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     : bound-variable-wodyli?
       (* head[address, <wodyli>] -- True or False *)
       dup <wodyli> =/= if
@@ -5440,16 +5429,16 @@
 
 
     (*
-     ,* the following function return `True'
-     ,* on the following dalin as a tail
-     ,*   [ [address, <dalin>]
-     ,*     bound-variable-wodyli[address, <wodyli>]
-     ,*    ]
-     ,* and
-     ,*   [ [address, <dalin>]
-     ,*     null
-     ,*    ]
-     ,*)
+     * the following function return `True'
+     * on the following dalin as a tail
+     *   [ [address, <dalin>]
+     *     bound-variable-wodyli[address, <wodyli>]
+     *    ]
+     * and
+     *   [ [address, <dalin>]
+     *     null
+     *    ]
+     *)
 
     : meet-lambda-abstraction-in-lambda-body-dalin?
       (* tail[address, <dalin>] -- True or False *)
@@ -5472,21 +5461,21 @@
     ; define-function
 
     (*
-     ,* test:
-     ,*
-     ,* [ [ 1 ] ( :x ) ] dalin->tail
-     ,* meet-lambda-abstraction-in-lambda-body-dalin? . (\* 1 *\) cr
-     ,* [ [ 1 ] null ] dalin->tail
-     ,* meet-lambda-abstraction-in-lambda-body-dalin? . (\* 1 *\) cr
-     ,* [ [ 1 ] ( ) ] dalin->tail
-     ,* meet-lambda-abstraction-in-lambda-body-dalin? . (\* 1 *\) cr
-     ,* cr
-     ,* [ [ 1 ] ( x: ) ] dalin->tail
-     ,* meet-lambda-abstraction-in-lambda-body-dalin? . (\* 0 *\) cr
+     * test:
+     *
+     * [ [ 1 ] ( :x ) ] dalin->tail
+     * meet-lambda-abstraction-in-lambda-body-dalin? . (\* 1 *\) cr
+     * [ [ 1 ] null ] dalin->tail
+     * meet-lambda-abstraction-in-lambda-body-dalin? . (\* 1 *\) cr
+     * [ [ 1 ] ( ) ] dalin->tail
+     * meet-lambda-abstraction-in-lambda-body-dalin? . (\* 1 *\) cr
+     * cr
+     * [ [ 1 ] ( x: ) ] dalin->tail
+     * meet-lambda-abstraction-in-lambda-body-dalin? . (\* 0 *\) cr
      *)
     #+end_src
 *** bound-variable-wodyli-subtraction (for calculating lambda-scope)
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     : help:bound-variable-wodyli-subtraction
       (* LambdaStack::
          (a-b) [address, <wodyli>] -- *)
@@ -5548,19 +5537,19 @@
 
 
     (*
-     ,*  test:
-     ,*
-     ,* 666
-     ,* ( ::a ::b ::c )
-     ,* ( ::a ::c ::x )
-     ,* bound-variable-wodyli-subtraction
-     ,* write (\* ( ::b )  *\)
-     ,*
-     ,* . (\* 666 *\)
+     *  test:
+     *
+     * 666
+     * ( ::a ::b ::c )
+     * ( ::a ::c ::x )
+     * bound-variable-wodyli-subtraction
+     * write (\* ( ::b )  *\)
+     *
+     * . (\* 666 *\)
      *)
     #+end_src
 *** lambda
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     :" lambda" string-hash->index
     : Symbol-index:lambda ; define-constant
 
@@ -5569,31 +5558,31 @@
 
 
     (* the following two functions are side-effects through a dalin
-     ,* in the direction of ``<-''
+     * in the direction of ``<-''
 
-     ,* some special-types of elements in the lambda-body
-     ,* should be setted for ``apply''
+     * some special-types of elements in the lambda-body
+     * should be setted for ``apply''
 
-     ,* note that: (currently)
-     ,*   <fixnum> <list> <dalin> <wodyli> <symbol>
-     ,*   are the only types of value
-     ,*   that could be readed into a dalin
+     * note that: (currently)
+     *   <fixnum> <list> <dalin> <wodyli> <symbol>
+     *   are the only types of value
+     *   that could be readed into a dalin
 
-     ,*   only all <symbol> in this dalin
-     ,*   and some <symbol> that denote-bound-variable nestedly existed in this dalin
-     ,*   will be handled by the following functions
+     *   only all <symbol> in this dalin
+     *   and some <symbol> that denote-bound-variable nestedly existed in this dalin
+     *   will be handled by the following functions
 
-     ,*   while
-     ,*   in the ``apply''
-     ,*   when meet [666, <fixnum>]
-     ,*     666 ( ONLY ONE VALUE ) will be push to ArgumentStack
-     ,*   when meet [address, <list>]
-     ,*     [address, <list>] will be push to ArgumentStack
-     ,*   when meet [address, <dalin>]
-     ,*     [address, <dalin>] will be push to ArgumentStack
-     ,*   when meet [address, <wodyli>]
-     ,*     [address, <wodyli>] will be push to ArgumentStack
-     ,*)
+     *   while
+     *   in the ``apply''
+     *   when meet [666, <fixnum>]
+     *     666 ( ONLY ONE VALUE ) will be push to ArgumentStack
+     *   when meet [address, <list>]
+     *     [address, <list>] will be push to ArgumentStack
+     *   when meet [address, <dalin>]
+     *     [address, <dalin>] will be push to ArgumentStack
+     *   when meet [address, <wodyli>]
+     *     [address, <wodyli>] will be push to ArgumentStack
+     *)
 
 
     : help:lambda,set-bound-variables (* calculating lambda-scope *)
@@ -5863,7 +5852,7 @@
        也许这种效果能被有趣地利用起来
     3. maybe I can support cc here !
 *** lambda-body-stack
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     (* note that:
          when a explainer is been executed
          only the arguments of the word to be explained
@@ -5892,7 +5881,7 @@
     ; define-function
     #+end_src
 *** help:apply,eval-lambda-body
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     (* the following function
        do side-effect to the car of the lambda-body-stack *)
 
@@ -5998,7 +5987,7 @@
     ; define-recursive-function
     #+end_src
 *** apply
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     (* examples of <lambda-argument>:
          { :x       . { 1 } }
          { ::null   . { Null <null> } }
@@ -6008,7 +5997,7 @@
          [ { :a    . ... }
            { ::b   . ... }
            { ::::c . ... } ]
-     ,*)
+     *)
 
 
     : help-to-rec,help:apply,set-variables
@@ -6072,7 +6061,7 @@
     ; define-function
     #+end_src
 *** syntax sugar
-    #+begin_src cicada :tangle ../play/english-core.ccd
+    #+begin_src cicada :tangle ../play/english-core.cicada
     : @
       (* ...,
          [address, <lambda-argument>],
@@ -6243,26 +6232,26 @@
        for we need to define ``sqrt'' *)
 
     (*
-     ,* the following shows the problem that people argued at:
-     ,* http://lambda-the-ultimate.org/node/900
+     * the following shows the problem that people argued at:
+     * http://lambda-the-ultimate.org/node/900
 
-     ,* -b  +/- sqrt(b^2 - 4 * a * c)
-     ,* -----------------------------
-     ,*            2 * a
-     ,*)
+     * -b  +/- sqrt(b^2 - 4 * a * c)
+     * -----------------------------
+     *            2 * a
+     *)
 
 
     (*
-     ,* [              :b negate
-     ,*     4 :a :c * *
-     ,*         :b :b *  -  sqrt  +
-     ,*                     2 :a  *  / ] dup2 write
-     ,* ( :a :b :c ) dup2 write
-     ,* λ ready
-     ,*
-     ,* 1 <:a  2 <:b  1 <:c
-     ,*
-     ,* apply write-dec-number cr (\* -1 *\)
+     * [              :b negate
+     *     4 :a :c * *
+     *         :b :b *  -  sqrt  +
+     *                     2 :a  *  / ] dup2 write
+     * ( :a :b :c ) dup2 write
+     * λ ready
+     *
+     * 1 <:a  2 <:b  1 <:c
+     *
+     * apply write-dec-number cr (\* -1 *\)
      *)
     #+end_src
 ** play with lambda
@@ -6388,18 +6377,18 @@
        using explicit lazy-eval
        for cicada's semantic is eager-eval
        because lazy-eval is not natural to postfix-notation
-     ,*)
+     *)
 
     (*
-     ,* in λ-cal:
-     ,* Y = (λy.(λx.y(xx))(λx.y(xx)))
-     ,*
-     ,* in daedalus:
-     ,* (def Y
-     ,*   (λ (y)
-     ,*     ((λ (x) (y (x x)))
-     ,*      (λ (x) (y (x x))))))
-     ,*)
+     * in λ-cal:
+     * Y = (λy.(λx.y(xx))(λx.y(xx)))
+     *
+     * in daedalus:
+     * (def Y
+     *   (λ (y)
+     *     ((λ (x) (y (x x)))
+     *      (λ (x) (y (x x))))))
+     *)
 
     (* in cicada: *)
 
@@ -6444,19 +6433,19 @@
             [ [ One ] null λ <::true
               [ :n :n sub1
 
-                  ,* ]
+                  * ]
             null λ <::false
                IF @ ready
               :n one? <:if apply ]
             ( :n ) λ @
 
-                ,* ]
+                * ]
           null λ <::false
              IF @ ready
             :n one? <:if apply ]
           ( :n ) λ @
 
-             ,* ]
+             * ]
        null λ <::false
        IF @ ready
       :n one? <:if apply ]
@@ -6623,13 +6612,13 @@
 
 
    (* little test:
-    ,* 'k' s" k" find-char-index . (\* 0 *\) cr
-    ,* 'k' s" kkk" find-char-index . (\* 0 *\) cr
-    ,* 'k' s" skkk" find-char-index . (\* 1 *\) cr
-    ,* 'k' s"  kkk" find-char-index . (\* 1 *\) cr
-    ,* 'k' s" 0123456789k" find-char-index . (\* 10 *\) cr
-    ,* 'k' s" 0123456789" find-char-index . (\* -1 *\) cr
-    ,*)
+    * 'k' s" k" find-char-index . (\* 0 *\) cr
+    * 'k' s" kkk" find-char-index . (\* 0 *\) cr
+    * 'k' s" skkk" find-char-index . (\* 1 *\) cr
+    * 'k' s"  kkk" find-char-index . (\* 1 *\) cr
+    * 'k' s" 0123456789k" find-char-index . (\* 10 *\) cr
+    * 'k' s" 0123456789" find-char-index . (\* -1 *\) cr
+    *)
 
 
 
@@ -6853,14 +6842,14 @@
    ; define-function
 
    (*
-    ,* test:
-    ,* s"  xxx "
-    ,* s"  kkk " LineBuffer copyStringToLine
-    ,* 2 line,move-cursor-right
-    ,* insertString
-    ,* car write (\* 7 *\) cr
-    ,* print-string (\*  k xxx kk  *\) cr
-    ,*)
+    * test:
+    * s"  xxx "
+    * s"  kkk " LineBuffer copyStringToLine
+    * 2 line,move-cursor-right
+    * insertString
+    * car write (\* 7 *\) cr
+    * print-string (\*  k xxx kk  *\) cr
+    *)
 
    : insertChar
      (* char,
@@ -6887,14 +6876,14 @@
 
 
    (*
-    ,* test:
-    ,* 'x'
-    ,* s"  kkk " LineBuffer copyStringToLine
-    ,* 2 line,move-cursor-right
-    ,* insertChar
-    ,* car write (\* 3 *\) cr
-    ,* print-string (\*  kxkk  *\) cr
-    ,*)
+    * test:
+    * 'x'
+    * s"  kkk " LineBuffer copyStringToLine
+    * 2 line,move-cursor-right
+    * insertChar
+    * car write (\* 3 *\) cr
+    * print-string (\*  kxkk  *\) cr
+    *)
 
 
    : deleteChars
@@ -6928,53 +6917,53 @@
 
 
    (*
-    ,* : text,move-cursor-up (\* number -- *\)
-    ,* ; define-function
-    ,*
-    ,* : text,move-cursor-down (\* number -- *\)
-    ,* ; define-function
-    ,*
-    ,* : text,move-cursor-down-&-to-the-begin-of-line (\* number -- *\)
-    ,* ; define-function
-    ,*
-    ,* : text,move-cursor-up-&-to-the-begin-of-line (\* number -- *\)
-    ,* ; define-function
-    ,*)
+    * : text,move-cursor-up (\* number -- *\)
+    * ; define-function
+    *
+    * : text,move-cursor-down (\* number -- *\)
+    * ; define-function
+    *
+    * : text,move-cursor-down-&-to-the-begin-of-line (\* number -- *\)
+    * ; define-function
+    *
+    * : text,move-cursor-up-&-to-the-begin-of-line (\* number -- *\)
+    * ; define-function
+    *)
 
 
 
 
    (*
-    ,* : text,move-cursor-to-row (\* row-index -- *\)
-    ,* ; define-function
-    ,*
-    ,* : text,move-cursor-to-row-&-col (\* row-index, col-index -- *\)
-    ,* ; define-function
-    ,*)
+    * : text,move-cursor-to-row (\* row-index -- *\)
+    * ; define-function
+    *
+    * : text,move-cursor-to-row-&-col (\* row-index, col-index -- *\)
+    * ; define-function
+    *)
 
 
    (* the position of the cursor
-    ,* is also as an argument of the following functions
-    ,* but the cursor do not move when these functions are executed
-    ,*)
+    * is also as an argument of the following functions
+    * but the cursor do not move when these functions are executed
+    *)
 
 
 
    (*
-    ,* : delete-lines (\* number -- *\)
-    ,* ; define-function
-    ,*)
+    * : delete-lines (\* number -- *\)
+    * ; define-function
+    *)
 
 
 
    (*
-    ,* : erase-half-screen-to-end (\* -- *\)
-    ,* ; define-function
-    ,*
-    ,* : erase-half-screen-to-start (\* -- *\)
-    ,* ; define-function
-    ,*
-    ,* : erase-screen (\* -- *\)
+    * : erase-half-screen-to-end (\* -- *\)
+    * ; define-function
+    *
+    * : erase-half-screen-to-start (\* -- *\)
+    * ; define-function
+    *
+    * : erase-screen (\* -- *\)
     * ; define-function
     *)
    #+end_src
@@ -7136,7 +7125,7 @@
 ** ok
    for the REPL is actually a REL which does not print
    so I provide a word to check that the cicada is working properly
-   #+begin_src cicada :tangle ../play/english-core.ccd
+   #+begin_src cicada :tangle ../play/english-core.cicada
    :" yes"
    : Message:yes ; define-constant-string
    : ok (* -- *)
@@ -7147,7 +7136,7 @@
    #+end_src
 ** --------------------------------------
 ** welcome
-   #+begin_src cicada :tangle ../play/english-core.ccd
+   #+begin_src cicada :tangle ../play/english-core.cicada
    :"    welcome to cicada ^_^"
    : Message:welcome ; define-constant-string
    : welcome (* -- *)

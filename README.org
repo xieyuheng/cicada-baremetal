@@ -12,9 +12,9 @@
   - to provide support
   - about programming language and *math*
   - to *programmable devices*
-  - for *the creative spirit* in everyone's mind ^_^  
+  - for *the creative spirit* in everyone's mind ^_^
 
-  ------------------------    
+  ------------------------
 
   by "programmable devices",
   I intend to capture the most general concept.
@@ -27,27 +27,34 @@
   for it is very easy to port cicada to any CPU,
   and the IDE of cicada will be a simple yet powerful text-editor,
   which will be used as an uniform programming platform across different hardwares.
-   
+
   by "the creative spirit",
   I mean that cicada is very easy to be
   entirely understanded by anyone who has that curiosity,
   even my 14 years old little brother.
   and then one can use cicada to program his/her "programmable devices".
-   
+
   I added "math" above,
   simply for I love math ^_^,
   and I will use cicada to do some math experiments,
   to gratify my curiosity about math.
 
 * what is state of this project currently ?
+  - operating system for x86_64 ::
+       =architecturals/x86-64/=
+       /which is currently under active development./
+       single user operating system.
+       dynamic type support, users can define their own types.
+       memory management was done by an incremental garbage collector.
+       all code shared a single address space.       
   - cicada for linux ::
        =other-operating-systems/linux/=
-       which is currently under active development.
-  - operating system for x86_64 :: 
-       =architecturals/x86-64/=
-       which is currently under active development
-  - [coming soon] operating system for ARM :: 
+       /which is currently under active development./       
+       when the development environments of cicada operating systems have not been written,
+       GNU/linux operating system will be used as the main development environment.
+  - operating system for ARM ::
        =architecturals/arm/=
+       /will be coming soon./
        which will be running on raspberry pi.
 
 * how to install and run ?

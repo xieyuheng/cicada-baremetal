@@ -204,7 +204,10 @@
   define-constant-string,by-string
   Exit
 ; define-function
-: define-recursive-function (* wordList[address, the number of words] -- *)
+(* the following is a basic function
+   that allow you to define recursive function with tail call optimization *)
+: define-recursive-function
+  (* wordList[address, the number of words] -- *)
   tail-and-head-of-word-list
   create-word-header-for-function
   set-size-of-function-body
@@ -217,6 +220,10 @@
 :" if"    : Key-word:if   ; define-constant-string
 :" else"  : Key-word:else ; define-constant-string
 :" then"  : Key-word:then ; define-constant-string
+
+(* the following is an old function
+   direct literal number is not handled
+   it is no big deal, for this function is only used once *)
 
 : append-word-description-to-here,with-if&then
   (* wordList[address, the number of words] -- *)
@@ -259,44 +266,75 @@
 ; define-function
 
 
-(* redefine append-word-description-to-here add `else' *)
+(* redefine append-word-description-to-here add "else"
+   this also can be viewed as a basic test of new implemented "if&then"
+   and this time, I use Lambda-stack *)
+
+: help:append-word-description-to-here,if
+  (* string if [address, length] -- *)
+  drop2
+  literal false?branch append-number-to-here
+  Here fetch xx|swap|x
+  Zero append-number-to-here (* leave a place *)
+  Exit
+; define-function
+
+: help:append-word-description-to-here,else
+  (* string else [address, length] -- *)
+  drop2
+  literal branch append-number-to-here
+  Here fetch xxx|swap|x
+  Zero append-number-to-here (* leave a place *)
+  x|swap|xx
+  Here fetch over -  Cell-width /
+  swap save
+  Exit
+; define-function
+
+: help:append-word-description-to-here,then
+  (* string then [address, length] -- *)
+  drop2
+  x|swap|xx
+  Here fetch over -  Cell-width /
+  swap save
+  Exit
+; define-function
 
 : append-word-description-to-here
   (* wordList[address, the number of words] -- *)
   dup zero? if
-    drop2 Exit
+    drop2
+    Exit
   then
   tail-and-head-of-word-list
   dup2 Key-word:if equal-string? if
-    drop2
-    literal false?branch append-number-to-here
-    Here fetch xx|swap|x
-    Zero append-number-to-here (* leave a place *)
-    append-word-description-to-here Exit
+    help:append-word-description-to-here,if
+    append-word-description-to-here
+    Exit
   then
   dup2 Key-word:else equal-string? if
-    drop2
-    literal branch append-number-to-here
-    Here fetch xxx|swap|x
-    Zero append-number-to-here (* leave a place *)
-    x|swap|xx
-    Here fetch over -  Cell-width /
-    swap save
-    append-word-description-to-here Exit
+    help:append-word-description-to-here,else
+    append-word-description-to-here
+    Exit
   then
   dup2 Key-word:then equal-string? if
-    drop2
-    x|swap|xx
-    Here fetch over -  Cell-width /
-    swap save
-    append-word-description-to-here Exit
+    help:append-word-description-to-here,then
+    append-word-description-to-here
+    Exit
+  then
+  dup2 string-denote-literal&branch? if
+    help:append-word-description-to-here,literal&branch
+    append-word-description-to-here
+    Exit
   then
   dup2 string-denote-number? if
-    number drop append-number-to-here
-    append-word-description-to-here Exit
+    help:append-word-description-to-here,number
+    append-word-description-to-here
+    Exit
   then
-    find word-link->word-explainer append-number-to-here
-    append-word-description-to-here Exit
+  help:append-word-description-to-here,word
+  append-word-description-to-here
+  Exit
 ; define-recursive-function,with-if&then
 
 
@@ -1041,45 +1079,42 @@ append-word-description-to-here said:
 : append-word-description-to-here
   (* WordList[address, the number of words] -- *)
   dup zero? if
-    drop2 Exit
+    drop2
+    Exit
   then
   tail-and-head-of-word-list
-    dup2 Key-word:if equal-string? if
-      drop2
-      literal false?branch append-number-to-here
-      Here fetch xx|swap|x
-      Zero append-number-to-here (* leave a place *)
-      append-word-description-to-here Exit
-    then
-    dup2 Key-word:else equal-string? if
-      drop2
-      literal branch append-number-to-here
-      Here fetch xxx|swap|x
-      Zero append-number-to-here (* leave a place *)
-      x|swap|xx
-      Here fetch over -  Cell-width /
-      swap save
-      append-word-description-to-here Exit
-    then
-    dup2 Key-word:then equal-string? if
-      drop2
-      x|swap|xx
-      Here fetch over -  Cell-width /
-      swap save
-      append-word-description-to-here Exit
-    then
-    dup2 string-denote-number? if
-      number drop append-number-to-here
-      append-word-description-to-here Exit
-    then
-    dup2
-    find dup not-zero? if
-      word-link->word-explainer append-number-to-here
-      drop2 (* drop the string[address, length], which is for debuger *)
-      append-word-description-to-here
-      Exit
-    then
-    drop (* drop the Zero *)
+  dup2 Key-word:if equal-string? if
+    help:append-word-description-to-here,if
+    append-word-description-to-here
+    Exit
+  then
+  dup2 Key-word:else equal-string? if
+    help:append-word-description-to-here,else
+    append-word-description-to-here
+    Exit
+  then
+  dup2 Key-word:then equal-string? if
+    help:append-word-description-to-here,then
+    append-word-description-to-here
+    Exit
+  then
+  dup2 string-denote-literal&branch? if
+    help:append-word-description-to-here,literal&branch
+    append-word-description-to-here
+    Exit
+  then
+  dup2 string-denote-number? if
+    help:append-word-description-to-here,number
+    append-word-description-to-here
+    Exit
+  then
+  dup2 find dup not-zero? if
+    word-link->word-explainer append-number-to-here
+    drop2 (* drop the string[address, length], which is for debuger *)
+    append-word-description-to-here
+    Exit
+  then
+  drop (* drop the Zero *)
   Message:append-word-description-to-here,meet-undefined-word print-string
   print-string cr
   Message:append-word-description-to-here,length-of-the-rest-of-the-word-list
@@ -1442,38 +1477,6 @@ print-type-tag said:
 : dynamic-variable-word? (* word[address of link] -- True or False *)
     fetch-word-type Offset-for-dynamic-variable-word fetch-bit one?
     Exit
-; define-function
-Lambda-stack-top : Lambda-stack-pointer ; define-variable
-
-: push-lambda-stack
-  (* ArgumentStack::  value -->
-     LambdaStack::  value *)
-  Cell-width Lambda-stack-pointer add-save
-  Lambda-stack-pointer fetch save
-  Exit
-; define-function
-
-: pop-lambda-stack
-  (* LambdaStack::  value -->
-     ArgumentStack::  value *)
-  Lambda-stack-pointer fetch fetch
-  Cell-width Lambda-stack-pointer sub-save
-  Exit
-; define-function
-
-
-: ready (* or twoPushLambdaStack *)
-  (* ArgumentStack::  value-a, value-b -->
-     LambdaStack::  value-a, value-b *)
-  swap push-lambda-stack push-lambda-stack
-  Exit
-; define-function
-
-: get-back (* or twoPopLambdaStack *)
-  (* LambdaStack::  value-a, value-b -->
-     ArgumentStack::  value-a, value-b *)
-  pop-lambda-stack pop-lambda-stack swap
-  Exit
 ; define-function
 (* example of a substring stored in string-heap :
    || 4 : length of substring  ||
@@ -2346,8 +2349,8 @@ String-heap-2 : Current-free-string-address,to   ; define-variable
     then
     sub1
     cons
-      literal 555 <fixnum> set-car!
-      literal 666 <fixnum> set-cdr!
+      555 <fixnum> set-car!
+      666 <fixnum> set-cdr!
     drop2
     ask-for-lots-of-cons
     Exit
@@ -2358,8 +2361,8 @@ String-heap-2 : Current-free-string-address,to   ; define-variable
     then
     sub1
     cons
-      literal 555 <fixnum> set-car!
-      literal 666 <fixnum> set-cdr!
+      555 <fixnum> set-car!
+      666 <fixnum> set-cdr!
     x|swap|xx
     ask-for-lots-of-cons,leave-them-on-the-argument-stack
     Exit
@@ -3281,19 +3284,19 @@ String-heap-2 : Current-free-string-address,to   ; define-variable
 ; define-function
 : char-denote-number,or-alphabet,or-out-of-ascii?
   (* char -- True of False *)
-  dup literal 48 < if     drop False Exit
+  dup  48 < if     drop False Exit
   then
-  dup literal 57 <= if    drop True Exit
+  dup  57 <= if    drop True Exit
   then
-  dup literal 65 < if     drop False Exit
+  dup  65 < if     drop False Exit
   then
-  dup literal 90 <= if    drop True Exit
+  dup  90 <= if    drop True Exit
   then
-  dup literal 97 < if     drop False Exit
+  dup  97 < if     drop False Exit
   then
-  dup literal 122 <= if   drop True Exit
+  dup  122 <= if   drop True Exit
   then
-  dup literal 128 < if    drop False Exit
+  dup  128 < if    drop False Exit
   then
   drop True Exit
 ; define-function
