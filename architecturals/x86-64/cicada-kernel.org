@@ -945,30 +945,16 @@
           ;; must not end with Exit here
    defWordEnd basicREPL
 
-
-   ;; defWord "execute-word", executeWord
-   ;;    ;; (* string[address, length] -- unknown *)
-   ;;    xx dup2, stringDenoteNumber?, false?branch, 4
-   ;;    xx   number, drop
-   ;;    xx   Exit
-   ;;    xx find, dup, zero?branch, 4
-   ;;    xx   wordLinkToWordExplainer, execute
-   ;;    xx   Exit
-   ;;    xx drop, printErrorInfoForExecuteWord
-   ;;    xx Exit
-   ;; defWordEnd executeWord
-
-
    defWord "execute-word", executeWord
           ;; (* string[address, length] -- unknown *)
-          xx dup2, stringDenoteNumber?, false?branch, 4
-          xx   number, drop
+          xx dup2, stringDenoteInteger?, false?branch, 4
+          xx   stringToInteger_withError, drop
           xx   Exit
           xx dup2, find, dup, zero?branch, 6
           xx   xxswapx, drop2
           xx   wordLinkToWordExplainer, execute
           xx   Exit
-          xx drop ;; drop zore
+          xx drop ;; drop zero
           xx Message_undefined_word, printString
           xx printString
           xx literal, ASCII_linefeed, writeChar
@@ -1166,7 +1152,6 @@
 * *primitive functions*
 ** Var & Const
    #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
-   defVar "Base", 10, Base
    defVar "Here",  0, Here
 
    defVar "first-word-in-dictionary", LinkOfTheLatestWordInAssembly , FirstWordInDictionary
@@ -1191,12 +1176,6 @@
 
    defConst "False", 0, False
    defConst "True",  1, True
-
-   defConst "Bin-base", 2,  BinBase
-   defConst "Oct-base", 8,  OctBase
-   defConst "Dec-base", 10, DecBase
-   defConst "Hex-base", 16, HexBase
-   defConst "Aph-base", 36, AphBase
    #+end_src
 ** special key words (with chinese support)
    #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
@@ -1774,6 +1753,37 @@
       pushArgumentStack rax ;; quotient
       next
    #+end_src
+** math
+   #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+   defWord "negate", negate
+      ;; (* n --  -n *)
+      xx literal, 0
+      xx swap, subtraction
+      xx Exit
+   defWordEnd negate
+
+   defWord "help:power", help_power
+      ;; (* a, m, n -- a^n *)
+      xx dup, zero?, false?branch, 5
+      xx   drop, swap, drop
+      xx   Exit
+      xx sub1
+      xx swap
+      xx   xoverxx, multiple
+      xx swap
+      xx help_power
+      xx Exit
+   defWordEnd help_power
+
+   defWord "power", power
+      ;; n must be naturl number for now
+      ;; (* a, n -- a^n *)
+      xx literal, 1
+      xx swap
+      xx help_power
+      xx Exit
+   defWordEnd power
+   #+end_src
 ** memory
    #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
    ;; ``save'' and ``fetch'' default to a CellWidth (== 8 bytes)
@@ -1923,13 +1933,42 @@
       next
 
    defWord "equal-string?", equalString?
-      ;; (* string-1[address-1, length-1], string-2[address-2, length-2]
-      ;;   -- True or False *)
+      ;; (* string-1[address-1, length-1], string-2[address-2, length-2] -- True or False *)
       xx xoverxx, equal?, false?branch, 4
       xx swap, compareString?, Exit
       xx drop, drop, drop, False
       xx Exit
    defWordEnd equalString?
+
+
+   ;; ><><>< there are no proper error handling for the following two functions
+
+   defCode "head-of-string", headOfString
+      ;; (* string[address, length] -- first char *)
+      popArgumentStack rcx
+      popArgumentStack rbx
+      xor rax, rax
+      mov al, byte [rbx]
+      pushArgumentStack rax
+      next
+
+   defCode "tail-of-string", tailOfString
+      ;; (* string[address, length] -- string[address + 1, length - 1] *)
+      popArgumentStack rcx
+      popArgumentStack rbx
+      dec rcx
+      inc rbx
+      pushArgumentStack rbx
+      pushArgumentStack rcx
+      next
+
+   defWord "tail-and-head-of-string", tailAndHeadOfString
+      ;; (* string[address, length] -- string[address + 1, length - 1], first char *)
+      xx dup2, tailOfString
+      xx xxswapxx
+      xx headOfString
+      xx Exit
+   defWordEnd tailAndHeadOfString
    #+end_src
 ** predicates
    1. 0 as False
@@ -2024,6 +2063,21 @@
       xx zero?
       xx Exit
    defWordEnd false?
+   #+end_src
+** predicates about char
+   #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+   defWord "char-denote-number?", charDenoteNumber?
+      ;; (* char -- True or False *)
+      xx dup
+      xx literal, '0', lessThan?, false?branch, 4
+      xx   drop, False
+      xx   Exit
+      xx literal, '9', greaterThan?, false?branch, 3
+      xx   False
+      xx   Exit
+      xx True
+      xx Exit
+   defWordEnd charDenoteNumber?
    #+end_src
 ** bitwise operations
    1. ``bitwiseAnd'' and ``bitwiseOr'' handle 64 bits value
@@ -2393,326 +2447,6 @@
       xx headOfWordList
       xx Exit
    defWordEnd tailAndHeadOfWordList
-   #+end_src
-* *the dictionary & the lexicographer*
-** note
-   1. there are many lexicographers,
-      they work together to define words into the dictionary
-   2. to create a new word is to use some words to describe the new word,
-      and set an explainer to explain the description of the new word.
-   3. to define a new word,
-      we just need to add the new created word to the dictionary.
-   4. when someone try to find a word in the dictionary,
-      the explainer of that word explains the word for him
-   5. due to the constrain of fasm's syntax,
-      the ``names'' of some words varys between fasm and forth
-      here are some warnings:
-      1) for syntax sugar :
-         defWord ":", readWordListForLexicographer
-         defCode "x|swap|xx", xswapxx
-         defWord ".", printLittleNumber
-      2) for already used label-name :
-         defConst "ReturnStackTop", ReturnStackTop, TheReturnStackTop
-** explainers & execute & Exit
-   #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
-   align 16
-   explainVar:
-      ;; ( -- address )
-      add ExplainerPointer, CellWidth
-      pushArgumentStack ExplainerPointer
-      next
-
-   align 16
-   explainConst:
-      ;; ( -- value )
-      add ExplainerPointer, CellWidth
-      mov TemporaryRegister, [ExplainerPointer]
-      pushArgumentStack TemporaryRegister
-      next
-
-   align 16
-   explainFunctionBody:
-      pushReturnStack NextWordPointer
-      ;; to calculate the address in a word where the function-body is stored
-      ;; this address is as an ``argumt'' of explainFunctionBody
-      add ExplainerPointer, CellWidth
-      mov NextWordPointer, ExplainerPointer
-      next
-
-   align 16
-   explainConstString:
-      ;; ( -- string[address, length] )
-      add ExplainerPointer, CellWidth
-      mov TemporaryRegister, [ExplainerPointer]
-      add ExplainerPointer, CellWidth
-      pushArgumentStack ExplainerPointer
-      pushArgumentStack TemporaryRegister
-      next
-
-
-
-   defCode "execute", execute
-     ;; ( word[address of explainer] -- )
-     popArgumentStack ExplainerPointer
-     jmp qword[ExplainerPointer]
-
-   ;; not matter what way you use to set :
-   ;;   [ExplainerPointer] == address-of-explainer (of a word you want to jump to)
-   ;; then :
-   ;;   jmp qword[ExplainerPointer]
-   ;; it will works just well !!!
-
-
-
-
-   ;; the following Exit helps tail-call-optimization
-   ;; it just let you decide where is the end of FunctionBody
-   ;; in a FunctionBody, the ``Exit'' as a word will never be called
-   defConst "Exit", Exit, Exit
-   defConst "已矣", 已矣, 已矣
-   ;; (* so, the following numbers are the same :
-   ;;   Exit
-   ;;   readWord Exit find wordLinkToWordExplainer
-   ;;   *)
-
-   defConst "Function-body-explainer",   explainFunctionBody, FunctionBodyExplainer
-   defConst "Variable-explainer",        explainVar,          VarExplainer
-   defConst "Constant-explainer",        explainConst,        ConstExplainer
-   defConst "Constant-string-explainer", explainConstString,  ConstStringExplainer
-   #+end_src
-** find (dictionary look up)
-   #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
-   ;; recall
-   ;; a word in the dictionary (unit : CellWidth = 8 bytes)
-   ;; ==
-   ;;    ||  1 : name-string-header-which-contains-the-length-of-name-string  ||
-   ;;    ||  m : name-string  ||
-   ;;    ||  1 : SizeOfFunctionBody  ||
-   ;;    ||  1 : identification  ||
-   ;;    ||  1 : link  ||
-   ;;    ||  1 : type  ||
-   ;;    ||  1 : address-of-name-string-header  ||
-   ;;    ||  1 : address-of-explainer  ||
-   ;;    ||  n : body  ||
-   ;; where
-   ;;   ||  1 : type  ||
-   ;; ==
-   ;;   | type-bit-63 | ... | type-bit-1 | type-bit-0 |
-   ;; type-bit-0 is for HiddenWord
-
-   WordType_HiddenMask = 00000001h
-
-
-   defWord "word-link->word-string", wordLinkToWordString
-      ;; (* link[address] -- string[address, length] *)
-      xx literal, CellWidth
-      xx Two, multiple
-      xx addition
-      xx fetch
-      xx dup, literal, CellWidth, addition
-      xx swap, fetch
-      xx Exit
-   defWordEnd wordLinkToWordString
-
-   defWord "help,find", help_find
-      ;; (* wordString[address, length], link[address] -- word[address of link] or Zero *)
-      xx dup, zero?, false?branch, 4
-      xx   xxswapx, drop2
-      xx   Exit
-      xx xxtuckx, wordLinkToWordString, xxoverxx, equalString?, false?branch, 3
-      xx   drop2
-      xx   Exit
-      xx xswapxx, fetch
-      xx help_find
-      xx Exit
-   defWordEnd help_find
-
-   defWord "find", find
-      ;; (* wordString[address, length] -- word[address of link] or Zero *)
-      xx FirstWordInDictionary, fetch
-      xx help_find
-      xx Exit
-   defWordEnd find
-
-
-   ;; usage;
-   ;; 1 2 readWord + find wordLinkToWordExplainer execute . (* 3 *)
-   defWord "word-link->word-explainer", wordLinkToWordExplainer
-      ;; (* word[address of link] -- word[address of explainer] or Zero *)
-      xx literal, CellWidth
-      xx Three, multiple
-      xx addition
-      xx Exit
-   defWordEnd wordLinkToWordExplainer
-   #+end_src
-** the basic lexicographer
-   #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
-   defWord "append-number-to-here", appendNumberToHere
-      ;; (* a 64 bits number -- *)
-      ;; reset ``Here'', which points next free memory
-      xx Here, fetch
-      xx save
-      xx Here, fetch
-      xx literal, CellWidth, addition
-      xx Here, save
-      xx Exit
-   defWordEnd appendNumberToHere
-
-   ;; note that:
-   ;; a string in stack is string[address, length]
-   ;; a string in memory is ||  1 : length  ||  n : string  ||
-   defWord "append-string-to-here", appendStringToHere
-      ;; (* string[address, length] -- *)
-      ;; for update Here
-      xx dup, pushLambdaStack
-      xx   dup, appendNumberToHere
-      xx   Here, fetch, swap, copyByteString
-      ;; update Here
-      xx popLambdaStack
-      xx Here, fetch, addition, Here, save
-      xx Exit
-   defWordEnd appendStringToHere
-
-   defWord "create-word-header", createWordHeader ;; by string
-      ;; (* string[address, length] -- word[address of link] *)
-      ;; for address-of-name-string-header
-      xx Here, fetch, pushLambdaStack
-      xx   appendStringToHere
-      xx   Here, fetch, appendNumberToHere ;; (* identification *)
-      xx   Here, fetch ;; (* leave the word[link] as return-value *)
-      xx   Zero, appendNumberToHere ;; (* link *)
-      xx   Zero, appendNumberToHere ;; (* type *)
-      ;; address-of-name-string-header
-      xx popLambdaStack, appendNumberToHere
-      xx Exit
-   defWordEnd createWordHeader
-
-   defWord "create-word-header-for-function", createWordHeaderForFunction ;; by string
-      ;; (* SizeOfFunctionBody *) is new
-      ;; (* string[address, length] -- word[address of link] *)
-      ;; for address-of-name-string-header
-      xx Here, fetch, pushLambdaStack
-      xx   appendStringToHere
-      xx   Zero, appendNumberToHere ;; (* SizeOfFunctionBody *)
-      xx   Here, fetch, appendNumberToHere ;; (* identification *)
-      xx   Here, fetch ;; (* leave the word[link] as return-value *)
-      xx   Zero, appendNumberToHere ;; (* link *)
-      xx   Zero, appendNumberToHere ;; (* type *)
-      xx popLambdaStack, appendNumberToHere ;; address-of-name-string-header
-      xx Exit
-   defWordEnd createWordHeaderForFunction
-
-
-   defWord "help:append-word-description-to-here,number", help_append_word_description_to_here_number
-      ;; (* string[address, length] -- *)
-      ;; reading-error reported by ``number'' is not handled
-      xx literal, literal, appendNumberToHere
-      xx number, drop, appendNumberToHere
-      xx Exit
-   defWordEnd help_append_word_description_to_here_number
-
-   defWord "help:append-word-description-to-here,word", help_append_word_description_to_here_word
-      ;; (* string[address, length] -- *)
-      xx find, wordLinkToWordExplainer, appendNumberToHere
-      xx Exit
-   defWordEnd help_append_word_description_to_here_word
-
-   defWord "help:append-word-description-to-here,literal&branch", help_append_word_description_to_here_literal_branch
-      ;; (* string[address, length] -- *)
-      xx help_append_word_description_to_here_word
-      ;; ><><>< 如果后面什么都没有了 就需要报错 但是 这里没有处理这个 error
-      xx tailAndHeadOfWordList
-      xx dup2, stringDenoteNumber?, false?branch, 5
-      xx   number, drop, appendNumberToHere
-      xx   Exit
-      xx help_append_word_description_to_here_word
-      xx Exit
-   defWordEnd help_append_word_description_to_here_literal_branch
-
-   defConstString "Key-word:literal", "literal", Key_word_literal
-   defConstString "Key-word:branch", "branch", Key_word_branch
-   defConstString "Key-word:zero?branch", "zero?branch", Key_word_zero_branch
-   defConstString "Key-word:false?branch", "false?branch", Key_word_false_branch
-   defConstString "Key-word:not-false?branch", "not-false?branch", Key_word_not_false_branch
-
-   defWord "string-denote-literal&branch?", stringDenoteLiteralAndBranch?
-      ;; (* string[address, length] -- True or False *)
-      xx dup2, Key_word_literal, equalString?, false?branch, 4
-      xx   drop2, True
-      xx   Exit
-      xx dup2, Key_word_branch, equalString?, false?branch, 4
-      xx   drop2, True
-      xx   Exit
-      xx dup2, Key_word_zero_branch, equalString?, false?branch, 4
-      xx   drop2, True
-      xx   Exit
-      xx dup2, Key_word_false_branch, equalString?, false?branch, 4
-      xx   drop2, True
-      xx   Exit
-      xx dup2, Key_word_not_false_branch, equalString?, false?branch, 4
-      xx   drop2, True
-      xx   Exit
-      xx drop2, False
-      xx Exit
-   defWordEnd stringDenoteLiteralAndBranch?
-
-   defWord "append-word-description-to-here", appendWordDescriptionToHere
-      ;; (* wordList[address, the number of words] -- *)
-      xx dup, zero?, false?branch, 3
-      xx   drop2
-      xx   Exit
-      xx tailAndHeadOfWordList
-      xx dup2, stringDenoteLiteralAndBranch?, false?branch, 4
-      xx   help_append_word_description_to_here_literal_branch
-      xx   branch, -13
-      xx dup2, stringDenoteNumber?, false?branch, 4
-      xx   help_append_word_description_to_here_number
-      xx   branch, -20
-      ;; else
-      xx   help_append_word_description_to_here_word
-      xx   branch, -23
-   defWordEnd appendWordDescriptionToHere
-
-
-   defWord "add-new-word-to-dictionary", addNewWordToDictionary
-      ;; reset FirstWordInDictionary to point to the newly defined word
-      ;; (* word[address of link] -- *)
-      xx dup
-      xx FirstWordInDictionary, fetch
-      xx swap
-      xx save
-      xx FirstWordInDictionary, save
-      xx Exit
-   defWordEnd addNewWordToDictionary
-
-   defWord "set-size-of-function-body", setSizeOfFunctionBody
-      ;; (* wordList[address, the number of words], word[address of link] --
-      ;;    wordList[address, the number of words], word[address of link] *)
-      xx dup
-      xx literal, CellWidth, subtraction
-      xx literal, CellWidth, subtraction
-      xx xoverxx
-      xx swap
-      xx save
-      xx Exit
-   defWordEnd setSizeOfFunctionBody
-
-   defWord "define-function", defineFunction
-      ;; (* wordList[address, the number of words] -- *)
-      ;;  to create a new word
-      ;;  is to use some words to describe the new word,
-      ;;  and let an explainer to explain the description of the new word.
-      ;;  to define a new word
-      ;;  is to add the new created word to the dictionary.
-      xx tailAndHeadOfWordList
-      xx createWordHeaderForFunction
-      xx FunctionBodyExplainer, appendNumberToHere
-      xx setSizeOfFunctionBody
-      xx xxswapx
-      xx appendWordDescriptionToHere
-      xx addNewWordToDictionary
-      xx Exit
-   defWordEnd defineFunction
    #+end_src
 * *IO*
 ** readChar
@@ -3427,6 +3161,593 @@
       xx branch, -14
    defWordEnd printString
    #+end_src
+** >< file
+* *number*
+** note
+   1. 现在 的 number 就只是 "integer" 而已
+      更多的跟数学有关的东西将在 cicada 中设计新的语法来实现
+   2. 在 "integer" 这个函数中 我将只支持 对四种进位制的 字符串的 阅读
+      1. 十进制 :: 10#1231 10#-1231 或者 1231 -1231
+      2. 二进制 :: 2#101001 2#-101001
+      3. 八进制 :: 8#712537 8#-712537
+      4. 十六进制 :: 16#f123acb3 16#-F123ACB3 (大写小写字母都可以)
+   3. and still, one can use "_" to separate the number to make it more readable
+      example : 2#1111_0101_0001
+   4. actually, the base can be any 10 based number
+      even greater then 36
+      but when the base is greater then 36
+      not all integer can be represented under this base
+      for we only have 36 chars
+   5. 可以发现 这样对一个 字符串 是不是代表了一个 整数的 判断就简单多了
+** base-of-string
+   #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+   ;; 1. just take the 10 based number on the left of "#" as base
+   ;;    while the base must be not-zero
+   ;;    (actually, when it is zero, just let the zero return,
+   ;;     it will be viewed as a parsing error.)
+   ;; 2. if can not find "#" in the string
+   ;;    or there is nothing after the first occur of "#"
+   ;;    or there is nothing in front of the first occur of "#"
+   ;;    or the string on the left of "#" can not be simply viewed as a 10 based number
+   ;;    or it is zero
+   ;;    just reture zero
+   ;; 3. this function is really a perfect example
+   ;;    of how to make good use of Lambda-stack :)
+   defWord "base-of-string", baseOfString
+      ;; (* string[address, length] -- base  or zero *)
+      xx literal, 0, pushLambdaStack ;; init counter for help_base_of_string_push_char
+      xx help_base_of_string_push_char
+      xx dup, false?, false?branch, 2
+      xx   Exit
+      xx drop
+      xx literal, 0  ;; init base for help_base_of_string_pop_char
+      xx popLambdaStack
+      xx literal, 0
+      xx pushLambdaStack  ;; init index for help_base_of_string_pop_char
+      xx help_base_of_string_pop_char
+      xx Exit
+   defWordEnd baseOfString
+
+   defWord "help:help:base-of-string,push-char,clear-lambda-stack", help_help_base_of_string_push_char_clear_lambda_stack
+      ;; (* char-counter[N] -- *)
+      ;; (* Lambda-stack::  char, ... --  *)
+      xx dup, zero?, false?branch, 3
+      xx   drop
+      xx   Exit
+      xx sub1, popLambdaStack, drop
+      xx help_help_base_of_string_push_char_clear_lambda_stack
+      xx Exit
+   defWordEnd help_help_base_of_string_push_char_clear_lambda_stack
+
+   defWord "help:base-of-string,push-char", help_base_of_string_push_char
+      ;; (* string[address, length] -- True *)
+      ;; (* Lambda-stack:: char-counter[0] -- char-counter[N], char, ... *)
+      ;; (* or *)
+      ;; (* string[address, length] -- False *)
+      ;; (* Lambda-stack:: char-counter[0] -- *)
+      xx dup, literal, 2, lessThan?, false?branch, 7
+      xx   drop2
+      xx   popLambdaStack
+      xx   help_help_base_of_string_push_char_clear_lambda_stack
+      xx   literal, 0
+      xx   Exit
+      xx tailAndHeadOfString
+      xx dup, literal, '#', equal?, false?branch, 6
+      xx   drop, drop2
+      xx   literal, 1
+      xx   Exit
+      xx dup, charDenoteNumber?, false?, false?branch, 8
+      xx   drop, drop2
+      xx   popLambdaStack
+      xx   help_help_base_of_string_push_char_clear_lambda_stack
+      xx   literal, 0
+      xx   Exit
+      xx popLambdaStack, add1
+      xx swap, pushLambdaStack, pushLambdaStack
+      xx help_base_of_string_push_char
+      xx Exit
+   defWordEnd help_base_of_string_push_char
+
+   ;; over-flow of 64 bits is not handled
+   defWord "help:base-of-string,pop-char", help_base_of_string_pop_char
+      ;; (* base, char-counter[N] -- base *)
+      ;; (* Lambda-stack::  index, char, ... -- *)
+      xx dup, zero?, false?branch, 5
+      xx   drop
+      xx   popLambdaStack, drop
+      xx   Exit
+      xx sub1
+      xx swap, popLambdaStack
+      ;; (* char-counter[N], base, index *)
+      xx dup, literal, 10, swap, power
+      xx   popLambdaStack
+      xx   literal, '0', subtraction
+      xx   multiple
+      xx   swap, add1, pushLambdaStack
+      xx   addition
+      xx swap
+      xx help_base_of_string_pop_char
+      xx Exit
+   defWordEnd help_base_of_string_pop_char
+   #+end_src
+** digit-of-string
+   #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+   ;; 1. just take whatever the sub-string on the rigth of "#"
+   ;;    while the length of this sub-string must be not-zero
+   ;; 2. if can not find "#" in the string
+   ;;    or there is nothing after the first occur of "#"
+   ;;    or there is nothing in front of the first occur of "#"
+   ;;    just reture zero
+   defWord "digit-of-string", digitOfString
+      ;; (* string[address, length] -- digit[address, length]  or zero *)
+      xx dup2, headOfString
+      xx literal, '#', equal?, false?branch, 5
+      xx   drop2
+      xx   literal, 0
+      xx   Exit
+      xx help_digitOfString
+      xx Exit
+   defWordEnd digitOfString
+
+   ;; this helper-function do not handle "#123" as error
+   ;; i.e. when there is nothing in front of the first occur of "#"
+   ;; it does not reture 0
+   defWord "help:digit-of-string", help_digitOfString
+      ;; (* string[address, length] -- digit[address, length]  or zero *)
+      xx dup, literal, 2, lessThan?, false?branch, 5
+      xx   drop2
+      xx   literal, 0
+      xx   Exit
+      xx tailAndHeadOfString
+      xx literal, '#', equal?, false?branch, 2
+      xx   Exit
+      xx help_digitOfString
+      xx Exit
+   defWordEnd help_digitOfString
+   #+end_src
+** char->number
+   #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+   ;; 1. if char is not in [0-9] [A-Z] [a-z]
+   ;;    reture -1 to denote error
+   defWord "char->number", charToNumber
+      ;; (* char -- the number it denotes *)
+      xx dup, literal, '0', lessThan?, false?branch, 5
+      xx   drop
+      xx   literal, -1
+      xx   Exit
+      xx dup, literal, '9', lessOrEqual?, false?branch, 5
+      xx   literal, '0'
+      xx   subtraction
+      xx   Exit
+      xx dup, literal, 'A', lessThan?, false?branch, 5
+      xx   drop
+      xx   literal, -1
+      xx   Exit
+      xx dup, literal, 'Z', lessOrEqual?, false?branch, 8
+      xx   literal, 'A', subtraction
+      xx   literal, 10, addition
+      xx   Exit
+      xx dup, literal, 'a', lessThan?, false?branch, 5
+      xx   drop
+      xx   literal, -1
+      xx   Exit
+      xx dup, literal, 'z', lessOrEqual?, false?branch, 8
+      xx   literal, 'a', subtraction
+      xx   literal, 10, addition
+      xx   Exit
+      xx drop
+      xx literal, -1
+      xx Exit
+   defWordEnd charToNumber
+   #+end_src
+** with-base:char-denote-number?
+   #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+   defWord "with-base:char-denote-number?", withBase_charDenoteNumber?
+      ;; (* base, char -- True of False *)
+      ;; (* char -- True or False *)
+      xx charToNumber
+      xx dup, literal, -1, equal?, false?branch, 4
+      xx   drop2
+      xx   False
+      xx   Exit
+      xx greaterThan?, false?branch, 3
+      xx   True
+      xx   Exit
+      xx False
+      xx Exit
+   defWordEnd withBase_charDenoteNumber?
+   #+end_src
+** with-base:string-denote-digit?
+   #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+   ;; in the following function "with-base:string-denote-digit?"
+   ;; I also need to handle the separater "_"
+
+   ;; use with-base:char-denote-number?
+   ;; to check if each "digit-cher" greaterOrEqual then "base"
+
+   defWord "with-base:string-denote-digit?", withBase_stringDenoteDigit?
+      ;; (* base, string[address, length] -- True or False *)
+      xx dup, zero?, false?branch, 5
+      xx   drop2, drop
+      xx   False
+      xx   Exit
+      xx dup2, headOfString, literal, '-', equal?, false?branch, 2
+      ;; note the way how to uses "if then" here
+      ;; it is enough to use "if then" to handle
+      ;; an optional executed function call, without the use of "Exit"
+      xx   tailOfString
+      xx dup2, stringFullOfUnderscore?, false?branch, 5
+      xx   drop2, drop
+      xx   False
+      xx   Exit
+      xx help_withBase_stringDenoteDigit?
+      xx Exit
+   defWordEnd withBase_stringDenoteDigit?
+
+   ;; this helper function :
+   ;; 0. when meet zero-length string always reture True
+   defWord "string-full-of-underscore?", stringFullOfUnderscore?
+      ;; (* string[address, length] -- True or False *)
+      xx dup, zero?, false?branch, 4
+      xx   drop2
+      xx   True
+      xx   Exit
+      xx tailAndHeadOfString
+      xx literal, '_', equal?, false?branch, 3
+      xx   stringFullOfUnderscore?
+      xx   Exit
+      xx drop2
+      xx False
+      xx Exit
+   defWordEnd stringFullOfUnderscore?
+
+   ;; this helper function :
+   ;; 0. when meet zero-length string always reture True
+   ;; 1. do not handle "-"
+   ;; 2. do not handle string-full-of-underscore
+   defWord "help:with-base:string-denote-digit?", help_withBase_stringDenoteDigit?
+      ;; (* base, string[address, length] -- True or False *)
+      xx dup, zero?, false?branch, 5
+      xx   drop2, drop
+      xx   True
+      xx   Exit
+      xx tailAndHeadOfString
+      xx dup, literal, '_', equal?, false?branch, 4
+      xx   drop
+      xx   help_withBase_stringDenoteDigit?
+      xx   Exit
+      xx xoverxxx, swap
+      xx withBase_charDenoteNumber?, false?branch, 3
+      xx   help_withBase_stringDenoteDigit?
+      xx   Exit
+      xx drop2, drop
+      xx False
+      xx Exit
+   defWordEnd help_withBase_stringDenoteDigit?
+
+
+   defWord "with-base:string-denote-digit?without-sign", withBase_stringDenoteDigit?withoutSign
+      ;; (* base, string[address, length] -- True or False *)
+      xx dup2, headOfString, literal, '-', equal?, false?branch, 5
+      xx   drop2, drop
+      xx   False
+      xx   Exit
+      xx withBase_stringDenoteDigit?
+      xx Exit
+   defWordEnd withBase_stringDenoteDigit?withoutSign
+   #+end_src
+** string-denote-base#digit? & string-denote-digit?
+   #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+   ;; now with very good factoring
+   ;; we can write the following function easily :)
+
+   ;; with "#"
+   defWord "string-denote-base#digit?", stringDenoteBaseDigit?
+      ;; (* string[address, length] -- True or False *)
+      xx dup2, baseOfString
+      xx dup, zero?, false?branch, 5
+      xx   drop  ;; drop zero
+      xx   drop2 ;; drop string
+      xx   False
+      xx   Exit
+      xx xxswapx
+      xx digitOfString
+      xx dup, zero?, false?branch, 5
+      xx   drop  ;; drop zero
+      xx   drop  ;; drop base
+      xx   False
+      xx   Exit
+      xx withBase_stringDenoteDigit?
+      xx Exit
+   defWordEnd stringDenoteBaseDigit?
+
+   ;; without "#"
+   defWord "string-denote-digit?", stringDenoteDigit?
+      ;; (* string[address, length] -- True or False *)
+      xx literal, 10, xxswapx
+      xx withBase_stringDenoteDigit?
+      xx Exit
+   defWordEnd stringDenoteDigit?
+   #+end_src
+** string-denote-integer?
+   #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+   ;; in the following functions
+   ;; I also need to handle the separater "_"
+
+   ;; two sub-type of string as above
+   defWord "string-denote-integer?", stringDenoteInteger?
+      ;; (* string[address, length] -- True or False *)
+      xx dup2, stringDenoteDigit?, false?branch, 4
+      xx   drop2, True
+      xx   Exit
+      xx stringDenoteBaseDigit?, false?branch, 3
+      xx   True
+      xx   Exit
+      xx False
+      xx Exit
+   defWordEnd stringDenoteInteger?
+   #+end_src
+** with-base:string->natural-number,with-error
+   #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+   ;; we need to return an error indication
+   ;; so we let the following function returns two items on the stack
+   ;; is this the right way to do it?
+   ;; for sometimes one might do not want to call "debuger"
+   ;; when calling "string->integer" and meet a parsing error
+   defWord "with-base:string->natural-number,with-error", withBase_stringToNaturalNumber_withError
+      ;; (* base, string[address, length] -- natural-number, True *)
+      ;; (* or *)
+      ;; (* base, string[address, length] -- 0, False *)
+      xx xoverxx, xxoverx
+      xx withBase_stringDenoteDigit?withoutSign, false?, false?branch, 7
+      xx   drop2, drop
+      xx   literal, 0
+      xx   False
+      xx   Exit
+      xx literal, 0, pushLambdaStack ;; number-counter[0]
+      xx helpPush_withBase_stringToNaturalNumber_withError
+      xx literal, 0 ;; sum
+      xx literal, 0 ;; index
+      xx helpPop_withBase_stringToNaturalNumber_withError
+      xx Exit
+   defWordEnd withBase_stringToNaturalNumber_withError
+
+
+   defWord "help-push:with-base:string->natural-number,with-error", helpPush_withBase_stringToNaturalNumber_withError
+      ;; (* base, string[address, length] -- base *)
+      ;; (* Lambda-stack:: number-counter[0] -- number-counter[N], number, ... *)
+      xx dup, zero?, false?branch, 3
+      xx   drop2
+      xx   Exit
+      xx tailAndHeadOfString
+      xx dup, literal, '_', equal?, false?branch, 4
+      xx   drop
+      xx   helpPush_withBase_stringToNaturalNumber_withError
+      xx   Exit
+      xx charToNumber, popLambdaStack, add1
+      xx swap, pushLambdaStack, pushLambdaStack
+      xx helpPush_withBase_stringToNaturalNumber_withError
+      xx Exit
+   defWordEnd helpPush_withBase_stringToNaturalNumber_withError
+
+   defWord "help-pop:with-base:string->natural-number,with-error", helpPop_withBase_stringToNaturalNumber_withError
+      ;; (* base, sum, index -- natural-number, True *)
+      ;; (* Lambda-stack:: number-counter[N], number, ... -- *)
+      xx popLambdaStack
+      xx dup, zero?, false?branch, 7
+      xx   drop
+      xx   drop, swap, drop
+      xx   True
+      xx   Exit
+      xx popLambdaStack, swap, sub1, pushLambdaStack
+      ;; (* base, sum, index, number *)
+      xx xoverxxx, xoverxx
+      xx power
+      ;; (* base, sum, index, number, base^index *)
+      xx multiple
+      xx pushLambdaStack
+      xx swap, popLambdaStack, addition
+      xx swap, add1
+      xx helpPop_withBase_stringToNaturalNumber_withError
+      xx Exit
+   defWordEnd helpPop_withBase_stringToNaturalNumber_withError
+   #+end_src
+** with-base:string->integer,with-error
+   #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+   defWord "with-base:string->integer,with-error", withBase_stringToInteger_withError
+      ;; (* base, string[address, length] -- natural-number, True *)
+      ;; (* or *)
+      ;; (* base, string[address, length] -- 0, False *)
+      xx xoverxx, xxoverx
+      xx withBase_stringDenoteDigit?, false?, false?branch, 7
+      xx   drop2, drop
+      xx   literal, 0
+      xx   False
+      xx   Exit
+      xx dup2, headOfString, literal, '-', equal?, false?branch, 7
+      xx   tailOfString
+      xx   withBase_stringToNaturalNumber_withError
+      xx   swap
+      xx   negate
+      xx   swap
+      xx   Exit
+      xx withBase_stringToNaturalNumber_withError
+      xx Exit
+   defWordEnd withBase_stringToInteger_withError
+   #+end_src
+** string->integer,with-error
+   #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+   defWord "string->integer,with-error", stringToInteger_withError
+      ;; (* string[address, length] -- integer, True *)
+      ;; (* or *)
+      ;; (* string[address, length] -- 0, False *)
+      xx dup2, stringDenoteBaseDigit?, false?branch, 7
+      xx   dup2, baseOfString
+      xx   xxswapx, digitOfString
+      xx   withBase_stringToInteger_withError
+      xx   Exit
+      xx dup2, stringDenoteDigit?, false?branch, 6
+      xx   literal, 10
+      xx   xxswapx
+      xx   withBase_stringToInteger_withError
+      xx   Exit
+      xx drop2
+      xx literal, 0
+      xx False
+      xx Exit
+   defWordEnd stringToInteger_withError
+   #+end_src
+* *the dictionary & the lexicographer*
+** note
+   1. there are many lexicographers,
+      they work together to define words into the dictionary
+   2. to create a new word is to use some words to describe the new word,
+      and set an explainer to explain the description of the new word.
+   3. to define a new word,
+      we just need to add the new created word to the dictionary.
+   4. when someone try to find a word in the dictionary,
+      the explainer of that word explains the word for him
+   5. due to the constrain of fasm's syntax,
+      the ``names'' of some words varys between fasm and forth
+      here are some warnings:
+      1) for syntax sugar :
+         defWord ":", readWordListForLexicographer
+         defCode "x|swap|xx", xswapxx
+         defWord ".", printLittleNumber
+      2) for already used label-name :
+         defConst "ReturnStackTop", ReturnStackTop, TheReturnStackTop
+** explainers & execute & Exit
+   #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+   align 16
+   explainVar:
+      ;; ( -- address )
+      add ExplainerPointer, CellWidth
+      pushArgumentStack ExplainerPointer
+      next
+
+   align 16
+   explainConst:
+      ;; ( -- value )
+      add ExplainerPointer, CellWidth
+      mov TemporaryRegister, [ExplainerPointer]
+      pushArgumentStack TemporaryRegister
+      next
+
+   align 16
+   explainFunctionBody:
+      pushReturnStack NextWordPointer
+      ;; to calculate the address in a word where the function-body is stored
+      ;; this address is as an ``argumt'' of explainFunctionBody
+      add ExplainerPointer, CellWidth
+      mov NextWordPointer, ExplainerPointer
+      next
+
+   align 16
+   explainConstString:
+      ;; ( -- string[address, length] )
+      add ExplainerPointer, CellWidth
+      mov TemporaryRegister, [ExplainerPointer]
+      add ExplainerPointer, CellWidth
+      pushArgumentStack ExplainerPointer
+      pushArgumentStack TemporaryRegister
+      next
+
+
+
+   defCode "execute", execute
+     ;; ( word[address of explainer] -- )
+     popArgumentStack ExplainerPointer
+     jmp qword[ExplainerPointer]
+
+   ;; not matter what way you use to set :
+   ;;   [ExplainerPointer] == address-of-explainer (of a word you want to jump to)
+   ;; then :
+   ;;   jmp qword[ExplainerPointer]
+   ;; it will works just well !!!
+
+
+
+
+   ;; the following Exit helps tail-call-optimization
+   ;; it just let you decide where is the end of FunctionBody
+   ;; in a FunctionBody, the ``Exit'' as a word will never be called
+   defConst "Exit", Exit, Exit
+   defConst "已矣", 已矣, 已矣
+   ;; (* so, the following numbers are the same :
+   ;;   Exit
+   ;;   readWord Exit find wordLinkToWordExplainer
+   ;;   *)
+
+   defConst "Function-body-explainer",   explainFunctionBody, FunctionBodyExplainer
+   defConst "Variable-explainer",        explainVar,          VarExplainer
+   defConst "Constant-explainer",        explainConst,        ConstExplainer
+   defConst "Constant-string-explainer", explainConstString,  ConstStringExplainer
+   #+end_src
+** find (dictionary look up)
+   #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+   ;; recall
+   ;; a word in the dictionary (unit : CellWidth = 8 bytes)
+   ;; ==
+   ;;    ||  1 : name-string-header-which-contains-the-length-of-name-string  ||
+   ;;    ||  m : name-string  ||
+   ;;    ||  1 : SizeOfFunctionBody  ||
+   ;;    ||  1 : identification  ||
+   ;;    ||  1 : link  ||
+   ;;    ||  1 : type  ||
+   ;;    ||  1 : address-of-name-string-header  ||
+   ;;    ||  1 : address-of-explainer  ||
+   ;;    ||  n : body  ||
+   ;; where
+   ;;   ||  1 : type  ||
+   ;; ==
+   ;;   | type-bit-63 | ... | type-bit-1 | type-bit-0 |
+   ;; type-bit-0 is for HiddenWord
+
+   WordType_HiddenMask = 00000001h
+
+
+   defWord "word-link->word-string", wordLinkToWordString
+      ;; (* link[address] -- string[address, length] *)
+      xx literal, CellWidth
+      xx Two, multiple
+      xx addition
+      xx fetch
+      xx dup, literal, CellWidth, addition
+      xx swap, fetch
+      xx Exit
+   defWordEnd wordLinkToWordString
+
+   defWord "help,find", help_find
+      ;; (* wordString[address, length], link[address] -- word[address of link] or Zero *)
+      xx dup, zero?, false?branch, 4
+      xx   xxswapx, drop2
+      xx   Exit
+      xx xxtuckx, wordLinkToWordString, xxoverxx, equalString?, false?branch, 3
+      xx   drop2
+      xx   Exit
+      xx xswapxx, fetch
+      xx help_find
+      xx Exit
+   defWordEnd help_find
+
+   defWord "find", find
+      ;; (* wordString[address, length] -- word[address of link] or Zero *)
+      xx FirstWordInDictionary, fetch
+      xx help_find
+      xx Exit
+   defWordEnd find
+
+
+   ;; usage;
+   ;; 1 2 readWord + find wordLinkToWordExplainer execute . (* 3 *)
+   defWord "word-link->word-explainer", wordLinkToWordExplainer
+      ;; (* word[address of link] -- word[address of explainer] or Zero *)
+      xx literal, CellWidth
+      xx Three, multiple
+      xx addition
+      xx Exit
+   defWordEnd wordLinkToWordExplainer
+   #+end_src
 ** word
 *** readFirstNonBlankChar & readNonBlankChar
     #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
@@ -3544,191 +3865,6 @@
        xx Exit
     defWordEnd readStringInToBuffer
     #+end_src
-*** number
-    #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
-    ;; The function uses the variable "Base" as the radix
-    ;; If the word starts with a '-' character then the returned value is negative
-
-    ;; If the string can't be parsed as a number
-    ;; or contains characters outside the current BASE
-    ;; then we need to return an error indication.
-    ;; So we let NUMBER returns two items on the stack.
-
-    defCode "number", number
-       ;; (* wordString[address, length] --
-       ;;    parsed number, length of unparsed string *)
-       popArgumentStack  rcx        ;; length  of string
-       popArgumentStack  rdi        ;; address of string
-       call number_helperFunction
-       pushArgumentStack rax        ;; parsed number
-       pushArgumentStack rcx        ;; length of unparsed string (0 = no error)
-       next
-
-    number_helperFunction:
-       xor  rax, rax
-       xor  rbx, rbx
-
-       test rcx, rcx
-       ;-- IF: rcx == 0
-       ;-- WK: trying to parse a zero-length string, it is an error
-       ;-- DO: but will return 0
-       jz number_return
-       ;-- EL: rcx =/= 0
-       ;-- WK: we have a non-empty string to be parsed
-       ;-- DO: parse this non-empty string
-       ;; copy the the variable Base into dl (rdx)
-       ;; the following shows how to use a forth-variable-word in assembler code
-       mov rdx, [Base + CellWidth]
-       ;; fetch a char
-       mov bl,  byte[rdi]
-       inc rdi
-       ;; sign-indicater
-       ;; top of ArgumtStack == 0,  indicating positive
-       ;; top of ArgumtStack =/= 0, indicating negative
-       ;; initialize sign-indicater
-       pushArgumentStack rax     ;; top of ArgumtStack == 0, indicating positive
-       cmp bl, '-'
-       ;-- IF: bl =/= '-'
-       ;-- WK: maybe positive number, maybe error
-       ;-- DO: try to convert the number
-       jnz number_convert
-       ;-- EL: bl == '-'
-       ;-- DO: reset sign-indicater
-       ;--     update the counter
-       ;--     go into a loop to read all the chars
-       popArgumentStack  rax
-       pushArgumentStack rbx     ;; top of ArgumtStack =/= 0, indicating negative
-       dec rcx                 ;; update the counter
-       jnz number_fetchNextDigits
-       popArgumentStack  rbx     ;; error: string is only '-'.
-       mov rcx, 1
-       ret
-
-    number_update_the_counter_and_fetchNextDigits:
-       dec rcx
-    number_fetchNextDigits:
-       mov bl,  byte[rdi]     ;; bl = next character in string
-       inc rdi
-
-    number_convert:
-       cmp bl, '_'
-       je number_update_the_counter_and_fetchNextDigits
-
-       ;; from low to high along the ascii
-       sub bl, '0'
-       ;-- IF: char < '0'
-       jb number_endThisParse
-       cmp bl, 10
-       ;-- IF: '0' <= char <= '9'
-       jb number_tryToAddDigitUp
-
-       ;-- EL: '9' < char
-       sub bl, ('A' - '0')
-       ;-- IF: '9'< char < 'A'
-       jb number_endThisParse
-       cmp bl, 26
-       ;-- NOTE-THAT: if bl == 0, char == 'A'
-       ;-- IF: 'Z' < char
-       jge @f
-       ;-- EL: 'A' <= char <= 'Z'
-       add bl, 10 ;; for 'A' =Hex= 10
-       jb number_tryToAddDigitUp
-
-    @@:;-- IF: 'Z' < char
-       sub bl, ('a' - 'A')
-       ;-- IF: 'Z' < char < 'a'
-       jb number_endThisParse
-       cmp bl, 26
-       ;-- NOTE-THAT: if bl == 0, char == 'a'
-       ;-- IF: 'z' < char
-       jge number_endThisParse
-       ;-- EL: 'a' <= char <= 'a'
-       add bl, 10 ;; for 'a' =Hex= 10
-       ;; jb number_tryToAddDigitUp
-
-
-    number_tryToAddDigitUp:
-       cmp bl, dl
-       ;-- IF: bl >= dl
-       ;-- WK: this digit >= Base
-       jge number_endThisParse
-       ;-- EL: bl < dl
-       ;-- WK: this is a good digit
-       ;-- DO: so add it to rax and loop
-       imul rax, rdx   ;; (set! rax (* Base rax))
-       add  rax, rbx
-       dec  rcx
-       jnz  number_fetchNextDigits
-
-    number_endThisParse:
-    ;; negate the result according to the sign-indicater on the top of ArgumtStack
-       popArgumentStack rbx
-       test rbx, rbx
-       jz   number_return
-       neg  rax
-    number_return:
-       ret
-
-
-    ;; the following kinds of strings denote number,
-    ;; because the function ``number'' can handle them.
-    ;; 1. string with '0' - '9' as first char
-    ;; 2. string with '-' as first char and with '0' - '9' as second char
-    ;; so "-->", "_0" do not denote number.
-    ;; under HexBase,
-    ;; "feed" does not denote number, but "0feed", "0_feed" denote number
-
-    defCode "string-denote-number?", stringDenoteNumber?
-       ;; ( wordString[address, length] -- true or false )
-       popArgumentStack  rcx        ;; length  of string
-       popArgumentStack  rdi        ;; address of string
-       call stringDenoteNumber?_helperFunction
-       pushArgumentStack rax        ;; true or false
-       next
-
-    stringDenoteNumber?_helperFunction:
-       xor rbx, rbx
-
-       test rcx, rcx
-       ;-- IF: rcx == 0
-       ;-- WK: trying to parse a zero-length string, it is an error
-       jz stringDenoteNumber?_returnFalse
-       ;-- EL: rcx =/= 0
-       ;-- WK: we have a non-empty string to be parsed
-       mov bl,  byte[rdi]
-       cmp bl, '-'
-       ;-- IF: bl =/= '-'
-       ;-- WK: maybe positive number, maybe error
-       jnz @f
-       ;-- EL: bl == '-'
-       inc rdi
-       dec rcx                 ;; update the counter
-       test rcx, rcx
-       ;-- IF: rcx == 0
-       ;-- WK: string is only '-'
-       jz stringDenoteNumber?_returnFalse
-       ;; fetch next digit
-       mov  bl,  byte[rdi]
-       inc  rdi
-
-    @@:
-       sub bl, '0'
-       ;-- IF: char < '0'
-       jb stringDenoteNumber?_returnFalse
-       cmp bl, 10
-       ;-- IF: '0' <= char <= '9'
-       jb stringDenoteNumber?_returnTrue
-       ;-- EL: returnFalse
-
-    stringDenoteNumber?_returnFalse:
-       xor rax, rax
-       ret
-
-    stringDenoteNumber?_returnTrue:
-       xor rax, rax
-       mov rax, qword 1
-       ret
-    #+end_src
 *** comment
     #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
     defConstString "Comment-begin-string",  "(*", CommentBeginString
@@ -3837,7 +3973,175 @@
        xx Exit
     defWordEnd addWordToListForLexicographer
     #+end_src
-** >< file
+** the basic lexicographer
+   #+begin_src fasm :tangle ../../play/cicada-kernel.fasm
+   defWord "append-number-to-here", appendNumberToHere
+      ;; (* a 64 bits number -- *)
+      ;; reset ``Here'', which points next free memory
+      xx Here, fetch
+      xx save
+      xx Here, fetch
+      xx literal, CellWidth, addition
+      xx Here, save
+      xx Exit
+   defWordEnd appendNumberToHere
+
+   ;; note that:
+   ;; a string in stack is string[address, length]
+   ;; a string in memory is ||  1 : length  ||  n : string  ||
+   defWord "append-string-to-here", appendStringToHere
+      ;; (* string[address, length] -- *)
+      ;; for update Here
+      xx dup, pushLambdaStack
+      xx   dup, appendNumberToHere
+      xx   Here, fetch, swap, copyByteString
+      ;; update Here
+      xx popLambdaStack
+      xx Here, fetch, addition, Here, save
+      xx Exit
+   defWordEnd appendStringToHere
+
+   defWord "create-word-header", createWordHeader ;; by string
+      ;; (* string[address, length] -- word[address of link] *)
+      ;; for address-of-name-string-header
+      xx Here, fetch, pushLambdaStack
+      xx   appendStringToHere
+      xx   Here, fetch, appendNumberToHere ;; (* identification *)
+      xx   Here, fetch ;; (* leave the word[link] as return-value *)
+      xx   Zero, appendNumberToHere ;; (* link *)
+      xx   Zero, appendNumberToHere ;; (* type *)
+      ;; address-of-name-string-header
+      xx popLambdaStack, appendNumberToHere
+      xx Exit
+   defWordEnd createWordHeader
+
+   defWord "create-word-header-for-function", createWordHeaderForFunction ;; by string
+      ;; (* SizeOfFunctionBody *) is new
+      ;; (* string[address, length] -- word[address of link] *)
+      ;; for address-of-name-string-header
+      xx Here, fetch, pushLambdaStack
+      xx   appendStringToHere
+      xx   Zero, appendNumberToHere ;; (* SizeOfFunctionBody *)
+      xx   Here, fetch, appendNumberToHere ;; (* identification *)
+      xx   Here, fetch ;; (* leave the word[link] as return-value *)
+      xx   Zero, appendNumberToHere ;; (* link *)
+      xx   Zero, appendNumberToHere ;; (* type *)
+      xx popLambdaStack, appendNumberToHere ;; address-of-name-string-header
+      xx Exit
+   defWordEnd createWordHeaderForFunction
+
+
+   defWord "help:append-word-description-to-here,number", help_append_word_description_to_here_number
+      ;; (* string[address, length] -- *)
+      ;; reading-error reported by ``number'' is not handled
+      xx literal, literal, appendNumberToHere
+      xx stringToInteger_withError, drop, appendNumberToHere
+      xx Exit
+   defWordEnd help_append_word_description_to_here_number
+
+   defWord "help:append-word-description-to-here,word", help_append_word_description_to_here_word
+      ;; (* string[address, length] -- *)
+      xx find, wordLinkToWordExplainer, appendNumberToHere
+      xx Exit
+   defWordEnd help_append_word_description_to_here_word
+
+   defWord "help:append-word-description-to-here,literal&branch", help_append_word_description_to_here_literal_branch
+      ;; (* string[address, length] -- *)
+      xx help_append_word_description_to_here_word
+      ;; ><><>< 如果后面什么都没有了 就需要报错 但是 这里没有处理这个 error
+      xx tailAndHeadOfWordList
+      xx dup2, stringDenoteInteger?, false?branch, 5
+      xx   stringToInteger_withError, drop, appendNumberToHere
+      xx   Exit
+      xx help_append_word_description_to_here_word
+      xx Exit
+   defWordEnd help_append_word_description_to_here_literal_branch
+
+   defConstString "Key-word:literal", "literal", Key_word_literal
+   defConstString "Key-word:branch", "branch", Key_word_branch
+   defConstString "Key-word:zero?branch", "zero?branch", Key_word_zero_branch
+   defConstString "Key-word:false?branch", "false?branch", Key_word_false_branch
+   defConstString "Key-word:not-false?branch", "not-false?branch", Key_word_not_false_branch
+
+   defWord "string-denote-literal&branch?", stringDenoteLiteralAndBranch?
+      ;; (* string[address, length] -- True or False *)
+      xx dup2, Key_word_literal, equalString?, false?branch, 4
+      xx   drop2, True
+      xx   Exit
+      xx dup2, Key_word_branch, equalString?, false?branch, 4
+      xx   drop2, True
+      xx   Exit
+      xx dup2, Key_word_zero_branch, equalString?, false?branch, 4
+      xx   drop2, True
+      xx   Exit
+      xx dup2, Key_word_false_branch, equalString?, false?branch, 4
+      xx   drop2, True
+      xx   Exit
+      xx dup2, Key_word_not_false_branch, equalString?, false?branch, 4
+      xx   drop2, True
+      xx   Exit
+      xx drop2, False
+      xx Exit
+   defWordEnd stringDenoteLiteralAndBranch?
+
+   defWord "append-word-description-to-here", appendWordDescriptionToHere
+      ;; (* wordList[address, the number of words] -- *)
+      xx dup, zero?, false?branch, 3
+      xx   drop2
+      xx   Exit
+      xx tailAndHeadOfWordList
+      xx dup2, stringDenoteLiteralAndBranch?, false?branch, 4
+      xx   help_append_word_description_to_here_literal_branch
+      xx   branch, -13
+      xx dup2, stringDenoteInteger?, false?branch, 4
+      xx   help_append_word_description_to_here_number
+      xx   branch, -20
+      ;; else
+      xx   help_append_word_description_to_here_word
+      xx   branch, -23
+   defWordEnd appendWordDescriptionToHere
+
+
+   defWord "add-new-word-to-dictionary", addNewWordToDictionary
+      ;; reset FirstWordInDictionary to point to the newly defined word
+      ;; (* word[address of link] -- *)
+      xx dup
+      xx FirstWordInDictionary, fetch
+      xx swap
+      xx save
+      xx FirstWordInDictionary, save
+      xx Exit
+   defWordEnd addNewWordToDictionary
+
+   defWord "set-size-of-function-body", setSizeOfFunctionBody
+      ;; (* wordList[address, the number of words], word[address of link] --
+      ;;    wordList[address, the number of words], word[address of link] *)
+      xx dup
+      xx literal, CellWidth, subtraction
+      xx literal, CellWidth, subtraction
+      xx xoverxx
+      xx swap
+      xx save
+      xx Exit
+   defWordEnd setSizeOfFunctionBody
+
+   defWord "define-function", defineFunction
+      ;; (* wordList[address, the number of words] -- *)
+      ;;  to create a new word
+      ;;  is to use some words to describe the new word,
+      ;;  and let an explainer to explain the description of the new word.
+      ;;  to define a new word
+      ;;  is to add the new created word to the dictionary.
+      xx tailAndHeadOfWordList
+      xx createWordHeaderForFunction
+      xx FunctionBodyExplainer, appendNumberToHere
+      xx setSizeOfFunctionBody
+      xx xxswapx
+      xx appendWordDescriptionToHere
+      xx addNewWordToDictionary
+      xx Exit
+   defWordEnd defineFunction
+   #+end_src
 * *misc*
 ** reboot
    #+begin_src fasm :tangle ../../play/cicada-kernel.fasm

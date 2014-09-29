@@ -76,11 +76,6 @@
       mod/ drop
       Exit
     ; define-function
-
-    : negate (* n --  -n *)
-      Zero swap -
-      Exit
-    ; define-function
     #+end_src
 *** test
     #+begin_src cicada
@@ -201,24 +196,6 @@
 ** ><>< string & define-constant-string (new lexicographer)
 *** implementation
     #+begin_src cicada :tangle ../play/english-core.cicada
-    (* ><><>< string of 0 length is a not handled  error *)
-    : head-of-string (* string[address, length] -- first char *)
-      drop fetch-byte
-      Exit
-    ; define-function
-
-    : tail-of-string (* string[address, length] -- string[address + 1, length - 1] *)
-      sub1 swap add1 swap
-      Exit
-    ; define-function
-
-    : tail-and-head-of-string
-      (* string[address, length] --
-         string[address + 1, length - 1], first char *)
-      dup2 tail-of-string xx|swap|xx head-of-string
-      Exit
-    ; define-function
-
     : :" (* -- string[address of Basic-string-buffer, length] *)
       read-string-into-buffer
       Exit
@@ -307,8 +284,8 @@
         swap save
         append-word-description-to-here,with-if&then Exit
 
-      dup2 string-denote-number? false?branch 6
-        number drop append-number-to-here
+      dup2 string-denote-integer? false?branch 6
+        string->integer,with-error drop append-number-to-here
         append-word-description-to-here,with-if&then Exit
 
         find word-link->word-explainer append-number-to-here
@@ -388,7 +365,7 @@
         append-word-description-to-here
         Exit
       then
-      dup2 string-denote-number? if
+      dup2 string-denote-integer? if
         help:append-word-description-to-here,number
         append-word-description-to-here
         Exit
@@ -494,10 +471,6 @@
      Exit
    ; define-function
    #+end_src
-** NOTE ABOUT reader
-   when you want to read,
-   say, hex based number in a REPL
-   just set the variable ``Base'', and restore it after then.
 ** writers of number
 *** note
     1. it is great if want a reader can read
@@ -520,7 +493,7 @@
      : help:write-dec-number,push-chars
        (* ... , number of small DecNumbers, fixnum --
           ... , number of small DecNumbers *)
-       Dec-base mod/
+       10 mod/
        dup zero? if
          drop swap add1 Exit
        then
@@ -564,7 +537,7 @@
      : help:write-bin-number,push-chars
        (* ... , number of small BinNumbers, fixnum --
           ... , number of small BinNumbers *)
-       Bin-base mod/
+       2 mod/
        dup zero? if
          drop swap add1 Exit
        then
@@ -608,7 +581,7 @@
      : help:write-oct-number,push-chars
        (* ... , number of small OctNumbers, fixnum --
           ... , number of small OctNumbers *)
-       Oct-base mod/
+       8 mod/
        dup zero? if
          drop swap add1 Exit
        then
@@ -665,7 +638,7 @@
      : help:write-hex-number,push-chars
        (* ... , number of small HexNumbers, fixnum --
           ... , number of small HexNumbers *)
-       Hex-base mod/
+       16 mod/
        dup zero? if
          drop swap add1 Exit
        then
@@ -747,7 +720,7 @@
      : help:write-aph-number,push-chars
        (* ... , number of small AphNumbers, fixnum --
           ... , number of small AphNumbers *)
-       Aph-base mod/
+       36 mod/
        dup zero? if
          drop swap add1 Exit
        then
@@ -1002,8 +975,8 @@
 
     : execute-word (* string[address, length] -- unknown *)
       dup2
-      string-denote-number? if
-        number drop
+      string-denote-integer? if
+        string->integer,with-error drop
         Exit
       then
       dup2 find dup not-zero? if
@@ -1371,7 +1344,7 @@
         append-word-description-to-here
         Exit
       then
-      dup2 string-denote-number? if
+      dup2 string-denote-integer? if
         help:append-word-description-to-here,number
         append-word-description-to-here
         Exit
@@ -1683,7 +1656,7 @@
    print-string
    #+end_src
 * *dynamic type system*
-** note
+** >< [OLD] note
    1. I make the following stipulations about creating cicada words:
       1 constants) and variables are nouns,
          the first letter of them should be capitalized.
@@ -1693,7 +1666,7 @@
       3) I use compoundWordByCamelCase
          when the word is about non-typed value.
          examples:
-         Base print-string print-type-tag define-function
+         print-string print-type-tag define-function
       4) I use compound-word-with-dashes
          when the word is about typed value.
          examples:
@@ -1982,17 +1955,7 @@
     String-heap-1 : Current-free-string-address,from ; define-variable
     String-heap-2 : Current-free-string-address,to   ; define-variable
 
-    (*
-     * little experiment:
-     *   Hex-base Base save
-     *     10_10_00_00 fetch-argument-stack-pointer
-     *     dup
-     *       1 swap save-byte
-     *     dup
-     *       1 swap add1 save-byte
-     *     fetch .hex .hex
-     *   Dec-base Base save
-     *)
+
 
     (*
      * : fetch-four-bytes (\* address -- value *\)
@@ -2012,21 +1975,7 @@
      * ; define-function
      *)
 
-    (*
-     * test:
-     *   Hex-base Base save
-     *    10__10_10_00_00 fetch-argument-stack-pointer
-     *    dup
-     *      1 swap save-byte
-     *    dup
-     *      1 swap add1 save-byte
-     *    fetch-four-bytes .hex .hex
-     *    10__10_10_00_00 fetch-argument-stack-pointer
-     *    dup
-     *      22_22_22_22 swap save-four-bytes
-     *    fetch-four-bytes .hex .hex
-     *   Dec-base Base save
-     *)
+
 
     : get-length-of-string (* string[address] -- length *)
       sub4 fetch-four-bytes
@@ -3334,8 +3283,8 @@
         find word-link->word-explainer execute
         Exit
       then
-      dup2 string-denote-number? if
-        number drop <fixnum>
+      dup2 string-denote-integer? if
+        string->integer,with-error drop <fixnum>
         Exit
       then
       dup2 Message:null equal-string? if
@@ -3353,8 +3302,8 @@
       (* should be:  -- [value, type] *)
       read-word-for-runtime
       dup2
-      string-denote-number? if
-        number drop
+      string-denote-integer? if
+        string->integer,with-error drop
         list-escape-REPL
         Exit
       then
@@ -5248,8 +5197,8 @@
 
     : execute-word (* string[address, length] -- unknown *)
       dup2
-      string-denote-number? if
-        number drop Exit
+      string-denote-integer? if
+        string->integer,with-error drop Exit
       then
 
       dup2 string-denote-bound-variable,one? if

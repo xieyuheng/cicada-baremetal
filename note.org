@@ -5,21 +5,60 @@
 
 * ==================================================
 * TODO
-  1. really need a better way to do tests
+  1. >< maybe get rid of "One" "Two" "Three" ...
+  2. 比如 当同时考虑 整数 还有 实数 等等 数据类型的时候
+     面向对象的 节省命名空间 的优点 就充分地体现出来了
+     这在于 (也只在于) 这样写出来的 代码 
+     更接近于人们日常对数学运算的模糊表达
+  3. 需要好好 分析一下 增加了 Lambda-stack 之后
+     整个系统的数学性质的变化
+     因为 感觉上 太帅了 
+     好像 增加了一个维度
+     好像 走出了柏拉图的洞穴一样
+  4. as the "debuger" is defined in cicada code     
+     it is hard to do good error handling in assembly code 
+     这是因为我没法在出错的时候即使调用 debuger 来报错
+     - 比如 通常的函数类型的错误
+       我应该 及时的 调用 debuger 来报告错误
+       而在不利的条件下 我必须 返回一个出错码
+       来表示函数 所接受的数据类型不对
+  5. do not use the data structure "word-list" anymore
+     just let ":" and ";" read a string to a buffer
+     this will force me to refine the functions about string processing
+  6. really need a better way to do tests
      and I need to design better test-suit
-  2. 我需要一个写在 cicada 内的汇编器的 一个重要理由 是
-     我需要 统一 命名规则
-  3. 就用户接口的设计而言
+  7. 需要 cicada-assembler 的理由:
+     1) 统一 命名规则
+     2) 让我 能够探索一些关于编译的技术
+     3) 有些 小的 CPU 并没有 类似 fasm 的 合适的编译器的
+        当我有 cicada-assembler 的时候
+        我就能不受限制于这个事实了
+     4) 当我调整代码的结构
+        以让我方便地 维护两个汇编版本的时候
+        我就发现 其中有很多重复的部分
+        想要消除这些重复
+        我可以通过 更多的 把文件 分开来实现 
+        但是如果我想保持 
+        我的 类文学编程 组织代码的风格的话
+        也许 创造一些新的东西来支持 我的风格就是必须的了
+  8. 不需要 cicada-assembler 的理由:
+     1) 一个人认为 一个语言需要这种东西
+        可能只是因为 当这个语言的编译器能够自己编译自己的时候
+        看起来很 cool 而已
+     2) 为了 实现 一个 x86-64 的汇编器
+        有太多的 关于 CPU 的底层细节需要 被掌握
+  9. 就用户接口的设计而言
      我可以把那几个 核心的栈 的图示 放在 左边的一个窗口里
      在这之后 我就能设计 debuger 的更好的使用方式
      但是一个问题是 当我的界面不再是一个简单的解释器的时候
      我就不能 直接利用 emacs 了
      也就是必须 要先写自己的 文本编辑器
      之后才能考虑窗口 之类的问题
-  4. fix the load-file function of linux version
-  5. 生成中文字典 交给 Recaler
-  6. 支持 windows 及其环境下的开发
-  7. 支持 Mac 及其环境下的开发
+  10. 也许 可以从 isforth 那里 学习在 linux 下写文本编辑器的基本工作
+  11. fix the load-file function of linux version
+  12. 生成中文字典 交给 Recaler
+  13. 支持 windows 及其环境下的开发
+  14. 支持 Mac 及其环境下的开发
 * ==================================================
 * cicada-ideas
   1. vision art with Recaler
@@ -69,12 +108,7 @@
         to use local-label to from list-with-circuit
 *** TEN COMMANDMENTS OF CICADA
     1. you can break any commandment when necessary
-    2. in cicada every function can be redefined
-       the later definition will override the former definition
-       the order of function definition is very important
-    3. in cicada, a ``word'' can not begin with [0-9]
-       and can not begin with a `-' follows [0-9]
-    4. ``The whole point of Forth was that
+    2. ``The whole point of Forth was that
        you didn't write programs in Forth
        you wrote vocabularies in Forth.
        When you devised an application
@@ -209,20 +243,14 @@
     并且我想 object-oriented 这种编程范式也许更适合用来实现 digrap
     但是 问题是 新的语法元素必须被引进
     这也许可以通过写一个不同的 REPL 来实现
-*** about literal
-    1. 解释器对 literal 的使用方式应该改变
-       我需要能够在 function-body 中使用``数字''
-       而不是使用``literal 数字''
-    2. 我需要取消对 Base 的使用
-       因为这个全局变量其实并不好用
-       我需要设计新对不同进位制的数字的读取方式
-    3. 以个 REPL 的性质很像是 bra-ket 中的 一个 bra
+*** about bra-ket
+    1. 以个 REPL 的性质很像是 bra-ket 中的 一个 bra
        symbol-REPL 作为 bra
        所对应的 ket 可以是 bye,symbol-REPL
-    4. 各个 REPL 和 bra 之间
+    2. 各个 REPL 和 bra 之间
        必须能够灵活的相互递归调用
        我没能实现很好的机制来完成这一点
-    5. 并且我现在应该把 REPL 和 bra-ket 的实现方式统一起来
+    3. 并且我现在应该把 REPL 和 bra-ket 的实现方式统一起来
        我以前并没有意识到它们是完全相同的东西
        它们之前确实有区别
        但是我应该把它们的共同点提取出来
@@ -251,20 +279,18 @@
 *** TEN COMMANDMENTS OF ASSEMBLY
     1. you can break any commandment when necessary
     2. when you want to use a ``Const'' or a ``Var'' in assembly
-           use it as the following example:
-           - define a Const:
+       use it as the following example:
+       - define a Const:
          defConst "LinuxProgramHeaderAddress", 0, LinuxProgramHeaderAddress
-           - use a Const:
+       - use a Const:
          mov [LinuxProgramHeaderAddress + CellWidth], rsp
-           - define a Var:
+       - define a Var:
          defVar "Here",  0, Here
-           - use a Var:
+       - use a Var:
          mov [Here + CellWidth], TemporaryRegister
     3. when you want to expose a label defined in assembly to cicada
-           do it as the following example:
-           defConst "UserDataArea", UserDataArea, TheUserDataArea
-    4. in assembly every cicada function should be defined only once
-           the order of function definition can be arbitrary
+       do it as the following example:
+       defConst "UserDataArea", UserDataArea, TheUserDataArea
 *** about the structure of the code
     1. 汇编代码所实现的是一个 可扩展的虚拟机
        代码 可以分为4部分 :
@@ -278,7 +304,7 @@
     2. 我需要按照上面的分类
        来重新组织代码的结构
        并且形成一个这个``可扩展的虚拟机''的标准
-       并且形成一个统一的接口用来实现上面的"3.4."这两部分
+       并且形成一个统一的接口用来实现上面的"3.4."这两部分       
        这些都是为了今后 向其他硬件移植而做准备的
        当然
        同时也是为了让代码的宏观的逻辑结构更清晰
