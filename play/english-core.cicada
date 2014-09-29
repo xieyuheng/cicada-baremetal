@@ -352,7 +352,7 @@
   '0' + write-char
   Exit
 ; define-function
-
+     
 : help:write-dec-number,push-chars
   (* ... , number of small DecNumbers, fixnum --
      ... , number of small DecNumbers *)
@@ -364,7 +364,7 @@
   help:write-dec-number,push-chars
   Exit
 ; define-recursive-function
-
+     
 : help:write-dec-number,write-chars
   (* ... , number of small DecNumbers -- *)
   dup zero? if drop Exit
@@ -373,20 +373,26 @@
   help:write-dec-number,write-chars
   Exit
 ; define-recursive-function
-
-: write-dec-number (* fixnum -- *)
+     
+     
+: write-dec-number,unsign (* fixnum -- *)
   Zero swap
   help:write-dec-number,push-chars
   help:write-dec-number,write-chars
   Exit
 ; define-function
-
-: write-dec-number,signed (* fixnum -- *)
+     
+: write-dec-number,sign (* fixnum -- *)
   dup Zero < if
     '-' write-char
     negate
   then
-  write-dec-number
+  write-dec-number,unsign
+  Exit
+; define-function
+     
+: write-dec-number
+  write-dec-number,sign
   Exit
 ; define-function
 : write-bin-number-char (* byte -- *)
@@ -415,19 +421,24 @@
   Exit
 ; define-recursive-function
 
-: write-bin-number (* fixnum -- *)
+: write-bin-number,unsign (* fixnum -- *)
   Zero swap
   help:write-bin-number,push-chars
   help:write-bin-number,write-chars
   Exit
 ; define-function
 
-: write-bin-number,signed (* fixnum -- *)
+: write-bin-number,sign (* fixnum -- *)
   dup Zero < if
     '-' write-char
     negate
   then
-  write-bin-number
+  write-bin-number,unsign
+  Exit
+; define-function
+
+: write-bin-number
+  write-bin-number,sign
   Exit
 ; define-function
 : write-oct-number-char (* byte -- *)
@@ -456,19 +467,24 @@
   Exit
 ; define-recursive-function
 
-: write-oct-number (* fixnum -- *)
+: write-oct-number,unsign (* fixnum -- *)
   Zero swap
   help:write-oct-number,push-chars
   help:write-oct-number,write-chars
   Exit
 ; define-function
 
-: write-oct-number,signed (* fixnum -- *)
+: write-oct-number,sign (* fixnum -- *)
   dup Zero < if
     '-' write-char
     negate
   then
-  write-oct-number
+  write-oct-number,unsign
+  Exit
+; define-function
+
+: write-oct-number
+  write-oct-number,sign
   Exit
 ; define-function
 : write-hex-number-char (* byte -- *)
@@ -519,7 +535,7 @@
   Exit
 ; define-recursive-function
 
-: write-hex-number (* fixnum -- *)
+: write-hex-number,unsign (* fixnum -- *)
   Zero swap
   help:write-hex-number,push-chars
   help:write-hex-number,write-chars
@@ -533,21 +549,26 @@
   Exit
 ; define-function
 
-: write-hex-number,signed (* fixnum -- *)
+: write-hex-number,sign (* fixnum -- *)
   dup Zero < if
     '-' write-char
     negate
   then
-  write-hex-number
+  write-hex-number,unsign
   Exit
 ; define-function
 
-: write-hex-number,signed,capital (* fixnum -- *)
+: write-hex-number,sign,capital (* fixnum -- *)
   dup Zero < if
     '-' write-char
     negate
   then
   write-hex-number,capital
+  Exit
+; define-function
+
+: write-hex-number
+  write-hex-number,sign
   Exit
 ; define-function
 : write-aph-number-char (* byte -- *)
@@ -598,7 +619,7 @@
   Exit
 ; define-recursive-function
 
-: write-aph-number (* fixnum -- *)
+: write-aph-number,unsign (* fixnum -- *)
   Zero swap
   help:write-aph-number,push-chars
   help:write-aph-number,write-chars
@@ -612,16 +633,16 @@
   Exit
 ; define-function
 
-: write-aph-number,signed (* fixnum -- *)
+: write-aph-number,sign (* fixnum -- *)
   dup Zero < if
     '-' write-char
     negate
   then
-  write-aph-number
+  write-aph-number,unsign
   Exit
 ; define-function
 
-: write-aph-number,signed,capital (* fixnum -- *)
+: write-aph-number,sign,capital (* fixnum -- *)
   dup Zero < if
     '-' write-char
     negate
@@ -629,20 +650,25 @@
   write-aph-number,capital
   Exit
 ; define-function
-: .unsigned (* fixnum -- *)
+
+: write-aph-number
+  write-aph-number,sign 
+  Exit
+; define-function
+: .unsign (* fixnum -- *)
   write-dec-number
   'space' write-char
   Exit
 ; define-function
 
-: .signed (* fixnum -- *)
-  write-dec-number,signed
+: .sign (* fixnum -- *)
+  write-dec-number,sign
   'space' write-char
   Exit
 ; define-function
 
 
-: . .signed Exit ; define-function
+: . .sign Exit ; define-function
 
 
 : .bin (* fixnum -- *)
@@ -651,8 +677,8 @@
   Exit
 ; define-function
 
-: .bin,signed (* fixnum -- *)
-  write-bin-number,signed
+: .bin,sign (* fixnum -- *)
+  write-bin-number,sign
   'space' write-char
   Exit
 ; define-function
@@ -663,8 +689,8 @@
   Exit
 ; define-function
 
-: .oct,signed (* fixnum -- *)
-  write-oct-number,signed
+: .oct,sign (* fixnum -- *)
+  write-oct-number,sign
   'space' write-char
   Exit
 ; define-function
@@ -675,8 +701,8 @@
   Exit
 ; define-function
 
-: .hex,signed (* fixnum -- *)
-  write-hex-number,signed
+: .hex,sign (* fixnum -- *)
+  write-hex-number,sign
   'space' write-char
   Exit
 ; define-function
@@ -687,8 +713,8 @@
   Exit
 ; define-function
 
-: .hex,signed,capital (* fixnum -- *)
-  write-hex-number,signed,capital
+: .hex,sign,capital (* fixnum -- *)
+  write-hex-number,sign,capital
   'space' write-char
   Exit
 ; define-function
@@ -700,8 +726,8 @@
   Exit
 ; define-function
 
-: .aph,signed (* fixnum -- *)
-  write-aph-number,signed
+: .aph,sign (* fixnum -- *)
+  write-aph-number,sign
   'space' write-char
   Exit
 ; define-function
@@ -712,8 +738,8 @@
   Exit
 ; define-function
 
-: .aph,signed,capital (* fixnum -- *)
-  write-aph-number,signed,capital
+: .aph,sign,capital (* fixnum -- *)
+  write-aph-number,sign,capital
   'space' write-char
   Exit
 ; define-function

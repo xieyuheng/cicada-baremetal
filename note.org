@@ -5,7 +5,7 @@
 
 * ==================================================
 * TODO
-  1. >< maybe get rid of "One" "Two" "Three" ...
+  1. learn ELF and make good use of linux
   2. 比如 当同时考虑 整数 还有 实数 等等 数据类型的时候
      面向对象的 节省命名空间 的优点 就充分地体现出来了
      这在于 (也只在于) 这样写出来的 代码 
@@ -22,12 +22,13 @@
        我应该 及时的 调用 debuger 来报告错误
        而在不利的条件下 我必须 返回一个出错码
        来表示函数 所接受的数据类型不对
-  5. do not use the data structure "word-list" anymore
+  5. >< maybe get rid of "One" "Two" "Three" ...
+  6. do not use the data structure "word-list" anymore
      just let ":" and ";" read a string to a buffer
      this will force me to refine the functions about string processing
-  6. really need a better way to do tests
+  7. really need a better way to do tests
      and I need to design better test-suit
-  7. 需要 cicada-assembler 的理由:
+  8. 需要 cicada-assembler 的理由:
      1) 统一 命名规则
      2) 让我 能够探索一些关于编译的技术
      3) 有些 小的 CPU 并没有 类似 fasm 的 合适的编译器的
@@ -41,24 +42,24 @@
         但是如果我想保持 
         我的 类文学编程 组织代码的风格的话
         也许 创造一些新的东西来支持 我的风格就是必须的了
-  8. 不需要 cicada-assembler 的理由:
+  9. 不需要 cicada-assembler 的理由:
      1) 一个人认为 一个语言需要这种东西
         可能只是因为 当这个语言的编译器能够自己编译自己的时候
         看起来很 cool 而已
      2) 为了 实现 一个 x86-64 的汇编器
         有太多的 关于 CPU 的底层细节需要 被掌握
-  9. 就用户接口的设计而言
-     我可以把那几个 核心的栈 的图示 放在 左边的一个窗口里
-     在这之后 我就能设计 debuger 的更好的使用方式
-     但是一个问题是 当我的界面不再是一个简单的解释器的时候
-     我就不能 直接利用 emacs 了
-     也就是必须 要先写自己的 文本编辑器
-     之后才能考虑窗口 之类的问题
-  10. 也许 可以从 isforth 那里 学习在 linux 下写文本编辑器的基本工作
-  11. fix the load-file function of linux version
-  12. 生成中文字典 交给 Recaler
-  13. 支持 windows 及其环境下的开发
-  14. 支持 Mac 及其环境下的开发
+  10. 就用户接口的设计而言
+      我可以把那几个 核心的栈 的图示 放在 左边的一个窗口里
+      在这之后 我就能设计 debuger 的更好的使用方式
+      但是一个问题是 当我的界面不再是一个简单的解释器的时候
+      我就不能 直接利用 emacs 了
+      也就是必须 要先写自己的 文本编辑器
+      之后才能考虑窗口 之类的问题
+  11. 也许 可以从 isforth 那里 学习在 linux 下写文本编辑器的基本工作
+  12. fix the load-file function of linux version
+  13. 生成中文字典 交给 Recaler
+  14. 支持 windows 及其环境下的开发
+  15. 支持 Mac 及其环境下的开发
 * ==================================================
 * cicada-ideas
   1. vision art with Recaler
