@@ -10,8 +10,11 @@
 */*/*/*#*
 */*/*/*/*#*
 
-play/cicada
-play/*.sys
-play/*.bin
-play/*.image
-play/*.vmdk
+*.bin
+*/*.bin
+*/*/*.bin
+*/*/*/*.bin
+*/*/*/*/*.bin
+
+vm/x86-64/linux/cicada
+vm/x86-64/baremetal/*.vmdk

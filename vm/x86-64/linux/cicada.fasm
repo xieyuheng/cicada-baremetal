@@ -1,0 +1,708 @@
+;; see /usr/include/asm/unistd_64.h (on archlinux)
+
+;; parameters order of syscall:
+define sys_6_r8  r8
+define sys_5_r9  r9
+define sys_4_r10 r10
+define sys_3_rdx rdx
+define sys_2_rsi rsi
+define sys_1_rdi rdi
+define sys_n_rax rax
+
+;; syscall number:
+define syscall_read                      0
+define syscall_write                     1
+define syscall_open                      2
+define syscall_close                     3
+
+define syscall_stat                      4
+define syscall_fstat                     5
+define syscall_lstat                     6
+define syscall_poll                      7
+define syscall_lseek                     8
+define syscall_mmap                      9
+define syscall_mprotect                  10
+define syscall_munmap                    11
+define syscall_brk                       12
+define syscall_rt_sigaction              13
+define syscall_rt_sigprocmask            14
+define syscall_rt_sigreturn              15
+define syscall_ioctl                     16
+define syscall_pread64                   17
+define syscall_pwrite64                  18
+define syscall_readv                     19
+define syscall_writev                    20
+define syscall_access                    21
+define syscall_pipe                      22
+define syscall_select                    23
+define syscall_sched_yield               24
+define syscall_mremap                    25
+define syscall_msync                     26
+define syscall_mincore                   27
+define syscall_madvise                   28
+define syscall_shmget                    29
+define syscall_shmat                     30
+define syscall_shmctl                    31
+define syscall_dup2                       32
+define syscall_dup2                      33
+define syscall_pause                     34
+define syscall_nanosleep                 35
+define syscall_getitimer                 36
+define syscall_alarm                     37
+define syscall_setitimer                 38
+define syscall_getpid                    39
+define syscall_sendfile                  40
+define syscall_socket                    41
+define syscall_connect                   42
+define syscall_accept                    43
+define syscall_sendto                    44
+define syscall_recvfrom                  45
+define syscall_sendmsg                   46
+define syscall_recvmsg                   47
+define syscall_shutdown                  48
+define syscall_bind                      49
+define syscall_listen                    50
+define syscall_getsockname               51
+define syscall_getpeername               52
+define syscall_socketpair                53
+define syscall_setsockopt                54
+define syscall_getsockopt                55
+define syscall_clone                     56
+define syscall_fork                      57
+define syscall_vfork                     58
+define syscall_execve                    59
+
+define syscall_exit                      60
+
+define syscall_wait4                     61
+define syscall_kill                      62
+define syscall_uname                     63
+define syscall_semget                    64
+define syscall_semop                     65
+define syscall_semctl                    66
+define syscall_shmdt                     67
+define syscall_msgget                    68
+define syscall_msgsnd                    69
+define syscall_msgrcv                    70
+define syscall_msgctl                    71
+define syscall_fcntl                     72
+define syscall_flock                     73
+define syscall_fsync                     74
+define syscall_fdatasync                 75
+define syscall_truncate                  76
+define syscall_ftruncate                 77
+define syscall_getdents                  78
+define syscall_getcwd                    79
+define syscall_chdir                     80
+define syscall_fchdir                    81
+define syscall_rename                    82
+define syscall_mkdir                     83
+define syscall_rmdir                     84
+define syscall_creat                     85
+define syscall_link                      86
+define syscall_unlink                    87
+define syscall_symlink                   88
+define syscall_readlink                  89
+define syscall_chmod                     90
+define syscall_fchmod                    91
+define syscall_chown                     92
+define syscall_fchown                    93
+define syscall_lchown                    94
+define syscall_umask                     95
+define syscall_gettimeofday              96
+define syscall_getrlimit                 97
+define syscall_getrusage                 98
+define syscall_sysinfo                   99
+define syscall_times                     100
+define syscall_ptrace                    101
+define syscall_getuid                    102
+define syscall_syslog                    103
+define syscall_getgid                    104
+define syscall_setuid                    105
+define syscall_setgid                    106
+define syscall_geteuid                   107
+define syscall_getegid                   108
+define syscall_setpgid                   109
+define syscall_getppid                   110
+define syscall_getpgrp                   111
+define syscall_setsid                    112
+define syscall_setreuid                  113
+define syscall_setregid                  114
+define syscall_getgroups                 115
+define syscall_setgroups                 116
+define syscall_setresuid                 117
+define syscall_getresuid                 118
+define syscall_setresgid                 119
+define syscall_getresgid                 120
+define syscall_getpgid                   121
+define syscall_setfsuid                  122
+define syscall_setfsgid                  123
+define syscall_getsid                    124
+define syscall_capget                    125
+define syscall_capset                    126
+define syscall_rt_sigpending             127
+define syscall_rt_sigtimedwait           128
+define syscall_rt_sigqueueinfo           129
+define syscall_rt_sigsuspend             130
+define syscall_sigaltstack               131
+define syscall_utime                     132
+define syscall_mknod                     133
+define syscall_uselib                    134
+define syscall_personality               135
+define syscall_ustat                     136
+define syscall_statfs                    137
+define syscall_fstatfs                   138
+define syscall_sysfs                     139
+define syscall_getpriority               140
+define syscall_setpriority               141
+define syscall_sched_setparam            142
+define syscall_sched_getparam            143
+define syscall_sched_setscheduler        144
+define syscall_sched_getscheduler        145
+define syscall_sched_get_priority_max    146
+define syscall_sched_get_priority_min    147
+define syscall_sched_rr_get_interval     148
+define syscall_mlock                     149
+define syscall_munlock                   150
+define syscall_mlockall                  151
+define syscall_munlockall                152
+define syscall_vhangup                   153
+define syscall_modify_ldt                154
+define syscall_pivot_root                155
+define syscall__sysctl                   156
+define syscall_prctl                     157
+define syscall_arch_prctl                158
+define syscall_adjtimex                  159
+define syscall_setrlimit                 160
+define syscall_chroot                    161
+define syscall_sync                      162
+define syscall_acct                      163
+define syscall_settimeofday              164
+define syscall_mount                     165
+define syscall_umount2                   166
+define syscall_swapon                    167
+define syscall_swapoff                   168
+define syscall_reboot                    169
+define syscall_sethostname               170
+define syscall_setdomainname             171
+define syscall_iopl                      172
+define syscall_ioperm                    173
+define syscall_create_module             174
+define syscall_init_module               175
+define syscall_delete_module             176
+define syscall_get_kernel_syms           177
+define syscall_query_module              178
+define syscall_quotactl                  179
+define syscall_nfsservctl                180
+define syscall_getpmsg                   181
+define syscall_putpmsg                   182
+define syscall_afs_syscall               183
+define syscall_tuxcall                   184
+define syscall_security                  185
+define syscall_gettid                    186
+define syscall_readahead                 187
+define syscall_setxattr                  188
+define syscall_lsetxattr                 189
+define syscall_fsetxattr                 190
+define syscall_getxattr                  191
+define syscall_lgetxattr                 192
+define syscall_fgetxattr                 193
+define syscall_listxattr                 194
+define syscall_llistxattr                195
+define syscall_flistxattr                196
+define syscall_removexattr               197
+define syscall_lremovexattr              198
+define syscall_fremovexattr              199
+define syscall_tkill                     200
+define syscall_time                      201
+define syscall_futex                     202
+define syscall_sched_setaffinity         203
+define syscall_sched_getaffinity         204
+define syscall_set_thread_area           205
+define syscall_io_setup                  206
+define syscall_io_destroy                207
+define syscall_io_getevents              208
+define syscall_io_submit                 209
+define syscall_io_cancel                 210
+define syscall_get_thread_area           211
+define syscall_lookup_dcookie            212
+define syscall_epoll_create              213
+define syscall_epoll_ctl_old             214
+define syscall_epoll_wait_old            215
+define syscall_remap_file_pages          216
+define syscall_getdents64                217
+define syscall_set_tid_address           218
+define syscall_restart_syscall           219
+define syscall_semtimedop                220
+define syscall_fadvise64                 221
+define syscall_timer_create              222
+define syscall_timer_settime             223
+define syscall_timer_gettime             224
+define syscall_timer_getoverrun          225
+define syscall_timer_delete              226
+define syscall_clock_settime             227
+define syscall_clock_gettime             228
+define syscall_clock_getres              229
+define syscall_clock_nanosleep           230
+define syscall_exit_group                231
+define syscall_epoll_wait                232
+define syscall_epoll_ctl                 233
+define syscall_tgkill                    234
+define syscall_utimes                    235
+define syscall_vserver                   236
+define syscall_mbind                     237
+define syscall_set_mempolicy             238
+define syscall_get_mempolicy             239
+define syscall_mq_open                   240
+define syscall_mq_unlink                 241
+define syscall_mq_timedsend              242
+define syscall_mq_timedreceive           243
+define syscall_mq_notify                 244
+define syscall_mq_getsetattr             245
+define syscall_kexec_load                246
+define syscall_waitid                    247
+define syscall_add_key                   248
+define syscall_request_key               249
+define syscall_keyctl                    250
+define syscall_ioprio_set                251
+define syscall_ioprio_get                252
+define syscall_inotify_init              253
+define syscall_inotify_add_watch         254
+define syscall_inotify_rm_watch          255
+define syscall_migrate_pages             256
+define syscall_openat                    257
+define syscall_mkdirat                   258
+define syscall_mknodat                   259
+define syscall_fchownat                  260
+define syscall_futimesat                 261
+define syscall_newfstatat                262
+define syscall_unlinkat                  263
+define syscall_renameat                  264
+define syscall_linkat                    265
+define syscall_symlinkat                 266
+define syscall_readlinkat                267
+define syscall_fchmodat                  268
+define syscall_faccessat                 269
+define syscall_pselect6                  270
+define syscall_ppoll                     271
+define syscall_unshare                   272
+define syscall_set_robust_list           273
+define syscall_get_robust_list           274
+define syscall_splice                    275
+define syscall_tee                       276
+define syscall_sync_file_range           277
+define syscall_vmsplice                  278
+define syscall_move_pages                279
+define syscall_utimensat                 280
+define syscall_epoll_pwait               281
+define syscall_signalfd                  282
+define syscall_timerfd_create            283
+define syscall_eventfd                   284
+define syscall_fallocate                 285
+define syscall_timerfd_settime           286
+define syscall_timerfd_gettime           287
+define syscall_accept4                   288
+define syscall_signalfd4                 289
+define syscall_eventfd2                  290
+define syscall_epoll_create1             291
+define syscall_dup3                      292
+define syscall_pipe2                     293
+define syscall_inotify_init1             294
+define syscall_preadv                    295
+define syscall_pwritev                   296
+define syscall_rt_tgsigqueueinfo         297
+define syscall_perf_event_open           298
+define syscall_recvmmsg                  299
+define syscall_fanotify_init             300
+define syscall_fanotify_mark             301
+define syscall_prlimit64                 302
+define syscall_name_to_handle_at         303
+define syscall_open_by_handle_at         304
+define syscall_clock_adjtime             305
+define syscall_syncfs                    306
+define syscall_sendmmsg                  307
+define syscall_setns                     308
+define syscall_getcpu                    309
+define syscall_process_vm_readv          310
+define syscall_process_vm_writev         311
+define syscall_kcmp                      312
+define syscall_finit_module              313
+
+
+STDIN  = 0
+STDOUT = 1
+STDERR = 2
+
+open_read         = 0
+open_write        = 1
+open_readAndWrite = 2
+
+open_creat      = 0100o
+open_rewrite    = 1000o ;; rewrite if file exist
+open_append     = 2000o
+
+open_excl       = 0200o ;; ensure that THIS call creates the file
+open_noctty     = 0400o
+open_nonblock   = 4000o
+open_nondelay   = open_nonblock
+open_sync       = 10000o
+open_async      = 20000o
+open_direct     = 40000o
+    ;; to minimize cache effects of the I/O to and from this file.
+open_largefile  = 100000o
+open_directory  = 200000o
+open_nofollow   = 400000o ;; If pathname is a symbolic link, then the open fails.
+;; in fasm, ``dup'' is a reserved word
+dup equ duplicate
+
+;; 64-bits
+xx equ dq
+CellWidth = 8
+
+;; for ELF
+hereCode               equ segment readable executable
+hereInitializedData    equ segment readable writeable
+
+
+;; about UnInitializedData
+labeling  equ :
+preserve  equ rb
+
+hereUnInitializedData  equ segment readable writeable
+ASCII_backspace = 8
+ASCII_tab       = 9
+ASCII_linefeed  = 10
+ASCII_newline   = 10
+ASCII_esc       = 27
+ASCII_escape    = 27
+ASCII_space     = 32
+ASCII_delete    = 127
+format elf64 executable 3
+entry cicada_virtual_machine
+include "../macro.inc"
+hereCode
+cicada_virtual_machine:
+
+        cld ;; set DF = 0, then rsi and rdi are incremented
+
+;; [rsp+8*0]=N           argc number of arguments
+;; [rsp+8*1]             argv0 name of executable (e.g. ./a00)
+;; [rsp+8*2]             argv1 (if any) - 1st param after name of executable
+;; ...
+;; [rsp+8*N]             argvN - Nth param
+;; qword [rsp+8*(N+1)]=0 end of arguments
+;; [rsp+8*(N+2)]         envp environment
+;; ...
+;; qword [rsp+....]=0    end of environment
+
+    ;; the Address we want is stored in [rsp] but not rsp
+    ;; because rsp is the standard-stack-pointer
+    ;; the Address we want is pushed into the standard-stack
+
+        ;; beware of the way
+        ;;   to use the ``Const'' or ``Var'' in assembly
+
+        mov [LinuxProgramHeaderAddress + CellWidth], rsp
+
+        mov ArgumentStackPointer,   ArgumentStackTop
+        mov GreyPairStackPointer, GreyPairStackTop
+        mov ReturnStackPointer,   ReturnStackTop
+
+        ;; initialize the variable ``Here''
+        ;; to point at beginning of DataSegment
+        mov TemporaryRegister, UserDataArea
+        mov [Here + CellWidth], TemporaryRegister
+        mov NextWordPointer, cicada_begin_thread
+
+        next
+
+hereInitializedData
+cicada_begin_thread:
+
+        xx initialize
+        xx basicREPL
+        ;; xx assemblyDebug
+
+defConst "LinuxProgramHeaderAddress", 0, LinuxProgramHeaderAddress
+
+;; test:
+;; LinuxProgramHeaderAddress fetch . cr
+;; LinuxProgramHeaderAddress CellWidth 1 * + fetch
+;;   20 printString cr
+;; LinuxProgramHeaderAddress CellWidth 2 * + fetch
+;;   3 printString cr
+defWord "initialize", initialize
+       ;; (* -- *)
+
+       xx loadCoreFile
+
+       xx Exit
+defWordEnd initialize
+defCode "load-core-file", loadCoreFile
+       ;; (* -- *)
+       mov rsi, LocationOfEnglishCore
+       mov rdi, InputBuffer
+       mov rcx, SizeOfEnglishCore
+       rep movsb
+       ;; reset [ReadingBoundary + CellWidth]
+       mov [ReadingBoundary + CellWidth], rdi
+       next
+
+align 16
+LocationOfEnglishCore:
+   file "../../../core/english-core.cicada"
+SizeOfEnglishCore = ($ - LocationOfEnglishCore) ;; unit :: byte
+;; /usr/include/asm-generic/termbits.h
+;; /usr/include/asm-generic/ioctls.h
+
+VMIN = 6
+
+ICRNL   =       0000400o
+IXON    =       0002000o
+ICANON  =       0000002o
+ISIG    =       0000001o
+ECHO    =       0000010o
+
+
+hereUnInitializedData
+
+termios:
+termios.c_iflag:       rd 1
+termios.c_oflag:       rd 1
+termios.c_cflag:       rd 1
+termios.c_lflag:       rd 1
+termios.c_line:        rb 1
+termios.c_cc:          rb 19 ;; NCCS
+termios_size = ($ - termios)
+
+termios_orig:
+termios_orig.c_iflag:       rd 1
+termios_orig.c_oflag:       rd 1
+termios_orig.c_cflag:       rd 1
+termios_orig.c_lflag:       rd 1
+termios_orig.c_line:        rb 1
+termios_orig.c_cc:          rb 19 ;; NCCS
+
+
+ScreenSize:  rw 1
+
+
+defCode "set-terminal-to-read-key", setTerminalToReadKey
+   ;; (* -- *)
+   mov sys_3_rdx, termios_orig ;; termios or WinSize structure ptr
+   mov sys_2_rsi, 5401h        ;; TERMIOS_GET, TCGETS
+   mov sys_1_rdi, STDIN
+   mov sys_n_rax, syscall_ioctl
+   syscall
+
+   mov rsi, termios_orig
+   mov rdi, termios
+   mov rcx, termios_size
+   cld
+   rep movsb
+
+   mov byte [termios.c_cc + VMIN], 1
+   ;; icanon off, isig (^C) off, echo off
+   and byte [termios.c_lflag + 0], ((- ICANON) and (- ISIG) and (- ECHO))
+   ;; ixon off,   icrnl off
+   and byte [termios.c_iflag + 1], ((- (IXON shr 8)) or (- (ICRNL shr 8)))
+   mov rdx, termios     ;; termios or WinSize structure ptr
+   mov sys_2_rsi, 5402h ;; TERMIOS_SET, TCSETS
+   mov sys_1_rdi, STDIN
+   mov sys_n_rax, syscall_ioctl
+   syscall
+   next
+
+
+defCode "set-terminal-back-to-read-line", setTerminalBackToReadLine
+   ;; (* -- *)
+   mov sys_3_rdx, termios_orig ;; termios or WinSize structure ptr
+   mov sys_2_rsi, 5402h ;; TERMIOS_SET, TCSETS
+   mov sys_1_rdi, STDIN
+   mov sys_n_rax, syscall_ioctl
+   syscall
+   next
+
+
+defCode "get-screen-size", getScreenSize
+   ;; (* -- rows, cols *)
+   mov sys_3_rdx, ScreenSize
+   ;; [ScreenSize] == for example col=88,row=26 :: 00880026
+   mov sys_2_rsi, 5413h ;; TERMIOS_WSIZE, TIOCGWINSZ
+   mov sys_1_rdi, STDIN
+   mov sys_n_rax, syscall_ioctl
+   syscall
+   ;; xor rax, rax
+   mov ax, word[ScreenSize]
+   pushArgumentStack rax
+   mov ax, word[ScreenSize + 2]
+   pushArgumentStack rax
+   next
+SizeOfInputBuffer = 3*1024*1024
+
+hereInitializedData
+InputBuffer:
+   rb SizeOfInputBuffer
+EndOfInputBuffer:
+
+
+defConst "Size-of-input-buffer",  SizeOfInputBuffer,  TheSizeOfInputBuffer
+defConst "Input-buffer",          InputBuffer,        TheInputBuffer
+defConst "End-of-input-buffer",   EndOfInputBuffer,   TheEndOfInputBuffer
+
+;; 1. two global variables for reading
+;;    I can easily support `evalString' by change these two variables
+;; 2. note that, there is no char in the address of a ``ReadingBoundary''
+;;    an example of ``ReadingBoundary'' is ``EndOfInputBuffer''
+;; 3. when ``CurrentReading'' == ``ReadingBoundary''
+;;    for the function ``readChar''
+;;    we need to reset it to read from ``InputBuffer''
+;;    and call ``inputLine'' to fetch more chars
+;;    and loop back
+defVar "Current-reading",  InputBuffer, CurrentReading
+defVar "Reading-boundary", InputBuffer, ReadingBoundary
+
+defCode "read-char", readChar
+   ;; read a char from stdin, return it into the ArgumentStack as following
+   ;; (*  -- char *)
+   ;; readChar calls the Linux read system call to fill InputBuffer
+   ;; The other thing that readChar does is
+   ;; if it detects that stdin has closed, it exits the program
+   ;; which is why when you hit C-d, the system exits
+   call _readChar
+   ;; _readChar will save the return value in rax
+   pushArgumentStack rax
+   next
+_readChar:
+   ;; TemporaryRegister is a helper-register for ``cmp''
+   mov TemporaryRegister, [CurrentReading + CellWidth]
+   cmp TemporaryRegister, [ReadingBoundary + CellWidth]
+   ;-- IF: [CurrentReading + CellWidth] < [ReadingBoundary + CellWidth]
+   ;-- WK: there is still some chars in the InputBuffer to be processed
+   jl readChar_stillSomeChars
+   ;-- EL: [CurrentReading + CellWidth] >= [ReadingBoundary + CellWidth]
+   ;-- WK: all chars in InputBuffer have been processed
+   mov rax, EndOfInputBuffer
+   cmp TemporaryRegister, rax
+   jg readChar_addBlankAtTheEnding
+   mov rax, InputBuffer
+   cmp TemporaryRegister, rax
+   jl readChar_addBlankAtTheEnding
+   jmp readChar_fetchMoreCharsFromStdinToInputBuffer
+readChar_addBlankAtTheEnding:
+   ;; otherwise,  when the a string not ending with blank
+   ;; `evalString' will not work correctly
+   mov rax, InputBuffer
+   mov [CurrentReading + CellWidth], rax
+   mov [ReadingBoundary + CellWidth], rax
+   xor rax, rax
+   mov al, 10
+   ret
+readChar_stillSomeChars:
+   ;; for the following will just uses the al part of rax
+   ;; it is necessary to clear rax
+   xor rax, rax
+   ;-- DO: fetch a char from InputBuffer to rax
+   ;-- NT: after _readChar return rax will be pushArgumentStack
+   mov al, byte[TemporaryRegister]
+   ;-- DO: increment [CurrentReading + CellWidth]
+   inc TemporaryRegister
+   mov [CurrentReading + CellWidth], TemporaryRegister
+   ret
+;; note that, in the following subroutine
+;; set [CurrentReading + CellWidth]  == InputBuffer
+;; set [ReadingBoundary + CellWidth] == InputBuffer + length of string that was input (NULL not counted)
+readChar_fetchMoreCharsFromStdinToInputBuffer:
+   ;; read to fetch more input chars from STDIN to InputBuffer
+   mov sys_3_rdx,     SizeOfInputBuffer    ;; max length to be read
+   mov sys_2_rsi,     InputBuffer        ;; buffer address
+   ;; reset [CurrentReading + CellWidth] to InputBuffer
+   mov [CurrentReading + CellWidth], sys_2_rsi
+   xor sys_1_rdi,     sys_1_rdi          ;; stdin
+   mov sys_n_rax,     syscall_read
+   syscall
+   ;; the return value of syscall read
+   ;; is a count of the number of bytes transferred
+   test rax, rax
+   ;-- IF: rax <= 0
+   ;-- WK: there is an error or it is end of input
+   ;-- DO: exit
+   jz readChar_exit
+   js readChar_exit
+   ;-- EL: rax > 0
+   ;-- WK: there are some chars has been fetched by syscall read
+   ;-- DO: set [ReadingBoundary + CellWidth] to the right place
+   ;--     ReadingBoundary = InputBuffer + the count of the number of bytes transferred
+   ;-- NT: sys_2_rsi = InputBuffer
+   ;--     rax = the count of the number of bytes transferred
+   add sys_2_rsi, rax
+   mov [ReadingBoundary + CellWidth], sys_2_rsi
+   ;-- DO: jump back
+   jmp _readChar
+
+
+readChar_exit:
+   ;; exit with exit code = the value syscall_read returned
+   xor sys_1_rdi, sys_1_rdi
+   mov sys_n_rax, syscall_exit
+   syscall
+hereInitializedData
+ScratchUsedByWriteChar:
+   rb 1
+
+defCode "write-char", writeChar
+   ;; ( char --  ) write a char to stdin
+   ;; just calls the Linux write system call
+   popArgumentStack rax
+   call writeChar_helperFunction
+   next
+writeChar_helperFunction:
+   mov sys_1_rdi, 1 ;; stdout
+   ;; write can not just write the char in al to stdout
+   ;; write needs the address of the byte to write
+   mov [ScratchUsedByWriteChar], al
+   mov sys_2_rsi, ScratchUsedByWriteChar  ;; address
+   mov sys_3_rdx, 1                       ;; max length to be write, just 1
+   mov sys_n_rax, syscall_write
+   syscall
+   ret
+defWord "print-string", printString
+   ;; (* string[address, length] -- *)
+   xx dup, zero?, false?branch, 3
+   xx   drop2
+   xx   Exit
+   xx sub1, swap
+   xx dup, fetchByte, writeChar
+   xx add1, swap
+   xx branch, -14
+defWordEnd printString
+include "../threaded-code.inc"
+defWord ".", printLittleNumber
+   xx literal, '0'
+   xx addition, writeChar
+   xx literal, 32
+   xx writeChar
+   xx literal, 32
+   xx writeChar
+   xx Exit
+defWordEnd printLittleNumber
+
+defCode "exitWithTOS", exitWithTOS
+   popArgumentStack sys_1_rdi
+   mov sys_n_rax, syscall_exit
+   syscall
+
+defWord "assemblyDebug", assemblyDebug
+   ;; xx ><><><
+   xx exitWithTOS
+defWordEnd assemblyDebug
+hereUnInitializedData
+;; ------------------------------------------
+UserDataArea labeling
+        preserve 16 * 1024 * 1024
+EndOfUserDataArea labeling
+
+defConst "User-data-area", UserDataArea, TheUserDataArea
+defConst "End-of-user-data-area", EndOfUserDataArea, TheEndOfUserDataArea
+;; this word helps to initialize FirstWordInDictionary
+defConst "The-latest-word-in-assembly", 0, TheLatestWordInAssembly

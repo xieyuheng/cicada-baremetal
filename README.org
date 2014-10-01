@@ -41,19 +41,25 @@
 
 * what is state of this project currently ?
   - operating system for x86_64 ::
-       =architecturals/x86-64/=
+       =vm/x86-64/baremetal=
        /which is currently under active development./
        single user operating system.
        dynamic type support, users can define their own types.
        memory management was done by an incremental garbage collector.
-       all code shared a single address space.       
+       all code shared a single address space.
   - cicada for linux ::
-       =other-operating-systems/linux/=
-       /which is currently under active development./       
+       =vm/x86-64/linux/=
+       /which is currently under active development./
+       only for 64 bits linux.
        when the development environments of cicada operating systems have not been written,
        GNU/linux operating system will be used as the main development environment.
+  - cicada for windows ::
+       =vm/x86-64/windows/=
+       /which is currently under active development./
+       only for 64 bits windows.
+       which is developed under linux with the help of [[https://www.winehq.org/][wine]],
+       and tested under my friends' windows operating system.
   - operating system for ARM ::
-       =architecturals/arm/=
        /will be coming soon./
        which will be running on raspberry pi.
 

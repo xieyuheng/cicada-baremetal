@@ -1,0 +1,5 @@
+#+TITLE: cicada for linux
+#+AUTHOR: XIE Yuheng
+#+EMAIL: xyheme@gmail.com
+#+PROPERTY: header-args:fasm  :tangle cicada.fasm
+

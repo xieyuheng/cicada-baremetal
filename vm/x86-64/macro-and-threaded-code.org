@@ -1,400 +1,16 @@
-#+TITLE: cicada for linux
+#+TITLE: macro and threaded code of cicada extensible virtual machine
 #+AUTHOR: XIE Yuheng
 #+EMAIL: xyheme@gmail.com
 
 
 * ==================================================
-* *preface*
-** linux_syscalls
-   #+begin_src fasm :tangle ../../play/cicada.fasm
-   ;; see /usr/include/asm/unistd_64.h (on archlinux)
-
-   ;; parameters order of syscall:
-   define sys_6_r8  r8
-   define sys_5_r9  r9
-   define sys_4_r10 r10
-   define sys_3_rdx rdx
-   define sys_2_rsi rsi
-   define sys_1_rdi rdi
-   define sys_n_rax rax
-
-   ;; syscall number:
-   define syscall_read                      0
-   define syscall_write                     1
-   define syscall_open                      2
-   define syscall_close                     3
-
-   define syscall_stat                      4
-   define syscall_fstat                     5
-   define syscall_lstat                     6
-   define syscall_poll                      7
-   define syscall_lseek                     8
-   define syscall_mmap                      9
-   define syscall_mprotect                  10
-   define syscall_munmap                    11
-   define syscall_brk                       12
-   define syscall_rt_sigaction              13
-   define syscall_rt_sigprocmask            14
-   define syscall_rt_sigreturn              15
-   define syscall_ioctl                     16
-   define syscall_pread64                   17
-   define syscall_pwrite64                  18
-   define syscall_readv                     19
-   define syscall_writev                    20
-   define syscall_access                    21
-   define syscall_pipe                      22
-   define syscall_select                    23
-   define syscall_sched_yield               24
-   define syscall_mremap                    25
-   define syscall_msync                     26
-   define syscall_mincore                   27
-   define syscall_madvise                   28
-   define syscall_shmget                    29
-   define syscall_shmat                     30
-   define syscall_shmctl                    31
-   define syscall_dup2                       32
-   define syscall_dup2                      33
-   define syscall_pause                     34
-   define syscall_nanosleep                 35
-   define syscall_getitimer                 36
-   define syscall_alarm                     37
-   define syscall_setitimer                 38
-   define syscall_getpid                    39
-   define syscall_sendfile                  40
-   define syscall_socket                    41
-   define syscall_connect                   42
-   define syscall_accept                    43
-   define syscall_sendto                    44
-   define syscall_recvfrom                  45
-   define syscall_sendmsg                   46
-   define syscall_recvmsg                   47
-   define syscall_shutdown                  48
-   define syscall_bind                      49
-   define syscall_listen                    50
-   define syscall_getsockname               51
-   define syscall_getpeername               52
-   define syscall_socketpair                53
-   define syscall_setsockopt                54
-   define syscall_getsockopt                55
-   define syscall_clone                     56
-   define syscall_fork                      57
-   define syscall_vfork                     58
-   define syscall_execve                    59
-
-   define syscall_exit                      60
-
-   define syscall_wait4                     61
-   define syscall_kill                      62
-   define syscall_uname                     63
-   define syscall_semget                    64
-   define syscall_semop                     65
-   define syscall_semctl                    66
-   define syscall_shmdt                     67
-   define syscall_msgget                    68
-   define syscall_msgsnd                    69
-   define syscall_msgrcv                    70
-   define syscall_msgctl                    71
-   define syscall_fcntl                     72
-   define syscall_flock                     73
-   define syscall_fsync                     74
-   define syscall_fdatasync                 75
-   define syscall_truncate                  76
-   define syscall_ftruncate                 77
-   define syscall_getdents                  78
-   define syscall_getcwd                    79
-   define syscall_chdir                     80
-   define syscall_fchdir                    81
-   define syscall_rename                    82
-   define syscall_mkdir                     83
-   define syscall_rmdir                     84
-   define syscall_creat                     85
-   define syscall_link                      86
-   define syscall_unlink                    87
-   define syscall_symlink                   88
-   define syscall_readlink                  89
-   define syscall_chmod                     90
-   define syscall_fchmod                    91
-   define syscall_chown                     92
-   define syscall_fchown                    93
-   define syscall_lchown                    94
-   define syscall_umask                     95
-   define syscall_gettimeofday              96
-   define syscall_getrlimit                 97
-   define syscall_getrusage                 98
-   define syscall_sysinfo                   99
-   define syscall_times                     100
-   define syscall_ptrace                    101
-   define syscall_getuid                    102
-   define syscall_syslog                    103
-   define syscall_getgid                    104
-   define syscall_setuid                    105
-   define syscall_setgid                    106
-   define syscall_geteuid                   107
-   define syscall_getegid                   108
-   define syscall_setpgid                   109
-   define syscall_getppid                   110
-   define syscall_getpgrp                   111
-   define syscall_setsid                    112
-   define syscall_setreuid                  113
-   define syscall_setregid                  114
-   define syscall_getgroups                 115
-   define syscall_setgroups                 116
-   define syscall_setresuid                 117
-   define syscall_getresuid                 118
-   define syscall_setresgid                 119
-   define syscall_getresgid                 120
-   define syscall_getpgid                   121
-   define syscall_setfsuid                  122
-   define syscall_setfsgid                  123
-   define syscall_getsid                    124
-   define syscall_capget                    125
-   define syscall_capset                    126
-   define syscall_rt_sigpending             127
-   define syscall_rt_sigtimedwait           128
-   define syscall_rt_sigqueueinfo           129
-   define syscall_rt_sigsuspend             130
-   define syscall_sigaltstack               131
-   define syscall_utime                     132
-   define syscall_mknod                     133
-   define syscall_uselib                    134
-   define syscall_personality               135
-   define syscall_ustat                     136
-   define syscall_statfs                    137
-   define syscall_fstatfs                   138
-   define syscall_sysfs                     139
-   define syscall_getpriority               140
-   define syscall_setpriority               141
-   define syscall_sched_setparam            142
-   define syscall_sched_getparam            143
-   define syscall_sched_setscheduler        144
-   define syscall_sched_getscheduler        145
-   define syscall_sched_get_priority_max    146
-   define syscall_sched_get_priority_min    147
-   define syscall_sched_rr_get_interval     148
-   define syscall_mlock                     149
-   define syscall_munlock                   150
-   define syscall_mlockall                  151
-   define syscall_munlockall                152
-   define syscall_vhangup                   153
-   define syscall_modify_ldt                154
-   define syscall_pivot_root                155
-   define syscall__sysctl                   156
-   define syscall_prctl                     157
-   define syscall_arch_prctl                158
-   define syscall_adjtimex                  159
-   define syscall_setrlimit                 160
-   define syscall_chroot                    161
-   define syscall_sync                      162
-   define syscall_acct                      163
-   define syscall_settimeofday              164
-   define syscall_mount                     165
-   define syscall_umount2                   166
-   define syscall_swapon                    167
-   define syscall_swapoff                   168
-   define syscall_reboot                    169
-   define syscall_sethostname               170
-   define syscall_setdomainname             171
-   define syscall_iopl                      172
-   define syscall_ioperm                    173
-   define syscall_create_module             174
-   define syscall_init_module               175
-   define syscall_delete_module             176
-   define syscall_get_kernel_syms           177
-   define syscall_query_module              178
-   define syscall_quotactl                  179
-   define syscall_nfsservctl                180
-   define syscall_getpmsg                   181
-   define syscall_putpmsg                   182
-   define syscall_afs_syscall               183
-   define syscall_tuxcall                   184
-   define syscall_security                  185
-   define syscall_gettid                    186
-   define syscall_readahead                 187
-   define syscall_setxattr                  188
-   define syscall_lsetxattr                 189
-   define syscall_fsetxattr                 190
-   define syscall_getxattr                  191
-   define syscall_lgetxattr                 192
-   define syscall_fgetxattr                 193
-   define syscall_listxattr                 194
-   define syscall_llistxattr                195
-   define syscall_flistxattr                196
-   define syscall_removexattr               197
-   define syscall_lremovexattr              198
-   define syscall_fremovexattr              199
-   define syscall_tkill                     200
-   define syscall_time                      201
-   define syscall_futex                     202
-   define syscall_sched_setaffinity         203
-   define syscall_sched_getaffinity         204
-   define syscall_set_thread_area           205
-   define syscall_io_setup                  206
-   define syscall_io_destroy                207
-   define syscall_io_getevents              208
-   define syscall_io_submit                 209
-   define syscall_io_cancel                 210
-   define syscall_get_thread_area           211
-   define syscall_lookup_dcookie            212
-   define syscall_epoll_create              213
-   define syscall_epoll_ctl_old             214
-   define syscall_epoll_wait_old            215
-   define syscall_remap_file_pages          216
-   define syscall_getdents64                217
-   define syscall_set_tid_address           218
-   define syscall_restart_syscall           219
-   define syscall_semtimedop                220
-   define syscall_fadvise64                 221
-   define syscall_timer_create              222
-   define syscall_timer_settime             223
-   define syscall_timer_gettime             224
-   define syscall_timer_getoverrun          225
-   define syscall_timer_delete              226
-   define syscall_clock_settime             227
-   define syscall_clock_gettime             228
-   define syscall_clock_getres              229
-   define syscall_clock_nanosleep           230
-   define syscall_exit_group                231
-   define syscall_epoll_wait                232
-   define syscall_epoll_ctl                 233
-   define syscall_tgkill                    234
-   define syscall_utimes                    235
-   define syscall_vserver                   236
-   define syscall_mbind                     237
-   define syscall_set_mempolicy             238
-   define syscall_get_mempolicy             239
-   define syscall_mq_open                   240
-   define syscall_mq_unlink                 241
-   define syscall_mq_timedsend              242
-   define syscall_mq_timedreceive           243
-   define syscall_mq_notify                 244
-   define syscall_mq_getsetattr             245
-   define syscall_kexec_load                246
-   define syscall_waitid                    247
-   define syscall_add_key                   248
-   define syscall_request_key               249
-   define syscall_keyctl                    250
-   define syscall_ioprio_set                251
-   define syscall_ioprio_get                252
-   define syscall_inotify_init              253
-   define syscall_inotify_add_watch         254
-   define syscall_inotify_rm_watch          255
-   define syscall_migrate_pages             256
-   define syscall_openat                    257
-   define syscall_mkdirat                   258
-   define syscall_mknodat                   259
-   define syscall_fchownat                  260
-   define syscall_futimesat                 261
-   define syscall_newfstatat                262
-   define syscall_unlinkat                  263
-   define syscall_renameat                  264
-   define syscall_linkat                    265
-   define syscall_symlinkat                 266
-   define syscall_readlinkat                267
-   define syscall_fchmodat                  268
-   define syscall_faccessat                 269
-   define syscall_pselect6                  270
-   define syscall_ppoll                     271
-   define syscall_unshare                   272
-   define syscall_set_robust_list           273
-   define syscall_get_robust_list           274
-   define syscall_splice                    275
-   define syscall_tee                       276
-   define syscall_sync_file_range           277
-   define syscall_vmsplice                  278
-   define syscall_move_pages                279
-   define syscall_utimensat                 280
-   define syscall_epoll_pwait               281
-   define syscall_signalfd                  282
-   define syscall_timerfd_create            283
-   define syscall_eventfd                   284
-   define syscall_fallocate                 285
-   define syscall_timerfd_settime           286
-   define syscall_timerfd_gettime           287
-   define syscall_accept4                   288
-   define syscall_signalfd4                 289
-   define syscall_eventfd2                  290
-   define syscall_epoll_create1             291
-   define syscall_dup3                      292
-   define syscall_pipe2                     293
-   define syscall_inotify_init1             294
-   define syscall_preadv                    295
-   define syscall_pwritev                   296
-   define syscall_rt_tgsigqueueinfo         297
-   define syscall_perf_event_open           298
-   define syscall_recvmmsg                  299
-   define syscall_fanotify_init             300
-   define syscall_fanotify_mark             301
-   define syscall_prlimit64                 302
-   define syscall_name_to_handle_at         303
-   define syscall_open_by_handle_at         304
-   define syscall_clock_adjtime             305
-   define syscall_syncfs                    306
-   define syscall_sendmmsg                  307
-   define syscall_setns                     308
-   define syscall_getcpu                    309
-   define syscall_process_vm_readv          310
-   define syscall_process_vm_writev         311
-   define syscall_kcmp                      312
-   define syscall_finit_module              313
-
-
-   STDIN  = 0
-   STDOUT = 1
-   STDERR = 2
-
-   open_read         = 0
-   open_write        = 1
-   open_readAndWrite = 2
-
-   open_creat      = 0100o
-   open_rewrite    = 1000o ;; rewrite if file exist
-   open_append     = 2000o
-
-   open_excl       = 0200o ;; ensure that THIS call creates the file
-   open_noctty     = 0400o
-   open_nonblock   = 4000o
-   open_nondelay   = open_nonblock
-   open_sync       = 10000o
-   open_async      = 20000o
-   open_direct     = 40000o
-       ;; to minimize cache effects of the I/O to and from this file.
-   open_largefile  = 100000o
-   open_directory  = 200000o
-   open_nofollow   = 400000o ;; If pathname is a symbolic link, then the open fails.
-   #+end_src
-** equ
-   #+begin_src fasm :tangle ../../play/cicada.fasm
-   ;; in fasm, ``dup'' is a reserved word
-   dup equ duplicate
-
-   ;; 64-bits
-   xx equ dq
-   CellWidth equ 8
-   #+end_src
-** ASCII
-   #+begin_src fasm :tangle ../../play/cicada.fasm
-   ASCII_backspace = 8
-   ASCII_tab       = 9
-   ASCII_linefeed  = 10
-   ASCII_newline   = 10
-   ASCII_esc       = 27
-   ASCII_escape    = 27
-   ASCII_space     = 32
-   ASCII_delete    = 127
-   #+end_src
-** format header and entry
-   #+begin_src fasm :tangle ../../play/cicada.fasm
-   format elf64 executable 3
-   entry cicada_virtual_machine
-   #+end_src
-* ==================================================
-* *macro for cicada virtual machine*
+* macro
 ** note about stacks
    1. when "push", a stack-pointer moves to lower address
    2. under the a stack-pointer,
       there always stores the value of the-top-of-the-stack
 ** registers & pop & push
-   #+begin_src fasm :tangle ../../play/cicada.fasm
+   #+begin_src fasm :tangle macro.inc 
    ;; if you want to extend cicada in assembly,
    ;; the following four registers must not be used
    ;; =================================
@@ -449,7 +65,7 @@
 ** word-types & next
    1. every word-type needs a explainer (or elucidator)
    2. a explainer may explain more then one word-types
-   #+begin_src fasm :tangle ../../play/cicada.fasm
+   #+begin_src fasm :tangle macro.inc  
    ;; notations :
    ;; 1. ``the dictionary'' as a datastructure is a single-linked-list
    ;; 2. an entry in ``the dictionary'' is ``a word''
@@ -528,19 +144,50 @@
 
 
 
+   ;; macro next {
+   ;;   mov ExplainerPointer, [NextWordPointer]
+   ;;   add NextWordPointer, CellWidth
+   ;;   cmp dword[NextWordPointer], Exit
+   ;;   je @f
+   ;;   cmp dword[NextWordPointer], 已矣
+   ;;   je @f
+   ;;   jmp qword[ExplainerPointer]
+   ;; @@:
+   ;;   popReturnStack NextWordPointer
+   ;;   jmp qword[ExplainerPointer]
+   ;;   }
 
    macro next {
-     mov ExplainerPointer, [NextWordPointer]
-     add NextWordPointer, CellWidth
-     cmp dword[NextWordPointer], Exit
-     je @f
-     cmp dword[NextWordPointer], 已矣
-     je @f
-     jmp qword[ExplainerPointer]
-   @@:
-     popReturnStack NextWordPointer
-     jmp qword[ExplainerPointer]
-     }
+          local at_the_end_of_function_body
+
+          mov ExplainerPointer, [NextWordPointer]
+          add NextWordPointer, CellWidth
+          cmp dword[NextWordPointer], Exit
+          je at_the_end_of_function_body
+          cmp dword[NextWordPointer], 已矣
+          je at_the_end_of_function_body
+          jmp qword[ExplainerPointer]
+   at_the_end_of_function_body:
+          popReturnStack NextWordPointer
+          jmp qword[ExplainerPointer]
+          }
+
+
+   ;; macro next {
+   ;;        local not_at_the_end_of_function_body
+    
+   ;;        mov ExplainerPointer, [NextWordPointer]
+   ;;        add NextWordPointer, CellWidth
+   ;;        cmp qword[NextWordPointer], Exit
+   ;;        jne not_at_the_end_of_function_body
+   ;;        popReturnStack NextWordPointer
+   ;; not_at_the_end_of_function_body:
+   ;;        jmp qword[ExplainerPointer]
+   ;;        }
+   ;;        ;; maybe need more optimization,
+   ;;        ;; for the above ``popReturnStack NextWordPointer'' may be
+   ;;        ;; followed by ``pushReturnStack NextWordPointer'' (in explainFunctionBody)
+
 
 
 
@@ -550,7 +197,7 @@
 
 
    macro defWord WordString, Word {
-   segment readable writeable
+   hereInitializedData
    ;;--------------------------------------
    WordStringHeaderOf#Word:
            xx (EndOfWordStringOf#Word - WordStringOf#Word)
@@ -596,7 +243,7 @@
 
    ;; assembly code have no explainer
    macro defCode WordString, Word {
-   segment readable writeable
+   hereInitializedData
    ;;--------------------------------------
    WordStringHeaderOf#Word:
            xx (EndOfWordStringOf#Word - WordStringOf#Word)
@@ -630,7 +277,7 @@
 
 
    macro defVar WordString, InitialValue, Word {
-   segment readable writeable
+   hereInitializedData
    ;;--------------------------------------
    WordStringHeaderOf#Word:
            xx (EndOfWordStringOf#Word - WordStringOf#Word)
@@ -663,7 +310,7 @@
 
 
    macro defConst WordString, InitialValue, Word {
-   segment readable writeable
+   hereInitializedData
    ;;--------------------------------------
    WordStringHeaderOf#Word:
            xx (EndOfWordStringOf#Word - WordStringOf#Word)
@@ -701,7 +348,7 @@
    ;;   ||  1 : length  ||
    ;;   ||  n : string  ||
    macro defConstString WordString, ConstStringValue, Word {
-   segment readable writeable
+   hereInitializedData
    ;;--------------------------------------
    WordStringHeaderOf#Word:
            xx (EndOfWordStringOf#Word - WordStringOf#Word)
@@ -733,123 +380,41 @@
    ;;--------------------------------------
            }
    #+end_src
-* *start cicada virtual machine*
-** start
-   #+begin_src fasm :tangle ../../play/cicada.fasm
-   segment readable executable
-   cicada_virtual_machine:
+* ==================================================
+* basic-REPL
+  REPL for cicada is ``read execute (maybe print) loop''
+  #+begin_src fasm :tangle threaded-code.inc
+  defWord "basic-REPL", basicREPL
+         ;; (* unknown -- unknown *)
+         xx TheReturnStackTop, resetReturnStackPointer
+         xx TheArgumentStackTop, resetArgumentStackPointer
+         xx readWordForRuntime
+         xx executeWord
+         xx branch, -3
+         ;; must not end with Exit here
+  defWordEnd basicREPL
 
-           cld ;; set DF = 0, then rsi and rdi are incremented
+  defWord "execute-word", executeWord
+         ;; (* string[address, length] -- unknown *)
+         xx dup2, stringDenoteInteger?, false?branch, 4
+         xx   stringToInteger_withError, drop
+         xx   Exit
+         xx dup2, find, dup, zero?branch, 6
+         xx   xxswapx, drop2
+         xx   wordLinkToWordExplainer, execute
+         xx   Exit
+         xx drop ;; drop zero
+         xx Message_undefined_word, printString
+         xx printString
+         xx literal, ASCII_linefeed, writeChar
+         xx Exit
+  defWordEnd executeWord
 
-   ;; [rsp+8*0]=N           argc number of arguments
-   ;; [rsp+8*1]             argv0 name of executable (e.g. ./a00)
-   ;; [rsp+8*2]             argv1 (if any) - 1st param after name of executable
-   ;; ...
-   ;; [rsp+8*N]             argvN - Nth param
-   ;; qword [rsp+8*(N+1)]=0 end of arguments
-   ;; [rsp+8*(N+2)]         envp environment
-   ;; ...
-   ;; qword [rsp+....]=0    end of environment
-
-       ;; the Address we want is stored in [rsp] but not rsp
-       ;; because rsp is the standard-stack-pointer
-       ;; the Address we want is pushed into the standard-stack
-
-           ;; beware of the way
-           ;;   to use the ``Const'' or ``Var'' in assembly
-
-           mov [LinuxProgramHeaderAddress + CellWidth], rsp
-
-           mov ArgumentStackPointer,   ArgumentStackTop
-           mov GreyPairStackPointer, GreyPairStackTop
-           mov ReturnStackPointer,   ReturnStackTop
-
-           ;; initialize the variable ``Here''
-           ;; to point at beginning of DataSegment
-           mov TemporaryRegister, UserDataArea
-           mov [Here + CellWidth], TemporaryRegister
-           mov NextWordPointer, cicada_begin_thread
-
-           next
-
-   segment readable writeable
-   cicada_begin_thread:
-
-           xx initialize
-           xx basicREPL
-           ;; xx assemblyDebug
-
-   defConst "LinuxProgramHeaderAddress", 0, LinuxProgramHeaderAddress
-
-   ;; test:
-   ;; LinuxProgramHeaderAddress fetch . cr
-   ;; LinuxProgramHeaderAddress CellWidth 1 * + fetch
-   ;;   20 printString cr
-   ;; LinuxProgramHeaderAddress CellWidth 2 * + fetch
-   ;;   3 printString cr
-   #+end_src
-** basic-REPL
-   REPL for cicada is ``read execute (maybe print) loop''
-   #+begin_src fasm :tangle ../../play/cicada.fasm
-   defWord "basic-REPL", basicREPL
-          ;; (* unknown -- unknown *)
-          xx TheReturnStackTop, resetReturnStackPointer
-          xx TheArgumentStackTop, resetArgumentStackPointer
-          xx readWordForRuntime
-          xx executeWord
-          xx branch, -3
-          ;; must not end with Exit here
-   defWordEnd basicREPL
-
-   defWord "execute-word", executeWord
-          ;; (* string[address, length] -- unknown *)
-          xx dup2, stringDenoteInteger?, false?branch, 4
-          xx   stringToInteger_withError, drop
-          xx   Exit
-          xx dup2, find, dup, zero?branch, 6
-          xx   xxswapx, drop2
-          xx   wordLinkToWordExplainer, execute
-          xx   Exit
-          xx drop ;; drop zero
-          xx Message_undefined_word, printString
-          xx printString
-          xx literal, ASCII_linefeed, writeChar
-          xx Exit
-   defWordEnd executeWord
-
-   defConstString "Message:undefined-word", "   UNDEFINED WORD: ", Message_undefined_word
-   #+end_src
-* *initialize*
-** initialize
-   #+begin_src fasm :tangle ../../play/cicada.fasm
-   defWord "initialize", initialize
-          ;; (* -- *)
-
-          xx loadCoreFile
-
-          xx Exit
-   defWordEnd initialize
-   #+end_src
-** loadCoreFile
-   #+begin_src fasm :tangle ../../play/cicada.fasm
-   defCode "load-core-file", loadCoreFile
-          ;; (* -- *)
-          mov rsi, LocationOfEnglishCore
-          mov rdi, InputBuffer
-          mov rcx, SizeOfEnglishCore
-          rep movsb
-          ;; reset [ReadingBoundary + CellWidth]
-          mov [ReadingBoundary + CellWidth], rdi
-          next
-
-   align 16
-   LocationOfEnglishCore:
-      file 'english-core.cicada'
-   SizeOfEnglishCore = ($ - LocationOfEnglishCore) ;; unit :: byte
-   #+end_src
-* *primitive functions*
+  defConstString "Message:undefined-word", "   UNDEFINED WORD: ", Message_undefined_word
+  #+end_src
+* primitive functions
 ** Var & Const
-   #+begin_src fasm :tangle ../../play/cicada.fasm
+   #+begin_src fasm :tangle threaded-code.inc
    defVar "Here",  0, Here
 
    defVar "first-word-in-dictionary", LinkOfTheLatestWordInAssembly , FirstWordInDictionary
@@ -876,7 +441,7 @@
    defConst "True",  1, True
    #+end_src
 ** special key words (with chinese support)
-   #+begin_src fasm :tangle ../../play/cicada.fasm
+   #+begin_src fasm :tangle threaded-code.inc
    ;; special key words are not functions
    ;; but all about defineFunction is to use old functions to make new function
    ;; so, more appropriately,
@@ -996,7 +561,7 @@
       next
    #+end_src
 ** chinese key words
-   #+begin_src fasm :tangle ../../play/cicada.fasm
+   #+begin_src fasm :tangle threaded-code.inc
    defCode "即", 即
       mov  rax, [NextWordPointer]
       add  NextWordPointer, CellWidth
@@ -1088,7 +653,7 @@
    #+end_src
 ** stack processing
 *** drop & dup
-    #+begin_src fasm :tangle ../../play/cicada.fasm
+    #+begin_src fasm :tangle threaded-code.inc
     defCode "drop", drop
        ;; (* a -- *)
        popArgumentStack rax
@@ -1115,7 +680,7 @@
        next
     #+end_src
 *** over
-    #+begin_src fasm :tangle ../../play/cicada.fasm
+    #+begin_src fasm :tangle threaded-code.inc
     defCode "over", over
        ;; (* a b -- a b | a *)
        mov  rax, [ArgumentStackPointer + CellWidth]
@@ -1159,7 +724,7 @@
        next
     #+end_src
 *** tuck
-    #+begin_src fasm :tangle ../../play/cicada.fasm
+    #+begin_src fasm :tangle threaded-code.inc
     defCode "tuck", tuck
        ;; (* a b -- b | a b *)
        popArgumentStack rbx
@@ -1220,7 +785,7 @@
        next
     #+end_src
 *** swap
-    #+begin_src fasm :tangle ../../play/cicada.fasm
+    #+begin_src fasm :tangle threaded-code.inc
     defCode "swap", swap
        ;; (* a b -- b a *)
        popArgumentStack rbx
@@ -1348,7 +913,7 @@
        next
     #+end_src
 *** ohters
-    #+begin_src fasm :tangle ../../play/cicada.fasm
+    #+begin_src fasm :tangle threaded-code.inc
     defCode "|123->321|", abcTOcba
        popArgumentStack rax
        popArgumentStack rbx
@@ -1359,7 +924,7 @@
        next
     #+end_src
 ** fixnum
-   #+begin_src fasm :tangle ../../play/cicada.fasm
+   #+begin_src fasm :tangle threaded-code.inc
    defCode "add1", add1
       ;; (* n -- n+1 *)
       inc qword[ArgumentStackPointer]
@@ -1452,7 +1017,7 @@
       next
    #+end_src
 ** math
-   #+begin_src fasm :tangle ../../play/cicada.fasm
+   #+begin_src fasm :tangle threaded-code.inc
    defWord "negate", negate
       ;; (* n --  -n *)
       xx literal, 0
@@ -1483,7 +1048,7 @@
    defWordEnd power
    #+end_src
 ** memory
-   #+begin_src fasm :tangle ../../play/cicada.fasm
+   #+begin_src fasm :tangle threaded-code.inc
    ;; ``save'' and ``fetch'' default to a CellWidth (== 8 bytes)
    ;; the rule of ``fetch2'' and so on are:
    ;;   in memory:
@@ -1617,7 +1182,7 @@
       next
    #+end_src
 ** string
-   #+begin_src fasm :tangle ../../play/cicada.fasm
+   #+begin_src fasm :tangle threaded-code.inc
    ;; return false when length == 0
    defCode "compare-string?", compareString?
       ;; (* address of string-1, address of string-2, length -- True or False *)
@@ -1675,7 +1240,7 @@
    3. ``notFalse?'' is NOT ``true?''
    4. ``false?'' is ``zero?''
       ``true?'' is ``one?''
-   #+begin_src fasm :tangle ../../play/cicada.fasm
+   #+begin_src fasm :tangle threaded-code.inc
    defCode "==", equal?
       popArgumentStack rbx
       popArgumentStack rax
@@ -1763,7 +1328,7 @@
    defWordEnd false?
    #+end_src
 ** predicates about char
-   #+begin_src fasm :tangle ../../play/cicada.fasm
+   #+begin_src fasm :tangle threaded-code.inc
    defWord "char-denote-number?", charDenoteNumber?
       ;; (* char -- True or False *)
       xx dup
@@ -1782,7 +1347,7 @@
    2. x y bitwiseAnd
       ==
       x bitwiseInvert y bitwiseInvert bitwiseOr bitwiseInvert
-   #+begin_src fasm :tangle ../../play/cicada.fasm
+   #+begin_src fasm :tangle threaded-code.inc
    defCode "bitwise-and", bitwiseAnd
       ;; ( a, b -- a and b )
       popArgumentStack rbx
@@ -1810,7 +1375,7 @@
    1. offset is of LSB
    2. offset in [0, ..., 63]
    3. step   in [1, ..., 64]
-   #+begin_src fasm :tangle ../../play/cicada.fasm
+   #+begin_src fasm :tangle threaded-code.inc
    ;; BT copies a bit from a given register to the carry flag
    defCode "fetch-bit", fetchBit
       ;; ( fixnum, offset -- bit )
@@ -1892,7 +1457,7 @@
       next
    #+end_src
 ** bits shift & rotate
-   #+begin_src fasm :tangle ../../play/cicada.fasm
+   #+begin_src fasm :tangle threaded-code.inc
    ;; "shl"
    ;; shifts the destination operand left
    ;; by the number of bits specified in the second operand
@@ -1992,7 +1557,7 @@
       next
    #+end_src
 ** about ReturnStack
-   #+begin_src fasm :tangle ../../play/cicada.fasm
+   #+begin_src fasm :tangle threaded-code.inc
    defCode "push-return-stack", toPushReturnStack
       ;; (* address --> ReturnStack: address *)
       popArgumentStack  rax
@@ -2026,7 +1591,7 @@
       next
    #+end_src
 ** about ArgumentStack
-   #+begin_src fasm :tangle ../../play/cicada.fasm
+   #+begin_src fasm :tangle threaded-code.inc
    ;; to know why the following funny thing happens,
    ;; see the definition of the macro ``pushArgumentStack'',
    defCode "make-self-reference-value", makeSelfReferenceValue
@@ -2044,7 +1609,7 @@
       next
    #+end_src
 ** about GreyPairStack
-   #+begin_src fasm :tangle ../../play/cicada.fasm
+   #+begin_src fasm :tangle threaded-code.inc
    defCode "push-grey-pair-stack", pushGreyPairStack
       ;; (* pair[address] --> GreyPairStack: pair[address] *)
       popArgumentStack rax
@@ -2072,7 +1637,7 @@
       next
    #+end_src
 ** about Lambdastack
-   #+begin_src fasm :tangle ../../play/cicada.fasm
+   #+begin_src fasm :tangle threaded-code.inc
    ;; 1. not to much stack-processing is needed here
    ;; 2. LambdaStack can be used to save the faked-local-vars
 
@@ -2112,7 +1677,7 @@
    #+end_src
 ** WordList
    WordList is returned by readWordListForLexicographer
-   #+begin_src fasm :tangle ../../play/cicada.fasm
+   #+begin_src fasm :tangle threaded-code.inc
    defCode "tail-of-word-list", tailOfWordList
       ;; (* wordList[address, the number of words] --
       ;;    wordList[new address, number - 1] *)
@@ -2146,244 +1711,7 @@
       xx Exit
    defWordEnd tailAndHeadOfWordList
    #+end_src
-* *IO*
-** ioctl for terminal
-   #+begin_src fasm :tangle ../../play/cicada.fasm
-   ;; /usr/include/asm-generic/termbits.h
-   ;; /usr/include/asm-generic/ioctls.h
-
-   VMIN = 6
-
-   ICRNL   =       0000400o
-   IXON    =       0002000o
-   ICANON  =       0000002o
-   ISIG    =       0000001o
-   ECHO    =       0000010o
-
-
-   segment readable writeable
-
-   termios:
-   termios.c_iflag:       rd 1
-   termios.c_oflag:       rd 1
-   termios.c_cflag:       rd 1
-   termios.c_lflag:       rd 1
-   termios.c_line:        rb 1
-   termios.c_cc:          rb 19 ;; NCCS
-   termios_size = ($ - termios)
-
-   termios_orig:
-   termios_orig.c_iflag:       rd 1
-   termios_orig.c_oflag:       rd 1
-   termios_orig.c_cflag:       rd 1
-   termios_orig.c_lflag:       rd 1
-   termios_orig.c_line:        rb 1
-   termios_orig.c_cc:          rb 19 ;; NCCS
-
-
-   ScreenSize:  rw 1
-
-
-   defCode "set-terminal-to-read-key", setTerminalToReadKey
-      ;; (* -- *)
-      mov sys_3_rdx, termios_orig ;; termios or WinSize structure ptr
-      mov sys_2_rsi, 5401h        ;; TERMIOS_GET, TCGETS
-      mov sys_1_rdi, STDIN
-      mov sys_n_rax, syscall_ioctl
-      syscall
-
-      mov rsi, termios_orig
-      mov rdi, termios
-      mov rcx, termios_size
-      cld
-      rep movsb
-
-      mov byte [termios.c_cc + VMIN], 1
-      ;; icanon off, isig (^C) off, echo off
-      and byte [termios.c_lflag + 0], ((- ICANON) and (- ISIG) and (- ECHO))
-      ;; ixon off,   icrnl off
-      and byte [termios.c_iflag + 1], ((- (IXON shr 8)) or (- (ICRNL shr 8)))
-      mov rdx, termios     ;; termios or WinSize structure ptr
-      mov sys_2_rsi, 5402h ;; TERMIOS_SET, TCSETS
-      mov sys_1_rdi, STDIN
-      mov sys_n_rax, syscall_ioctl
-      syscall
-      next
-
-
-   defCode "set-terminal-back-to-read-line", setTerminalBackToReadLine
-      ;; (* -- *)
-      mov sys_3_rdx, termios_orig ;; termios or WinSize structure ptr
-      mov sys_2_rsi, 5402h ;; TERMIOS_SET, TCSETS
-      mov sys_1_rdi, STDIN
-      mov sys_n_rax, syscall_ioctl
-      syscall
-      next
-
-
-   defCode "get-screen-size", getScreenSize
-      ;; (* -- rows, cols *)
-      mov sys_3_rdx, ScreenSize
-      ;; [ScreenSize] == for example col=88,row=26 :: 00880026
-      mov sys_2_rsi, 5413h ;; TERMIOS_WSIZE, TIOCGWINSZ
-      mov sys_1_rdi, STDIN
-      mov sys_n_rax, syscall_ioctl
-      syscall
-      ;; xor rax, rax
-      mov ax, word[ScreenSize]
-      pushArgumentStack rax
-      mov ax, word[ScreenSize + 2]
-      pushArgumentStack rax
-      next
-   #+end_src
-** readChar
-   #+begin_src fasm :tangle ../../play/cicada.fasm
-   SizeOfInputBuffer = 3*1024*1024
-
-   segment readable writeable
-   InputBuffer:
-      rb SizeOfInputBuffer
-   EndOfInputBuffer:
-
-
-   defConst "Size-of-input-buffer",  SizeOfInputBuffer,  TheSizeOfInputBuffer
-   defConst "Input-buffer",          InputBuffer,        TheInputBuffer
-   defConst "End-of-input-buffer",   EndOfInputBuffer,   TheEndOfInputBuffer
-
-   ;; 1. two global variables for reading
-   ;;    I can easily support `evalString' by change these two variables
-   ;; 2. note that, there is no char in the address of a ``ReadingBoundary''
-   ;;    an example of ``ReadingBoundary'' is ``EndOfInputBuffer''
-   ;; 3. when ``CurrentReading'' == ``ReadingBoundary''
-   ;;    for the function ``readChar''
-   ;;    we need to reset it to read from ``InputBuffer''
-   ;;    and call ``inputLine'' to fetch more chars
-   ;;    and loop back
-   defVar "Current-reading",  InputBuffer, CurrentReading
-   defVar "Reading-boundary", InputBuffer, ReadingBoundary
-
-   defCode "read-char", readChar
-      ;; read a char from stdin, return it into the ArgumentStack as following
-      ;; (*  -- char *)
-      ;; readChar calls the Linux read system call to fill InputBuffer
-      ;; The other thing that readChar does is
-      ;; if it detects that stdin has closed, it exits the program
-      ;; which is why when you hit C-d, the system exits
-      call _readChar
-      ;; _readChar will save the return value in rax
-      pushArgumentStack rax
-      next
-   _readChar:
-      ;; TemporaryRegister is a helper-register for ``cmp''
-      mov TemporaryRegister, [CurrentReading + CellWidth]
-      cmp TemporaryRegister, [ReadingBoundary + CellWidth]
-      ;-- IF: [CurrentReading + CellWidth] < [ReadingBoundary + CellWidth]
-      ;-- WK: there is still some chars in the InputBuffer to be processed
-      jl readChar_stillSomeChars
-      ;-- EL: [CurrentReading + CellWidth] >= [ReadingBoundary + CellWidth]
-      ;-- WK: all chars in InputBuffer have been processed
-      mov rax, EndOfInputBuffer
-      cmp TemporaryRegister, rax
-      jg readChar_addBlankAtTheEnding
-      mov rax, InputBuffer
-      cmp TemporaryRegister, rax
-      jl readChar_addBlankAtTheEnding
-      jmp readChar_fetchMoreCharsFromStdinToInputBuffer
-   readChar_addBlankAtTheEnding:
-      ;; otherwise,  when the a string not ending with blank
-      ;; `evalString' will not work correctly
-      mov rax, InputBuffer
-      mov [CurrentReading + CellWidth], rax
-      mov [ReadingBoundary + CellWidth], rax
-      xor rax, rax
-      mov al, 10
-      ret
-   readChar_stillSomeChars:
-      ;; for the following will just uses the al part of rax
-      ;; it is necessary to clear rax
-      xor rax, rax
-      ;-- DO: fetch a char from InputBuffer to rax
-      ;-- NT: after _readChar return rax will be pushArgumentStack
-      mov al, byte[TemporaryRegister]
-      ;-- DO: increment [CurrentReading + CellWidth]
-      inc TemporaryRegister
-      mov [CurrentReading + CellWidth], TemporaryRegister
-      ret
-   ;; note that, in the following subroutine
-   ;; set [CurrentReading + CellWidth]  == InputBuffer
-   ;; set [ReadingBoundary + CellWidth] == InputBuffer + length of string that was input (NULL not counted)
-   readChar_fetchMoreCharsFromStdinToInputBuffer:
-      ;; read to fetch more input chars from STDIN to InputBuffer
-      mov sys_3_rdx,     SizeOfInputBuffer    ;; max length to be read
-      mov sys_2_rsi,     InputBuffer        ;; buffer address
-      ;; reset [CurrentReading + CellWidth] to InputBuffer
-      mov [CurrentReading + CellWidth], sys_2_rsi
-      xor sys_1_rdi,     sys_1_rdi          ;; stdin
-      mov sys_n_rax,     syscall_read
-      syscall
-      ;; the return value of syscall read
-      ;; is a count of the number of bytes transferred
-      test rax, rax
-      ;-- IF: rax <= 0
-      ;-- WK: there is an error or it is end of input
-      ;-- DO: exit
-      jz readChar_exit
-      js readChar_exit
-      ;-- EL: rax > 0
-      ;-- WK: there are some chars has been fetched by syscall read
-      ;-- DO: set [ReadingBoundary + CellWidth] to the right place
-      ;--     ReadingBoundary = InputBuffer + the count of the number of bytes transferred
-      ;-- NT: sys_2_rsi = InputBuffer
-      ;--     rax = the count of the number of bytes transferred
-      add sys_2_rsi, rax
-      mov [ReadingBoundary + CellWidth], sys_2_rsi
-      ;-- DO: jump back
-      jmp _readChar
-
-
-   readChar_exit:
-      ;; exit with exit code = the value syscall_read returned
-      xor sys_1_rdi, sys_1_rdi
-      mov sys_n_rax, syscall_exit
-      syscall
-   #+end_src
-** writeChar
-   #+begin_src fasm :tangle ../../play/cicada.fasm
-   segment readable writeable
-   ScratchUsedByWriteChar:
-      rb 1
-
-   defCode "write-char", writeChar
-      ;; ( char --  ) write a char to stdin
-      ;; just calls the Linux write system call
-      popArgumentStack rax
-      call writeChar_helperFunction
-      next
-   writeChar_helperFunction:
-      mov sys_1_rdi, 1 ;; stdout
-      ;; write can not just write the char in al to stdout
-      ;; write needs the address of the byte to write
-      mov [ScratchUsedByWriteChar], al
-      mov sys_2_rsi, ScratchUsedByWriteChar  ;; address
-      mov sys_3_rdx, 1                       ;; max length to be write, just 1
-      mov sys_n_rax, syscall_write
-      syscall
-      ret
-   #+end_src
-** printString
-   #+begin_src fasm :tangle ../../play/cicada.fasm
-   defWord "print-string", printString
-      ;; (* string[address, length] -- *)
-      xx dup, zero?, false?branch, 3
-      xx   drop2
-      xx   Exit
-      xx sub1, swap
-      xx dup, fetchByte, writeChar
-      xx add1, swap
-      xx branch, -14
-   defWordEnd printString
-   #+end_src
-* *number*
+* number
 ** note
    1. 现在 的 number 就只是 "integer" 而已
       更多的跟数学有关的东西将在 cicada 中设计新的语法来实现
@@ -2401,7 +1729,7 @@
       for we only have 36 chars
    5. 可以发现 这样对一个 字符串 是不是代表了一个 整数的 判断就简单多了
 ** base-of-string
-   #+begin_src fasm :tangle ../../play/cicada.fasm
+   #+begin_src fasm :tangle threaded-code.inc
    ;; 1. just take the 10 based number on the left of "#" as base
    ;;    while the base must be not-zero
    ;;    (actually, when it is zero, just let the zero return,
@@ -2492,7 +1820,7 @@
    defWordEnd help_base_of_string_pop_char
    #+end_src
 ** digit-of-string
-   #+begin_src fasm :tangle ../../play/cicada.fasm
+   #+begin_src fasm :tangle threaded-code.inc
    ;; 1. just take whatever the sub-string on the rigth of "#"
    ;;    while the length of this sub-string must be not-zero
    ;; 2. if can not find "#" in the string
@@ -2527,7 +1855,7 @@
    defWordEnd help_digitOfString
    #+end_src
 ** char->number
-   #+begin_src fasm :tangle ../../play/cicada.fasm
+   #+begin_src fasm :tangle threaded-code.inc
    ;; 1. if char is not in [0-9] [A-Z] [a-z]
    ;;    reture -1 to denote error
    defWord "char->number", charToNumber
@@ -2562,7 +1890,7 @@
    defWordEnd charToNumber
    #+end_src
 ** with-base:char-denote-number?
-   #+begin_src fasm :tangle ../../play/cicada.fasm
+   #+begin_src fasm :tangle threaded-code.inc
    defWord "with-base:char-denote-number?", withBase_charDenoteNumber?
       ;; (* base, char -- True of False *)
       ;; (* char -- True or False *)
@@ -2579,7 +1907,7 @@
    defWordEnd withBase_charDenoteNumber?
    #+end_src
 ** with-base:string-denote-digit?
-   #+begin_src fasm :tangle ../../play/cicada.fasm
+   #+begin_src fasm :tangle threaded-code.inc
    ;; in the following function "with-base:string-denote-digit?"
    ;; I also need to handle the separater "_"
 
@@ -2658,7 +1986,7 @@
    defWordEnd withBase_stringDenoteDigit?withoutSign
    #+end_src
 ** string-denote-base#digit? & string-denote-digit?
-   #+begin_src fasm :tangle ../../play/cicada.fasm
+   #+begin_src fasm :tangle threaded-code.inc
    ;; now with very good factoring
    ;; we can write the following function easily :)
 
@@ -2691,7 +2019,7 @@
    defWordEnd stringDenoteDigit?
    #+end_src
 ** string-denote-integer?
-   #+begin_src fasm :tangle ../../play/cicada.fasm
+   #+begin_src fasm :tangle threaded-code.inc
    ;; in the following functions
    ;; I also need to handle the separater "_"
 
@@ -2709,7 +2037,7 @@
    defWordEnd stringDenoteInteger?
    #+end_src
 ** with-base:string->natural-number,with-error
-   #+begin_src fasm :tangle ../../play/cicada.fasm
+   #+begin_src fasm :tangle threaded-code.inc
    ;; we need to return an error indication
    ;; so we let the following function returns two items on the stack
    ;; is this the right way to do it?
@@ -2774,7 +2102,7 @@
    defWordEnd helpPop_withBase_stringToNaturalNumber_withError
    #+end_src
 ** with-base:string->integer,with-error
-   #+begin_src fasm :tangle ../../play/cicada.fasm
+   #+begin_src fasm :tangle threaded-code.inc
    defWord "with-base:string->integer,with-error", withBase_stringToInteger_withError
       ;; (* base, string[address, length] -- natural-number, True *)
       ;; (* or *)
@@ -2797,7 +2125,7 @@
    defWordEnd withBase_stringToInteger_withError
    #+end_src
 ** string->integer,with-error
-   #+begin_src fasm :tangle ../../play/cicada.fasm
+   #+begin_src fasm :tangle threaded-code.inc
    defWord "string->integer,with-error", stringToInteger_withError
       ;; (* string[address, length] -- integer, True *)
       ;; (* or *)
@@ -2818,7 +2146,7 @@
       xx Exit
    defWordEnd stringToInteger_withError
    #+end_src
-* *the dictionary & the lexicographer*
+* the dictionary & the lexicographer
 ** note
    1. there are many lexicographers,
       they work together to define words into the dictionary
@@ -2838,15 +2166,15 @@
       2) for already used label-name :
          defConst "ReturnStackTop", ReturnStackTop, TheReturnStackTop
 ** explainers & execute & Exit
-   #+begin_src fasm :tangle ../../play/cicada.fasm
-   segment readable executable
+   #+begin_src fasm :tangle threaded-code.inc
+   align 16
    explainVar:
       ;; ( -- address )
       add ExplainerPointer, CellWidth
       pushArgumentStack ExplainerPointer
       next
 
-   segment readable executable
+   align 16
    explainConst:
       ;; ( -- value )
       add ExplainerPointer, CellWidth
@@ -2854,7 +2182,7 @@
       pushArgumentStack TemporaryRegister
       next
 
-   segment readable executable
+   align 16
    explainFunctionBody:
       pushReturnStack NextWordPointer
       ;; to calculate the address in a word where the function-body is stored
@@ -2863,7 +2191,7 @@
       mov NextWordPointer, ExplainerPointer
       next
 
-   segment readable executable
+   align 16
    explainConstString:
       ;; ( -- string[address, length] )
       add ExplainerPointer, CellWidth
@@ -2905,7 +2233,7 @@
    defConst "Constant-string-explainer", explainConstString,  ConstStringExplainer
    #+end_src
 ** find (dictionary look up)
-   #+begin_src fasm :tangle ../../play/cicada.fasm
+   #+begin_src fasm :tangle threaded-code.inc
    ;; recall
    ;; a word in the dictionary (unit : CellWidth = 8 bytes)
    ;; ==
@@ -2971,7 +2299,7 @@
    #+end_src
 ** word
 *** readFirstNonBlankChar & readNonBlankChar
-    #+begin_src fasm :tangle ../../play/cicada.fasm
+    #+begin_src fasm :tangle threaded-code.inc
     defWord "read-first-non-blank-char", readFirstNonBlankChar
        ;; (* -- FirstNonBlankChar *)
        xx readChar, dup
@@ -2994,22 +2322,19 @@
     defWordEnd readNonBlankChar
     #+end_src
 *** readWord
-    #+begin_src fasm :tangle ../../play/cicada.fasm
+    #+begin_src fasm :tangle threaded-code.inc
+    hereUnInitializedData
+    ;; ------------------------------------------
     ;; note that, Subsequent calls will overwrite BufferForReadWord
     ;; this is why there is another function ``readWordForRuntime''
     MaxWordLength = 1024
 
-    segment readable writeable
-    BufferForReadWord:
-       ;; note that, Subsequent calls will overwrite BufferForReadWord
-       ;; this is why there is another function ``readWordForRuntime''
-       rb MaxWordLength
+    BufferForReadWord labeling
+            preserve MaxWordLength
 
-    segment readable writeable
-    BufferForReadWordForRuntime:
-       ;; note that, Subsequent calls will overwrite BufferForReadWord
-       ;; this is why there is another function ``readWordForRuntime''
-       rb MaxWordLength
+    BufferForReadWordForRuntime labeling
+            preserve MaxWordLength
+
 
     defWord "read-word", readWord
        ;; (*  -- wordString[address, length] *)
@@ -3060,14 +2385,14 @@
     defWordEnd readWordForRuntime
     #+end_src
 *** readStringInToBuffer
-    #+begin_src fasm :tangle ../../play/cicada.fasm
+    #+begin_src fasm :tangle threaded-code.inc
+    hereUnInitializedData
+    ;; ------------------------------------------
     ;; note that, Subsequent calls will overwrite BasicStringBuffer
     MaxStringLength = 1024*1024
 
-    segment readable writeable
-    BasicStringBuffer:
-       ;; note that, Subsequent calls will overwrite BasicStringBuffer
-       rb MaxStringLength
+    BasicStringBuffer labeling
+            preserve MaxStringLength
 
     defConst "Basic-string-buffer", BasicStringBuffer, TheBasicStringBuffer
 
@@ -3090,11 +2415,11 @@
     defWordEnd readStringInToBuffer
     #+end_src
 *** comment
-        #+begin_src fasm :tangle ../../play/cicada.fasm
-        defConstString "Comment-begin-string",  "(*", CommentBeginString
-        defConstString "Comment-ending-string", "*)", CommentEndingString
+    #+begin_src fasm :tangle threaded-code.inc
+    defConstString "Comment-begin-string",  "(*", CommentBeginString
+    defConstString "Comment-ending-string", "*)", CommentEndingString
 
-        defWord "ignore-comment", ignoreComment
+    defWord "ignore-comment", ignoreComment
        ;; (* -- *)
        ;; (* ignore a list of comment words from stdin *)
        xx readWord
@@ -3104,19 +2429,19 @@
        ;; a tail-recursive-call is really a loop
        xx CommentEndingString, equalString?, false?branch, -13
        xx   Exit
-        defWordEnd ignoreComment
+    defWordEnd ignoreComment
 
 
-        defWord "(*", comment
+    defWord "(*", comment
        xx ignoreComment
        xx Exit
-        defWordEnd comment
+    defWordEnd comment
 
-        ;; test:
-        ;; (* ok (* ok *) ok *) ok
-        #+end_src
+    ;; test:
+    ;; (* ok (* ok *) ok *) ok
+    #+end_src
 *** readWordListForLexicographer
-    #+begin_src fasm :tangle ../../play/cicada.fasm
+    #+begin_src fasm :tangle threaded-code.inc
     ;; a WordList (unit : CellWidth = 8 bytes)
     ;;   ||  1 : length-of-Word-1     ||
     ;;   ||  a : Word-1--as-a-string  ||
@@ -3124,13 +2449,13 @@
     ;;   ||  b : Word-2--as-a-string  ||
     ;;   ...
 
-
+    hereUnInitializedData
     ;; ------------------------------------------
     ;; note that, Subsequent calls will overwrite BufferForReadWordListForLexicographer
     SizeOfBufferForReadWordListForLexicographer = 2*1024*1024
-    segment readable writeable
-    BufferForReadWordListForLexicographer:
-       rb SizeOfBufferForReadWordListForLexicographer
+
+    BufferForReadWordListForLexicographer labeling
+            preserve SizeOfBufferForReadWordListForLexicographer
 
     defConstString "Ket:cosemi", ";", Ket_cosemi
     defConstString "Ket:fuzhe", "者", Ket_fuzhe
@@ -3198,7 +2523,7 @@
     defWordEnd addWordToListForLexicographer
     #+end_src
 ** the basic lexicographer
-   #+begin_src fasm :tangle ../../play/cicada.fasm
+   #+begin_src fasm :tangle threaded-code.inc
    defWord "append-number-to-here", appendNumberToHere
       ;; (* a 64 bits number -- *)
       ;; reset ``Here'', which points next free memory
@@ -3366,261 +2691,207 @@
       xx Exit
    defWordEnd defineFunction
    #+end_src
-* *misc*
-** assemblyDebug
-   #+begin_src fasm :tangle ../../play/cicada.fasm
-   defWord ".", printLittleNumber
-      xx literal, '0'
-      xx addition, writeChar
-      xx literal, 32
-      xx writeChar
-      xx literal, 32
-      xx writeChar
-      xx Exit
-   defWordEnd printLittleNumber
+* ==================================================
+* memory allocation
+** PairConstructionsArray
+   #+begin_src fasm :tangle threaded-code.inc 
+   hereUnInitializedData
+   ;; ------------------------------------------
+   ;; PairConstructionsArray
+   ;;   (unit : byte)
+   ;; ========================
+   ;;   ||  1 : color     ||
+   ;; ------------------------
+   ;;   ||  8 : type tag  ||
+   ;;   ||  8 : value     ||
+   ;; ------------------------
+   ;;   ||  8 : type tag  ||
+   ;;   ||  8 : value     ||
+   ;; ========================
+   hereUnInitializedData
+   ClrBytesSize = 1
+   CarBytesSize = 16
+   CdrBytesSize = 16
+   ConsBytesSize = ClrBytesSize + CarBytesSize + CdrBytesSize
+   NumberOfPairConstructions = 100 * 1024
 
-   defCode "exitWithTOS", exitWithTOS
-      popArgumentStack sys_1_rdi
-      mov sys_n_rax, syscall_exit
-      syscall
+           preserve ClrBytesSize
+   InFrontOfTheFirstPairConstruction labeling
+           preserve (CarBytesSize + CdrBytesSize)
 
-   defWord "assemblyDebug", assemblyDebug
-      ;; xx ><><><
-      xx exitWithTOS
-   defWordEnd assemblyDebug
+           preserve ClrBytesSize
+   FirstPairConstruction labeling
+           preserve (CarBytesSize + CdrBytesSize)
+
+           ;; ==========================
+           preserve ((NumberOfPairConstructions - 2) * ConsBytesSize)
+           ;; ==========================
+
+           preserve ClrBytesSize
+   LastPairConstruction labeling
+           preserve (CarBytesSize + CdrBytesSize)
+
+   defConst "Clr-bytes-size"  , ClrBytesSize  , TheClrBytesSize
+   defConst "Car-bytes-size"  , CarBytesSize  , TheCarBytesSize
+   defConst "Cdr-bytes-size"  , CdrBytesSize  , TheCdrBytesSize
+   defConst "Cons-bytes-size" , ConsBytesSize , TheConsBytesSize
+
+   defConst "Number-of-pair-constructions", NumberOfPairConstructions, TheNumberOfPairConstructions
+
+   defConst "In-front-of-the-first-pair-construction", InFrontOfTheFirstPairConstruction, TheInFrontOfTheFirstPairConstruction
+   defConst "First-pair-construction", FirstPairConstruction, TheFirstPairConstruction
+   defConst "Last-pair-construction",  LastPairConstruction,  TheLastPairConstruction
+
+   defVar "Current-free-pair-construction", FirstPairConstruction, CurrentFreePairConstruction
+    #+end_src
+** HashTableForSymbol
+   using linear probing
+   so, the load factor must be lower then 0.5
+   #+begin_src fasm :tangle threaded-code.inc
+   hereUnInitializedData
+   ;; ------------------------------------------
+   ;; HashTableForSymbol
+
+   ;; a SymbolEntry (unit : byte)
+   ;; ===========================
+   ;;  ||   8 : SymbolValue   ||
+   ;; ---------------------------
+   ;;  ||   1 : SymbolLength  ||
+   ;; ---------------------------
+   ;;  || 56+ : SymbolString  ||
+   ;; ===========================
+
+   SymbolLengthBytesSize = 1
+   SymbolValueBytesSize  = 8
+   SymbolStringBytesSize = 56+0
+   SymbolMaxLength       = 56
+   SymbolEntryBytesSize = SymbolValueBytesSize + SymbolLengthBytesSize + SymbolStringBytesSize
+   ;; NumberOfSymbolEntrys = 1000003
+   ;; NumberOfSymbolEntrys = 1000033
+   ;; NumberOfSymbolEntrys = 1000333
+   ;; NumberOfSymbolEntrys = 100003
+   NumberOfSymbolEntrys = 100333
+   ;; NumberOfSymbolEntrys = 997
+   ;; NumberOfSymbolEntrys = 499
+   ;; NumberOfSymbolEntrys = 230 ;; for a special test
+
+   FirstSymbolEntry labeling
+           preserve SymbolEntryBytesSize
+
+           ;; ========================
+           preserve ((NumberOfSymbolEntrys - 2) * SymbolEntryBytesSize)
+           ;; ========================
+
+   LastSymbolEntry labeling
+           preserve SymbolEntryBytesSize
+
+   defConst "Number-of-symbol-entrys",  NumberOfSymbolEntrys,  TheNumberOfSymbolEntrys
+   defConst "Symbol-value-bytes-size",  SymbolValueBytesSize,  TheSymbolValueBytesSize
+   defConst "Symbol-length-bytes-size", SymbolLengthBytesSize, TheSymbolLengthBytesSize
+   defConst "Symbol-string-bytes-size", SymbolStringBytesSize, TheSymbolStringBytesSize
+   defConst "Symbol-max-length",        SymbolMaxLength,       TheSymbolMaxLength
+   defConst "Symbol-entry-bytes-size",  SymbolEntryBytesSize,  TheSymbolEntryBytesSize
+
+   defConst "First-symbol-entry", FirstSymbolEntry, TheFirstSymbolEntry
+   defConst "Last-symbol-entry",  LastSymbolEntry,  TheLastSymbolEntry
    #+end_src
-* *ending*
-** memory allocation
-*** PairConstructionsArray
-    #+begin_src fasm :tangle ../../play/cicada.fasm
-    ;; ------------------------------------------
-    ;; PairConstructionsArray
-    ;;   (unit : byte)
-    ;; ========================
-    ;;   ||  1 : color     ||
-    ;; ------------------------
-    ;;   ||  8 : type tag  ||
-    ;;   ||  8 : value     ||
-    ;; ------------------------
-    ;;   ||  8 : type tag  ||
-    ;;   ||  8 : value     ||
-    ;; ========================
-    ClrBytesSize = 1
-    CarBytesSize = 16
-    CdrBytesSize = 16
-    ConsBytesSize = ClrBytesSize + CarBytesSize + CdrBytesSize
-    NumberOfPairConstructions = 100 * 1024
+** two StringHeaps
+   #+begin_src fasm :tangle threaded-code.inc
+   hereUnInitializedData
+   ;; ------------------------------------------
+   ;; two StringHeaps
+   SizeOfStringHeap = 5*1024*1024
 
-    segment readable writeable
-            rb ClrBytesSize
-    InFrontOfTheFirstPairConstruction:
-            rb (CarBytesSize + CdrBytesSize)
+   StringHeap1 labeling
+           preserve SizeOfStringHeap
+   EndOfStringHeap1 labeling
 
-            rb ClrBytesSize
-    FirstPairConstruction:
-            rb (CarBytesSize + CdrBytesSize)
+   StringHeap2 labeling
+           preserve SizeOfStringHeap
+   EndOfStringHeap2 labeling
 
-            ;; ==========================
-            rb (NumberOfPairConstructions - 2) * ConsBytesSize
-            ;; ==========================
+   defConst "Size-of-string-heap", SizeOfStringHeap, TheSizeOfStringHeap
 
-            rb ClrBytesSize
-    LastPairConstruction:
-            rb (CarBytesSize + CdrBytesSize)
+   defConst "String-heap-1", StringHeap1, TheStringHeap1
+   defConst "String-heap-2", StringHeap2, TheStringHeap2
+   #+end_src
+** BufferForLoadFile
+   #+begin_src fasm :tangle threaded-code.inc
+   hereUnInitializedData
+   ;; ------------------------------------------
+   SizeOfBufferForLoadFile = 1024*1024
 
+   BufferForLoadFile labeling
+                preserve SizeOfBufferForLoadFile
 
-    defConst "Clr-bytes-size"  , ClrBytesSize  , TheClrBytesSize
-    defConst "Car-bytes-size"  , CarBytesSize  , TheCarBytesSize
-    defConst "Cdr-bytes-size"  , CdrBytesSize  , TheCdrBytesSize
-    defConst "Cons-bytes-size" , ConsBytesSize , TheConsBytesSize
+   defConst "Buffer-for-load-file", BufferForLoadFile, TheBufferForLoadFile
+   defConst "Size-of-buffer-for-load-file", SizeOfBufferForLoadFile, TheSizeOfBufferForLoadFile
+   #+end_src
+** ------------------------------------------
+** Stacks
+   1. after push the first value into ArgumentStack
+      ArgumentStackPointer will point to the address of this value
+   2. before push the first value into ArgumentStack
+      ArgumentStackPointer point to StackTop
+      and StackTop will never be used
+   4. beware to understand how ``StackBottom'' and ``StackTop'' work
+   #+begin_src fasm :tangle threaded-code.inc
+   hereUnInitializedData
+   ;; ReturnStack
+   SizeOfReturnStack = 100*1024*8
 
-    defConst "Number-of-pair-constructions", NumberOfPairConstructions, TheNumberOfPairConstructions
+   ReturnStackBottom labeling
+           preserve SizeOfReturnStack
+   ReturnStackTop labeling
+           preserve 100*8
 
-    defConst "In-front-of-the-first-pair-construction", InFrontOfTheFirstPairConstruction, TheInFrontOfTheFirstPairConstruction
-    defConst "First-pair-construction", FirstPairConstruction, TheFirstPairConstruction
-    defConst "Last-pair-construction",  LastPairConstruction,  TheLastPairConstruction
+   hereUnInitializedData
+   ;; ArgumentStack
+   SizeOfArgumentStack = 100*1024*8
 
-    defVar "Current-free-pair-construction", FirstPairConstruction, CurrentFreePairConstruction
-     #+end_src
-*** HashTableForSymbol
-    using linear probing
-    so, the load factor must be lower then 0.5
-    #+begin_src fasm :tangle ../../play/cicada.fasm
-    ;; ------------------------------------------
-    ;; HashTableForSymbol
+   ArgumentStackBottom labeling
+           preserve SizeOfArgumentStack
+   ArgumentStackTop labeling
+           preserve 100*8
 
-    ;; a SymbolEntry (unit : byte)
-    ;; ===========================
-    ;;  ||   8 : SymbolValue   ||
-    ;; ---------------------------
-    ;;  ||   1 : SymbolLength  ||
-    ;; ---------------------------
-    ;;  || 56+ : SymbolString  ||
-    ;; ===========================
+   hereUnInitializedData
+   ;; GreyPairStack
+   SizeOfGreyPairStack = 100*1024*8
 
-    SymbolLengthBytesSize = 1
-    SymbolValueBytesSize  = 8
-    SymbolStringBytesSize = 56+0
-    SymbolMaxLength       = 56
-    SymbolEntryBytesSize = SymbolValueBytesSize + SymbolLengthBytesSize + SymbolStringBytesSize
-    ;; NumberOfSymbolEntrys = 1000003
-    ;; NumberOfSymbolEntrys = 1000033
-    ;; NumberOfSymbolEntrys = 1000333
-    ;; NumberOfSymbolEntrys = 100003
-    NumberOfSymbolEntrys = 100333
-    ;; NumberOfSymbolEntrys = 997
-    ;; NumberOfSymbolEntrys = 499
-    ;; NumberOfSymbolEntrys = 230 ;; for a special test
+   GreyPairStackBottom labeling
+           preserve SizeOfGreyPairStack
+   GreyPairStackTop labeling
+           preserve 100*8
 
-    segment readable writeable
-    FirstSymbolEntry:
-            rb SymbolEntryBytesSize
+   hereUnInitializedData
+   ;; LambdaStack
+   SizeOfLambdaStack = 100*1024*8
 
-            ;; ========================
-            rb (NumberOfSymbolEntrys - 2) * SymbolEntryBytesSize
-            ;; ========================
+   LambdaStackBottom labeling
+           preserve SizeOfLambdaStack
+   LambdaStackTop labeling
+           preserve 100*8
 
-    LastSymbolEntry:
-            rb SymbolEntryBytesSize
+   hereUnInitializedData
+   ;; StackForEvalString
+   SizeOfStackForEvalString = 1024*8
+
+   StackForEvalStringBottom labeling
+           preserve SizeOfStackForEvalString
+   StackForEvalStringTop labeling
+           preserve 100*8
 
 
-    defConst "Number-of-symbol-entrys",  NumberOfSymbolEntrys,  TheNumberOfSymbolEntrys
-    defConst "Symbol-value-bytes-size",  SymbolValueBytesSize,  TheSymbolValueBytesSize
-    defConst "Symbol-length-bytes-size", SymbolLengthBytesSize, TheSymbolLengthBytesSize
-    defConst "Symbol-string-bytes-size", SymbolStringBytesSize, TheSymbolStringBytesSize
-    defConst "Symbol-max-length",        SymbolMaxLength,       TheSymbolMaxLength
-    defConst "Symbol-entry-bytes-size",  SymbolEntryBytesSize,  TheSymbolEntryBytesSize
+   defConst "Return-stack-top",    ReturnStackTop,    TheReturnStackTop
+   defConst "Return-stack-bottom", ReturnStackBottom, TheReturnStackBottom
 
-    defConst "First-symbol-entry", FirstSymbolEntry, TheFirstSymbolEntry
-    defConst "Last-symbol-entry",  LastSymbolEntry,  TheLastSymbolEntry
-        #+end_src
-*** two StringHeaps
-    #+begin_src fasm :tangle ../../play/cicada.fasm
-    SizeOfStringHeap = 5 * 1024 * 1024 ;; unit: byte
-    segment readable writeable
-    StringHeap1:
-            rb SizeOfStringHeap
-    EndOfStringHeap1:
-    segment readable writeable
-    StringHeap2:
-            rb SizeOfStringHeap
-    EndOfStringHeap2:
+   defConst "Argument-stack-top",    ArgumentStackTop,    TheArgumentStackTop
+   defConst "Argument-stack-bottom", ArgumentStackBottom, TheArgumentStackBottom
 
+   defConst "Lambda-stack-top", LambdaStackTop, TheLambdaStackTop
+   defConst "Lambda-stack-bottom", LambdaStackBottom, TheLambdaStackBottom
 
-    defConst "Size-of-string-heap", SizeOfStringHeap, TheSizeOfStringHeap
-
-    defConst "String-heap-1", StringHeap1, TheStringHeap1
-    defConst "String-heap-2", StringHeap2, TheStringHeap2
-    #+end_src
-*** BufferForLoadFile
-    #+begin_src fasm :tangle ../../play/cicada.fasm
-    SizeOfBufferForLoadFile = 1024 * 1024 ;; unit : byte
-
-    segment readable writeable
-    BufferForLoadFile:
-             rb SizeOfBufferForLoadFile
-
-
-    defConst "Buffer-for-load-file", BufferForLoadFile, TheBufferForLoadFile
-    defConst "Size-of-buffer-for-load-file", SizeOfBufferForLoadFile, TheSizeOfBufferForLoadFile
-    #+end_src
-*** FileNameBufferForOpenFile
-    #+begin_src fasm :tangle ../../play/cicada.fasm
-    SizeOfFileNameBufferForOpenFile = 1024 ;; unit : byte
-
-    defConst "FileNameBufferForOpenFile", FileNameBufferForOpenFile, TheFileNameBufferForOpenFile
-
-    segment readable writeable
-    FileNameBufferForOpenFile:
-             rb SizeOfFileNameBufferForOpenFile
-    #+end_src
-*** ------------------------------------------
-*** Stacks
-    1. after push the first value into ArgumentStack
-       ArgumentStackPointer will point to the address of this value
-    2. before push the first value into ArgumentStack
-       ArgumentStackPointer point to StackTop
-       and StackTop will never be used
-    4. beware to understand how ``StackBottom'' and ``StackTop'' work
-    #+begin_src fasm :tangle ../../play/cicada.fasm
-    ;; ReturnStack
-    SizeOfReturnStack = 100*1024*8
-
-    segment readable writeable
-    ReturnStackBottom:
-            rb SizeOfReturnStack
-    ReturnStackTop:
-            rb 100*8
-
-
-    ;; ArgumentStack
-    SizeOfArgumentStack = 100*1024*8
-
-    segment readable writeable
-    ArgumentStackBottom:
-            rb SizeOfArgumentStack
-    ArgumentStackTop:
-            rb 100*8
-
-
-    ;; GreyPairStack
-    SizeOfGreyPairStack = 100*1024*8
-
-    segment readable writeable
-    GreyPairStackBottom:
-            rb SizeOfGreyPairStack
-    GreyPairStackTop:
-            rb 100*8
-
-
-    ;; LambdaStack
-    SizeOfLambdaStack = 100*1024*8
-
-    segment readable writeable
-    LambdaStackBottom:
-            rb SizeOfLambdaStack
-    LambdaStackTop:
-            rb 100*8
-
-
-    ;; StackForEvalString
-    SizeOfStackForEvalString = 1024*8
-
-    segment readable writeable
-    StackForEvalStringBottom:
-            rb SizeOfStackForEvalString
-    StackForEvalStringTop:
-            rb 100*8
-
-
-
-    defConst "Return-stack-top",    ReturnStackTop,    TheReturnStackTop
-    defConst "Return-stack-bottom", ReturnStackBottom, TheReturnStackBottom
-
-    defConst "Argument-stack-top",    ArgumentStackTop,    TheArgumentStackTop
-    defConst "Argument-stack-bottom", ArgumentStackBottom, TheArgumentStackBottom
-
-    defConst "Lambda-stack-top", LambdaStackTop, TheLambdaStackTop
-    defConst "Lambda-stack-bottom", LambdaStackBottom, TheLambdaStackBottom
-
-    defConst "Stack-for-eval-string-bottom", StackForEvalStringBottom, TheStackForEvalStringBottom
-    defConst "Stack-for-eval-string-top", StackForEvalStringTop, TheStackForEvalStringTop
-    #+end_src
-*** ------------------------------------------
-*** UserDataArea
-    #+begin_src fasm :tangle ../../play/cicada.fasm
-    SizeOfUserDataArea = 16 * 1024 * 1024 ;; unit: byte
-    segment readable writeable
-    UserDataArea:
-            rb SizeOfUserDataArea
-    EndOfUserDataArea:
-
-    defConst "User-data-area", UserDataArea, TheUserDataArea
-    defConst "End-of-user-data-area", EndOfUserDataArea, TheEndOfUserDataArea
-    #+end_src
-** TheLatestWordInAssembly
-   #+begin_src fasm :tangle ../../play/cicada.fasm
-   ;; this word helps to initialize FirstWordInDictionary
-   defConst "The-latest-word-in-assembly", 0, TheLatestWordInAssembly
+   defConst "Stack-for-eval-string-bottom", StackForEvalStringBottom, TheStackForEvalStringBottom
+   defConst "Stack-for-eval-string-top", StackForEvalStringTop, TheStackForEvalStringTop
    #+end_src
 * ==================================================

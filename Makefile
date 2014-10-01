@@ -9,9 +9,9 @@ help:
 	echo -e " \E[33;1m                                                           \E[0m "
 	echo -e " \E[33;1m                                                           \E[0m "
 	echo -e " \E[33;1m   Makefile functions ::                                   \E[0m "
-	echo -e " \E[33;1m     build-cicada-for-linux                                \E[0m "
-	echo -e " \E[33;1m     build-cicada-kernel-for-x86-64                        \E[0m "
-	echo -e " \E[33;1m     test-cicada-kernel-for-x86-64			     \E[0m "
+	echo -e " \E[33;1m     linux                                                 \E[0m "
+	echo -e " \E[33;1m     x86-64-kernel                                         \E[0m "
+	echo -e " \E[33;1m     qemu-x86-64-kernel			             \E[0m "
 	echo -e " \E[33;1m     clean                                                 \E[0m "
 	echo -e " \E[33;1m							     \E[0m "
 	echo -e " \E[33;1m                                                           \E[0m "
@@ -19,61 +19,68 @@ help:
 	echo -e " \E[33;1m   happy making ^_^                                        \E[0m "
 	echo -e " \E[33;1m                                                           \E[0m "
 
-build-cicada-for-linux:
+linux:
 	@
-	cd play
+	cd vm/x86-64/linux/                           &&\
 	fasm -m 500000 cicada.fasm cicada
 
-compile-bootloader-for-x86-64:
-	@ 
-	cd play
-	fasm -m 500000 bootloader.fasm	 bootloader.bin 
-
-compile-cicada-kernel-for-x86-64:
-	@ 
-	cd play                                   
-	fasm -m 500000 cicada-kernel.fasm cicada-kernel.bin
-
-burn-cicada-image-for-x86-64:
-	@ 
-	cd play
-	fasm cicada-image.fasm
-
-build-cicada-kernel-for-x86-64:
+x86-64-kernel:
 	@
-	echo "	 "                               &&\
-	make compile-bootloader-for-x86-64       &&\
-	echo "	 "			         &&\
-	make compile-cicada-kernel-for-x86-64    &&\
-	echo "	 "			         &&\
-	make burn-cicada-image-for-x86-64        &&\
+	echo "	 "                                    &&\
+	make compile-bootloader-for-x86-64-kernel     &&\
+	echo "	 "			              &&\
+	make compile-x86-64-kernel                    &&\
+	echo "	 "			              &&\
+	make burn-cicada-image-for-x86-64-kernel      &&\
 	echo "	 "
 
-test-cicada-kernel-for-x86-64:
+compile-bootloader-for-x86-64-kernel:
 	@ 
-	cd play
-	qemu-system-x86_64			   \
-	  -enable-kvm				   \
-	  -vga std				   \
-	  -m 1G 				   \
+	cd vm/x86-64/baremetal/                       &&\
+	fasm bootloader.fasm bootloader.bin
+
+compile-x86-64-kernel:
+	@ 
+	cd vm/x86-64/baremetal/                       &&\
+	fasm -m 500000 cicada-kernel.fasm cicada-kernel.bin
+
+burn-cicada-image-for-x86-64-kernel:
+	@ 
+	cd vm/x86-64/baremetal/                       &&\
+	fasm cicada-image.fasm
+
+qemu-x86-64-kernel:
+	@ 
+	cd vm/x86-64/baremetal/                       &&\
+	qemu-system-x86_64			        \
+	  -enable-kvm				        \
+	  -vga std				        \
+	  -m 1G 				        \
 	  -fda cicada-image.bin
 
-dangerous-burn-sdb-with-cicada-image:
+dangerous-burn-sdb-with-cicada-image-x86-64:
 	@ 
-	make build-cicada-kernel                            &&\
-	cd play                                      &&\
-	sudo dd if=cicada-image.bin of=/dev/sdb bs=2M        			  
+	make x86-64-kernel                            &&\
+	cd vm/x86-64/baremetal/                       &&\
+	sudo dd if=cicada-image.bin of=/dev/sdb bs=2M
 
 virtualbox-vmdk:
 	@
-	cd play
+	cd vm/x86-64/baremetal/                       &&\
 	qemu-img convert -O vmdk cicada-image.bin cicada-image.vmdk
+
+clean*~:
+	@
+	rm -f *~ */*~ */*/*~ */*/*/*~ */*/*/*/*~  */*/*/*/*/*~  
+
+clean*.bin:
+	@
+	rm -f *.bin */*.bin */*/*.bin */*/*/*.bin */*/*/*/*.bin  */*/*/*/*/*.bin
 
 clean:
 	@
-	rm -f		       \
-	play/cicada            \
-	play/*.bin	       \
-	play/*.vmdk	       \
-	*~ */*~ */*/*~ */*/*/*~	 */*/*/*/*~    &&\
+	make clean*~                                  &&\
+	make clean*.bin                               &&\
+	rm -f vm/x86-64/linux/cicada                  &&\
+	rm -f vm/x86-64/baremetal/*.vmdk              &&\
 	echo -e "\E[33;1m [ok] clean directory \E[0m"
