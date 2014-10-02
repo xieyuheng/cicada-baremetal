@@ -99,46 +99,6 @@ macro popArgumentStack Register {
 ;;    hence, when using anonymous labels in assembly,
 ;;    they can not across ``next'' !
 
-
-;; macro next {
-;;    ;== NEED:
-;;    ;==     NextWordPointer  points at an address in a function-body
-;;    ;==    [NextWordPointer] == word-to-jump[explainer]
-;;    ;== CHNG:
-;;    ;==     NextWordPointer  points at next address in a function-body
-;;    ;==    [NextWordPointer] == new-word-to-jump[explainer]
-;;    ;==     ExplainerPointer  points at the address in a word
-;;    ;==                      where the address-of-explainer is stored
-;;    ;==    [ExplainerPointer] == address-of-explainer (of word-to-jump)
-;;    mov ExplainerPointer, [NextWordPointer]
-;;    add NextWordPointer, CellWidth
-;;    cmp dword[NextWordPointer], Exit
-;;    ;-- IF: [NextWordPointer] =/= Exit
-;;    jne @f
-;;    ;-- EL: [NextWordPointer] == Exit
-;;    popReturnStack NextWordPointer
-;; @@:
-;;    jmp qword[ExplainerPointer]
-;;    }
-;;    ;; maybe need more optimization,
-;;    ;; for the above ``popReturnStack NextWordPointer'' may be
-;;    ;; followed by ``pushReturnStack NextWordPointer'' (in explainFunctionBody)
-
-
-
-;; macro next {
-;;   mov ExplainerPointer, [NextWordPointer]
-;;   add NextWordPointer, CellWidth
-;;   cmp dword[NextWordPointer], Exit
-;;   je @f
-;;   cmp dword[NextWordPointer], 已矣
-;;   je @f
-;;   jmp qword[ExplainerPointer]
-;; @@:
-;;   popReturnStack NextWordPointer
-;;   jmp qword[ExplainerPointer]
-;;   }
-
 macro next {
        local at_the_end_of_function_body
 
@@ -153,29 +113,16 @@ at_the_end_of_function_body:
        popReturnStack NextWordPointer
        jmp qword[ExplainerPointer]
        }
-
-
-;; macro next {
-;;        local not_at_the_end_of_function_body
- 
-;;        mov ExplainerPointer, [NextWordPointer]
-;;        add NextWordPointer, CellWidth
-;;        cmp qword[NextWordPointer], Exit
-;;        jne not_at_the_end_of_function_body
-;;        popReturnStack NextWordPointer
-;; not_at_the_end_of_function_body:
-;;        jmp qword[ExplainerPointer]
-;;        }
-;;        ;; maybe need more optimization,
-;;        ;; for the above ``popReturnStack NextWordPointer'' may be
-;;        ;; followed by ``pushReturnStack NextWordPointer'' (in explainFunctionBody)
-
+       ;; maybe need more optimization,
+       ;; for the above ``popReturnStack NextWordPointer'' may be
+       ;; followed by ``pushReturnStack NextWordPointer'' (in explainFunctionBody)
+       ;; ><><>< 其实在 写 16-bits 的版本的时候 我想到了做这个优化的方法
+       ;; 但是现在我暂时没有时间把这些改动加进来
 
 
 
 ;; initial Link to point to NULL
 Link = 0
-
 
 
 macro defWord WordString, Word {

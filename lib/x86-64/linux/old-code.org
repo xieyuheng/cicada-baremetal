@@ -1,114 +1,5 @@
-#+TITLE: english core
-#+AUTHOR: XIE Yuheng
-#+EMAIL: xyheme@gmail.com
 
 
-* ==================================================
-* ok & bye
-  for the REPL is actually a REL which does not print
-  so I provide a word to check that the cicada is working properly
-  #+begin_src cicada
-  :" yes"
-  : String,yes ; defineConstString
-  : ok (* -- *)
-    String,yes printString
-    writeSpace
-    Exit
-  ; defineFunction
-
-  :" byebye ^_^"
-  : String,byebye ; defineConstString
-  : bye (* -- THE END *)
-    writeSpace
-    String,byebye printString
-    Zero sys,exit
-    Exit
-  ; defineFunction
-  #+end_src
-* ==================================================
-* loadFile
-** note
-1. to load a file is to
-   read the file into a buffer and eval the buffer
-** implementation
-#+begin_src cicada
-: loadFile
-  (* file-name-string[address, length] --
-     buffer[address, length been readed] *)
-  BufferForLoadFile
-  SizeOfBufferForLoadFile
-  readFileToBuffer
-  evalString
-  Exit
-; defineFunction
-#+end_src
-** test
-#+begin_src cicada
-s" ./test/terminal-escape-sequences.ccd"
-loadFile
-#+end_src
-* loadInitFile (at the end of core loading)
-** note
-1. init files are specified by command line arguments
-** implementation
-#+begin_src cicada
-: NumberOfCommandLineArguments (* -- number *)
-  LinuxProgramHeaderAddress fetch One -
-  Exit
-; defineFunction
-
-
-:" getCommandLineArgument said:
-   ``My function type is (* number -- [address, length] *)
-     but the following number is biger than the NumberOfCommandLineArguments
-     I will not touch it and call debuger''
-   --> "
-: String,getCommandLineArgument,error
-; defineConstString
-
-: getCommandLineArgument
-  (* number -- [address, length] *)
-  dup NumberOfCommandLineArguments > if
-    String,getCommandLineArgument,error printString
-    dup writeDecNumber
-    writeSpace '>' writeChar writeSpace
-    NumberOfCommandLineArguments writeDecNumber
-    cr
-    debuger Exit
-  then
-  LinuxProgramHeaderAddress
-  CellWidth x|swap|xx add1 * + fetch
-  dup lengthOfZeroEndingString
-  Exit
-; defineFunction
-
-
-One : Count,loadInitFile ; defineVar
-
-: loadInitFile
-  (* -- unknown *)
-  Count,loadInitFile fetch
-  NumberOfCommandLineArguments > if
-    Exit
-  then
-  Count,loadInitFile fetch
-  dup
-  add1 Count,loadInitFile save
-    getCommandLineArgument loadFile
-  loadInitFile
-  Exit
-; defineRecursiveFunction
-
-loadInitFile
-#+end_src
-** test
-#+begin_src cicada
-NumberOfCommandLineArguments . cr
-1 getCommandLineArgument printString cr
-2 getCommandLineArgument printString cr
-3 getCommandLineArgument printString cr
-4 getCommandLineArgument printString cr
-#+end_src
 * ==================================================
 * key->numberREPL
   #+begin_src cicada
@@ -145,7 +36,7 @@ NumberOfCommandLineArguments . cr
     help,key->numberREPL
     setTerminalBackToReadLine
     Exit
-  ; defineFunction
+  ; define-function
   #+end_src
 * terminal
 ** esc
@@ -174,46 +65,46 @@ NumberOfCommandLineArguments . cr
 
 : esc[ (* -- *)
   'esc' writeChar '[' writeChar Exit
-; defineFunction
+; define-function
 
 : crazy-E (* -- *)
   (* screen alignment test - fill screen with E's *)
   'esc' writeChar '#' writeChar '8' writeChar  Exit
-; defineFunction
+; define-function
 #+end_src
 ** move cursor
 #+begin_src cicada
 : save-cursor-location (* -- *)
   (* esc[s or esc7 *)
   esc[ 's' writeChar Exit
-; defineFunction
+; define-function
 
 : fetch-cursor-location (* -- *)
   (* esc[u or esc8 *)
   esc[ 'u' writeChar Exit
-; defineFunction
+; define-function
 
 
 
 : move-cursor-up (* number -- *)
   (* esc[_A *)
   esc[  writeDecNumber  'A' writeChar  Exit
-; defineFunction
+; define-function
 
 : move-cursor-down (* number -- *)
   (* esc[_B or esc[_e *)
   esc[  writeDecNumber  'B' writeChar  Exit
-; defineFunction
+; define-function
 
 : move-cursor-right (* number -- *)
   (* esc[_C or esc[_a *)
   esc[  writeDecNumber  'C' writeChar  Exit
-; defineFunction
+; define-function
 
 : move-cursor-left (* number -- *)
   (* esc[_D *)
   esc[  writeDecNumber  'D' writeChar  Exit
-; defineFunction
+; define-function
 
 
 (* to the following two functions,
@@ -221,12 +112,12 @@ NumberOfCommandLineArguments . cr
 : move-cursor-down-&-to-the-begin-of-line (* number -- *)
   (* esc[_E *)
   esc[  writeDecNumber  'E' writeChar  Exit
-; defineFunction
+; define-function
 
 : move-cursor-up-&-to-the-begin-of-line (* number -- *)
   (* esc[_F *)
   esc[  writeDecNumber  'F' writeChar  Exit
-; defineFunction
+; define-function
 
 
 
@@ -235,12 +126,12 @@ NumberOfCommandLineArguments . cr
 : move-cursor-to-col (* col-index -- *)
   (* esc[_` or esc[_G *)
   esc[  writeDecNumber  '`' writeChar  Exit
-; defineFunction
+; define-function
 
 : move-cursor-to-row (* row-index -- *)
   (* esc[_d *)
   esc[  writeDecNumber  'd' writeChar  Exit
-; defineFunction
+; define-function
 
 : move-cursor-to-row-&-col (* row-index, col-index -- *)
   (* esc[_;_H or esc[_;_f *)
@@ -248,7 +139,7 @@ NumberOfCommandLineArguments . cr
   swap writeDecNumber  ';' writeChar
   writeDecNumber  'H' writeChar
   Exit
-; defineFunction
+; define-function
 #+end_src
 ** erase & delete
 #+begin_src cicada
@@ -260,53 +151,53 @@ NumberOfCommandLineArguments . cr
 : erase-chars (* number -- *)
   (* esc[_X *)
   esc[  writeDecNumber  'X' writeChar  Exit
-; defineFunction
+; define-function
 
 
 
 : delete-chars (* number -- *)
   (* esc[_P *)
   esc[  writeDecNumber  'P' writeChar  Exit
-; defineFunction
+; define-function
 
 : delete-lines (* number -- *)
   (* esc[_M *)
   esc[  writeDecNumber  'M' writeChar  Exit
-; defineFunction
+; define-function
 
 
 
 : erase-half-screen-to-end (* -- *)
   (* esc[0J *)
   esc[ '0' writeChar 'J' writeChar  Exit
-; defineFunction
+; define-function
 
 : erase-half-screen-to-start (* -- *)
   (* esc[1J *)
   esc[ '1' writeChar 'J' writeChar  Exit
-; defineFunction
+; define-function
 
 : erase-screen (* -- *)
   (* esc[2J *)
   esc[ '2' writeChar 'J' writeChar  Exit
-; defineFunction
+; define-function
 
 
 
 : erase-half-line-to-end (* -- *)
   (* esc[0K *)
   esc[ '0' writeChar 'K' writeChar  Exit
-; defineFunction
+; define-function
 
 : erase-half-line-to-start (* -- *)
   (* esc[1K *)
   esc[ '1' writeChar 'K' writeChar  Exit
-; defineFunction
+; define-function
 
 : erase-line (* -- *)
   (* esc[2K *)
   esc[ '2' writeChar 'K' writeChar  Exit
-; defineFunction
+; define-function
 #+end_src
 ** set*
 #+begin_src cicada
@@ -315,17 +206,17 @@ NumberOfCommandLineArguments . cr
 : set-display-mode,to-display-control-chars (* -- *)
   (* esc[3h *)
   esc[ '3' writeChar 'h' writeChar  Exit
-; defineFunction
+; define-function
 
 : set-display-mode,to-insert-mode
   (* esc[4h *)
   esc[ '4' writeChar 'h' writeChar  Exit
-; defineFunction
+; define-function
 
 : set-display-mode,to-auto-follow-echo
   (* esc[20h *)
   esc[ '2' writeChar '0' writeChar 'h' writeChar  Exit
-; defineFunction
+; define-function
 
 
 
@@ -336,14 +227,14 @@ NumberOfCommandLineArguments . cr
   swap  writeDecNumber ';' writeChar
   writeDecNumber 'r' writeChar
   Exit
-; defineFunction
+; define-function
 
 
 
 : set-display-attribute (* number -- *)
   (* esc[_m *)
   esc[ writeDecNumber 'm' writeChar Exit
-; defineFunction
+; define-function
 
 0  : DisplayAttribute,set,all-to-default ; defineConst
 
@@ -445,7 +336,7 @@ NumberOfCommandLineArguments . cr
     DisplayAttribute,off,blink set-display-attribute
     literal 39 set-display-attribute (* foreground default-color *)
   Exit
-; defineFunction
+; define-function
 
 cicada-language-is-interesting
 #+end_src
@@ -496,7 +387,7 @@ cicada-language-is-interesting
      then
      swap -
      Exit
-   ; defineFunction
+   ; define-function
 
 
    (* little test:
@@ -579,7 +470,7 @@ cicada-language-is-interesting
      null ready
      help,string->line-dalin
      Exit
-   ; defineFunction
+   ; define-function
    #+end_src
 ** test: string->line-dalin
    #+begin_src cicada
@@ -638,7 +529,7 @@ cicada-language-is-interesting
    : LineBuffer (*  -- buffer[address] *)
      Var,LineBuffer fetch
      Exit
-   ; defineFunction
+   ; define-function
 
 
    0 : Var,Tmp,LineBuffer ; defineVar
@@ -649,7 +540,7 @@ cicada-language-is-interesting
    : Tmp,LineBuffer (*  -- buffer[address] *)
      Var,Tmp,LineBuffer fetch
      Exit
-   ; defineFunction
+   ; define-function
 
 
    : copyStringToBuffer
@@ -662,7 +553,7 @@ cicada-language-is-interesting
      popLambdaStack
      swap
      Exit
-   ; defineFunction
+   ; define-function
 
    : copyStringToLine
      (* string[address, length], buffer[address] --
@@ -672,7 +563,7 @@ cicada-language-is-interesting
      Zero <fixnum>
      [cons,car]!
      Exit
-   ; defineFunction
+   ; define-function
 
 
    : line,move-cursor-right
@@ -681,7 +572,7 @@ cicada-language-is-interesting
      xx|over|x car drop (* drop <fixnum> *)
      +  <fixnum> [cons,car]!
      Exit
-   ; defineFunction
+   ; define-function
 
    : line,move-cursor-left
      (* buffer[address, length], cursors[address, <list>], number --
@@ -689,14 +580,14 @@ cicada-language-is-interesting
      xx|over|x car drop (* drop <fixnum> *)
      -  <fixnum> [cons,car]!
      Exit
-   ; defineFunction
+   ; define-function
 
    : line,move-cursor-to-col
      (* buffer[address, length], cursors[address, <list>], index --
         buffer[address, length], cursors[address, <list>] *)
      <fixnum> [cons,car]!
      Exit
-   ; defineFunction
+   ; define-function
 
 
    (* ><><><
@@ -727,7 +618,7 @@ cicada-language-is-interesting
      x|tuck|xx car drop (* <fixnum> *)
      + <fixnum> [cons,car]!
      Exit
-   ; defineFunction
+   ; define-function
 
    (*
     ,* test:
@@ -760,7 +651,7 @@ cicada-language-is-interesting
      getBack dup2 car drop (* <fixnum> *)
      add1 <fixnum> [cons,car]!
      Exit
-   ; defineFunction
+   ; define-function
 
 
    (*
@@ -790,13 +681,13 @@ cicada-language-is-interesting
      xx|swap|x
 
      Exit
-   ; defineFunction
+   ; define-function
 
    : line,kill-line (* erase-half-line-to-end *)
      (* buffer[address, length], cursors[address, <list>] --
         buffer[address, length], cursors[address, <list>] *)
      Exit
-   ; defineFunction
+   ; define-function
 
 
 
@@ -806,16 +697,16 @@ cicada-language-is-interesting
 
    (*
     ,* : text,move-cursor-up (\* number -- *\)
-    ,* ; defineFunction
+    ,* ; define-function
     ,*
     ,* : text,move-cursor-down (\* number -- *\)
-    ,* ; defineFunction
+    ,* ; define-function
     ,*
     ,* : text,move-cursor-down-&-to-the-begin-of-line (\* number -- *\)
-    ,* ; defineFunction
+    ,* ; define-function
     ,*
     ,* : text,move-cursor-up-&-to-the-begin-of-line (\* number -- *\)
-    ,* ; defineFunction
+    ,* ; define-function
     ,*)
 
 
@@ -823,10 +714,10 @@ cicada-language-is-interesting
 
    (*
     ,* : text,move-cursor-to-row (\* row-index -- *\)
-    ,* ; defineFunction
+    ,* ; define-function
     ,*
     ,* : text,move-cursor-to-row-&-col (\* row-index, col-index -- *\)
-    ,* ; defineFunction
+    ,* ; define-function
     ,*)
 
 
@@ -839,20 +730,20 @@ cicada-language-is-interesting
 
    (*
     ,* : delete-lines (\* number -- *\)
-    ,* ; defineFunction
+    ,* ; define-function
     ,*)
 
 
 
    (*
     ,* : erase-half-screen-to-end (\* -- *\)
-    ,* ; defineFunction
+    ,* ; define-function
     ,*
     ,* : erase-half-screen-to-start (\* -- *\)
-    ,* ; defineFunction
+    ,* ; define-function
     ,*
     ,* : erase-screen (\* -- *\)
-    * ; defineFunction
+    * ; define-function
     *)
    #+end_src
 * x & k
@@ -918,7 +809,7 @@ cicada-language-is-interesting
     Var-string,for-update-display
     fetch2 printString cr
     Exit
-  ; defineFunction
+  ; define-function
 
 
   :" kkk
@@ -926,7 +817,7 @@ cicada-language-is-interesting
     setTerminalToReadKey
     help,tryREDL
     Exit
-  ; defineFunction
+  ; define-function
   "
   : String-for,kkk ; defineConstString
 
@@ -937,7 +828,7 @@ cicada-language-is-interesting
     Var-string,for-update-display
     save2
     Exit
-  ; defineFunction
+  ; define-function
 
   :" aaa
 
@@ -964,7 +855,7 @@ cicada-language-is-interesting
     Var-string,for-update-display
     save2
     Exit
-  ; defineFunction
+  ; define-function
 
 
 
@@ -978,7 +869,7 @@ cicada-language-is-interesting
       drop SymbolIndex,aaa <symbol> Exit
     then
     Exit
-  ; defineFunction
+  ; define-function
 
 
   :" executeSymbol said:
@@ -998,7 +889,7 @@ cicada-language-is-interesting
     index-hashback->string
     executeWord
     Exit
-  ; defineFunction
+  ; define-function
 
 
 
@@ -1019,45 +910,9 @@ cicada-language-is-interesting
     setTerminalToReadKey
     help,tryREDL
     Exit
-  ; defineFunction
+  ; define-function
 
-  : t tryREDL Exit ; defineFunction
+  : t tryREDL Exit ; define-function
   #+end_src
 * ==================================================
-* welcome
-  #+begin_src cicada
-  :"    welcome to cicada ^_^"
-  : String,welcome ; defineConstString
-  : welcome (* -- *)
-    String,welcome printString cr
-    Exit
-  ; defineFunction
 
-  cr
-
-  welcome
-
-  cr
-
-  (* report the UserDataSegment size *)
-  ."  the size of UserDataSegment is: " cr
-  writeSpace
-  EndOfUserDataSegment  UserDataSegment  -  writeDecNumber
-  ."  bytes" cr
-
-  writeSpace
-  EndOfUserDataSegment  Here fetch  -  writeDecNumber
-  ."  bytes free" cr
-
-  writeSpace
-  Here fetch  UserDataSegment  -  writeDecNumber
-  ."  bytes used" cr
-
-  cr
-
-  ."  you are in symbolREPL
-   in this REPL some types of symbol will be processed specially" cr
-
-  cr
-  #+end_src
-* ==================================================

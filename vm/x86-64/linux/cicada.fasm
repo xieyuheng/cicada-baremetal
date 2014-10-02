@@ -1,6 +1,3 @@
-;; see /usr/include/asm/unistd_64.h (on archlinux)
-
-;; parameters order of syscall:
 define sys_6_r8  r8
 define sys_5_r9  r9
 define sys_4_r10 r10
@@ -8,8 +5,8 @@ define sys_3_rdx rdx
 define sys_2_rsi rsi
 define sys_1_rdi rdi
 define sys_n_rax rax
+;; see /usr/include/asm/unistd_64.h (on archlinux)
 
-;; syscall number:
 define syscall_read                      0
 define syscall_write                     1
 define syscall_open                      2
@@ -43,7 +40,7 @@ define syscall_madvise                   28
 define syscall_shmget                    29
 define syscall_shmat                     30
 define syscall_shmctl                    31
-define syscall_dup2                       32
+define syscall_dup2                      32
 define syscall_dup2                      33
 define syscall_pause                     34
 define syscall_nanosleep                 35
@@ -327,8 +324,6 @@ define syscall_process_vm_readv          310
 define syscall_process_vm_writev         311
 define syscall_kcmp                      312
 define syscall_finit_module              313
-
-
 STDIN  = 0
 STDOUT = 1
 STDERR = 2
@@ -349,9 +344,23 @@ open_sync       = 10000o
 open_async      = 20000o
 open_direct     = 40000o
     ;; to minimize cache effects of the I/O to and from this file.
+
 open_largefile  = 100000o
 open_directory  = 200000o
 open_nofollow   = 400000o ;; If pathname is a symbolic link, then the open fails.
+
+
+
+;; fetch from /usr/include/unistd.h
+;; lseek is for to make reposition read/write file offset
+;; seek_set       the offset is set to offset bytes
+;; seek_current   the offset is set to its current location plus offset bytes
+;; seek_end       the offset is set to the size of the file plus offset bytes
+define seek_set       0 ;; seek from beginning of file
+define seek_current   1 ;; seek from current position
+define seek_end       2 ;; seek from end of file
+define seek_data      3 ;; seek to next data
+define seek_hole      4 ;; seek to next hole
 ;; in fasm, ``dup'' is a reserved word
 dup equ duplicate
 
@@ -379,29 +388,10 @@ ASCII_delete    = 127
 format elf64 executable 3
 entry cicada_virtual_machine
 include "../macro.inc"
-hereCode  
+hereCode
 cicada_virtual_machine:
 
         cld ;; set DF = 0, then rsi and rdi are incremented
-
-;; [rsp+8*0]=N           argc number of arguments
-;; [rsp+8*1]             argv0 name of executable (e.g. ./a00)
-;; [rsp+8*2]             argv1 (if any) - 1st param after name of executable
-;; ...
-;; [rsp+8*N]             argvN - Nth param
-;; qword [rsp+8*(N+1)]=0 end of arguments
-;; [rsp+8*(N+2)]         envp environment
-;; ...
-;; qword [rsp+....]=0    end of environment
-
-    ;; the Address we want is stored in [rsp] but not rsp
-    ;; because rsp is the standard-stack-pointer
-    ;; the Address we want is pushed into the standard-stack
-
-        ;; beware of the way
-        ;;   to use the ``Const'' or ``Var'' in assembly
-
-        mov [LinuxProgramHeaderAddress + CellWidth], rsp
 
         mov ArgumentStackPointer,   ArgumentStackTop
         mov GreyPairStackPointer, GreyPairStackTop
@@ -421,15 +411,6 @@ cicada_begin_thread:
         xx initialize
         xx basicREPL
         ;; xx assemblyDebug
-
-defConst "LinuxProgramHeaderAddress", 0, LinuxProgramHeaderAddress
-
-;; test:
-;; LinuxProgramHeaderAddress fetch . cr
-;; LinuxProgramHeaderAddress CellWidth 1 * + fetch
-;;   20 printString cr
-;; LinuxProgramHeaderAddress CellWidth 2 * + fetch
-;;   3 printString cr
 defWord "initialize", initialize
        ;; (* -- *)
 
@@ -572,6 +553,7 @@ defCode "read-char", readChar
    ;; _readChar will save the return value in rax
    pushArgumentStack rax
    next
+
 _readChar:
    ;; TemporaryRegister is a helper-register for ``cmp''
    mov TemporaryRegister, [CurrentReading + CellWidth]
@@ -653,9 +635,10 @@ defCode "write-char", writeChar
    ;; ( char --  ) write a char to stdin
    ;; just calls the Linux write system call
    popArgumentStack rax
-   call writeChar_helperFunction
+   call _writeChar
    next
-writeChar_helperFunction:
+
+_writeChar:
    mov sys_1_rdi, 1 ;; stdout
    ;; write can not just write the char in al to stdout
    ;; write needs the address of the byte to write
@@ -675,6 +658,161 @@ defWord "print-string", printString
    xx add1, swap
    xx branch, -14
 defWordEnd printString
+;; buffer->file,with-error == string->file,with-error
+
+defWord "buffer->file,with-error", bufferToFile_withError
+   ;; (* string[address, length], file-name-string[address, length] -- True or False *)
+   xx stringToFile_withError
+   xx Exit
+defWordEnd bufferToFile_withError
+
+
+defCode "string->file,with-error", stringToFile_withError
+   ;; (* string[address, length], file-name-string[address, length] -- True or False *)
+   popArgumentStack rcx
+   popArgumentStack rsi
+   popArgumentStack r8
+   popArgumentStack r9
+   call _stringToFile_withError
+   pushArgumentStack rax
+   next
+
+_stringToFile_withError:
+   ;; copy file-name as a null-terminal string
+   mov rdi, NameBufferOfStringToFile_withError
+   rep movsb
+   xor rax, rax
+   mov byte [rdi], al
+
+   ;; 打开文件 & 必要的时候创造新文件 & 每次都覆盖文件已有的内容
+   ;; 当文件路径不存在的时候不会创造路径 而出错
+   mov     sys_3_rdx, 110100100b   ;; 文件的权限 644 改为别的值的时候会出问题
+   mov     sys_2_rsi, open_readAndWrite or open_creat or open_rewrite
+   mov     sys_1_rdi, NameBufferOfStringToFile_withError
+   mov     sys_n_rax, syscall_open
+   syscall
+
+   mov     qword [FileHandleOfStringToFile_withError], rax
+
+   or      rax, rax
+   js      _stringToFile_meetError
+
+   ;; string->file
+   mov     sys_3_rdx, r8
+   mov     sys_2_rsi, r9
+   mov     sys_1_rdi, qword [FileHandleOfStringToFile_withError]
+   mov     sys_n_rax, syscall_write
+   syscall
+
+   or      rax, rax
+   js      _stringToFile_meetError
+
+   ;; 关闭文件
+   mov     sys_1_rdi, qword [FileHandleOfStringToFile_withError]
+   mov     sys_n_rax, syscall_close
+   syscall
+
+   or      rax, rax
+   js      _stringToFile_meetError
+
+   xor rax, rax
+   inc rax
+
+   ret
+
+_stringToFile_meetError:
+   xor rax, rax
+
+   ret
+
+
+FileHandleOfStringToFile_withError:
+   dq 0
+NameBufferOfStringToFile_withError:
+   rb 1024
+;; file->buffer,with-error == file->string,with-error
+
+defWord "file->buffer,with-error", fileToBuffer_withError
+   ;; (* file-name-string[address, length], string[address, length] -- True or False *)
+   xx fileToString_withError
+   xx Exit
+defWordEnd fileToBuffer_withError
+
+
+defCode "file->string,with-error", fileToString_withError
+   ;; (* file-name-string[address, length], string[address, length] -- True or False *)
+   popArgumentStack r8
+   popArgumentStack r9
+   popArgumentStack rcx
+   popArgumentStack rsi
+   call _fileToString_withError
+   pushArgumentStack rax
+   next
+
+_fileToString_withError:
+   ;; copy file-name as a null-terminal string
+   mov rdi, NameBufferOfFileToString_withError
+   rep movsb
+   xor rax, rax
+   mov byte [rdi], al
+
+   ;; read only
+   mov     sys_2_rsi, open_read
+   mov     sys_1_rdi, NameBufferOfFileToString_withError
+   mov     sys_n_rax, syscall_open
+   syscall
+
+   mov     qword [FileHandleOfFileToString_withError], rax
+
+   or      rax, rax
+   js      _fileToString_meetError
+
+   ;; lseek is for to make reposition read/write file offset
+   ;; seek_set       the offset is set to offset bytes
+   ;; seek_current   the offset is set to its current location plus offset bytes
+   ;; seek_end       the offset is set to the size of the file plus offset bytes
+   mov     sys_3_rdx, seek_set
+   xor     sys_2_rsi, sys_2_rsi  ;; offset
+   mov     sys_1_rdi, qword [FileHandleOfFileToString_withError]
+   mov     sys_n_rax, syscall_lseek
+   syscall
+
+   or      rax, rax
+   js      _fileToString_meetError
+
+   ;; file->string
+   mov     sys_3_rdx, r8
+   mov     sys_2_rsi, r9
+   mov     sys_1_rdi, qword [FileHandleOfFileToString_withError]
+   mov     sys_n_rax, syscall_read
+   syscall
+
+   or      rax, rax
+   js      _fileToString_meetError
+
+   ;; 关闭文件
+   mov     sys_1_rdi, qword [FileHandleOfFileToString_withError]
+   mov     sys_n_rax, syscall_close
+   syscall
+
+   or      rax, rax
+   js      _fileToString_meetError
+
+   xor rax, rax
+   inc rax
+
+   ret
+
+_fileToString_meetError:
+   xor rax, rax
+
+   ret
+
+
+FileHandleOfFileToString_withError:
+   dq 0
+NameBufferOfFileToString_withError:
+   rb 1024
 include "../threaded-code.inc"
 defWord ".", printLittleNumber
    xx literal, '0'

@@ -5,38 +5,40 @@
 
 * ==================================================
 * TODO
-** ><
-   1. 关于io主页文档中的 code listing 需能制定我所喜欢的字体
-   2. 写汇编器是必须的
+** note
+   1. it also feels fun 
+      to reimplement some UNIX userland functions :)
+   2. 关于io主页文档中的 code listing 需能制定我所喜欢的字体
+   3. 写汇编器是必须的
       单单写一个 以 fasm 为输出 的编译器
       是满足不了要求的
-   3. 当在执行一个函数 到一半的时候
+   4. 当在执行一个函数 到一半的时候
       发现其中的某个函数(或变量)没有被定义
       我将可以 把用户代入到 一个 REPL 中
       让用户有机会补全这个定义 然后在从一半的位置重新开始计算
-   4. 比如 当同时考虑 整数 还有 实数 等等 数据类型的时候
+   5. 比如 当同时考虑 整数 还有 实数 等等 数据类型的时候
       面向对象的 节省命名空间 的优点 就充分地体现出来了
       这在于 (也只在于) 这样写出来的 代码
       更接近于人们日常对数学运算的模糊表达
-   5. 需要好好 分析一下 增加了 Lambda-stack 之后
+   6. 需要好好 分析一下 增加了 Lambda-stack 之后
       整个系统的数学性质的变化
       因为 感觉上 太帅了
       好像 增加了一个维度
       好像 走出了柏拉图的洞穴一样
-   6. as the "debuger" is defined in cicada code
+   7. as the "debuger" is defined in cicada code
       it is hard to do good error handling in assembly code
       这是因为我没法在出错的时候即使调用 debuger 来报错
       - 比如 通常的函数类型的错误
         我应该 及时的 调用 debuger 来报告错误
         而在不利的条件下 我必须 返回一个出错码
         来表示函数 所接受的数据类型不对
-   7. >< maybe get rid of "One" "Two" "Three" ...
-   8. do not use the data structure "word-list" anymore
+   8. >< maybe get rid of "One" "Two" "Three" ...
+   9. do not use the data structure "word-list" anymore
       just let ":" and ";" read a string to a buffer
       this will force me to refine the functions about string processing
-   9. really need a better way to do tests
-      and I need to design better test-suit
-   10. 需要 cicada-assembler 的理由:
+   10. really need a better way to do tests
+       and I need to design better test-suit
+   11. 需要 cicada-assembler 的理由:
        1) 统一 命名规则
        2) 让我 能够探索一些关于编译的技术
        3) 有些 小的 CPU 并没有 类似 fasm 的 合适的编译器的
@@ -50,24 +52,24 @@
           但是如果我想保持
           我的 类文学编程 组织代码的风格的话
           也许 创造一些新的东西来支持 我的风格就是必须的了
-   11. 不需要 cicada-assembler 的理由:
+   12. 不需要 cicada-assembler 的理由:
        1) 一个人认为 一个语言需要这种东西
           可能只是因为 当这个语言的编译器能够自己编译自己的时候
           看起来很 cool 而已
        2) 为了 实现 一个 x86-64 的汇编器
           有太多的 关于 CPU 的底层细节需要 被掌握
-   12. 就用户接口的设计而言
+   13. 就用户接口的设计而言
        我可以把那几个 核心的栈 的图示 放在 左边的一个窗口里
        在这之后 我就能设计 debuger 的更好的使用方式
        但是一个问题是 当我的界面不再是一个简单的解释器的时候
        我就不能 直接利用 emacs 了
        也就是必须 要先写自己的 文本编辑器
        之后才能考虑窗口 之类的问题
-   13. 也许 可以从 isforth 那里 学习在 linux 下写文本编辑器的基本工作
-   14. fix the load-file function of linux version
-   15. 生成中文字典 交给 Recaler
-   16. 支持 windows 及其环境下的开发
-   17. 支持 Mac 及其环境下的开发
+   14. 也许 可以从 isforth 那里 学习在 linux 下写文本编辑器的基本工作
+   15. fix the load-file function of linux version
+   16. 生成中文字典 交给 Recaler
+   17. 支持 windows 及其环境下的开发
+   18. 支持 Mac 及其环境下的开发
 ** 关于 错误处理
    1. 有两种 错误处理机制在 cicada 中被使用了
       1) 一种是 在出错的时候当场 调用 debuger
