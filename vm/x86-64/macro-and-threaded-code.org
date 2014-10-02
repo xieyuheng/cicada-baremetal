@@ -2167,14 +2167,14 @@
          defConst "ReturnStackTop", ReturnStackTop, TheReturnStackTop
 ** explainers & execute & Exit
    #+begin_src fasm :tangle threaded-code.inc
-   align 16
+   hereCode
    explainVar:
       ;; ( -- address )
       add ExplainerPointer, CellWidth
       pushArgumentStack ExplainerPointer
       next
 
-   align 16
+   hereCode
    explainConst:
       ;; ( -- value )
       add ExplainerPointer, CellWidth
@@ -2182,7 +2182,7 @@
       pushArgumentStack TemporaryRegister
       next
 
-   align 16
+   hereCode
    explainFunctionBody:
       pushReturnStack NextWordPointer
       ;; to calculate the address in a word where the function-body is stored
@@ -2191,7 +2191,7 @@
       mov NextWordPointer, ExplainerPointer
       next
 
-   align 16
+   hereCode
    explainConstString:
       ;; ( -- string[address, length] )
       add ExplainerPointer, CellWidth

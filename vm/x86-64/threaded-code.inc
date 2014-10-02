@@ -1630,14 +1630,14 @@ defWord "string->integer,with-error", stringToInteger_withError
    xx False
    xx Exit
 defWordEnd stringToInteger_withError
-align 16
+hereCode
 explainVar:
    ;; ( -- address )
    add ExplainerPointer, CellWidth
    pushArgumentStack ExplainerPointer
    next
 
-align 16
+hereCode
 explainConst:
    ;; ( -- value )
    add ExplainerPointer, CellWidth
@@ -1645,7 +1645,7 @@ explainConst:
    pushArgumentStack TemporaryRegister
    next
 
-align 16
+hereCode
 explainFunctionBody:
    pushReturnStack NextWordPointer
    ;; to calculate the address in a word where the function-body is stored
@@ -1654,7 +1654,7 @@ explainFunctionBody:
    mov NextWordPointer, ExplainerPointer
    next
 
-align 16
+hereCode
 explainConstString:
    ;; ( -- string[address, length] )
    add ExplainerPointer, CellWidth

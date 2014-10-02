@@ -780,7 +780,6 @@
    CellWidth = 8
 
 
-
    ;; for ELF
    hereCode               equ align 16
    hereInitializedData    equ ;; nothing
@@ -1359,7 +1358,7 @@
              iretq
      #+end_src
 * ==================================================
-* includ macro
+* include macro
   #+begin_src fasm :tangle cicada-kernel.fasm
   include "../macro.inc"
   #+end_src
@@ -1430,7 +1429,7 @@
           mov [ReadingBoundary + CellWidth], rdi
           next
 
-   align 16
+   hereInitializedData
    LocationOfEnglishCore:
       file "../../../core/english-core.cicada"
    SizeOfEnglishCore = ($ - LocationOfEnglishCore) ;; unit :: byte
@@ -2296,7 +2295,7 @@
    defWordEnd printString
    #+end_src
 ** >< file
-* includ threaded code
+* include threaded code
   #+begin_src fasm :tangle cicada-kernel.fasm
   include "../threaded-code.inc"
   #+end_src

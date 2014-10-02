@@ -19,8 +19,15 @@ help:
 	echo -e " \E[33;1m   happy making ^_^                                        \E[0m "
 	echo -e " \E[33;1m                                                           \E[0m "
 
-linux:
+all:
 	@
+	echo "	 "                                    &&\
+	make linux                                    &&\
+	echo "	 "			              &&\
+	make x86-64-kernel                            &&\
+	echo "	 "
+
+linux:
 	cd vm/x86-64/linux/                           &&\
 	fasm -m 500000 cicada.fasm cicada
 
@@ -35,22 +42,18 @@ x86-64-kernel:
 	echo "	 "
 
 compile-bootloader-for-x86-64-kernel:
-	@ 
 	cd vm/x86-64/baremetal/                       &&\
 	fasm bootloader.fasm bootloader.bin
 
 compile-x86-64-kernel:
-	@ 
 	cd vm/x86-64/baremetal/                       &&\
 	fasm -m 500000 cicada-kernel.fasm cicada-kernel.bin
 
 burn-cicada-image-for-x86-64-kernel:
-	@ 
 	cd vm/x86-64/baremetal/                       &&\
 	fasm cicada-image.fasm
 
 qemu-x86-64-kernel:
-	@ 
 	cd vm/x86-64/baremetal/                       &&\
 	qemu-system-x86_64			        \
 	  -enable-kvm				        \
@@ -59,26 +62,21 @@ qemu-x86-64-kernel:
 	  -fda cicada-image.bin
 
 dangerous-burn-sdb-with-cicada-image-x86-64:
-	@ 
 	make x86-64-kernel                            &&\
 	cd vm/x86-64/baremetal/                       &&\
 	sudo dd if=cicada-image.bin of=/dev/sdb bs=2M
 
-virtualbox-vmdk:
-	@
+vmdk-x86-64-kernel:
 	cd vm/x86-64/baremetal/                       &&\
 	qemu-img convert -O vmdk cicada-image.bin cicada-image.vmdk
 
 clean*~:
-	@
 	rm -f *~ */*~ */*/*~ */*/*/*~ */*/*/*/*~  */*/*/*/*/*~  
 
 clean*.bin:
-	@
 	rm -f *.bin */*.bin */*/*.bin */*/*/*.bin */*/*/*/*.bin  */*/*/*/*/*.bin
 
 clean:
-	@
 	make clean*~                                  &&\
 	make clean*.bin                               &&\
 	rm -f vm/x86-64/linux/cicada                  &&\

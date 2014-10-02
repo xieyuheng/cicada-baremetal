@@ -67,6 +67,13 @@
   please type =make help= or just =make=
   or read the Makefile.
 
+  for examples :
+  1. after type =make linux=,
+     you should go to =vm/x86-64/linux/= to find the executable ELF file =cicada=.
+  2. after type =make x86-64-kernel=,
+     you should go to =vm/x86-64/baremetal/= to find the binary image file =cicada-image.bin=.
+     and back to the main directory, you can type =make qemu-x86-64-kernel= to test it.
+
 * where can I find more documentations ?
   please visit
   http://cicada-language.github.io

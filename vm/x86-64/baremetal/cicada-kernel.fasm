@@ -9,7 +9,6 @@ xx equ dq
 CellWidth = 8
 
 
-
 ;; for ELF
 hereCode               equ align 16
 hereInitializedData    equ ;; nothing
@@ -499,7 +498,7 @@ defCode "load-core-file", loadCoreFile
        mov [ReadingBoundary + CellWidth], rdi
        next
 
-align 16
+hereInitializedData
 LocationOfEnglishCore:
    file "../../../core/english-core.cicada"
 SizeOfEnglishCore = ($ - LocationOfEnglishCore) ;; unit :: byte

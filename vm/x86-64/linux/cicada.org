@@ -375,7 +375,6 @@
    hereCode               equ segment readable executable
    hereInitializedData    equ segment readable writeable
 
-
    ;; about UnInitializedData
    labeling  equ :
    preserve  equ rb
@@ -402,7 +401,7 @@
    entry cicada_virtual_machine
    #+end_src
 * ==================================================
-* includ macro
+* include macro
   #+begin_src fasm :tangle cicada.fasm
   include "../macro.inc"
   #+end_src
@@ -483,7 +482,7 @@
           mov [ReadingBoundary + CellWidth], rdi
           next
 
-   align 16
+   hereInitializedData
    LocationOfEnglishCore:
       file "../../../core/english-core.cicada"
    SizeOfEnglishCore = ($ - LocationOfEnglishCore) ;; unit :: byte
@@ -725,7 +724,11 @@
       xx branch, -14
    defWordEnd printString
    #+end_src
-* includ threaded code
+** >< file
+   #+begin_src fasm :tangle cicada.fasm
+   ;><><><
+   #+end_src
+* include threaded code
   #+begin_src fasm :tangle cicada.fasm
   include "../threaded-code.inc"
   #+end_src

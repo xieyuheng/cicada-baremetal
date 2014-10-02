@@ -363,7 +363,6 @@ CellWidth = 8
 hereCode               equ segment readable executable
 hereInitializedData    equ segment readable writeable
 
-
 ;; about UnInitializedData
 labeling  equ :
 preserve  equ rb
@@ -380,7 +379,7 @@ ASCII_delete    = 127
 format elf64 executable 3
 entry cicada_virtual_machine
 include "../macro.inc"
-hereCode
+hereCode  
 cicada_virtual_machine:
 
         cld ;; set DF = 0, then rsi and rdi are incremented
@@ -448,7 +447,7 @@ defCode "load-core-file", loadCoreFile
        mov [ReadingBoundary + CellWidth], rdi
        next
 
-align 16
+hereInitializedData
 LocationOfEnglishCore:
    file "../../../core/english-core.cicada"
 SizeOfEnglishCore = ($ - LocationOfEnglishCore) ;; unit :: byte
