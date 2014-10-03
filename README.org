@@ -39,26 +39,23 @@
   and I will use cicada to do some math experiments,
   to gratify my curiosity about math.
 
-* what is state of this project currently ?
-  - operating system for x86_64 ::
-       =vm/x86-64/baremetal=
-       /which is currently under active development./
-       single user operating system.
-       dynamic type support, users can define their own types.
-       memory management was done by an incremental garbage collector.
-       all code shared a single address space.
+* on which platforms I can use cicada language ?
   - cicada for linux ::
        =vm/x86-64/linux/=
-       /which is currently under active development./
        only for 64 bits linux.
        when the development environments of cicada operating systems have not been written,
        GNU/linux operating system will be used as the main development environment.
   - cicada for windows ::
        =vm/x86-64/windows/=
-       /which is currently under active development./
        only for 64 bits windows.
        which is developed under linux with the help of [[https://www.winehq.org/][wine]],
        and tested under my friends' windows operating system.
+  - operating system for x86_64 ::
+       =vm/x86-64/baremetal=
+       single user operating system.
+       dynamic type support, users can define their own types.
+       memory management was done by an incremental garbage collector.
+       all code shared a single address space.
   - operating system for ARM ::
        /will be coming soon./
        which will be running on raspberry pi.
@@ -82,7 +79,7 @@
   https://github.com/cicada-language
 
 * how to contact you ?
-  1. my name is XIE Yuheng
-  2. my email address is =xyheme@gmail.com=
-  3. email address of cicada language is =cicada.language@gmail.com=
-  4. main IRC channel is =#cicada-language= at =irc.freenode.net=
+  * my name is XIE Yuheng
+  * my email address is =xyheme@gmail.com=
+  * email address of cicada language is =cicada.language@gmail.com=
+  * IRC channel of cicada language is =#cicada-language= at =irc.freenode.net=

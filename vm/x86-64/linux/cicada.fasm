@@ -411,6 +411,21 @@ cicada_begin_thread:
         xx initialize
         xx basicREPL
         ;; xx assemblyDebug
+defCode "load-core-file", loadCoreFile
+   ;; (* -- *)
+   mov rsi, InitialFilesToLoad
+   mov rdi, InputBuffer
+   mov rcx, SizeOfInitialFilesToLoad
+   rep movsb
+   ;; reset [ReadingBoundary + CellWidth]
+   mov [ReadingBoundary + CellWidth], rdi
+   next
+
+hereInitializedData
+InitialFilesToLoad:
+   file "../../../core/english-core.cicada"
+   file "../../../lib/x86-64/linux/compiler.cicada"
+SizeOfInitialFilesToLoad = ($ - InitialFilesToLoad) ;; unit :: byte
 defWord "initialize", initialize
        ;; (* -- *)
 
@@ -418,20 +433,6 @@ defWord "initialize", initialize
 
        xx Exit
 defWordEnd initialize
-defCode "load-core-file", loadCoreFile
-       ;; (* -- *)
-       mov rsi, LocationOfEnglishCore
-       mov rdi, InputBuffer
-       mov rcx, SizeOfEnglishCore
-       rep movsb
-       ;; reset [ReadingBoundary + CellWidth]
-       mov [ReadingBoundary + CellWidth], rdi
-       next
-
-hereInitializedData
-LocationOfEnglishCore:
-   file "../../../core/english-core.cicada"
-SizeOfEnglishCore = ($ - LocationOfEnglishCore) ;; unit :: byte
 ;; /usr/include/asm-generic/termbits.h
 ;; /usr/include/asm-generic/ioctls.h
 

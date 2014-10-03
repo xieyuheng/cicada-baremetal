@@ -1395,6 +1395,23 @@
          xx initialize
          xx basicREPL
   #+end_src
+* loadCoreFile & InitialFilesToLoad
+  #+begin_src fasm :tangle cicada-kernel.fasm
+  defCode "load-core-file", loadCoreFile
+     ;; (* -- *)
+     mov rsi, InitialFilesToLoad
+     mov rdi, InputBuffer
+     mov rcx, SizeOfInitialFilesToLoad
+     rep movsb
+     ;; reset [ReadingBoundary + CellWidth]
+     mov [ReadingBoundary + CellWidth], rdi
+     next
+
+  hereInitializedData
+  InitialFilesToLoad:
+     file "../../../core/english-core.cicada"
+  SizeOfInitialFilesToLoad = ($ - InitialFilesToLoad) ;; unit :: byte
+  #+end_src
 * initialize
 ** initialize
    #+begin_src fasm :tangle cicada-kernel.fasm
@@ -1416,23 +1433,6 @@
 
           xx Exit
    defWordEnd initialize
-   #+end_src
-** loadCoreFile
-   #+begin_src fasm :tangle cicada-kernel.fasm
-   defCode "load-core-file", loadCoreFile
-          ;; (* -- *)
-          mov rsi, LocationOfEnglishCore
-          mov rdi, InputBuffer
-          mov rcx, SizeOfEnglishCore
-          rep movsb
-          ;; reset [ReadingBoundary + CellWidth]
-          mov [ReadingBoundary + CellWidth], rdi
-          next
-
-   hereInitializedData
-   LocationOfEnglishCore:
-      file "../../../core/english-core.cicada"
-   SizeOfEnglishCore = ($ - LocationOfEnglishCore) ;; unit :: byte
    #+end_src
 ** interrupt
 *** closeInterrupt & openInterrupt

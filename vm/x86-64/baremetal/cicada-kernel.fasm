@@ -470,6 +470,20 @@ hereInitializedData
 cicada_begin_thread:
        xx initialize
        xx basicREPL
+defCode "load-core-file", loadCoreFile
+   ;; (* -- *)
+   mov rsi, InitialFilesToLoad
+   mov rdi, InputBuffer
+   mov rcx, SizeOfInitialFilesToLoad
+   rep movsb
+   ;; reset [ReadingBoundary + CellWidth]
+   mov [ReadingBoundary + CellWidth], rdi
+   next
+
+hereInitializedData
+InitialFilesToLoad:
+   file "../../../core/english-core.cicada"
+SizeOfInitialFilesToLoad = ($ - InitialFilesToLoad) ;; unit :: byte
 defWord "initialize", initialize
        ;; (* -- *)
        xx closeInterrupt
@@ -488,20 +502,6 @@ defWord "initialize", initialize
 
        xx Exit
 defWordEnd initialize
-defCode "load-core-file", loadCoreFile
-       ;; (* -- *)
-       mov rsi, LocationOfEnglishCore
-       mov rdi, InputBuffer
-       mov rcx, SizeOfEnglishCore
-       rep movsb
-       ;; reset [ReadingBoundary + CellWidth]
-       mov [ReadingBoundary + CellWidth], rdi
-       next
-
-hereInitializedData
-LocationOfEnglishCore:
-   file "../../../core/english-core.cicada"
-SizeOfEnglishCore = ($ - LocationOfEnglishCore) ;; unit :: byte
 defCode "close-interrupt", closeInterrupt
    ;; (* -- *)
    cli

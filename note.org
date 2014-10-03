@@ -6,39 +6,56 @@
 * ==================================================
 * TODO
 ** note
-   1. it also feels fun 
+   1. I simply won't allow myself to do something ad hoc anymore
+      for if you use something ad hoc
+      when you wish to well-design something related to it
+      you have to go back and redesign the ad hoc better
+   2. I have learned something about yaml
+      gonna use the good parts of it to redesign something in cicada
+      if I can disign the syntax of cicada about data structures
+      to let them be used as a "human-readable data serialization format"
+      then I can say that I have designed something good and new
+      1) 但是注意如果 把 类 yaml 的 对 indentation 的解析
+         也加入到 cicada 中那就必须要使用另一个 REPL 了
+      2) 应该 在 wodili 的已有的 解析器 的基础上
+         增加一个 好好 利用 indentation 的解析器
+         两种解析器各自有各自的用处
+      3) 把 利用"支撑树" 来进行相对引用的 性质加到 yaml 中
+         就能 形成 我想要的 digrap 的语法
+      4) 处理 这些语法 的 解析器 原来叫做这些 文档格式 的 API
+   3. it also feels fun
       to reimplement some UNIX userland functions :)
-   2. 关于io主页文档中的 code listing 需能制定我所喜欢的字体
-   3. 写汇编器是必须的
+   4. 关于io主页文档中的 code listing 需能制定我所喜欢的字体
+   5. 写汇编器是必须的
       单单写一个 以 fasm 为输出 的编译器
       是满足不了要求的
-   4. 当在执行一个函数 到一半的时候
+   6. 当在执行一个函数 到一半的时候
       发现其中的某个函数(或变量)没有被定义
       我将可以 把用户代入到 一个 REPL 中
       让用户有机会补全这个定义 然后在从一半的位置重新开始计算
-   5. 比如 当同时考虑 整数 还有 实数 等等 数据类型的时候
+   7. 比如 当同时考虑 整数 还有 实数 等等 数据类型的时候
       面向对象的 节省命名空间 的优点 就充分地体现出来了
       这在于 (也只在于) 这样写出来的 代码
       更接近于人们日常对数学运算的模糊表达
-   6. 需要好好 分析一下 增加了 Lambda-stack 之后
+   8. 需要好好 分析一下 增加了 Lambda-stack 之后
       整个系统的数学性质的变化
       因为 感觉上 太帅了
       好像 增加了一个维度
       好像 走出了柏拉图的洞穴一样
-   7. as the "debuger" is defined in cicada code
+   9. as the "debuger" is defined in cicada code
       it is hard to do good error handling in assembly code
       这是因为我没法在出错的时候即使调用 debuger 来报错
       - 比如 通常的函数类型的错误
         我应该 及时的 调用 debuger 来报告错误
         而在不利的条件下 我必须 返回一个出错码
         来表示函数 所接受的数据类型不对
-   8. >< maybe get rid of "One" "Two" "Three" ...
-   9. do not use the data structure "word-list" anymore
-      just let ":" and ";" read a string to a buffer
-      this will force me to refine the functions about string processing
-   10. really need a better way to do tests
+   10. >< maybe get rid of "One" "Two" "Three" ...
+   11. do not use the data structure "word-list" anymore
+       just let ":" and ";" read a string to a buffer
+       this will force me to refine the functions about string processing
+   12. really need a better way to do tests
        and I need to design better test-suit
-   11. 需要 cicada-assembler 的理由:
+   13. 需要 cicada-assembler 的理由:
        1) 统一 命名规则
        2) 让我 能够探索一些关于编译的技术
        3) 有些 小的 CPU 并没有 类似 fasm 的 合适的编译器的
@@ -52,24 +69,24 @@
           但是如果我想保持
           我的 类文学编程 组织代码的风格的话
           也许 创造一些新的东西来支持 我的风格就是必须的了
-   12. 不需要 cicada-assembler 的理由:
+   14. 不需要 cicada-assembler 的理由:
        1) 一个人认为 一个语言需要这种东西
           可能只是因为 当这个语言的编译器能够自己编译自己的时候
           看起来很 cool 而已
        2) 为了 实现 一个 x86-64 的汇编器
           有太多的 关于 CPU 的底层细节需要 被掌握
-   13. 就用户接口的设计而言
+   15. 就用户接口的设计而言
        我可以把那几个 核心的栈 的图示 放在 左边的一个窗口里
        在这之后 我就能设计 debuger 的更好的使用方式
        但是一个问题是 当我的界面不再是一个简单的解释器的时候
        我就不能 直接利用 emacs 了
        也就是必须 要先写自己的 文本编辑器
        之后才能考虑窗口 之类的问题
-   14. 也许 可以从 isforth 那里 学习在 linux 下写文本编辑器的基本工作
-   15. fix the load-file function of linux version
-   16. 生成中文字典 交给 Recaler
-   17. 支持 windows 及其环境下的开发
-   18. 支持 Mac 及其环境下的开发
+   16. 也许 可以从 isforth 那里 学习在 linux 下写文本编辑器的基本工作
+   17. fix the load-file function of linux version
+   18. 生成中文字典 交给 Recaler
+   19. 支持 windows 及其环境下的开发
+   20. 支持 Mac 及其环境下的开发
 ** 关于 错误处理
    1. 有两种 错误处理机制在 cicada 中被使用了
       1) 一种是 在出错的时候当场 调用 debuger
@@ -288,64 +305,6 @@
       用函数的 factoring 做起来
       和用 class 的继承做起来 相比
       感觉有什么不同 ???
-* ==================================================
-* about assembler
-  1. 动机
-     1) 统一汇编代码和 cicada 代码中的命名规则
-     2) 方便向没有很好的汇编器的小型机器移植
-     3) 作为一个系统程序员 我需要尽量避免 "抽象泄漏"
-        这在于 我发现 当需要处理
-        ELF文件格式 以及对共享库的动态调用的时候
-        有很多底层的东西还是我没有理解的
-        而 fasm 在形成 ELF 的时候 共享库的动态调用 有问题
-        这个问题 让我认识到了 在 cicada 中实现汇编器的紧迫性
-  2. 方法
-     以 fasm 为汇编器 编译的目标代码
-     但是仅仅使用 "db" 还有 很 CPU 指令有关的部分
-     也就是说通过暂时把最枯燥与无聊的工作外包给 fasm
-     我能够在 cicada 快速地实现一个汇编器
-     并且在不好处理 或 没时间处理的地方 能够给我一个退路
-  3. 对语义的处理
-     就我的认识而言 解释语义与编译语义 之间有很大的不一致性
-     也许这只 cicada (类 Forth 语言) 的特点而已
-     对于 cicada (类 Forth 语言) 其特点在于
-     1) 解释器 中的 cicada 代码 和 汇编器中的 汇编代码
-        都在以相似的方式把函数编译到字典中
-     2) 在解释器中 对函数的编译依赖于函数的顺序
-        被调用的辅助函数 必须得出现在调用它的函数之前
-        不方便进行相互递归
-        很方便重新定义一个函数
-     3) 在汇编代码中 对函数的编译不依赖于函数的顺序
-        很方便进行相互递归
-        不方便重新定义函数
-  4. 步骤
-     1) 首先
-        在已有的 linux 版本的 cicada 解释器中实现 对文件的处理
-     2) 接着
-        利用 文件处理函数 在解释器中 实现编译器
-        这个编译器必须要能够 方便地 重新定义函数
-        这样就能够
-        直接重新利用曾经被解释器的代码
-        再把原本的汇编代码按新的编译器的语法重写一遍
-        然后我就获得了一个测试我的新编译器的机会
-        即去把这些代码编译成一个能用的解释器
-     3) 然后
-        利用编译器对函数的编译不依赖于函数的顺序的特点
-        重写那些 没有在编译器中处理好的函数
-        获得一个目前只能被新的编译器处理
-        而不能被旧的解释器处理的版本
-     4) 之后
-        重新实现解释器中的基本函数
-        使得解释器对函数的定义也不依赖于函数的顺序
-        此时两个版本就应该能够同时被两个机器处理了
-     5) 最后
-        cicada 将能够基本独立
-        我所获得的将不是分开的 一个解释器 和 一个编译器
-        而是一个具有编译功能的解释器
-        对于同样的代码
-        在测试的时候我可以使用解释器
-        在测试结束之后
-        我可以把被解释的代码 融合到稳定的被编译的代码中
 * ==================================================
 * baremetal
 ** TODO

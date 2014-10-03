@@ -489,7 +489,7 @@
        '0' + write-char
        Exit
      ; define-function
-          
+
      : help:write-dec-number,push-chars
        (* ... , number of small DecNumbers, fixnum --
           ... , number of small DecNumbers *)
@@ -501,7 +501,7 @@
        help:write-dec-number,push-chars
        Exit
      ; define-recursive-function
-          
+
      : help:write-dec-number,write-chars
        (* ... , number of small DecNumbers -- *)
        dup zero? if drop Exit
@@ -510,15 +510,15 @@
        help:write-dec-number,write-chars
        Exit
      ; define-recursive-function
-          
-          
+
+
      : write-dec-number,unsign (* fixnum -- *)
        Zero swap
        help:write-dec-number,push-chars
        help:write-dec-number,write-chars
        Exit
      ; define-function
-          
+
      : write-dec-number,sign (* fixnum -- *)
        dup Zero < if
          '-' write-char
@@ -527,7 +527,7 @@
        write-dec-number,unsign
        Exit
      ; define-function
-          
+
      : write-dec-number
        write-dec-number,sign
        Exit
@@ -728,7 +728,7 @@
        'a' + write-char
        Exit
      ; define-function
-     
+
      : write-aph-number-char,capital (* byte -- *)
        dup Ten < if
          '0' + write-char Exit
@@ -737,7 +737,7 @@
        'A' + write-char
        Exit
      ; define-function
-     
+
      : help:write-aph-number,push-chars
        (* ... , number of small AphNumbers, fixnum --
           ... , number of small AphNumbers *)
@@ -749,7 +749,7 @@
        help:write-aph-number,push-chars
        Exit
      ; define-recursive-function
-     
+
      : help:write-aph-number,write-chars
        (* ... , number of small AphNumbers -- *)
        dup zero? if drop Exit
@@ -758,7 +758,7 @@
        help:write-aph-number,write-chars
        Exit
      ; define-recursive-function
-     
+
      : help:write-aph-number,write-chars,capital
        (* ... , number of small AphNumbers -- *)
        dup zero? if drop Exit
@@ -767,21 +767,21 @@
        help:write-aph-number,write-chars,capital
        Exit
      ; define-recursive-function
-     
+
      : write-aph-number,unsign (* fixnum -- *)
        Zero swap
        help:write-aph-number,push-chars
        help:write-aph-number,write-chars
        Exit
      ; define-function
-     
+
      : write-aph-number,capital (* fixnum -- *)
        Zero swap
        help:write-aph-number,push-chars
        help:write-aph-number,write-chars,capital
        Exit
      ; define-function
-     
+
      : write-aph-number,sign (* fixnum -- *)
        dup Zero < if
          '-' write-char
@@ -790,7 +790,7 @@
        write-aph-number,unsign
        Exit
      ; define-function
-     
+
      : write-aph-number,sign,capital (* fixnum -- *)
        dup Zero < if
          '-' write-char
@@ -799,9 +799,9 @@
        write-aph-number,capital
        Exit
      ; define-function
-     
+
      : write-aph-number
-       write-aph-number,sign 
+       write-aph-number,sign
        Exit
      ; define-function
      #+end_src
@@ -1719,8 +1719,8 @@
       for you can easily define different kinds of <pair-like> values:
       1) <list>
       2) <alist> (associated-list)
-      3) <dalin> (double-linked-list)
-      4) <wodyli> (wodyli)
+      3) <dali> (double-linked-list)
+      4) <wodili> (wodili)
       5) <graph>
       6) and more
    7. to implement gc
@@ -1811,11 +1811,11 @@
    : <string>  ; define-pair-like-data-type
    : <list>    ; define-pair-like-data-type
 
-   : <dalin>   ; define-pair-like-data-type
+   : <dali>   ; define-pair-like-data-type
 
-   : <wody>           ; define-pair-like-data-type
+   : <wodi>           ; define-pair-like-data-type
    : <bound-variable> ; define-pair-like-data-type
-   : <wodyli>         ; define-pair-like-data-type
+   : <wodili>         ; define-pair-like-data-type
 
 
    : <pair-like>? (* type -- True or False *)
@@ -1829,22 +1829,22 @@
    ; define-function
 
 
-   : <dalin-like>? (* type -- True or False *)
-     dup <dalin> == if
+   : <dali-like>? (* type -- True or False *)
+     dup <dali> == if
        drop True Exit
      then
-     dup <wodyli> == if
+     dup <wodili> == if
        drop True Exit
      then
      drop False Exit
    ; define-function
 
 
-   : <not-dalin-like>? (* type -- True or False *)
-     dup <dalin> == if
+   : <not-dali-like>? (* type -- True or False *)
+     dup <dali> == if
        drop False Exit
      then
-     dup <wodyli> == if
+     dup <wodili> == if
        drop False Exit
      then
      drop True Exit
@@ -3169,16 +3169,16 @@
        - more pairs of sequences of two or more characters
          will be used by me in the future
        - and "." is called a ``mid''
-    3. but the value you put into a list or a dalin
+    3. but the value you put into a list or a dali
        should always be converted to dynamic-typed-value
        while they should always be read as simple as possible
     4. I found out that to parse post-lambda expression easily
-       we have to always use dalin
-       so dalin should be the default-list used in cicada
+       we have to always use dali
+       so dali should be the default-list used in cicada
     5. so I have the following notations about list-processing :
        | { } | list   | single-linked-list |
-       | [ ] | dalin  | double-linked-list |
-       | ( ) | wodyli | wordy-list         |
+       | [ ] | dali  | double-linked-list |
+       | ( ) | wodili | wordy-list         |
     6. if I define ``['' and ``{'' as readers
        then, as functions the have to call each other
        due to the semantic of cicada
@@ -3204,10 +3204,10 @@
 *** implementation
     #+begin_src cicada :tangle english-core.cicada
     :" write-list"    : Message:write-list   ; define-constant-string
-    :" write-*dalin"  : Message:write-*dalin ; define-constant-string
-    :" write-wodyli"  : Message:write-wodyli ; define-constant-string
-    :" write-wody-or-bound-variable"
-    : Message:write-wody-or-bound-variable ; define-constant-string
+    :" write-*dali"  : Message:write-*dali ; define-constant-string
+    :" write-wodili"  : Message:write-wodili ; define-constant-string
+    :" write-wodi-or-bound-variable"
+    : Message:write-wodi-or-bound-variable ; define-constant-string
 
     :" null"  : Message:null ; define-constant-string
 
@@ -3235,18 +3235,18 @@
         Message:write-list find word-link->word-explainer execute
         Exit
       then
-      dup <dalin> == if
-        Message:write-*dalin find word-link->word-explainer execute
+      dup <dali> == if
+        Message:write-*dali find word-link->word-explainer execute
         Exit
       then
-      dup <wody> ==
+      dup <wodi> ==
       over <bound-variable> ==
       bitwise-or if
-        Message:write-wody-or-bound-variable find word-link->word-explainer execute
+        Message:write-wodi-or-bound-variable find word-link->word-explainer execute
         Exit
       then
-      dup <wodyli> == if
-        Message:write-wodyli find word-link->word-explainer execute
+      dup <wodili> == if
+        Message:write-wodili find word-link->word-explainer execute
         Exit
       then
       Message:write,type-error print-string
@@ -3595,18 +3595,18 @@
       Exit
     ; define-function
     #+end_src
-** dalin processing
+** dali processing
 *** <- & ->
     #+begin_src cicada :tangle english-core.cicada
     :" <- said:
-       ``My function-type is (* [address, <dalin-like>] -- [address, <dalin>] *)
+       ``My function-type is (* [address, <dali-like>] -- [address, <dali>] *)
          But the type I received is the following,
          I will not touch it and call debuger.''
        --> "
     : Message:<-,type-error ; define-constant-string
 
-    : <- (* [address, <dalin-like>] -- [address, <dalin>] *)
-      dup <not-dalin-like>? if
+    : <- (* [address, <dali-like>] -- [address, <dali>] *)
+      dup <not-dali-like>? if
         Message:<-,type-error print-string
         dup print-type-tag cr
         debuger Exit
@@ -3616,14 +3616,14 @@
 
 
     :" -> said:
-       ``My function-type is (* [address, <dalin-like>] -- [address, <dalin>] *)
+       ``My function-type is (* [address, <dali-like>] -- [address, <dali>] *)
          But the type I received is the following,
          I will not touch it and call debuger.''
        --> "
     : Message:->,type-error ; define-constant-string
 
-    : -> (* [address, <dalin-like>] -- [address, <dalin>] *)
-      dup <not-dalin-like>? if
+    : -> (* [address, <dali-like>] -- [address, <dali>] *)
+      dup <not-dali-like>? if
         Message:->,type-error print-string
         dup print-type-tag cr
         debuger Exit
@@ -3631,16 +3631,16 @@
       cdr cdr Exit
     ; define-function
     #+end_src
-*** list->dalin
+*** list->dali
     #+begin_src cicada :tangle english-core.cicada
     (* note that:
        in the following, I am using side-effect to change a existed list
-       but NOT to form a new dalin from scratch *)
+       but NOT to form a new dali from scratch *)
 
-    : help:list->dalin
-      (* [address, <dalin>], left[address, <dalin>] -- [address, <dalin>] *)
+    : help:list->dali
+      (* [address, <dali>], left[address, <dali>] -- [address, <dali>] *)
       (* or *)
-      (* [address, <dalin>], [value, <non-dalin>] -- [address, <dalin>] *)
+      (* [address, <dali>], [value, <non-dali>] -- [address, <dali>] *)
       set-cdr-to-{x.cdr}! (* set the ``left'' *)
       dup2 cdr
         dup2 cdr <not-pair-like>? if
@@ -3649,107 +3649,107 @@
           (* this means the 3 in { 1 2 . 3 } will be droped *)
           drop2 Exit
         then
-        (* change the type-tag of the cdr of the old list, from <list> to <dalin> *)
-        (* the pair-like-value is still here *) <dalin> set-cdr!
+        (* change the type-tag of the cdr of the old list, from <list> to <dali> *)
+        (* the pair-like-value is still here *) <dali> set-cdr!
         cdr
-      (* [address, <dalin>], [address, <pair-like>] *)
+      (* [address, <dali>], [address, <pair-like>] *)
       xx|swap|xx
-      help:list->dalin
+      help:list->dali
       Exit
     ; define-recursive-function
 
 
-    :" list->*dalin* said:
+    :" list->*dali* said:
        ``My function-type is
-         (* [address, <list>] -- head[address, <dalin>], tail[address, <dalin>] *)
+         (* [address, <list>] -- head[address, <dali>], tail[address, <dali>] *)
          But the type I received is the following,
          I will not touch it and call debuger.''
        --> "
-    : Message:list->*dalin*,type-error ; define-constant-string
+    : Message:list->*dali*,type-error ; define-constant-string
 
-    : list->*dalin*
-      (* [address, <list>] -- head[address, <dalin>], tail[address, <dalin>] *)
+    : list->*dali*
+      (* [address, <list>] -- head[address, <dali>], tail[address, <dali>] *)
       dup <list> =/= if
-        Message:list->*dalin*,type-error print-string
+        Message:list->*dali*,type-error print-string
         dup print-type-tag cr
         debuger Exit
       then
-      drop <dalin>
+      drop <dali>
       dup2 (* leave the return value *)
       null
-      help:list->dalin
+      help:list->dali
       Exit
     ; define-function
 
 
-    :" list->dalin* said:
-       ``My function-type is (* [address, <list>] -- tail[address, <dalin>] *)
+    :" list->dali* said:
+       ``My function-type is (* [address, <list>] -- tail[address, <dali>] *)
          But the type I received is the following,
          I will not touch it and call debuger.''
        --> "
-    : Message:list->dalin*,type-error ; define-constant-string
+    : Message:list->dali*,type-error ; define-constant-string
 
-    : list->dalin*
-      (* [address, <list>] -- tail[address, <dalin>] *)
+    : list->dali*
+      (* [address, <list>] -- tail[address, <dali>] *)
       dup <list> =/= if
-        Message:list->dalin*,type-error print-string
+        Message:list->dali*,type-error print-string
         dup print-type-tag cr
         debuger Exit
       then
-      drop <dalin>
+      drop <dali>
       null
-      help:list->dalin
+      help:list->dali
       Exit
     ; define-function
 
 
-    :" list->*dalin said:
-       ``My function-type is (* [address, <list>] -- head[address, <dalin>] *)
+    :" list->*dali said:
+       ``My function-type is (* [address, <list>] -- head[address, <dali>] *)
          But the type I received is the following,
          I will not touch it and call debuger.''
        --> "
-    : Message:list->*dalin,type-error ; define-constant-string
+    : Message:list->*dali,type-error ; define-constant-string
 
-    : list->*dalin
-      (* [address, <list>] -- head[address, <dalin>] *)
+    : list->*dali
+      (* [address, <list>] -- head[address, <dali>] *)
       dup <list> =/= if
-        Message:list->*dalin,type-error print-string
+        Message:list->*dali,type-error print-string
         dup print-type-tag cr
         debuger Exit
       then
-      drop <dalin>
+      drop <dali>
       dup2 (* leave the return value *)
       null
-      help:list->dalin
+      help:list->dali
       drop2
       Exit
     ; define-function
     #+end_src
-*** *dalin? & dalin*?
+*** *dali? & dali*?
     #+begin_src cicada :tangle english-core.cicada
-    : *dalin? (* [address, <dalin>] -- True or False *)
+    : *dali? (* [address, <dali>] -- True or False *)
       <- null? if
         True Exit
       then
       False Exit
     ; define-function
 
-    : dalin*? (* [address, <dalin>] -- True or False *)
+    : dali*? (* [address, <dali>] -- True or False *)
       -> null? if
         True Exit
       then
       False Exit
     ; define-function
     #+end_src
-*** nested-list->dalin
+*** nested-list->dali
     #+begin_src cicada :tangle english-core.cicada
-    : help:nested-list->dalin
-      (* [address, <dalin>], left[address, <dalin>] -- [address, <dalin>] *)
+    : help:nested-list->dali
+      (* [address, <dali>], left[address, <dali>] -- [address, <dali>] *)
       (* or *)
-      (* [address, <dalin>], [value, <non-dalin>] -- [address, <dalin>] *)
+      (* [address, <dali>], [value, <non-dali>] -- [address, <dali>] *)
       set-cdr-to-{x.cdr}! (* set the ``left'' *)
       dup2 car dup <list> == if
-        list->*dalin set-car!
+        list->*dali set-car!
       else
         drop2
       then
@@ -3760,111 +3760,111 @@
           (* this means the 3 in { 1 2 . 3 } will be droped *)
           drop2 Exit
         then
-        (* change the type-tag of the cdr of the old list, from <list> to <dalin> *)
-        (* the pair-like-value is still here *) <dalin> set-cdr!
+        (* change the type-tag of the cdr of the old list, from <list> to <dali> *)
+        (* the pair-like-value is still here *) <dali> set-cdr!
         cdr
-      (* [address, <dalin>], [address, <pair-like>] *)
+      (* [address, <dali>], [address, <pair-like>] *)
       xx|swap|xx
-      help:nested-list->dalin
+      help:nested-list->dali
       Exit
     ; define-recursive-function
 
 
-    :" nested-list->*dalin said:
-       ``My function-type is (* [address, <list>] -- head[address, <dalin>] *)
+    :" nested-list->*dali said:
+       ``My function-type is (* [address, <list>] -- head[address, <dali>] *)
          But the type I received is the following,
          I will not touch it and call debuger.''
        --> "
-    : Message:nested-list->*dalin,type-error ; define-constant-string
+    : Message:nested-list->*dali,type-error ; define-constant-string
 
-    : nested-list->*dalin
-      (* [address, <list>] -- head[address, <dalin>] *)
+    : nested-list->*dali
+      (* [address, <list>] -- head[address, <dali>] *)
       dup <list> =/= if
-        Message:nested-list->*dalin,type-error print-string
+        Message:nested-list->*dali,type-error print-string
         dup print-type-tag cr
         debuger Exit
       then
-      drop <dalin>
+      drop <dali>
       dup2 (* leave the return value *)
       null
-      help:nested-list->dalin
+      help:nested-list->dali
       drop2
       Exit
     ; define-function
     #+end_src
-*** dalin->tail & head<-dalin
+*** dali->tail & head<-dali
     #+begin_src cicada :tangle english-core.cicada
-    :" dalin->tail said:
+    :" dali->tail said:
        ``My function-type is
-         (* [address, <dalin-like>] -- tail[address, <dalin-like>] *)
+         (* [address, <dali-like>] -- tail[address, <dali-like>] *)
          But the type I received is the following,
          I will not touch it and call debuger.''
        --> "
-    : Message:dalin->tail,type-error ; define-constant-string
+    : Message:dali->tail,type-error ; define-constant-string
 
-    : dalin->tail
-      (* [address, <dalin-like>] -- tail[address, <dalin-like>] *)
-      dup <not-dalin-like>? if
-        Message:dalin->tail,type-error print-string
+    : dali->tail
+      (* [address, <dali-like>] -- tail[address, <dali-like>] *)
+      dup <not-dali-like>? if
+        Message:dali->tail,type-error print-string
         dup print-type-tag cr
         debuger Exit
       then
-      dup2 dalin*? if
+      dup2 dali*? if
         Exit
       then
-      ->  dalin->tail
+      ->  dali->tail
       Exit
     ; define-recursive-function
 
 
-    :" head<-dalin said:
+    :" head<-dali said:
        ``My function-type is
-         (* [address, <dalin-like>] -- head[address, <dalin-like>] *)
+         (* [address, <dali-like>] -- head[address, <dali-like>] *)
          But the type I received is the following,
          I will not touch it and call debuger.''
        --> "
-    : Message:head<-dalin,type-error ; define-constant-string
+    : Message:head<-dali,type-error ; define-constant-string
 
-    : head<-dalin
-      (* [address, <dalin-like>] -- head[address, <dalin-like>] *)
-      dup <not-dalin-like>? if
-        Message:head<-dalin,type-error print-string
+    : head<-dali
+      (* [address, <dali-like>] -- head[address, <dali-like>] *)
+      dup <not-dali-like>? if
+        Message:head<-dali,type-error print-string
         dup print-type-tag cr
         debuger Exit
       then
-      dup2 *dalin? if
+      dup2 *dali? if
         Exit
       then
-      <-  head<-dalin
+      <-  head<-dali
       Exit
     ; define-recursive-function
     #+end_src
-*** [value,dalin]-associate & [value,dalin]-member?
+*** [value,dali]-associate & [value,dali]-member?
     #+begin_src cicada :tangle english-core.cicada
-    :" [value,dalin]-associate said:
+    :" [value,dali]-associate said:
        ``My function-type is
-         (* [value, type], head[address, <dalin-like>] --
+         (* [value, type], head[address, <dali-like>] --
             associate-pair[address, <pair-like>] or [Null, <null>] *)
          But the type I received is the following,
          I will not touch it and call debuger.''
        --> "
-    : Message:[value,dalin]-associate,type-error,at-first
+    : Message:[value,dali]-associate,type-error,at-first
     ; define-constant-string
 
-    :" [value,dalin]-associate said:
+    :" [value,dali]-associate said:
        ``My function-type is
-         (* [value, type], head[address, <dalin-like>] --
+         (* [value, type], head[address, <dali-like>] --
             associate-pair[address, <pair-like>] or [Null, <null>] *)
          But in the middle of recursion
-         I found the dalin is not an associated-dalin
+         I found the dali is not an associated-dali
          the following is what I found
          I will not touch it and call debuger''
        --> "
-    : Message:[value,dalin]-associate,type-error,in-the-middle
+    : Message:[value,dali]-associate,type-error,in-the-middle
     ; define-constant-string
 
-    : help:[value,dalin]-associate
-      (* [value, type], head[address, <dalin-like>], or [Null, <null>] --
+    : help:[value,dali]-associate
+      (* [value, type], head[address, <dali-like>], or [Null, <null>] --
          associate-pair[address, <pair-like>] or [Null, <null>] *)
       dup <null> == if
         (* if associate fail, return null *)
@@ -3872,36 +3872,36 @@
       then
       dup2
       car dup <not-pair-like>? if
-        Message:[value,dalin]-associate,type-error,in-the-middle print-string
+        Message:[value,dali]-associate,type-error,in-the-middle print-string
         dup print-type-tag cr
         debuger Exit
       then
       car
-      (* [value, type], head[address, <dalin-like>], car-car[value, type] *)
+      (* [value, type], head[address, <dali-like>], car-car[value, type] *)
       xx|over|xxxx eq? if
         xx|swap|xx drop2
         car Exit
       then
-      ->  help:[value,dalin]-associate
+      ->  help:[value,dali]-associate
       Exit
     ; define-recursive-function
 
-    : [value,dalin]-associate
-      (* [value, type], head[address, <dalin-like>] --
+    : [value,dali]-associate
+      (* [value, type], head[address, <dali-like>] --
          associate-pair[address, <pair-like>] or [Null, <null>] *)
-      dup <not-dalin-like>? if
-        Message:[value,dalin]-associate,type-error,at-first print-string
+      dup <not-dali-like>? if
+        Message:[value,dali]-associate,type-error,at-first print-string
         dup print-type-tag cr
         debuger Exit
       then
-      help:[value,dalin]-associate
+      help:[value,dali]-associate
       Exit
     ; define-function
 
 
 
-    : [value,dalin]-member?
-      (* [value, type], [address, <dalin-like>] -- True or False *)
+    : [value,dali]-member?
+      (* [value, type], [address, <dali-like>] -- True or False *)
       dup <null> == if
         drop2 drop2 False Exit
       then
@@ -3909,19 +3909,19 @@
       xx|over|xxxx eq? if
         drop2 drop2 True Exit
       then
-      ->  [value,dalin]-member?
+      ->  [value,dali]-member?
       Exit
     ; define-recursive-function
     #+end_src
 *** ^_^
     the following function is very important
-    it for dalin is as the ``cons'' for list
+    it for dali is as the ``cons'' for list
     but also really different
     #+begin_src cicada :tangle english-core.cicada
     :" ^_^ said:
        ``My function-type is
-         (*  left[address, <dalin-like>], rigth[address, <dalin-like>] --
-             rigth[address, <dalin-like>] *)
+         (*  left[address, <dali-like>], rigth[address, <dali-like>] --
+             rigth[address, <dali-like>] *)
          If I view the 1st argument as a type-tag,
          it will be as the following,
          I will not touch it and call debuger.''
@@ -3930,8 +3930,8 @@
 
     :" ^_^ said:
        ``My function-type is
-         (*  left[address, <dalin-like>], rigth[address, <dalin-like>] --
-             rigth[address, <dalin-like>] *)
+         (*  left[address, <dali-like>], rigth[address, <dali-like>] --
+             rigth[address, <dali-like>] *)
          If I view the 3rd argument as a type-tag,
          it will be as the following,
          I will not touch it and call debuger.''
@@ -3939,12 +3939,12 @@
     : Message:^_^,3rd-type-error ; define-constant-string
 
 
-    (* the following ``little-smile-face'' is ``link-dalin'' *)
+    (* the following ``little-smile-face'' is ``link-dali'' *)
     : ^_^
-      (*  left[address, <dalin-like>], rigth[address, <dalin-like>] --
-         rigth[address, <dalin-like>] *)
-      (* where: left[address, <dalin-like>] could be a null *)
-      dup <not-dalin-like>? if
+      (*  left[address, <dali-like>], rigth[address, <dali-like>] --
+         rigth[address, <dali-like>] *)
+      (* where: left[address, <dali-like>] could be a null *)
+      dup <not-dali-like>? if
         Message:^_^,1st-type-error print-string
         dup print-type-tag cr
         debuger Exit
@@ -3955,7 +3955,7 @@
         drop2
         Exit
       then
-      x|over|xx <not-dalin-like>? if
+      x|over|xx <not-dali-like>? if
         Message:^_^,3rd-type-error print-string
         x|over|xx print-type-tag cr
         debuger Exit
@@ -3970,15 +3970,15 @@
     #+begin_src cicada
     cr
 
-    { 1 2 3 } list->*dalin*
-    dup print-type-tag (* <dalin> *) cr
+    { 1 2 3 } list->*dali*
+    dup print-type-tag (* <dali> *) cr
 
 
-    (* test: tail[address, <dalin>] *) cr
+    (* test: tail[address, <dali>] *) cr
     dup2
-      *dalin? . (* 0 *) cr
+      *dali? . (* 0 *) cr
     dup2
-      dalin*? . (* 1 *) cr
+      dali*? . (* 1 *) cr
     dup2
       car print-type-tag write-space . (* <fixnum> 3 *) cr
     dup2
@@ -3999,11 +3999,11 @@
     drop2
 
 
-    (* test: head[address, <dalin>] *) cr
+    (* test: head[address, <dali>] *) cr
     dup2
-      *dalin? . (* 1 *) cr
+      *dali? . (* 1 *) cr
     dup2
-      dalin*? . (* 0 *) cr
+      dali*? . (* 0 *) cr
     dup2
       car print-type-tag write-space . (* <fixnum> 1 *) cr
     dup2
@@ -4033,15 +4033,15 @@
     (* ----------------------------------------------------- *)
 
     (* test: nested-list *) cr
-    { 1 { 2 3 } 4 } nested-list->*dalin
-    dup print-type-tag (* <dalin> *) cr
+    { 1 { 2 3 } 4 } nested-list->*dali
+    dup print-type-tag (* <dali> *) cr
 
 
-    (* test: head[address, <dalin>] *) cr
+    (* test: head[address, <dali>] *) cr
     dup2
-      *dalin? . (* 1 *) cr
+      *dali? . (* 1 *) cr
     dup2
-      dalin*? . (* 0 *) cr
+      dali*? . (* 0 *) cr
     dup2
       car print-type-tag write-space . (* <fixnum> 1 *) cr
     dup2
@@ -4063,9 +4063,9 @@
     dup2
       ->
       car
-      dup print-type-tag (* <dalin> *) cr
+      dup print-type-tag (* <dali> *) cr
       dup2
-        *dalin? . (* 1 *) cr
+        *dali? . (* 1 *) cr
       dup2
         car print-type-tag write-space . (* <fixnum> 2 *) cr
       dup2
@@ -4085,11 +4085,11 @@
 
 
     (* ----------------------------------------------- *)
-    (* the following test must be done after read-*dalin *)
-    (* test: [value,dalin]-associate *)
+    (* the following test must be done after read-*dali *)
+    (* test: [value,dali]-associate *)
     2 <fixnum>
     [ { 1 . a } { 2 . b } { 3 . b } ]
-    [value,dalin]-associate
+    [value,dali]-associate
       dup print-type-tag (* <list> *) cr
       car  print-type-tag (* <fixnum> *) cr
       write-dec-number (* 2 *) cr
@@ -4097,14 +4097,14 @@
     (* the following test must be done in symbol-REPL *)
     ::x
     [ { 1 . a } { ::x . xxx } { 3 . b } ]
-    [value,dalin]-associate
+    [value,dali]-associate
       cdr write (* xxx *)
     #+end_src
-** read-dalin & write-dalin
-*** read-*dalin
+** read-dali & write-dali
+*** read-*dali
     #+begin_src cicada :tangle english-core.cicada
-    : help:read-*dalin
-      (* tail[address, <dalin>] -- head[address, <dalin>] *)
+    : help:read-*dali
+      (* tail[address, <dali>] -- head[address, <dali>] *)
       (* where:
            the <- of ``tail'' is setted,
            need to set the -> of ``tail'' *)
@@ -4118,55 +4118,55 @@
           cdr
             null  set-cdr!
           drop2
-        head<-dalin
+        head<-dali
         Exit
       then
       execute-word,for-list-reader
-      cons drop <dalin>
+      cons drop <dali>
         xx|swap|xx  set-car!
         cons        set-cdr!
       ^_^
-      help:read-*dalin
+      help:read-*dali
       Exit
     ; define-recursive-function
 
 
-    : read-*dalin (* -- head[address, <dalin>] *)
+    : read-*dali (* -- head[address, <dali>] *)
       null
-      help:read-*dalin
+      help:read-*dali
       Exit
     ; define-function
 
-    : [ read-*dalin Exit ; define-function
+    : [ read-*dali Exit ; define-function
     #+end_src
-*** write-*dalin
+*** write-*dali
     #+begin_src cicada :tangle english-core.cicada
-    : help:write-*dalin
-      (* [address, <dalin>] -- *)
-      dup2 dalin*? if
+    : help:write-*dali
+      (* [address, <dali>] -- *)
+      dup2 dali*? if
         car write Exit
       then
       dup2
         car write
-      -> help:write-*dalin Exit
+      -> help:write-*dali Exit
     ; define-recursive-function
 
 
-    :" write-*dalin said:
-       ``My function-type is (* [address, <dalin>] -- *)
+    :" write-*dali said:
+       ``My function-type is (* [address, <dali>] -- *)
          But the 1st argument is the following
          I will not touch it and call debuger.''
        --> "
-    : Message:write-*dalin,type-error ; define-constant-string
+    : Message:write-*dali,type-error ; define-constant-string
 
-    : write-*dalin (* [address, <dalin>] -- *)
-      dup <dalin> =/= if
-        Message:write-*dalin,type-error print-string
+    : write-*dali (* [address, <dali>] -- *)
+      dup <dali> =/= if
+        Message:write-*dali,type-error print-string
         dup print-type-tag cr
         debuger Exit
       then
       Bra:square print-string write-space
-      help:write-*dalin
+      help:write-*dali
       Ket:square print-string write-space
       Exit
     ; define-function
@@ -4176,22 +4176,22 @@
     [ ] print-type-tag (* <null> *) cr
     write-dec-number (* 0 *) cr
 
-    [ 1 ] write-*dalin
+    [ 1 ] write-*dali
 
-    [ 1 2 3 4 5 6 7 8 9 0 ] write-*dalin
+    [ 1 2 3 4 5 6 7 8 9 0 ] write-*dali
 
     [ 1
       [ 1 2 3 4 5   [ 1 2 3 4 5  6 ]  6  ]
         xxx 3 4 5
       [ 1 2 3 4 5  6 ] 6 ]
-    write-*dalin
+    write-*dali
 
     [ 1
       [ 1 2 3 4 5   [ 1 2 3 4 5  6 ]  6  ]
         xxx 3 4 5
       { a b c }
       [ 1 2 3 4 5  6 ] 6 ]
-    write-*dalin
+    write-*dali
 
     [ a [ a b c ]
       b [ a b c ]
@@ -4199,25 +4199,25 @@
             [ a [ a b c ] [ a b c ] lambda
               b [ a b c ]
               c [ a b c ] ] ] ]
-    write-*dalin
+    write-*dali
 
     [ [ a b c ] a b c ]
-    write-*dalin
+    write-*dali
 
     [ [ [ [ :x ] ] ] ]
-    write-*dalin
+    write-*dali
 
     [ [ [ :x ] ]
       [ [ :x ] ] ]
-    write-*dalin
+    write-*dali
 
     [ [ [ [ :x ] ] ]
       [ [ [ :x ] ] ] ]
-    write-*dalin
+    write-*dali
 
     [ [ [ [ :x :x @ ] :x :x @ ] lambda :y @ ]
       [ [ :x :x @ ] lambda :y @ ] ]
-    write-*dalin
+    write-*dali
 
     [ 1 { 2 . 3 } 4 ]
     dup2 write
@@ -4226,7 +4226,7 @@
     car print-type-tag (* <fixnum> *) cr
     write-dec-number (* 2 *) cr
     #+end_src
-** stack & list & dalin
+** stack & list & dali
 *** note
     it is hard to convert a list of value in the ArgumentStack
     say, [1, 2, 3], to a real list { 3 2 1 }
@@ -4235,7 +4235,7 @@
     or:
     1. you convert [1, 2, 3] to { 1 2 3 }
     2. you use LambdaStack for help
-    3. you use dalin but not list
+    3. you use dali but not list
     ------------------------------------------
     I implement the following:
     1. FIAF denotes first in at first
@@ -4303,9 +4303,9 @@
       Exit
     ; define-function
     #+end_src
-*** stack->dalin
+*** stack->dali
     #+begin_src cicada :tangle english-core.cicada
-    : help:stack-LIAF->dalin
+    : help:stack-LIAF->dali
       (* ..., number -- [address, <list>] *)
       (* LambdaStack::
          [address, <list>] -- *)
@@ -4315,32 +4315,32 @@
         dup2 cdr
         null set-cdr!
         drop2
-        head<-dalin
+        head<-dali
         Exit
       then
       sub1
-      swap <fixnum>  cons drop <dalin>  [car,cons]!
+      swap <fixnum>  cons drop <dali>  [car,cons]!
       cons  [cons,cdr]!
       get-back
         xx|swap|xx ^_^
       ready
-      help:stack-LIAF->dalin
+      help:stack-LIAF->dali
       Exit
     ; define-recursive-function
 
-    : stack-LIAF->dalin
-      (* ..., number -- [address, <dalin>] *)
+    : stack-LIAF->dali
+      (* ..., number -- [address, <dali>] *)
       dup zero? if
         drop null Exit
       then
       null
       ready
-      help:stack-LIAF->dalin
+      help:stack-LIAF->dali
       Exit
     ; define-function
 
 
-    : help:stack-FIAF->dalin
+    : help:stack-FIAF->dali
       (* ..., number -- [address, <list>] *)
       (* LambdaStack::
          [address, <list>] -- *)
@@ -4352,27 +4352,27 @@
         drop2 Exit
       then
       sub1
-      swap <fixnum>  cons drop <dalin>  [car,cons]!
+      swap <fixnum>  cons drop <dali>  [car,cons]!
       cons  [cons,cdr]!
       get-back
         ^_^ <-
       ready
-      help:stack-FIAF->dalin
+      help:stack-FIAF->dali
       Exit
     ; define-recursive-function
 
-    : stack-FIAF->dalin
-      (* ..., number -- [address, <dalin>] *)
-      (* ..., number -- [address, <dalin>] *)
+    : stack-FIAF->dali
+      (* ..., number -- [address, <dali>] *)
+      (* ..., number -- [address, <dali>] *)
       dup zero? if
         drop null Exit
       then
       sub1
-      swap <fixnum>  cons drop <dalin>
+      swap <fixnum>  cons drop <dali>
       [car,cons]!
         null set-cdr-to-{cdr.x}!
       ready
-      help:stack-FIAF->dalin
+      help:stack-FIAF->dali
       Exit
     ; define-function
     #+end_src
@@ -4447,16 +4447,16 @@
 
     666
       1 2 3 4 5 6 7 8 9 0
-      10 stack-LIAF->dalin write (* [ 0 9 8 7 6 5 4 3 2 1 ] *) cr
+      10 stack-LIAF->dali write (* [ 0 9 8 7 6 5 4 3 2 1 ] *) cr
     . (* 666 *) cr
-    1  1 stack-LIAF->dalin write (* [ 1 ] *) cr
+    1  1 stack-LIAF->dali write (* [ 1 ] *) cr
     cr
 
     666
       1 2 3 4 5 6 7 8 9 0
-      10 stack-FIAF->dalin write (* [ 1 2 3 4 5 6 7 8 9 0 ] *) cr
+      10 stack-FIAF->dali write (* [ 1 2 3 4 5 6 7 8 9 0 ] *) cr
     . (* 666 *) cr
-    1  1 stack-FIAF->dalin write (* [ 1 ] *) cr
+    1  1 stack-FIAF->dali write (* [ 1 ] *) cr
     cr
 
     666 { 1 } stack<-FIAF-list
@@ -4676,13 +4676,13 @@
       Exit
     ; define-function
     #+end_src
-*** Wody
+*** wodi
     #+begin_src cicada :tangle english-core.cicada
     (* string begin with a number or alphabet
        and end with `:' following a number or alphabet
-       is a symbolDenoteWody *)
+       is a symbolDenotewodi *)
 
-    : string-denote-wody?
+    : string-denote-wodi?
       (* [address, length] -- True or False *)
       dup Two < if
         drop2 False Exit
@@ -4702,22 +4702,22 @@
     ; define-function
 
     :" an error occurs!
-    symbol-denote-wody? said:
+    symbol-denote-wodi? said:
        ``My function-type is (* [index, <symbol>] -- True or False *)
          But the type I received is the following,
          I will not touch it and call debuger.''
        --> "
-    : Message:symbol-denote-wody?,type-error ; define-constant-string
-    : symbol-denote-wody?
+    : Message:symbol-denote-wodi?,type-error ; define-constant-string
+    : symbol-denote-wodi?
       (* [index, <symbol>] -- True or False *)
       dup <symbol> =/= if
-        Message:symbol-denote-wody?,type-error print-string
+        Message:symbol-denote-wodi?,type-error print-string
         dup print-type-tag cr
         debuger Exit
       then
       drop (* drop the type-tag *)
       index-hashback->string
-      string-denote-wody?
+      string-denote-wodi?
       Exit
     ; define-function
     #+end_src
@@ -4914,18 +4914,18 @@
     :" ::1"    string-hash->index <symbol> symbol-denote-bound-variable,two? . (* 1 *) cr
     :" ::中文" string-hash->index <symbol> symbol-denote-bound-variable,two? . (* 1 *) cr
     cr
-    :" xxx"   string-hash->index <symbol> symbol-denote-wody? . (* 0 *) cr
-    :" :xxx"  string-hash->index <symbol> symbol-denote-wody? . (* 0 *) cr
-    :" ::"    string-hash->index <symbol> symbol-denote-wody? . (* 0 *) cr
-    :" :"     string-hash->index <symbol> symbol-denote-wody? . (* 0 *) cr
-    :" :1"    string-hash->index <symbol> symbol-denote-wody? . (* 0 *) cr
-    :" :中文" string-hash->index <symbol> symbol-denote-wody? . (* 0 *) cr
+    :" xxx"   string-hash->index <symbol> symbol-denote-wodi? . (* 0 *) cr
+    :" :xxx"  string-hash->index <symbol> symbol-denote-wodi? . (* 0 *) cr
+    :" ::"    string-hash->index <symbol> symbol-denote-wodi? . (* 0 *) cr
+    :" :"     string-hash->index <symbol> symbol-denote-wodi? . (* 0 *) cr
+    :" :1"    string-hash->index <symbol> symbol-denote-wodi? . (* 0 *) cr
+    :" :中文" string-hash->index <symbol> symbol-denote-wodi? . (* 0 *) cr
     cr
-    :" xxx::" string-hash->index <symbol> symbol-denote-wody? . (* 0 *) cr
-    :" xxx:"  string-hash->index <symbol> symbol-denote-wody? . (* 1 *) cr
-    :" 1:"    string-hash->index <symbol> symbol-denote-wody? . (* 1 *) cr
-    :" :1:"   string-hash->index <symbol> symbol-denote-wody? . (* 0 *) cr
-    :" 中文:" string-hash->index <symbol> symbol-denote-wody? . (* 1 *) cr
+    :" xxx::" string-hash->index <symbol> symbol-denote-wodi? . (* 0 *) cr
+    :" xxx:"  string-hash->index <symbol> symbol-denote-wodi? . (* 1 *) cr
+    :" 1:"    string-hash->index <symbol> symbol-denote-wodi? . (* 1 *) cr
+    :" :1:"   string-hash->index <symbol> symbol-denote-wodi? . (* 0 *) cr
+    :" 中文:" string-hash->index <symbol> symbol-denote-wodi? . (* 1 *) cr
     cr
     :" <:xxx::" string-hash->index <symbol> symbol-denote-lambda-argument,one? . (* 1 *) cr
     :" <:xxx:"  string-hash->index <symbol> symbol-denote-lambda-argument,one? . (* 1 *) cr
@@ -4956,18 +4956,18 @@
     :" ::1"     string-denote-bound-variable,two? . (* 1 *) cr
     :" ::中文"  string-denote-bound-variable,two? . (* 1 *) cr
     cr
-    :" xxx"    string-denote-wody? . (* 0 *) cr
-    :" :xxx"   string-denote-wody? . (* 0 *) cr
-    :" ::"     string-denote-wody? . (* 0 *) cr
-    :" :"      string-denote-wody? . (* 0 *) cr
-    :" :1"     string-denote-wody? . (* 0 *) cr
-    :" :中文"  string-denote-wody? . (* 0 *) cr
+    :" xxx"    string-denote-wodi? . (* 0 *) cr
+    :" :xxx"   string-denote-wodi? . (* 0 *) cr
+    :" ::"     string-denote-wodi? . (* 0 *) cr
+    :" :"      string-denote-wodi? . (* 0 *) cr
+    :" :1"     string-denote-wodi? . (* 0 *) cr
+    :" :中文"  string-denote-wodi? . (* 0 *) cr
     cr
-    :" xxx::"  string-denote-wody? . (* 0 *) cr
-    :" xxx:"   string-denote-wody? . (* 1 *) cr
-    :" 1:"     string-denote-wody? . (* 1 *) cr
-    :" :1:"    string-denote-wody? . (* 0 *) cr
-    :" 中文:"  string-denote-wody? . (* 1 *) cr
+    :" xxx::"  string-denote-wodi? . (* 0 *) cr
+    :" xxx:"   string-denote-wodi? . (* 1 *) cr
+    :" 1:"     string-denote-wodi? . (* 1 *) cr
+    :" :1:"    string-denote-wodi? . (* 0 *) cr
+    :" 中文:"  string-denote-wodi? . (* 1 *) cr
     cr
     :" <:xxx::"  string-denote-lambda-argument,one? . (* 1 *) cr
     :" <:xxx:"   string-denote-lambda-argument,one? . (* 1 *) cr
@@ -4984,22 +4984,22 @@
     (* ----------------------------------------------------- *)
 
     (* test: type-error *)
-    null symbol-denote-wody?          basic-REPL
+    null symbol-denote-wodi?          basic-REPL
     null symbol-denote-bound-variable,one?  basic-REPL
     #+end_src
-** read-wodyli & write-wodyli
+** read-wodili & write-wodili
 *** note
-    1. wodyli denotes wordy-list
-    2. wodyli is a dalin of list
-    3. lambda will use ``bound-variable-wodyli''
-*** read-wodyli
+    1. wodili denotes wordy-list
+    2. wodili is a dali of list
+    3. lambda will use ``bound-variable-wodili''
+*** read-wodili
     #+begin_src cicada :tangle english-core.cicada
-    : help:with-word,read-wody-or-bound-variable
+    : help:with-word,read-wodi-or-bound-variable
       (* -- [address, <list>] *)
       (* LambdaStack::
-         -- wody[address, length] *)
+         -- wodi[address, length] *)
       read-word
-      dup2 string-denote-wody? if
+      dup2 string-denote-wodi? if
         ready
         null Exit
       then
@@ -5013,117 +5013,117 @@
       then
       dup2 Mid:dot equal-string? if
         drop2
-        help:with-word,read-wody-or-bound-variable car
+        help:with-word,read-wodi-or-bound-variable car
         (* this means { 1 . 2 3 } will be read as { 1 . 2 } *)
         Exit
       then
       execute-word,for-list-reader
       cons drop <list>
         xx|swap|xx  set-car!
-          help:with-word,read-wody-or-bound-variable
+          help:with-word,read-wodi-or-bound-variable
         set-cdr!
       Exit
     ; define-recursive-function
 
 
-    : with-word,read-wody-or-bound-variable
-      (* word[address, length] -- [address, <wody>], word[address, length] *)
-      (* LambdaStack:: <wody> -- *)
+    : with-word,read-wodi-or-bound-variable
+      (* word[address, length] -- [address, <wodi>], word[address, length] *)
+      (* LambdaStack:: <wodi> -- *)
       (* or *)
       (* word[address, length] -- [address, <bound-variable>], word[address, length] *)
       (* LambdaStack:: <bound-variable> -- *)
       string-hash->index <symbol>
       cons drop pop-lambda-stack
         [car,cons]!
-          help:with-word,read-wody-or-bound-variable
+          help:with-word,read-wodi-or-bound-variable
         [cons,cdr]!
       get-back
-      (* return the next ``wody'' word
-         it must be handled in help:read-wodyli *)
+      (* return the next ``wodi'' word
+         it must be handled in help:read-wodili *)
       Exit
     ; define-function
 
 
 
-    :" help:read-wodyli said:
+    :" help:read-wodili said:
        ``My function type is
-         (* [address, <wodyli>], word[address, length] -- head[address, <wodyli>] *)
-         the `word' must be `)' or denotes `wody' or denotes `bound-variable'
+         (* [address, <wodili>], word[address, length] -- head[address, <wodili>] *)
+         the `word' must be `)' or denotes `wodi' or denotes `bound-variable'
          But the following is what I meet
          I will not touch it and call debuger''
        --> "
-    : Message:help:read-wodyli,error ; define-constant-string
+    : Message:help:read-wodili,error ; define-constant-string
 
     (* a ``with-word'' reader *)
-    : help:read-wodyli
-      (* [address, <wodyli>], word[address, length] -- head[address, <wodyli>] *)
+    : help:read-wodili
+      (* [address, <wodili>], word[address, length] -- head[address, <wodili>] *)
       (* where:
-           the <- of [address, <wodyli>] is setted,
-           need to set the -> of [address, <wodyli>] *)
+           the <- of [address, <wodili>] is setted,
+           need to set the -> of [address, <wodili>] *)
       dup2 Ket:round equal-string? if
         drop2
         dup2
           cdr
             null  set-cdr!
           drop2
-        head<-dalin
+        head<-dali
         Exit
       then
-      dup2 string-denote-wody? if
-        <wody> push-lambda-stack
+      dup2 string-denote-wodi? if
+        <wodi> push-lambda-stack
       else
         dup2 string-denote-bound-variable? if
           <bound-variable> push-lambda-stack
         else
-          Message:help:read-wodyli,error print-string
+          Message:help:read-wodili,error print-string
           print-string cr
           debuger Exit
         then
       then
-      with-word,read-wody-or-bound-variable
-      (* [address, <wodyli>], [address, <wody>], word[address, length] *)
+      with-word,read-wodi-or-bound-variable
+      (* [address, <wodili>], [address, <wodi>], word[address, length] *)
       (* or *)
-      (* [address, <wodyli>], [address, <bound-variable>], word[address, length] *)
+      (* [address, <wodili>], [address, <bound-variable>], word[address, length] *)
       xxxx|swap|xx
-      cons drop <wodyli>
+      cons drop <wodili>
         xx|swap|xx  set-car!
         cons        set-cdr!
       ^_^
       xx|swap|xx
-      help:read-wodyli
+      help:read-wodili
       Exit
     ; define-recursive-function
 
 
 
-    : read-wodyli (* -- head[address, <wodyli>] *)
+    : read-wodili (* -- head[address, <wodili>] *)
       null
       read-word
       dup2 Ket:round equal-string? if
         (* return ``null'' on ( ) *)
         drop2 Exit
       then
-      help:read-wodyli
+      help:read-wodili
       Exit
     ; define-function
 
-    : ( read-wodyli Exit ; define-function
+    : ( read-wodili Exit ; define-function
     #+end_src
-*** write-wody & write-wodyli
+*** write-wodi & write-wodili
     #+begin_src cicada :tangle english-core.cicada
-    :" write-wody-or-bound-variable said:
-       ``My function-type is (* [address, <wody> or <bound-variable>] -- *)
+    :" write-wodi-or-bound-variable said:
+       ``My function-type is (* [address, <wodi> or <bound-variable>] -- *)
          But the 1st argument is the following
          I will not touch it and call debuger.''
        --> "
-    : Message:write-wody-or-bound-variable,type-error ; define-constant-string
+    : Message:write-wodi-or-bound-variable,type-error ; define-constant-string
 
-    : write-wody-or-bound-variable
-      (* [address, <wody> or <bound-variable>] -- *)
-      dup <wody> =/=
+    : write-wodi-or-bound-variable
+      (* [address, <wodi> or <bound-variable>] -- *)
+      dup <wodi> =/=
       over <bound-variable> =/=
       bitwise-and if
-        Message:write-wody-or-bound-variable,type-error print-string
+        Message:write-wodi-or-bound-variable,type-error print-string
         dup print-type-tag cr
         debuger Exit
       then
@@ -5135,33 +5135,33 @@
 
 
 
-    : help:write-wodyli
-      (* [address, <wodyli>] -- *)
+    : help:write-wodili
+      (* [address, <wodili>] -- *)
       dup <null> == if
         drop2 Exit
       then
       dup2
         car write
-      -> help:write-wodyli Exit
+      -> help:write-wodili Exit
     ; define-recursive-function
 
 
-    :" write-wodyli said:
-       ``My function-type is (* [address, <wodyli>] -- *)
+    :" write-wodili said:
+       ``My function-type is (* [address, <wodili>] -- *)
          But the 1st argument is the following
          I will not touch it and call debuger.''
        --> "
-    : Message:write-wodyli,type-error ; define-constant-string
+    : Message:write-wodili,type-error ; define-constant-string
 
-    : write-wodyli
-      (* [address, <wodyli>] -- *)
-      dup <wodyli> =/= if
-        Message:write-wodyli,type-error print-string
+    : write-wodili
+      (* [address, <wodili>] -- *)
+      dup <wodili> =/= if
+        Message:write-wodili,type-error print-string
         dup print-type-tag cr
         debuger Exit
       then
       Bra:round print-string write-space
-      help:write-wodyli
+      help:write-wodili
       Ket:round print-string write-space
       Exit
     ; define-function
@@ -5173,11 +5173,11 @@
       b: 4 5 6 )
      write
 
-    ( a: b: 6 ) write-wodyli
+    ( a: b: 6 ) write-wodili
 
-    ( :a 1 :b 2 ) write-wodyli
+    ( :a 1 :b 2 ) write-wodili
     #+end_src
-** ><><>< wodyli processing
+** ><><>< wodili processing
 ** execute-word [redefine] & symbol-REPL & lambda-argument
 *** note
     1. to read different types of symbols
@@ -5336,7 +5336,7 @@
 ** lambda
 *** note
 **** ABOUT lambda-calculus
-     1. lambda is a function which uses two dalin
+     1. lambda is a function which uses two dali
         to compose a anonymous function
         (not compile to the dictionary)
         apply is a function which
@@ -5351,8 +5351,8 @@
      4. in cicada
         apply is linear
         lambda is almost linear
-        ``linear'' means a loop walk through a dalin
-        but not a recursive function traverse a nested dalin
+        ``linear'' means a loop walk through a dali
+        but not a recursive function traverse a nested dali
         only the function that calculates the scope of a lambda is recursive
      5. a bound-variable of a lambda function
         is used to label the place in the lambda-body
@@ -5375,7 +5375,7 @@
         but it makes computation unpredictable
 **** ABOUT substitution
      note that you can only use bound-variable (such as ::x :n) in a lambda-body
-     bot NOT a dalin or list or wodyli
+     bot NOT a dali or list or wodili
 *** data-types
     #+begin_src cicada :tangle english-core.cicada
     : <lambda>               ; define-pair-like-data-type
@@ -5386,48 +5386,48 @@
     used to decide the type error of lambda
     and to decide when I need to calculate lambda-scope
     #+begin_src cicada :tangle english-core.cicada
-    : bound-variable-wodyli?
-      (* head[address, <wodyli>] -- True or False *)
-      dup <wodyli> =/= if
+    : bound-variable-wodili?
+      (* head[address, <wodili>] -- True or False *)
+      dup <wodili> =/= if
         drop2 False Exit
       then
       dup2 car  swap drop
       <bound-variable> =/= if
         drop2 False Exit
       then
-      dup2 dalin*? if
+      dup2 dali*? if
         drop2 True Exit
       then
-      ->  bound-variable-wodyli?
+      ->  bound-variable-wodili?
       Exit
     ; define-recursive-function
 
 
     (*
      * the following function return `True'
-     * on the following dalin as a tail
-     *   [ [address, <dalin>]
-     *     bound-variable-wodyli[address, <wodyli>]
+     * on the following dali as a tail
+     *   [ [address, <dali>]
+     *     bound-variable-wodili[address, <wodili>]
      *    ]
      * and
-     *   [ [address, <dalin>]
+     *   [ [address, <dali>]
      *     null
      *    ]
      *)
 
-    : meet-lambda-abstraction-in-lambda-body-dalin?
-      (* tail[address, <dalin>] -- True or False *)
-      dup <dalin> =/= if
+    : meet-lambda-abstraction-in-lambda-body-dali?
+      (* tail[address, <dali>] -- True or False *)
+      dup <dali> =/= if
         drop2 False Exit
       then
       dup2 car
-      dup2       bound-variable-wodyli?
+      dup2       bound-variable-wodili?
       xx|swap|x  null?
       bitwise-or if
-        <- dup <dalin> =/= if
+        <- dup <dali> =/= if
           drop2 False Exit
         then
-          car <dalin> =/= if
+          car <dali> =/= if
             drop False Exit
           then
             drop True Exit
@@ -5438,24 +5438,24 @@
     (*
      * test:
      *
-     * [ [ 1 ] ( :x ) ] dalin->tail
-     * meet-lambda-abstraction-in-lambda-body-dalin? . (\* 1 *\) cr
-     * [ [ 1 ] null ] dalin->tail
-     * meet-lambda-abstraction-in-lambda-body-dalin? . (\* 1 *\) cr
-     * [ [ 1 ] ( ) ] dalin->tail
-     * meet-lambda-abstraction-in-lambda-body-dalin? . (\* 1 *\) cr
+     * [ [ 1 ] ( :x ) ] dali->tail
+     * meet-lambda-abstraction-in-lambda-body-dali? . (\* 1 *\) cr
+     * [ [ 1 ] null ] dali->tail
+     * meet-lambda-abstraction-in-lambda-body-dali? . (\* 1 *\) cr
+     * [ [ 1 ] ( ) ] dali->tail
+     * meet-lambda-abstraction-in-lambda-body-dali? . (\* 1 *\) cr
      * cr
-     * [ [ 1 ] ( x: ) ] dalin->tail
-     * meet-lambda-abstraction-in-lambda-body-dalin? . (\* 0 *\) cr
+     * [ [ 1 ] ( x: ) ] dali->tail
+     * meet-lambda-abstraction-in-lambda-body-dali? . (\* 0 *\) cr
      *)
     #+end_src
-*** bound-variable-wodyli-subtraction (for calculating lambda-scope)
+*** bound-variable-wodili-subtraction (for calculating lambda-scope)
     #+begin_src cicada :tangle english-core.cicada
-    : help:bound-variable-wodyli-subtraction
+    : help:bound-variable-wodili-subtraction
       (* LambdaStack::
-         (a-b) [address, <wodyli>] -- *)
-      (* b [address, <wodyli>], a [address, <wodyli>] --
-         (a-b) [address, <wodyli>] *)
+         (a-b) [address, <wodili>] -- *)
+      (* b [address, <wodili>], a [address, <wodili>] --
+         (a-b) [address, <wodili>] *)
       dup <null> == if
         drop2 drop2
         get-back
@@ -5463,37 +5463,37 @@
           Exit
         then
         dup2 cdr null [cons,cdr]! drop2
-        head<-dalin
+        head<-dali
         Exit
       then
       dup2
         car car   xx|over|xxxx
-        [value,dalin]-associate
+        [value,dali]-associate
         dup <null> =/= if
         (* if this bound-variable is ``blocked'',
-           it should not be ``cons'' to the new bound-variable-wodyli *)
+           it should not be ``cons'' to the new bound-variable-wodili *)
         drop2 (* drop the associate-pair *)
-        ->  help:bound-variable-wodyli-subtraction Exit
+        ->  help:bound-variable-wodili-subtraction Exit
       then
       drop2 (* drop the associate-pair *)
-      (* b [address, <wodyli>], a [address, <wodyli>] *)
+      (* b [address, <wodili>], a [address, <wodili>] *)
       dup2 car
-      (* a wody as a whole is ``cons''ed to the new bound-variable-wodyli *)
-      cons drop <wodyli>
+      (* a wodi as a whole is ``cons''ed to the new bound-variable-wodili *)
+      cons drop <wodili>
         [car,cons]!
         cons [cons,cdr]!
       get-back
         xx|swap|xx  ^_^
-        (* so the order of bound-variable-wodyli will be preserved *)
+        (* so the order of bound-variable-wodili will be preserved *)
       ready
-      ->  help:bound-variable-wodyli-subtraction Exit
+      ->  help:bound-variable-wodili-subtraction Exit
     ; define-recursive-function
 
 
-    (* the following function will creat a new wodyli, maybe ``null'' *)
-    : bound-variable-wodyli-subtraction
-      (* a [address, <wodyli>], b [address, <wodyli>] --
-         (a-b) [address, <wodyli>] *)
+    (* the following function will creat a new wodili, maybe ``null'' *)
+    : bound-variable-wodili-subtraction
+      (* a [address, <wodili>], b [address, <wodili>] --
+         (a-b) [address, <wodili>] *)
       x|over|xx <null> == if
         (* a == null, (a-b) == a == null *)
         drop2 Exit
@@ -5504,9 +5504,9 @@
       then
       null ready
       xx|swap|xx
-      (* b [address, <wodyli>], a [address, <wodyli>] *)
+      (* b [address, <wodili>], a [address, <wodili>] *)
       (* LambdaStack::  [Null, <null>] *)
-      help:bound-variable-wodyli-subtraction
+      help:bound-variable-wodili-subtraction
       Exit
     ; define-function
 
@@ -5517,7 +5517,7 @@
      * 666
      * ( ::a ::b ::c )
      * ( ::a ::c ::x )
-     * bound-variable-wodyli-subtraction
+     * bound-variable-wodili-subtraction
      * write (\* ( ::b )  *\)
      *
      * . (\* 666 *\)
@@ -5532,19 +5532,19 @@
     : Symbol-index:λ ; define-constant
 
 
-    (* the following two functions are side-effects through a dalin
+    (* the following two functions are side-effects through a dali
      * in the direction of ``<-''
 
      * some special-types of elements in the lambda-body
      * should be setted for ``apply''
 
      * note that: (currently)
-     *   <fixnum> <list> <dalin> <wodyli> <symbol>
+     *   <fixnum> <list> <dali> <wodili> <symbol>
      *   are the only types of value
-     *   that could be readed into a dalin
+     *   that could be readed into a dali
 
-     *   only all <symbol> in this dalin
-     *   and some <symbol> that denote-bound-variable nestedly existed in this dalin
+     *   only all <symbol> in this dali
+     *   and some <symbol> that denote-bound-variable nestedly existed in this dali
      *   will be handled by the following functions
 
      *   while
@@ -5553,22 +5553,22 @@
      *     666 ( ONLY ONE VALUE ) will be push to ArgumentStack
      *   when meet [address, <list>]
      *     [address, <list>] will be push to ArgumentStack
-     *   when meet [address, <dalin>]
-     *     [address, <dalin>] will be push to ArgumentStack
-     *   when meet [address, <wodyli>]
-     *     [address, <wodyli>] will be push to ArgumentStack
+     *   when meet [address, <dali>]
+     *     [address, <dali>] will be push to ArgumentStack
+     *   when meet [address, <wodili>]
+     *     [address, <wodili>] will be push to ArgumentStack
      *)
 
 
     : help:lambda,set-bound-variables (* calculating lambda-scope *)
-      (* [address, <wodyli>], [address, <dalin>] -- *)
+      (* [address, <wodili>], [address, <dali>] -- *)
       dup <null> == if
         (* drop all the arguments here *)
         drop2 drop2 Exit
       then
       dup2 car
 
-      (* [address, <wodyli>], [address, <dalin>], car[value, type] *)
+      (* [address, <wodili>], [address, <dali>], car[value, type] *)
       dup <symbol> =/= if
         (* types of value other then <symbol>
            will be leaved in the lambda-body as they are *)
@@ -5576,30 +5576,30 @@
         <-  help:lambda,set-bound-variables Exit
       then
 
-      (* [address, <wodyli>], [address, <dalin>], [index, <symbol>] *)
+      (* [address, <wodili>], [address, <dali>], [index, <symbol>] *)
       dup2 symbol-denote-bound-variable? if
         xx|over|xxxx
         dup <null> == if
-          (* when bound-variable-wodyli is null
+          (* when bound-variable-wodili is null
              symbol-denote-bound-variable can not be bound by this lambda
              just leave them in the lambda-body as they are *)
           drop2 (* drop [Null, <null>] *)
           drop2 (* drop [index, <symbol>] *)
           <-  help:lambda,set-bound-variables Exit
         then
-        [value,dalin]-associate
+        [value,dali]-associate
         dup <null> == if
           (* symbol-denote-bound-variable that can not be bound by this lambda
              will be leaved in the lambda-body as they are *)
           drop2
           <-  help:lambda,set-bound-variables Exit
         then
-        (* [address, <wodyli>], [address, <dalin>], [address, <bound-variable>] *)
+        (* [address, <wodili>], [address, <dali>], [address, <bound-variable>] *)
         [cons,car]!
         <-  help:lambda,set-bound-variables Exit
       then
 
-      (* [address, <wodyli>], [address, <dalin>], [index, <symbol>] *)
+      (* [address, <wodili>], [address, <dali>], [index, <symbol>] *)
       dup2 drop
         dup   Symbol-index:lambda ==
         swap  Symbol-index:λ ==
@@ -5607,25 +5607,25 @@
         drop2
         <-
         (* make a special treatment only when
-           ``meet-lambda-abstraction-in-lambda-body-dalin'' *)
+           ``meet-lambda-abstraction-in-lambda-body-dali'' *)
         dup2
-        meet-lambda-abstraction-in-lambda-body-dalin?
+        meet-lambda-abstraction-in-lambda-body-dali?
         false? if
           help:lambda,set-bound-variables Exit
         then
-        (* [address, <wodyli>], [address, <dalin>] *)
+        (* [address, <wodili>], [address, <dali>] *)
           (* prepare the arguments for a non-tail-recursive call of help:lambda,set-bound-variables *)
           xx|over|xx xx|over|xx
-            car bound-variable-wodyli-subtraction
+            car bound-variable-wodili-subtraction
           xx|over|xx
-            (* note that: the 2ed arg of help:lambda,set-bound-variables is a tail-dalin *)
-            <-  car  dalin->tail
+            (* note that: the 2ed arg of help:lambda,set-bound-variables is a tail-dali *)
+            <-  car  dali->tail
           help:lambda,set-bound-variables
           (* after then : *)
           <- <-  help:lambda,set-bound-variables Exit
       then
 
-      (* [address, <wodyli>], [address, <dalin>], [index, <symbol>] *)
+      (* [address, <wodili>], [address, <dali>], [index, <symbol>] *)
       (* here is general symbol *)
       drop2
       <-  help:lambda,set-bound-variables Exit
@@ -5633,20 +5633,20 @@
 
 
     : help:lambda,set-function-body
-      (* [address, <wodyli>], [address, <dalin>] -- *)
+      (* [address, <wodili>], [address, <dali>] -- *)
       dup <null> == if
         (* drop all the arguments here *)
         drop2 drop2 Exit
       then
       dup2 car
-      (* [address, <wodyli>], [address, <dalin>], car[value, type] *)
+      (* [address, <wodili>], [address, <dali>], car[value, type] *)
       dup <symbol> =/= if
         (* types of value other then <symbol>
            will be leaved in the lambda-body as they are *)
         drop2
         <-  help:lambda,set-function-body Exit
       then
-      (* [address, <wodyli>], [address, <dalin>], [index, <symbol>] *)
+      (* [address, <wodili>], [address, <dali>], [index, <symbol>] *)
       dup2 symbol-denote-lambda-argument? if
         (* i.e. symbols like ``<:x''
            will be leaved in the lambda-body as they are
@@ -5654,7 +5654,7 @@
         drop2
         <-  help:lambda,set-function-body Exit
       then
-      (* [address, <wodyli>], [address, <dalin>], [index, <symbol>] *)
+      (* [address, <wodili>], [address, <dali>], [index, <symbol>] *)
       dup2 symbol-denote-bound-variable? if
         (* i.e. symbols like ``:x''
            will be leaved in the lambda-body as they are
@@ -5663,7 +5663,7 @@
         drop2
         <-  help:lambda,set-function-body Exit
       then
-      (* [address, <wodyli>], [address, <dalin>], [index, <symbol>] *)
+      (* [address, <wodili>], [address, <dali>], [index, <symbol>] *)
       (* here is general symbol *)
       over
         index-hashback->string
@@ -5680,7 +5680,7 @@
 
 
     : help:lambda,make-lambda-function
-      (* [address, <wodyli>], [address, <dalin>] --
+      (* [address, <wodili>], [address, <dali>] --
          [address, <lambda>] *)
       cons drop <lambda>
         xx|swap|xx set-cdr!
@@ -5693,9 +5693,9 @@
 
     :" lambda said:
        ``My function type is
-         (* [address, <dalin>], [address, <wodyli>] -- [address, <lambda>] *)
+         (* [address, <dali>], [address, <wodili>] -- [address, <lambda>] *)
          (* or *)
-         (* [address, <dalin>], [Null, <null>] -- [address, <lambda>] *)
+         (* [address, <dali>], [Null, <null>] -- [address, <lambda>] *)
          But the 1st argument is the following
          I will not touch it and call debuger''
        --> "
@@ -5703,56 +5703,56 @@
 
     :" lambda said:
        ``My function type is
-         (* [address, <dalin>], [address, <wodyli>] -- [address, <lambda>] *)
+         (* [address, <dali>], [address, <wodili>] -- [address, <lambda>] *)
          (* or *)
-         (* [address, <dalin>], [Null, <null>] -- [address, <lambda>] *)
-         The 1st argument is a wodyli but not a bound-variable-wodyli
+         (* [address, <dali>], [Null, <null>] -- [address, <lambda>] *)
+         The 1st argument is a wodili but not a bound-variable-wodili
          I will not touch it and call debuger''"
-    : Message:lambda,type-error,1st,not-bound-variable-wodyli
+    : Message:lambda,type-error,1st,not-bound-variable-wodili
     ; define-constant-string
 
     :" lambda said:
        ``My function type is
-         (* [address, <dalin>], [address, <wodyli>] -- [address, <lambda>] *)
+         (* [address, <dali>], [address, <wodili>] -- [address, <lambda>] *)
          (* or *)
-         (* [address, <dalin>], [Null, <null>] -- [address, <lambda>] *)
+         (* [address, <dali>], [Null, <null>] -- [address, <lambda>] *)
          But the 3rd argument is the following
          I will not touch it and call debuger''
        --> "
     : Message:lambda,type-error,3rd ; define-constant-string
 
     : lambda
-      (* [address, <dalin>], [address, <wodyli>] -- [address, <lambda>] *)
+      (* [address, <dali>], [address, <wodili>] -- [address, <lambda>] *)
       (* or *)
-      (* [address, <dalin>], [Null, <null>] -- [address, <lambda>] *)
-      dup <wodyli> =/=
+      (* [address, <dali>], [Null, <null>] -- [address, <lambda>] *)
+      dup <wodili> =/=
       over <null> =/=
       bitwise-and if
         Message:lambda,type-error,1st print-string
         dup print-type-tag cr
         debuger Exit
       then
-      dup <wodyli> ==
-      xx|over|x bound-variable-wodyli? false?
+      dup <wodili> ==
+      xx|over|x bound-variable-wodili? false?
       bitwise-and if
-        Message:lambda,type-error,1st,not-bound-variable-wodyli
+        Message:lambda,type-error,1st,not-bound-variable-wodili
         print-string cr
         debuger Exit
       then
-      x|over|xx <dalin> =/= if
+      x|over|xx <dali> =/= if
         Message:lambda,type-error,3rd print-string
         x|over|xx print-type-tag cr
         debuger Exit
       then
       xx|tuck|xx  xx|over|xx
-      dalin->tail
-      (* [address, <wodyli>], [address, <dalin>],
-         [address, <wodyli>], tail[address, <dalin>] *)
+      dali->tail
+      (* [address, <wodili>], [address, <dali>],
+         [address, <wodili>], tail[address, <dali>] *)
       xx|over|xx  xx|over|xx
       help:lambda,set-bound-variables
       (* multi-pass *)
       help:lambda,set-function-body
-      (* [address, <wodyli>], [address, <dalin>] *)
+      (* [address, <wodili>], [address, <dali>] *)
       help:lambda,make-lambda-function
       Exit
     ; define-function
@@ -5819,7 +5819,7 @@
     1. 对lambda-body的正确求值
        是依赖于``绑定''对这个lambda所作的副作用的
        那么在作用的过程中就不能破坏(更改)对这些约束变元的绑定
-       只要每次lambda的作用都会更新 <lambda> pair 中的约束变元dalin
+       只要每次lambda的作用都会更新 <lambda> pair 中的约束变元dali
        也就是说在一个lambda-body中不能引用这个lambda-body本身
        这也许是合理的
     2. 并且上面的特点所带来的一个效果就是
@@ -5834,12 +5834,12 @@
          should be in the ArgumentStack or LambdaStack *)
 
     (* a stack as list
-       list of dalin
-       in which a dalin denotes a lambda-body *)
+       list of dali
+       in which a dali denotes a lambda-body *)
     null : lambda-body-stack ; define
 
     : push,lambda-body-stack
-      (* [address, <wodyli>] -- *)
+      (* [address, <wodili>] -- *)
       cons drop <list>  [car,cons]!
       lambda-body-stack fetch2
       [cons,cdr]!
@@ -5872,17 +5872,17 @@
         Exit
       then
       dup2 car
-        (* [address, <list>], [address, <dalin>] or null *)
+        (* [address, <list>], [address, <dali>] or null *)
         dup <null> == if
         drop2 drop2
         <end-of-one-lambda-body>
         drop,lambda-body-stack
         Exit
       then
-      (* [address, <list>], [address, <dalin>] *)
+      (* [address, <list>], [address, <dali>] *)
       xx|tuck|xx
-      (* [address, <dalin>],
-         [address, <list>], [address, <dalin>] *)
+      (* [address, <dali>],
+         [address, <list>], [address, <dali>] *)
       ->  (* up date the 1st lambda-body in lambda-body-stack *)
       [cons,car]! drop2
       car
@@ -5953,8 +5953,8 @@
 
       (* examples:
            [address, <list>]
-           [address, <dalin>]
-           [address, <wodyli>]
+           [address, <dali>]
+           [address, <wodili>]
          and all other types
          leave the value and the type in the stack *)
       help:apply,eval-lambda-body
@@ -5967,7 +5967,7 @@
          { :x       . { 1 } }
          { ::null   . { Null <null> } }
          { ::number . { 666 <fixnum> } }
-       example of bound-variable-wodyli
+       example of bound-variable-wodili
          ( :a ::b :::c )
          [ { :a    . ... }
            { ::b   . ... }
@@ -5979,13 +5979,13 @@
       (* ArgumentStack::
          ..., [address, <lambda-argument-N>] -- *)
       (* LambdaStack::
-         [address, <wodyli>] -- [address, <wodyli>] *)
+         [address, <wodili>] -- [address, <wodili>] *)
       dup <lambda-argument>? false? if
         Exit
       then
       dup2   car    get-back dup2 ready
-      (* [address, <lambda-argument-N>], [index, <symbol>], [address, <wodyli>] *)
-      [value,dalin]-associate
+      (* [address, <lambda-argument-N>], [index, <symbol>], [address, <wodili>] *)
+      [value,dali]-associate
       dup <null> == if
         drop2 Exit
       then
@@ -5998,7 +5998,7 @@
 
 
     : help:apply,set-variables
-      (* ..., [address, <lambda-argument>], [address, <wodyli>] -- *)
+      (* ..., [address, <lambda-argument>], [address, <wodili>] -- *)
       ready
         help-to-rec,help:apply,set-variables
       get-back drop2 Exit
@@ -6048,9 +6048,9 @@
     #+end_src
 *** test
     #+begin_src cicada
-    [ :x 1 + ]  (* push a dalin to ArgumentStack *)
+    [ :x 1 + ]  (* push a dali to ArgumentStack *)
     ( :x )      (* push a symbol `:x' to ArgumentStack *)
-    λ           (* digests some symbols and a dalin in the ArgumentStack,
+    λ           (* digests some symbols and a dali in the ArgumentStack,
                    and return a lambda-function by them *)
     ready (* pop ArgumentStack, push the lambda-function to LambdaStack *)
 
@@ -6236,7 +6236,7 @@
     2. and again
        about substitution
        note that you can only use bound-variable (such as ::x :n) in a lambda-body
-       bot NOT a dalin or list or wodyli
+       bot NOT a dali or list or wodili
 *** play
     #+begin_src cicada
     [ ::x ]
@@ -6352,18 +6352,18 @@
        using explicit lazy-eval
        for cicada's semantic is eager-eval
        because lazy-eval is not natural to postfix-notation
-     *)
+     ,*)
 
     (*
-     * in λ-cal:
-     * Y = (λy.(λx.y(xx))(λx.y(xx)))
-     *
-     * in daedalus:
-     * (def Y
-     *   (λ (y)
-     *     ((λ (x) (y (x x)))
-     *      (λ (x) (y (x x))))))
-     *)
+     ,* in λ-cal:
+     ,* Y = (λy.(λx.y(xx))(λx.y(xx)))
+     ,*
+     ,* in daedalus:
+     ,* (def Y
+     ,*   (λ (y)
+     ,*     ((λ (x) (y (x x)))
+     ,*      (λ (x) (y (x x))))))
+     ,*)
 
     (* in cicada: *)
 
@@ -6408,19 +6408,19 @@
             [ [ One ] null λ <::true
               [ :n :n sub1
 
-                  * ]
+                  ,* ]
             null λ <::false
                IF @ ready
               :n one? <:if apply ]
             ( :n ) λ @
 
-                * ]
+                ,* ]
           null λ <::false
              IF @ ready
             :n one? <:if apply ]
           ( :n ) λ @
 
-             * ]
+             ,* ]
        null λ <::false
        IF @ ready
       :n one? <:if apply ]
@@ -6513,9 +6513,9 @@
           就是因为这个数据类型我还没有设计好
    - k :: 这里需要借鉴emacs
           尽管对字符串的处理将是函数式的
-          但是对于文本编辑器而言数据类型将以dalin和wodyli为核心
+          但是对于文本编辑器而言数据类型将以dali和wodili为核心
    - x :: 没错
-          现在很多wodyli处理函数还没有写好
+          现在很多wodili处理函数还没有写好
           在实现文本编辑器的过程中我会完善它们
           我的设计是这样的
           就文本编辑而言核心的数据结构将是被结构化的文本
@@ -6532,9 +6532,9 @@
           也许我们应该重新命名这些概念
           不叫mode而叫做structure
           这里的structure其实就是sexp不是吗?
-          只不过list被换成了dalin
+          只不过list被换成了dali
           以适应对文本的副作用
-   - x :: 而且我有wodyli
+   - x :: 而且我有wodili
           它是专门用来补足sexp不适合用来自定义数据结构这一弱点的
 ** note
    1. the loop :
@@ -6552,9 +6552,9 @@
       one for display
    3. key binding :
       every key can be bound to any function
-** string->line-dalin
+** string->line-dali
    every mode has its parser
-   string->line-dalin is the parser of fundamental-mode
+   string->line-dali is the parser of fundamental-mode
    #+begin_src cicada
    : find-char-address
      (* char, [address, length] -- address or -1 *)
@@ -6597,15 +6597,15 @@
 
 
 
-   : help:string->line-dalin
-     (* [address, length] -- head[address, <dalin>] *)
-     (* LambdaStack:: [address, <dalin>] -- *)
+   : help:string->line-dali
+     (* [address, length] -- head[address, <dali>] *)
+     (* LambdaStack:: [address, <dali>] -- *)
      dup zero? if
        get-back
        dup2
          cdr null [cons,cdr]!
          drop2
-       head<-dalin
+       head<-dali
        Exit
      then
      dup2
@@ -6618,14 +6618,14 @@
        xx|tuck|x
        swap copy-byte-string
        <substring>
-       cons drop <dalin>
+       cons drop <dali>
        [car,cons]!
          cons null [cons,cdr]!
        [cons,cdr]!
        get-back
        xx|swap|xx
        ^_^
-       head<-dalin
+       head<-dali
        Exit
      then
      (* [address, length], index-of-linefeed *)
@@ -6636,7 +6636,7 @@
      (* [new address, new length], address, index-of-linefeed *)
      dup zero? if
        (* 'linefeed' is the 1st char of the string
-          so we meet an empty line, it will be stored as `null' in dalin *)
+          so we meet an empty line, it will be stored as `null' in dali *)
        drop2
        null
      else
@@ -6646,7 +6646,7 @@
        swap copy-byte-string
        <substring>
      then
-     cons drop <dalin>
+     cons drop <dali>
      [car,cons]!
        cons null [cons,cdr]!
      [cons,cdr]!
@@ -6654,37 +6654,37 @@
        xx|swap|xx
        ^_^
      ready
-     help:string->line-dalin
+     help:string->line-dali
      Exit
    ; define-recursive-function
 
-   : string->line-dalin
-     (* [address, length] -- head[address, <dalin>] *)
-     (* which parses a string and return a dalin of substring
+   : string->line-dali
+     (* [address, length] -- head[address, <dali>] *)
+     (* which parses a string and return a dali of substring
         one substring denotes one line of text
-        empty line is stored as `null' in dalin *)
+        empty line is stored as `null' in dali *)
      null ready
-     help:string->line-dalin
+     help:string->line-dali
      Exit
    ; define-function
    #+end_src
-** test: string->line-dalin
+** test: string->line-dali
    #+begin_src cicada
-   s" kkk" string->line-dalin
+   s" kkk" string->line-dali
    car print-type-tag (* <substring> *) cr
    dup get-length-of-string
    print-string (* kkk *) cr
 
    s" kkk
-   " string->line-dalin
-   dup2 dalin*? . (* 1 *) cr
+   " string->line-dali
+   dup2 dali*? . (* 1 *) cr
    car print-type-tag (* <substring> *) cr
    dup get-length-of-string
    print-string (* kkk *) cr
 
    s" kkk
-   aaa" string->line-dalin
-   dup2 dalin*? . (* 0 *) cr
+   aaa" string->line-dali
+   dup2 dali*? . (* 0 *) cr
    dup2
    car print-type-tag (* <substring> *) cr
    dup get-length-of-string
@@ -6696,8 +6696,8 @@
 
    s" kkk
    aaa
-   " string->line-dalin
-   dup2 dalin*? . (* 0 *) cr
+   " string->line-dali
+   dup2 dali*? . (* 0 *) cr
    dup2
    car print-type-tag (* <substring> *) cr
    dup get-length-of-string
