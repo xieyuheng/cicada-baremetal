@@ -5,6 +5,12 @@ define sys_3_rdx rdx
 define sys_2_rsi rsi
 define sys_1_rdi rdi
 define sys_n_rax rax
+define fun_6_r9  r9
+define fun_5_r8  r8
+define fun_4_rcx rcx
+define fun_3_rdx rdx
+define fun_2_rsi rsi
+define fun_1_rdi rdi
 ;; see /usr/include/asm/unistd_64.h (on archlinux)
 
 define syscall_read                      0
@@ -368,15 +374,26 @@ dup equ duplicate
 xx equ dq
 CellWidth = 8
 
-;; for ELF
-hereCode               equ segment readable executable
-hereInitializedData    equ segment readable writeable
+
+hereCode               equ align 16
+hereInitializedData    equ ;; nothing
+
 
 ;; about UnInitializedData
-labeling  equ :
-preserve  equ rb
 
-hereUnInitializedData  equ segment readable writeable
+;; all unit are byte
+;; LowestMemoryAddress always can be use to save value
+
+;; ==========================================
+LowestMemoryAddress = TheLowestMemoryAddress
+FirstLowestMemoryAddress = LowestMemoryAddress
+
+labeling  equ = LowestMemoryAddress
+preserve  equ LowestMemoryAddress = LowestMemoryAddress +
+
+alignTo16InMemoryMap equ LowestMemoryAddress = LowestMemoryAddress + (16 - (LowestMemoryAddress mod 16))
+
+hereUnInitializedData  equ alignTo16InMemoryMap
 ASCII_backspace = 8
 ASCII_tab       = 9
 ASCII_linefeed  = 10
@@ -386,7 +403,230 @@ ASCII_escape    = 27
 ASCII_space     = 32
 ASCII_delete    = 127
 format elf64 executable 3
+macro Elf32_Sym name,value,size,bind,type,other,shndx
+{
+ dd name+0
+ dd value+0
+ dd size+0
+ db (bind+0) shl 4 + (type+0)
+ db other+0
+ dw shndx+0
+}
+
+virtual at 0
+ Elf32_Sym
+ sizeof.Elf32_Sym = $
+end virtual
+
+macro Elf32_Rel offset,symbol,type
+{
+  dd offset+0
+  dd (symbol+0) shl 8 + (type+0)
+}
+
+virtual at 0
+ Elf32_Rel
+ sizeof.Elf32_Rel = $
+end virtual
+
+macro Elf32_Rela offset,symbol,type,addend
+{
+  dd offset+0
+  dd (symbol+0) shl 8 + (type+0)
+  dd addend+0
+}
+
+virtual at 0
+ Elf32_Rela
+ sizeof.Elf32_Rela = $
+end virtual
+
+macro Elf64_Sym name,value,size,bind,type,other,shndx
+{
+ dd name+0
+ db (bind+0) shl 4 + (type+0)
+ db other+0
+ dw shndx+0
+ dq value+0
+ dq size+0
+}
+
+virtual at 0
+ Elf64_Sym
+ sizeof.Elf64_Sym = $
+end virtual
+
+macro Elf64_Rel offset,symbol,type
+{
+  dq offset+0
+  dq (symbol+0) shl 32 + (type+0)
+}
+
+virtual at 0
+ Elf64_Rel
+ sizeof.Elf64_Rel = $
+end virtual
+
+macro Elf64_Rela offset,symbol,type,addend
+{
+  dq offset+0
+  dq (symbol+0) shl 32 + (type+0)
+  dq addend+0
+}
+
+virtual at 0
+ Elf64_Rela
+ sizeof.Elf64_Rela = $
+end virtual
+
+DT_NULL    = 0
+DT_NEEDED  = 1
+DT_HASH    = 4
+DT_STRTAB  = 5
+DT_SYMTAB  = 6
+DT_RELA    = 7
+DT_RELASZ  = 8
+DT_RELAENT = 9
+DT_STRSZ   = 10
+DT_SYMENT  = 11
+DT_REL     = 17
+DT_RELSZ   = 18
+DT_RELENT  = 19
+
+STB_LOCAL  = 0
+STB_GLOBAL = 1
+STB_WEAK   = 2
+
+STT_NOTYPE  = 0
+STT_OBJECT  = 1
+STT_FUNC    = 2
+STT_SECTION = 3
+STT_FILE    = 4
+
+R_386_NONE     = 0
+R_386_32          = 1
+R_386_PC32        = 2
+R_386_GOT32       = 3
+R_386_PLT32       = 4
+R_386_COPY        = 5
+R_386_GLOB_DAT = 6
+R_386_JMP_SLOT = 7
+R_386_RELATIVE = 8
+R_386_GOTOFF      = 9
+R_386_GOTPC       = 10
+
+R_X86_64_NONE      = 0
+R_X86_64_64           = 1
+R_X86_64_PC32      = 2
+R_X86_64_GOT32     = 3
+R_X86_64_PLT32     = 4
+R_X86_64_COPY      = 5
+R_X86_64_GLOB_DAT  = 6
+R_X86_64_JUMP_SLOT = 7
+R_X86_64_RELATIVE  = 8
+R_X86_64_GOTPCREL  = 9
+R_X86_64_32           = 10
+R_X86_64_32S          = 11
+R_X86_64_16           = 12
+R_X86_64_PC16      = 13
+R_X86_64_8            = 14
+R_X86_64_PC8          = 15
+R_X86_64_DPTMOD64  = 16
+R_X86_64_DTPOFF64  = 17
+R_X86_64_TPOFF64   = 18
+R_X86_64_TLSGD     = 19
+R_X86_64_TLSLD     = 20
+R_X86_64_DTPOFF32  = 21
+R_X86_64_GOTTPOFF  = 22
+R_X86_64_TPOFF32   = 23
+R_X86_64_PC64      = 24
+R_X86_64_GOTOFF64  = 25
+R_X86_64_GOTPC32   = 26
+macro interpreter [library]
+{
+ segment interpreter readable
+ db library,0
+}
+
+
+macro needed [library]
+{
+ local str
+ match needed,needed@dynamic \{ define needed@dynamic needed,str:library \}
+ match ,needed@dynamic \{ define needed@dynamic str:library \}
+}
+
+
+define needed@dynamic
+
+
+macro import [name]
+{
+ common
+  local strtab,strsz,symtab,rel,relsz,hash
+  segment dynamic readable
+  match needed,needed@dynamic
+  \{ irp item,needed \\{ match str:library,item \\\{ dq DT_NEEDED,str-strtab \\\} \\} \}
+  dq DT_STRTAB,strtab
+  dq DT_STRSZ,strsz
+  dq DT_SYMTAB,symtab
+  dq DT_SYMENT,sizeof.Elf64_Sym
+  dq DT_RELA,rela
+  dq DT_RELASZ,relasz
+  dq DT_RELAENT,sizeof.Elf64_Rela
+  dq DT_HASH,hash
+  dq DT_NULL,0
+  segment readable writeable
+  symtab: Elf64_Sym
+ forward
+  local fstr
+  Elf64_Sym fstr-strtab,0,0,STB_GLOBAL,STT_FUNC,0,0
+ common
+  rela:
+  local counter
+  counter = 1
+ forward
+   Elf64_Rela name,counter,R_X86_64_64
+   counter = counter+1
+ common
+  relasz = $-rela
+  hash:
+  dd 1,counter
+  dd 0
+  repeat counter
+   if %=counter
+    dd 0
+   else
+    dd %
+   end if
+  end repeat
+  strtab db 0
+ forward
+  fstr db `name,0
+ common
+  match needed,needed@dynamic
+  \{ irp item,needed \\{ match str:library,item \\\{ str db library,0 \\\} \\} \}
+  strsz = $-strtab
+ forward
+  name dq 0
+}
+interpreter '/lib64/ld-linux-x86-64.so.2'
+needed 'libl.so'
+import l
+macro ccall function
+{
+   push r15
+   push r14
+   push r13
+   push r12
+   call qword [function]
+   pop r12
+   pop r13
+   pop r14
+   pop r15
+}
 entry cicada_virtual_machine
+segment readable executable writeable
 include "../macro.inc"
 hereCode
 cicada_virtual_machine:
@@ -398,7 +638,7 @@ cicada_virtual_machine:
         mov ReturnStackPointer,   ReturnStackTop
 
         ;; initialize the variable ``Here''
-        ;; to point at beginning of DataSegment
+        ;; to point at beginning of UserDataArea
         mov TemporaryRegister, UserDataArea
         mov [Here + CellWidth], TemporaryRegister
         mov NextWordPointer, cicada_begin_thread
@@ -521,10 +761,10 @@ defCode "get-screen-size", getScreenSize
    next
 SizeOfInputBuffer = 3*1024*1024
 
-hereInitializedData
-InputBuffer:
-   rb SizeOfInputBuffer
-EndOfInputBuffer:
+hereUnInitializedData
+InputBuffer labeling
+   preserve SizeOfInputBuffer
+EndOfInputBuffer labeling
 
 
 defConst "Size-of-input-buffer",  SizeOfInputBuffer,  TheSizeOfInputBuffer
@@ -814,6 +1054,9 @@ FileHandleOfFileToString_withError:
    dq 0
 NameBufferOfFileToString_withError:
    rb 1024
+defCode "l", _l     
+   ccall l
+   next
 include "../threaded-code.inc"
 defWord ".", printLittleNumber
    xx literal, '0'
@@ -834,13 +1077,17 @@ defWord "assemblyDebug", assemblyDebug
    ;; xx ><><><
    xx exitWithTOS
 defWordEnd assemblyDebug
+TheSizeOfUserDataArea = 64 * 1024 * 1024 ;; unit : byte
+
 hereUnInitializedData
 ;; ------------------------------------------
 UserDataArea labeling
-        preserve 16 * 1024 * 1024
-EndOfUserDataArea labeling
+EndOfUserDataArea = TheLowestMemoryAddress + TheSizeOfUserDataArea
 
 defConst "User-data-area", UserDataArea, TheUserDataArea
 defConst "End-of-user-data-area", EndOfUserDataArea, TheEndOfUserDataArea
 ;; this word helps to initialize FirstWordInDictionary
 defConst "The-latest-word-in-assembly", 0, TheLatestWordInAssembly
+segment readable writeable
+TheLowestMemoryAddress:
+   rb TheSizeOfUserDataArea

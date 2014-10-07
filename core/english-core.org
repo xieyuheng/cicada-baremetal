@@ -5332,11 +5332,11 @@
    #+begin_src cicada :tangle english-core.cicada
    symbol-REPL
    #+end_src
-* lambda-calculus
+* ><><>< lambda-calculus
 ** lambda
-*** note
-**** ABOUT lambda-calculus
-     1. lambda is a function which uses two dali
+*** [OLD] english note
+**** about lambda-calculus
+     1. lambda is a function which uses one dali and one wodili
         to compose a anonymous function
         (not compile to the dictionary)
         apply is a function which
@@ -5366,16 +5366,65 @@
         one <bound-variable>
      7. from lisp to cicada
         I am dispersing the works of parsing all the time
-**** ABOUT lazy-eval
-     1. in cicada use explicit lazy-eval
-        use ()lambda or ()λ
-        to make a lambda-function without arguments
-        to use explicit lazy-eval
-     2. lazy-eval has better theoretical feature in lambda-calculus
+**** about lazy-eval
+     1. lazy-eval has better theoretical feature in lambda-calculus
         but it makes computation unpredictable
-**** ABOUT substitution
+**** about substitution
      note that you can only use bound-variable (such as ::x :n) in a lambda-body
-     bot NOT a dali or list or wodili
+     but NOT in a dali or list or wodili
+*** Chinese note
+**** 关于 lambda-calculus
+     1. 在 cicada 中 lambda 被实现为一个函数
+        它用 一个 代表函数体的 dali [ ]
+        和 一个 代表约束变量列表的 wodili ( )
+        来 撰写(compose) 一个匿名函数
+        - 注意 不是 编撰(compile) 到字典里
+     2. apply 是一个函数
+        它 解释(explain) lambda 所编撰的匿名函数
+     3. 在字典比喻下
+        核心的一对概念就是
+        "撰" 与 "释"
+        目前你已经看到了 两种 对这一对概念的具体化
+        1) define-function & execute-word
+        2) lambda & apply
+        更一般地
+        当再次需要 通过具体化这一对概念
+        来设计新的语法和语义 的时候
+        只需要再实现一对这样的函数就行了
+        尽管 可能 使用 不同的 数据结构
+        或 不同的 语法
+        但是核心的概念是不变的
+     4. 与 LISP 中的 apply 不同
+        在 cicada 中 apply 是完全线性的
+        lambda 也几乎是线性的
+        这里 线性的意思是
+        这些函数只是一些 遍历 dali 的循环
+        而不是 遍历 嵌套的 dali 的递归函数
+        而 "几乎线性" 的意思是
+        只有 计算 lambda 的约束变元 的 "标记范围" 的函数才是递归的
+        这种特性的产生原因
+        与 "不做语法解析的解释器" 的产生原因类似
+        这种过程可以看作是 栈处理机 对 表达式 的解构
+        而形成 表面上的 后缀表达式
+        后缀表达式 中的一个函数 包含了这个 后缀表达式 这种语法本身
+        而不是 由一个 外在的解释器 去实现这种语法
+     6. 一个 lambda 函数 的 约束变元(bound-variable)
+        使用来 标记 这个 lambda 函数 的函数体中的某些位置的
+        在这些位置上 你可以代入 参数
+     7. 当 lambda 函数 的 函数体 形成嵌套的时候
+        约束变元 的 "标记范围" 需要被计算
+        scheme 用 闭包(closure) 来处理这种情况
+        而 cicada 用简单的 有向图处理(direct-graph-processing)
+        来解决这个问题
+     8. 在 lambda-application 期间
+        一个 <lambda-argument-N> 被代入 一个 <bound-variable>
+**** 关于 lazy-eval
+     1. 用 lazy-eval 所实现的 lambda-calculus 具有更好的数学性质
+        但是 在实践中 由于 它们让局部的 计算 所消耗的时间 不可预测
+        所以 是有问题的
+**** >< 需要解决的问题
+     1. 只能 在 lambda-body 中 使用 bound-variable (such as ::x :n)
+        而 不能 在一般的 list dali wodili 中使用
 *** data-types
     #+begin_src cicada :tangle english-core.cicada
     : <lambda>               ; define-pair-like-data-type
@@ -5385,6 +5434,8 @@
 *** helper functions
     used to decide the type error of lambda
     and to decide when I need to calculate lambda-scope
+    两个 辅助性的 谓词
+    可以发现命名规则上还有待改进 并标准化
     #+begin_src cicada :tangle english-core.cicada
     : bound-variable-wodili?
       (* head[address, <wodili>] -- True or False *)
@@ -5533,31 +5584,37 @@
 
 
     (* the following two functions are side-effects through a dali
-     * in the direction of ``<-''
+     ,* in the direction of ``<-''
 
-     * some special-types of elements in the lambda-body
-     * should be setted for ``apply''
+     ,* some special-types of elements in the lambda-body
+     ,* should be setted for ``apply''
 
-     * note that: (currently)
-     *   <fixnum> <list> <dali> <wodili> <symbol>
-     *   are the only types of value
-     *   that could be readed into a dali
+     ,* note that: (currently)
+     ,*   <fixnum> <list> <dali> <wodili> <symbol>
+     ,*   are the only types of value
+     ,*   that could be readed into a dali
 
-     *   only all <symbol> in this dali
-     *   and some <symbol> that denote-bound-variable nestedly existed in this dali
-     *   will be handled by the following functions
+     ,*   only all <symbol> in this dali
+     ,*   and some <symbol> that denote-bound-variable nestedly existed in this dali
+     ,*   will be handled by the following functions
 
-     *   while
-     *   in the ``apply''
-     *   when meet [666, <fixnum>]
-     *     666 ( ONLY ONE VALUE ) will be push to ArgumentStack
-     *   when meet [address, <list>]
-     *     [address, <list>] will be push to ArgumentStack
-     *   when meet [address, <dali>]
-     *     [address, <dali>] will be push to ArgumentStack
-     *   when meet [address, <wodili>]
-     *     [address, <wodili>] will be push to ArgumentStack
-     *)
+     ,*   while
+     ,*   in the ``apply''
+     ,*   when meet [666, <fixnum>]
+     ,*     666 ( ONLY ONE VALUE ) will be push to ArgumentStack
+     ,*   when meet [address, <list>]
+     ,*     [address, <list>] will be push to ArgumentStack
+     ,*   when meet [address, <dali>]
+     ,*     [address, <dali>] will be push to ArgumentStack
+     ,*   when meet [address, <wodili>]
+     ,*     [address, <wodili>] will be push to ArgumentStack
+     ,*)
+
+    (*
+     ,* 下面的两个 函数是主要的辅助函数
+     ,* 它们不是术语函数范式
+     ,* 它们是 沿着 ``<-'' 方向 对 dali 做副作用
+     ,*)
 
 
     : help:lambda,set-bound-variables (* calculating lambda-scope *)
@@ -5815,17 +5872,35 @@
     drop2
     #+end_src
 ** apply
-*** note
-    1. 对lambda-body的正确求值
-       是依赖于``绑定''对这个lambda所作的副作用的
+*** chinese note
+    1. 此时 bound-variable 通过计算 标记范围 而对同名的 位置 的标记
+       已经被 lambda 处理 成了一个 不依赖于 "名" 的
+       用简单 "有向图" 做成的 对位置的标记
+       在 apply 的开端 就是 约束变元 与 值 之间的绑定
+       这个绑定是对 "有向图" 的副作用
+       有向图的性质 使得 我可以做到 一次 绑定 多点使用
+    2. 对 lambda-body 的正确求值
+       是依赖于``绑定''对这个 lambda 所作的副作用的
        那么在作用的过程中就不能破坏(更改)对这些约束变元的绑定
-       只要每次lambda的作用都会更新 <lambda> pair 中的约束变元dali
-       也就是说在一个lambda-body中不能引用这个lambda-body本身
-       这也许是合理的
-    2. 并且上面的特点所带来的一个效果就是
-       每个lambda都会保存着它上次作用时进行的绑定
-       也许这种效果能被有趣地利用起来
-    3. maybe I can support cc here !
+       这就需要每次 lambda 的作用都去更新 <lambda> pair 中的约束变元 wodili
+    3. ><><>< bug
+       这样的话
+       如果 在一个 lambda-body 嵌套出现了 这个 lambda 本身的作用
+       那么在退出嵌套的时候 函数绑定就不对了
+       所以 应该用栈(用某种链表实现的栈)来实现 约束变元对值的绑定
+    4. 一个 lambda 就像是一个指示计算的 图纸 一样
+       每次 为了使用 这个 图纸 来做计算
+       有需要在 这个图纸上 做一些记录
+       当使用完毕时 再 擦去 这些记录
+       上面 所引入的 栈 的意思就是
+       在这个 图纸用到一半的时候
+       需要 这个计算本身 又要 用到这张图纸
+       这时 就先把 之前的在图纸上的记录 放到栈里保存起来
+       在这次 在图纸所指示的计算之内 使用玩图纸本身之后
+       再利用栈中保存的 图纸上的旧记录 回到之前的计算
+    5. 很容易发现
+       这种 对栈的利用在 单核 的时候还 顺利进行
+       当多核的时候就不行了
 *** lambda-body-stack
     #+begin_src cicada :tangle english-core.cicada
     (* note that:
@@ -6207,26 +6282,26 @@
        for we need to define ``sqrt'' *)
 
     (*
-     * the following shows the problem that people argued at:
-     * http://lambda-the-ultimate.org/node/900
+     ,* the following shows the problem that people argued at:
+     ,* http://lambda-the-ultimate.org/node/900
 
-     * -b  +/- sqrt(b^2 - 4 * a * c)
-     * -----------------------------
-     *            2 * a
-     *)
+     ,* -b  +/- sqrt(b^2 - 4 * a * c)
+     ,* -----------------------------
+     ,*            2 * a
+     ,*)
 
 
     (*
-     * [              :b negate
-     *     4 :a :c * *
-     *         :b :b *  -  sqrt  +
-     *                     2 :a  *  / ] dup2 write
-     * ( :a :b :c ) dup2 write
-     * λ ready
-     *
-     * 1 <:a  2 <:b  1 <:c
-     *
-     * apply write-dec-number cr (\* -1 *\)
+     ,* [              :b negate
+     ,*     4 :a :c * *
+     ,*         :b :b *  -  sqrt  +
+     ,*                     2 :a  *  / ] dup2 write
+     ,* ( :a :b :c ) dup2 write
+     ,* λ ready
+     ,*
+     ,* 1 <:a  2 <:b  1 <:c
+     ,*
+     ,* apply write-dec-number cr (\* -1 *\)
      *)
     #+end_src
 ** play with lambda
@@ -6435,8 +6510,17 @@
     drop2
     cr
     #+end_src
-** >< interface for lambda
-*** note
+** ><><>< interface for lambda
+*** chinese note
+    1. 这里 最重要的笔记 是关于如何使用 lambda-calculus
+       其实 上面的笔记中 对 lambda-calculus 的实现方式 的解释 都是次要的
+       因为只要你理解了 "有向图" 你就理解了一切
+       但是
+       使用 lambda-calculus 的方式
+       即 语言中这个性状的语法 
+       或 这个程序的这个功能的用户接口
+       要想把这一点设计好 才是困难的地方
+    2. 
 *** implementation
     #+begin_src cicada
     [ ::x ]

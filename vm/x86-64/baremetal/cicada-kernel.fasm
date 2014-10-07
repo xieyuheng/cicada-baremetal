@@ -9,7 +9,6 @@ xx equ dq
 CellWidth = 8
 
 
-;; for ELF
 hereCode               equ align 16
 hereInitializedData    equ ;; nothing
 
@@ -459,7 +458,7 @@ cicada_virtual_machine:
        mov ReturnStackPointer,   ReturnStackTop
 
        ;; initialize the variable ``Here''
-       ;; to point at beginning of DataSegment
+       ;; to point at beginning of UserDataArea
        mov TemporaryRegister, UserDataArea
        mov [Here + CellWidth], TemporaryRegister
        mov NextWordPointer, cicada_begin_thread

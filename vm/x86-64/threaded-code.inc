@@ -2244,7 +2244,7 @@ defConst "String-heap-1", StringHeap1, TheStringHeap1
 defConst "String-heap-2", StringHeap2, TheStringHeap2
 hereUnInitializedData
 ;; ------------------------------------------
-SizeOfBufferForLoadFile = 1024*1024
+SizeOfBufferForLoadFile = 4*1024*1024
 
 BufferForLoadFile labeling
              preserve SizeOfBufferForLoadFile

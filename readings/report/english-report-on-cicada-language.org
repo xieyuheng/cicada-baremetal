@@ -1,0 +1,99 @@
+#+TITLE: report on cicada language
+#+AUTHOR: XIE Yuheng
+#+EMAIL: xyheme@gmail.com
+
+
+* ==================================================
+* TODO
+* ==================================================
+* note
+  this report gives a defining description 
+  of the cicada language.
+* ==================================================
+* data
+** note
+   this chapter is about 
+   how one can type some strings into cicada
+   and let cicada parse these strings 
+   to return different kinds of values into the Return-stack
+** >< number
+*** integer
+** >< string
+   #+begin_src yaml
+   text: |
+      There once was a short man from Ealing
+      Who got on a bus to Darjeeling
+          It said on the door
+          "Please don't spit on the floor"
+      So he carefully spat on the ceiling
+   ---
+   text: >
+      Wrapped text
+      will be folded
+      into a single
+      paragraph
+
+      Blank lines  denote
+      paragraph breaks
+   ---
+   #+end_src
+** list
+   #+begin_src cicada 
+   (* bra-ket *)
+   { Mark-McGwire Sammy-Sosa Ken-Griffey }
+
+   (* indentation *)
+   ======
+   - Mark-McGwire
+   - Sammy-Sosa
+   - Ken-Griffey
+   ======
+   #+end_src
+** dali
+   #+begin_src cicada
+   (* bra-ket *)
+   [ Mark-McGwire Sammy-Sosa Ken-Griffey ]
+
+   (* indentation *)
+   ======
+   * Mark-McGwire
+   * Sammy-Sosa
+   * Ken-Griffey
+   ======
+   #+end_src
+** wodili
+   #+begin_src cicada
+   (* bra-ket *)
+   ( :hr 65 :avg 0.278 :rbi 147 )
+
+   (* indentation *)
+   ======
+   :hr 65
+   :avg 0.278
+   :rbi 147
+   ======
+
+
+   ( :american
+       Boston Detroit New-York 
+     :national 
+       New-York Chicago Atlanta )  
+
+   ======
+   :american
+     - Boston 
+     - Detroit 
+     - New-York 
+   :national
+     - New-York 
+     - Chicago 
+     - Atlanta 
+   ------
+   :1 "-" for list element
+   :2 "*" for dali element
+   :3 ":" for wodi (* wodili element *)
+   ======   
+   #+end_src
+* --------------------------------------------------
+* lambda-calculus
+* ==================================================
