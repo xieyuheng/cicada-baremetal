@@ -1096,38 +1096,6 @@ defWord "get-back", get_back
    xx pop_lambda_stack, pop_lambda_stack, swap
    xx Exit
 defWordEnd get_back
-defCode "tail-of-word-list", tail_of_word_list
-   ;; (* wordList[address, the number of words] --
-   ;;    wordList[new address, number - 1] *)
-   pop_argument_stack rcx
-   pop_argument_stack rsi
-   lodsq
-   add rsi, rax
-   push_argument_stack rsi
-   dec rcx
-   push_argument_stack rcx
-   next
-
-defCode "head-of-word-list", head_of_word_list
-   ;; (* wordList[address, the number of words] --
-   ;;    wordString[address, length] *)
-   pop_argument_stack rbx ;; do not need this arg
-   pop_argument_stack rsi
-   mov rcx, qword[rsi]
-   add rsi, Cell_width
-   push_argument_stack rsi
-   push_argument_stack rcx
-   next
-
-defWord "tail-and-head-of-word-list", tail_and_head_of_word_list
-   ;; (* wordList[address, the number of words] --
-   ;;    wordList[new address, number - 1], wordString[address, length] *)
-   xx dup2
-   xx tail_of_word_list
-   xx xxswapxx
-   xx head_of_word_list
-   xx Exit
-defWordEnd tail_and_head_of_word_list
 ;; 1. just take the 10 based number on the left of "#" as base
 ;;    while the base must be not-zero
 ;;    (actually, when it is zero, just let the zero return,
@@ -1542,6 +1510,74 @@ defWord "read-string-into-buffer", read_string_into_buffer
    xx swap, add1, swap
    xx branch, (- ($ - .read_char) / Cell_width)
 defWordEnd read_string_into_buffer
+;; : find-char-address
+;;   (* char, [address, length] -- address or -1 *)
+;;   dup zero? if
+;;     drop2 drop
+;;     -1
+;;     Exit
+;;   then
+;;   tailAndHeadOfString
+;;   x|over|xxx == if
+;;     drop swap drop
+;;     sub1
+;;     Exit
+;;   then
+;;   find-char-address
+;;   Exit
+;; ; defineRecursiveFunction
+
+defWord "find-char-address", find_char_address
+   ;; (* char, [address, length] -- address or -1 *)
+   xx dup, zero?, false?branch, 6
+   xx   drop2, drop
+   xx   literal, -1
+   xx   Exit
+   xx tail_and_head_of_string
+   xx xoverxxx, equal?, false?branch, 6
+   xx   drop, swap, drop
+   xx   sub1
+   xx   Exit
+   xx find_char_address
+   xx Exit
+defWordEnd find_char_address
+
+;; : find-char-index
+;;   (* char, [address, length] -- index or -1 *)
+;;   (* index start from Zero *)
+;;   over
+;;   xxx|swap|x
+;;   find-char-address
+;;   dup Zero < if
+;;     swap drop
+;;     Exit
+;;   then
+;;   swap -
+;;   Exit
+;; ; define-function
+
+defWord "find-char-index", find_char_index
+   ;; (* char, [address, length] -- index or -1 *)
+   ;; (* index start from Zero *)
+   xx over
+   xx xxxswapx
+   xx find_char_address
+   xx dup, literal, 0, less_than?, false?branch, 4
+   xx   swap, drop
+   xx   Exit
+   xx swap, subtraction
+   xx Exit
+defWordEnd find_char_index
+
+
+;; (* little test:
+;;  * 'k' s" k" find-char-index . (* 0 *) cr
+;;  * 'k' s" kkk" find-char-index . (* 0 *) cr
+;;  * 'k' s" skkk" find-char-index . (* 1 *) cr
+;;  * 'k' s"  kkk" find-char-index . (* 1 *) cr
+;;  * 'k' s" 0123456789k" find-char-index . (* 10 *) cr
+;;  * 'k' s" 0123456789" find-char-index . (* -1 *) cr
+;;  *)
 hereCode
 explain_variable:
    ;; ( -- address )
@@ -1627,7 +1663,7 @@ defConst "Constant-string-explainer", explain_constant_string,   _Constant_strin
 WordType_HiddenMask = 00000001h
 
 
-defWord "word-link->word-string", word_link_to_word_string
+defWord "word-link->name-string", word_link_to_name_string
    ;; (* link[address] -- string[address, length] *)
    xx literal, Cell_width
    xx Two, multiple
@@ -1636,14 +1672,14 @@ defWord "word-link->word-string", word_link_to_word_string
    xx dup, literal, Cell_width, addition
    xx swap, fetch
    xx Exit
-defWordEnd word_link_to_word_string
+defWordEnd word_link_to_name_string
 
 defWord "help,find", help__find
    ;; (* wordString[address, length], link[address] -- word[address of link] or Zero *)
    xx dup, zero?, false?branch, 4
    xx   xxswapx, drop2
    xx   Exit
-   xx xxtuckx, word_link_to_word_string, xxoverxx, equal_string?, false?branch, 3
+   xx xxtuckx, word_link_to_name_string, xxoverxx, equal_string?, false?branch, 3
    xx   drop2
    xx   Exit
    xx xswapxx, fetch
@@ -1676,16 +1712,8 @@ defWord "read-first-non-blank-char", read_first_non_blank_char
    xx branch, -10
 defWordEnd read_first_non_blank_char
 
-defWord "read-non-blank-char", read_non_blank_char
-   ;; (* -- FirstNonBlankChar or Zero *)
-   xx read_char, dup
-   xx literal, ASCII_space
-   xx greater_than?, false?branch, 2
-   xx   Exit
-   xx drop
-   xx Zero
-   xx Exit
-defWordEnd read_non_blank_char
+
+
 hereUnInitializedData
 ;; ------------------------------------------
 ;; note that, Subsequent calls will overwrite Buffer_for_read_word
@@ -1707,17 +1735,19 @@ defWord "read-word", read_word
    ;; 3. returns the address of Buffer_for_read_word and length on the stack
 
    xx literal, Buffer_for_read_word ;; (* leave one of the return values *)
-   xx Zero                       ;; (* leave length counter *)
+   xx Zero                          ;; (* leave length counter *)
 
    xx literal, Buffer_for_read_word
    xx read_first_non_blank_char
    xx over, save_byte, add1
    xx swap, add1, swap
 
-   xx read_non_blank_char, dup, zero?branch, 9
+   .read_char:
+   xx read_char
+   xx dup, literal, ASCII_space, greater_than?, false?branch, 9
    xx   over, save_byte, add1
    xx   swap, add1, swap
-   xx   branch, -11
+   xx   branch, (-($ - .read_char) / Cell_width)
 
    xx drop2
    xx Exit
@@ -1738,117 +1768,293 @@ defWord "read-word-for-runtime", read_word_for_runtime
    xx over, save_byte, add1
    xx swap, add1, swap
 
-   xx read_non_blank_char, dup, zero?branch, 9
+   .read_char:
+   xx read_char
+   xx dup, literal, ASCII_space, greater_than?, false?branch, 9
    xx   over, save_byte, add1
    xx   swap, add1, swap
-   xx   branch, -11
+   xx   branch, (-($ - .read_char) / Cell_width)
 
    xx drop2
    xx Exit
 defWordEnd read_word_for_runtime
-defConstString "Comment-begin-string",  "(*", Comment_begin_string
-defConstString "Comment-ending-string", "*)", Comment_ending_string
+defConstString "Bra:comment",  "(*", Bra__comment
+defConstString "Ket:comment", "*)", Ket__comment
 
-defWord "ignore-comment", ignore_comment
+defWord "(*", ignore_comment
    ;; (* -- *)
    ;; (* ignore a list of comment words from stdin *)
    xx read_word
-   xx dup2, Comment_begin_string, equal_string?, false?branch, 5
+   xx dup2, Bra__comment, equal_string?, false?branch, 5
    xx   drop2, ignore_comment, branch, -9
    ;; beware of the tail-call-optimization
    ;; a tail-recursive-call is really a loop
-   xx Comment_ending_string, equal_string?, false?branch, -13
+   xx Ket__comment, equal_string?, false?branch, -13
    xx   Exit
 defWordEnd ignore_comment
 
-;; 这个词是为 REPL 中对 注释的处理而定义的
-;; 编译时需要 调用 ignore_comment 以另外处理注释
-defWord "(*", comment
-   xx ignore_comment
-   xx Exit
-defWordEnd comment
-
 ;; test:
 ;; (* ok (* ok *) ok *) ok
-;; a WordList (unit : Cell_width = 8 bytes)
-;;   ||  1 : length-of-Word-1     ||
-;;   ||  a : Word-1--as-a-string  ||
-;;   ||  1 : length-of-Word-2     ||
-;;   ||  b : Word-2--as-a-string  ||
-;;   ...
+
+
+defWord "ignore-comment,in-string", ignore_comment__in_string
+   ;; (* word-string[address, length] -- word-string[address, length] *)
+   ;; (* ignore a list of comment words from stdin *)
+   xx tail_and_head_of_word_string
+   xx dup2, Bra__comment, equal_string?, false?branch, 5
+   xx   drop2, ignore_comment__in_string, branch, -9
+   ;; beware of the tail-call-optimization
+   ;; a tail-recursive-call is really a loop
+   xx Ket__comment, equal_string?, false?branch, -13
+   xx   Exit
+defWordEnd ignore_comment__in_string
+;; (* helper functions *)
+defWord "string-append-char", string_append_char
+   ;; (* string[address, length], char -- string[address, length+1] *)
+   xx xxoverx, addition, save_byte
+   xx add1
+   xx Exit
+defWordEnd string_append_char
+
+;; 这个版本的函数 每次读一个 char 之后 都会先把它存到字符串中
+
+defWord "read-first-non-blank-char,while-saving-to-string", read_first_non_blank_char__while_saving_to_string
+   ;; (* string[address, length] --
+   ;;    string-with-char[address, length], FirstNonBlankChar *)
+   xx read_char, dup, push_lambda_stack
+   xx   string_append_char
+   xx pop_lambda_stack
+   xx dup, literal, ASCII_space, greater_than?, false?branch, 2
+   xx   Exit
+   xx drop
+   xx read_first_non_blank_char__while_saving_to_string
+   xx Exit
+defWordEnd read_first_non_blank_char__while_saving_to_string
+
 
 hereUnInitializedData
 ;; ------------------------------------------
-;; note that, Subsequent calls will overwrite Buffer_for_read_word_list_for_lexicographer
-SizeOfBuffer_for_read_word_list_for_lexicographer = 2*1024*1024
+;; note that, Subsequent calls will overwrite Buffer_for_read_word
+;; this is why there is another function ``read_word_for_runtime''
+Max_word_length = 1024
 
-Buffer_for_read_word_list_for_lexicographer labeling
-        preserve SizeOfBuffer_for_read_word_list_for_lexicographer
+Buffer_for_read_word__while_saving_to_string labeling
+        preserve Max_word_length
 
-defConstString "Ket:cosemi", ";", Ket_cosemi
-defConstString "Ket:fuzhe", "者", Ket_fuzhe
+defWord "read-word,while-saving-to-string", read_word__while_saving_to_string
+   ;; (* string[address, length] --
+   ;;    string-with-word[address, length], word-string[address, length] *)
 
-defVar "Next-word-for-read-word-list-for-lexicographer", Buffer_for_read_word_list_for_lexicographer, Next_word_for_read_word_list_for_lexicographer
+   xx read_first_non_blank_char__while_saving_to_string
+   xx literal, Buffer_for_read_word__while_saving_to_string, save_byte
+   xx literal, 1, push_lambda_stack
+   xx literal, Buffer_for_read_word__while_saving_to_string, add1
+   xx push_lambda_stack
 
-defWord "read-word-list-for-lexicographer", read_word_list_for_lexicographer
-   ;; (* read a WordList from stdin (ForLexicographer) *)
-   ;; (* -- wordList[address, the number of words] *)
+   .read_char:
+   xx read_char
+   xx dup, xxoverxx, addition, save_byte, swap, add1, swap
+   xx dup, literal, ASCII_space, greater_than?, false?branch, ((.then - $) / Cell_width)
+   xx   pop_lambda_stack, tuck, save_byte, add1
+   xx   pop_lambda_stack, add1
+   xx   push_lambda_stack
+   xx   push_lambda_stack
+   xx   branch, (-($ - .read_char) / Cell_width)
+   .then:
 
-   ;; (* initialize Next_word_for_read_word_list_for_lexicographer *)
-   xx literal, Buffer_for_read_word_list_for_lexicographer
-   xx Next_word_for_read_word_list_for_lexicographer
-   xx save
+   xx drop
+   xx pop_lambda_stack, drop
+   xx literal, Buffer_for_read_word__while_saving_to_string
+   xx pop_lambda_stack
+   xx Exit
+defWordEnd read_word__while_saving_to_string
+hereUnInitializedData
+;; ------------------------------------------
+;; note that, Subsequent calls will overwrite StringBufferOfLexicographer
+Size_Of_buffer_for_lexicographer = 64*1024
 
-   ;; (* leave return value: [buffer-address, counter] *)
-   xx literal, Buffer_for_read_word_list_for_lexicographer
-   xx Zero
+Buffer_for_lexicographer labeling
+        preserve Size_Of_buffer_for_lexicographer
 
-   xx read_word
+defConstString "Ket:cosemi", ";", Ket__cosemi
+defConstString "Ket:fuzhe", "者", Ket__fuzhe
 
-   xx dup2
-   xx Comment_begin_string, equal_string?, false?branch, 5
-   xx drop2, ignore_comment, branch, -9
+defWord ":", _read_word_string__for_lexicographer
+   ;; (* -- string[address, length] *)
+   xx read_word_string__for_lexicographer
+   xx Exit
+defWordEnd _read_word_string__for_lexicographer
 
-   xx dup2
-   xx Ket_cosemi, equal_string?, false?branch, 3
+defWord "夫", __read_word_string__for_lexicographer
+   ;; (* -- string[address, length] *)
+   xx read_word_string__for_lexicographer
+   xx Exit
+defWordEnd __read_word_string__for_lexicographer
+
+;; 这里只处理了 ";"
+;; 而 "(*" 被滞后 到 append-word-description-to-here 处理了
+;; 否则的话 想要在字符串中包含 注释就难了
+;; 这样 也许 方便之后 对 doc-string 的实现
+defWord "read-word-string,for-lexicographer", read_word_string__for_lexicographer
+   ;; (* -- string[address, length] *)
+   xx literal, Buffer_for_lexicographer
+   xx literal, 0
+   .read_word__while_saving_to_string:
+   xx read_word__while_saving_to_string
+   ;; xx dup2, Bra__comment, equal_string?, false?branch, (.dup2-$)/Cell_width
+   ;; xx   drop2, ignore_comment
+   ;; xx   literal, 3, subtraction
+   ;; xx   branch, (.read_word__while_saving_to_string - $)/Cell_width
+   ;; .dup2:
+   xx dup2, Ket__cosemi, equal_string?, false?branch, (.drop2-$)/Cell_width
+   xx   drop2
+   xx   literal, 2, subtraction
+   xx   Exit
+   .drop2:
    xx drop2
+   xx branch, (.read_word__while_saving_to_string - $)/Cell_width
    xx Exit
+defWordEnd read_word_string__for_lexicographer
+defWord "find-word-boundary-address,begin", find_word_boundary_address__begin
+   ;; (* [address, length] -- address or -1 *)
+   xx dup, zero?, false?branch, 5
+   xx   drop2
+   xx   literal, -1
+   xx   Exit
+   xx tail_and_head_of_string
+   xx literal, ASCII_space, greater_than?, false?branch, 4
+   xx   drop
+   xx   sub1
+   xx   Exit
+   xx find_word_boundary_address__begin
+   xx Exit
+defWordEnd find_word_boundary_address__begin
 
-   xx dup2
-   xx Ket_fuzhe, equal_string?, false?branch, 3
+;; end will always success
+;; so be careful when use it to save and fetch from string
+;; ><><>< 也许我应该给每个 string 都加的 0 做结尾 这样也许会好一些
+defWord "find-word-boundary-address,end", find_word_boundary_address__end
+   ;; (* [address, length] -- address or -1 *)
+   xx dup, zero?, false?branch, 3
+   xx   drop
+   xx   Exit
+   ;; 对第一个做特殊处理 以保证 不再 word 内时 也能有效
+   xx tail_and_head_of_string
+   xx literal, ASCII_space
+   xx less_or_equal?, false?branch, (.dup-$)/Cell_width
+   xx   dup2, find_word_boundary_address__begin
+   xx   dup, literal, -1, equal?, false?branch, 6
+   xx     drop, drop2
+   xx     literal, -1
+   xx     Exit
+   xx   xxtuckx
+   xx   xswapxx
+   xx   subtraction, subtraction
+   .dup:
+   xx dup, zero?, false?branch, 3
+   xx   drop
+   xx   Exit
+   xx tail_and_head_of_string
+   xx literal, ASCII_space, less_or_equal?, false?branch, 4
+   xx   drop
+   xx   sub1
+   xx   Exit
+   xx branch, (.dup-$)/Cell_width
+   xx Exit
+defWordEnd find_word_boundary_address__end
+
+
+defWord "find-word-boundary-index,begin", find_word_boundary_index__begin
+   ;; (* [address, length] -- index or -1 *)
+   ;; (* index start from Zero *)
+   xx over
+   xx swap
+   xx find_word_boundary_address__begin
+   xx dup, literal, -1, equal?, false?branch, 4
+   xx   swap, drop
+   xx   Exit
+   xx swap, subtraction
+   xx Exit
+defWordEnd find_word_boundary_index__begin
+
+defWord "find-word-boundary-index,end", find_word_boundary_index__end
+   ;; (* [address, length] -- index or -1 *)
+   ;; (* index start from Zero *)
+   xx over
+   xx swap
+   xx find_word_boundary_address__end
+   xx dup, literal, -1, equal?, false?branch, 4
+   xx   swap, drop
+   xx   Exit
+   xx swap, subtraction
+   xx Exit
+defWordEnd find_word_boundary_index__end
+
+
+
+;; little test:
+;; :" k" find-word-boundary-index,begin . (* 0 *) cr
+;; :" kkk" find-word-boundary-index,begin . (* 0 *) cr
+;; :"  kkk" find-word-boundary-index,begin . (* 1 *) cr
+;;
+;; :" k" find-word-boundary-index,end . (* 1 *) cr
+;; :" kkk" find-word-boundary-index,end . (* 3 *) cr
+;; :"  kkk" find-word-boundary-index,end . (* 4 *) cr
+;; :"   kkk" find-word-boundary-index,end . (* 5 *) cr
+;; this helper function :
+;; 0. when meet zero-length string always reture True
+defWord "string-full-of-blank?", string_full_of_blank?
+   ;; (* string[address, length] -- True or False *)
+   xx dup, zero?, false?branch, 4
+   xx   drop2
+   xx   True
+   xx   Exit
+   xx tail_and_head_of_string
+   xx literal, ASCII_space, less_or_equal?, false?branch, 3
+   xx   string_full_of_blank?
+   xx   Exit
    xx drop2
+   xx False
    xx Exit
+defWordEnd string_full_of_blank?
 
-   xx add_word_to_list_for_lexicographer
-   xx add1
-   xx branch, -27
-defWordEnd read_word_list_for_lexicographer
+;; the following 3 functions can not apply on string-full-of-blank
+;; before call them
+;; one should make sure the argument is not string-full-of-blank
 
-defWord ":", read_word_list_for_lexicographer_Bra_cosemi
-   xx read_word_list_for_lexicographer
+defWord "head-of-word-string", head_of_word_string
+   ;; (* word-string[address, length] -- word[address, length] *)
+   xx dup2, find_word_boundary_address__begin
+   ;; ><><>< need error check here in the future
+   ;; 也就是 先假设上面的函数 返回正确的 address
+   xx xxswapx
+   xx find_word_boundary_address__end
+   xx over, subtraction
    xx Exit
-defWordEnd read_word_list_for_lexicographer_Bra_cosemi
+defWordEnd head_of_word_string
 
-defWord "夫", read_word_list_for_lexicographer_Bra_fuzhe
-   xx read_word_list_for_lexicographer
+defWord "tail-of-word-string", tail_of_word_string
+   ;; (* word-string[address, length] -- word-string[new address, length - n] *)
+   xx dup2, find_word_boundary_index__end
+   ;; ><><>< need error check here in the future
+   ;; 也就是 先假设上面的函数 返回正确的 address
+   xx tuck
+   xx subtraction
+   xx xxswapx
+   xx addition
+   xx swap
    xx Exit
-defWordEnd read_word_list_for_lexicographer_Bra_fuzhe
+defWordEnd tail_of_word_string
 
-
-defWord "add-word-to-list-for-lexicographer", add_word_to_list_for_lexicographer
-   ;; ( wordString[address, length] -- )
-   ;; leave a length behind, for update Next_word_for_read_word_list_for_lexicographer at the end
-   xx dup, xxswapx
-   ;;   ||  1 : length-of-Word-1     ||
-   xx dup, Next_word_for_read_word_list_for_lexicographer, fetch, save
-   ;; update Next_word_for_read_word_list_for_lexicographer
-   xx Next_word_for_read_word_list_for_lexicographer, fetch, add8, Next_word_for_read_word_list_for_lexicographer, save
-   ;;   ||  a : Word-1--as-a-string  ||
-   xx Next_word_for_read_word_list_for_lexicographer, fetch, swap, copy_byte_string
-   ;; update Next_word_for_read_word_list_for_lexicographer again
-   xx Next_word_for_read_word_list_for_lexicographer, add_save
+defWord "tail-and-head-of-word-string", tail_and_head_of_word_string
+   ;; (* word-string[address, length] --
+   ;;    word-string[new address, length - n], word[address, length] *)
+   xx dup2
+   xx tail_of_word_string
+   xx xxswapxx
+   xx head_of_word_string
    xx Exit
-defWordEnd add_word_to_list_for_lexicographer
+defWordEnd tail_and_head_of_word_string
 defWord "append-number-to-here", append_number_to_here
    ;; (* a 64 bits number -- *)
    ;; reset ``Here'', which points next free memory
@@ -1923,7 +2129,7 @@ defWord "help:append-word-description-to-here,literal&branch", help__append_word
    ;; (* string[address, length] -- *)
    xx help_append_word_description_to_here_word
    ;; ><><>< 如果后面什么都没有了 就需要报错 但是 这里没有处理这个 error
-   xx tail_and_head_of_word_list
+   xx tail_and_head_of_word_string
    xx dup2, string_denote_integer?, false?branch, 5
    xx   string_to_integer__with_error, drop, append_number_to_here
    xx   Exit
@@ -1931,11 +2137,17 @@ defWord "help:append-word-description-to-here,literal&branch", help__append_word
    xx Exit
 defWordEnd help__append_word_description_to_here__literal_branch
 
-defConstString "Key-word:literal", "literal", Key_word__literal
-defConstString "Key-word:branch", "branch", Key_word__branch
-defConstString "Key-word:zero?branch", "zero?branch", Key_word__zero_branch
+defWord "help:append-word-description-to-here,comment", help__append_word_description_to_here__comment
+   ;; (* word-string[address, length], string[address, length] -- word-string[address, length] *)
+   xx drop2
+   xx ignore_comment__in_string
+   xx Exit
+defWordEnd help__append_word_description_to_here__comment
+
+defConstString "Key-word:literal",      "literal",      Key_word__literal
+defConstString "Key-word:branch",       "branch",       Key_word__branch
+defConstString "Key-word:zero?branch",  "zero?branch",  Key_word__zero_branch
 defConstString "Key-word:false?branch", "false?branch", Key_word__false_branch
-defConstString "Key-word:not-false?branch", "not-false?branch", Key_word__not_false_branch
 
 defWord "string-denote-literal-or-branch?", string_denote_literal_or_branch?
    ;; (* string[address, length] -- True or False *)
@@ -1951,28 +2163,32 @@ defWord "string-denote-literal-or-branch?", string_denote_literal_or_branch?
    xx dup2, Key_word__false_branch, equal_string?, false?branch, 4
    xx   drop2, True
    xx   Exit
-   xx dup2, Key_word__not_false_branch, equal_string?, false?branch, 4
-   xx   drop2, True
-   xx   Exit
    xx drop2, False
    xx Exit
 defWordEnd string_denote_literal_or_branch?
 
 defWord "append-word-description-to-here", append_word_description_to_here
    ;; (* wordList[address, the number of words] -- *)
-   xx dup, zero?, false?branch, 3
+   xx dup2, string_full_of_blank?, false?branch, 3
    xx   drop2
    xx   Exit
-   xx tail_and_head_of_word_list
+   xx tail_and_head_of_word_string
+   xx dup2, Bra__comment, equal_string?, false?branch, 4
+   xx   help__append_word_description_to_here__comment
+   xx   append_word_description_to_here
+   xx   Exit
    xx dup2, string_denote_literal_or_branch?, false?branch, 4
    xx   help__append_word_description_to_here__literal_branch
-   xx   branch, -13
+   xx   append_word_description_to_here
+   xx   Exit
    xx dup2, string_denote_integer?, false?branch, 4
    xx   help__append_word_description_to_here__number
-   xx   branch, -20
+   xx   append_word_description_to_here
+   xx   Exit
    ;; else
    xx   help_append_word_description_to_here_word
-   xx   branch, -23
+   xx   append_word_description_to_here
+   xx   Exit
 defWordEnd append_word_description_to_here
 defWord "add-new-word-to-dictionary", add_new_word_to_dictionary
    ;; reset FirstWordInDictionary to point to the newly defined word
@@ -2004,7 +2220,7 @@ defWord "define-function", define_function
    ;;  and let an explainer to explain the description of the new word.
    ;;  to define a new word
    ;;  is to add the new created word to the dictionary.
-   xx tail_and_head_of_word_list
+   xx tail_and_head_of_word_string
    xx create_word_header_for_function
    xx _Function_body_explainer, append_number_to_here
    xx set_size_of_function_body

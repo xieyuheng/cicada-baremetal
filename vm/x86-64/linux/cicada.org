@@ -597,7 +597,7 @@
    hereUnInitializedData  equ alignTo16InMemoryMap
    #+end_src
 ** ASCII
-   #+begin_src fasm :tangle cicada.fasm 
+   #+begin_src fasm :tangle cicada.fasm
    ASCII_backspace = 8
    ASCII_tab       = 9
    ASCII_linefeed  = 10
@@ -849,7 +849,7 @@
 ** entry
    #+begin_src fasm :tangle cicada.fasm
    entry cicada_virtual_machine
-   segment readable executable writeable   
+   segment readable executable writeable
    #+end_src
 * ==================================================
 * include macro
@@ -1329,7 +1329,7 @@
 * C functions
 ** l
    #+begin_src fasm :tangle cicada.fasm
-   defCode "l", _l     
+   defCode "l", _l
       ccall l
       next
    #+end_src
@@ -1382,6 +1382,6 @@
    #+begin_src fasm :tangle cicada.fasm
    segment readable writeable
    TheLowestMemoryAddress:
-      rb TheSizeOfUserDataArea  
+      rb TheSizeOfUserDataArea
    #+end_src
 * ==================================================

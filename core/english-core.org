@@ -18,15 +18,15 @@
       Exit
     ; define-function
 
-    : define-variable (* byWordList *)
-      (* initial-value, WordList[address, the number of words] -- *)
-      head-of-word-list
+    : define-variable (* by word-string *)
+      (* initial-value, word-string[address, the number of words] -- *)
+      head-of-word-string
       define-variable,by-string
       Exit
     ; define-function
 
     : define-constant,by-string
-      (* initial-value, WordList[address, the number of words] -- *)
+      (* initial-value, word-string[address, the number of words] -- *)
       create-word-header
       Constant-explainer append-number-to-here
       swap (* leave wordHeader *)
@@ -35,9 +35,9 @@
       Exit
     ; define-function
 
-    : define-constant (* byWordList *)
-      (* initial-value, WordList[address, the number of words] -- *)
-      head-of-word-list
+    : define-constant (* by word-string *)
+      (* initial-value, word-string[address, the number of words] -- *)
+      head-of-word-string
       define-constant,by-string
       Exit
     ; define-function
@@ -217,10 +217,10 @@
       Exit
     ; define-function
 
-    : define-constant-string (* byWordList *)
+    : define-constant-string (* by word-string *)
       (* string[address, length],
-         wordList[address, the number of words] -- *)
-      head-of-word-list
+         word-string[address, the number of words] -- *)
+      head-of-word-string
       define-constant-string,by-string
       Exit
     ; define-function
@@ -245,8 +245,8 @@
     (* the following is a basic function
        that allow you to define recursive function with tail call optimization *)
     : define-recursive-function
-      (* wordList[address, the number of words] -- *)
-      tail-and-head-of-word-list
+      (* word-string[address, the number of words] -- *)
+      tail-and-head-of-word-string
       create-word-header-for-function
       set-size-of-function-body
       add-new-word-to-dictionary
@@ -264,37 +264,46 @@
        it is no big deal, for this function is only used once *)
 
     : append-word-description-to-here,with-if&then
-      (* wordList[address, the number of words] -- *)
-      dup zero? false?branch 3
+      (* word-string[address, the number of words] -- *)
+      dup2 string-full-of-blank? false?branch 3
         drop2 Exit
 
-      tail-and-head-of-word-list
+      tail-and-head-of-word-string
+
+      dup2 Bra:comment equal-string? false?branch 4
+        help:append-word-description-to-here,comment
+        append-word-description-to-here,with-if&then 
+        Exit
 
       dup2 Key-word:if equal-string? false?branch 12
         drop2
         literal false?branch append-number-to-here
         Here fetch xx|swap|x
         Zero append-number-to-here (* leave a place *)
-        append-word-description-to-here,with-if&then Exit
+        append-word-description-to-here,with-if&then 
+        Exit
 
       dup2 Key-word:then equal-string? false?branch 13
         drop2
         x|swap|xx
         Here fetch over -  Cell-width /
         swap save
-        append-word-description-to-here,with-if&then Exit
+        append-word-description-to-here,with-if&then  
+        Exit
 
       dup2 string-denote-integer? false?branch 6
         string->integer,with-error drop append-number-to-here
-        append-word-description-to-here,with-if&then Exit
+        append-word-description-to-here,with-if&then 
+        Exit
 
         find word-link->word-explainer append-number-to-here
-        append-word-description-to-here,with-if&then Exit
+        append-word-description-to-here,with-if&then 
+        Exit
     ; define-recursive-function
 
     : define-recursive-function,with-if&then
-      (* wordList[address, the number of words] -- *)
-      tail-and-head-of-word-list
+      (* word-string[address, the number of words] -- *)
+      tail-and-head-of-word-string
       create-word-header-for-function
       set-size-of-function-body
       add-new-word-to-dictionary
@@ -339,12 +348,17 @@
     ; define-function
 
     : append-word-description-to-here
-      (* wordList[address, the number of words] -- *)
-      dup zero? if
+      (* word-string[address, the number of words] -- *)
+      dup2 string-full-of-blank? if
         drop2
         Exit
       then
-      tail-and-head-of-word-list
+      tail-and-head-of-word-string
+      dup2 Bra:comment equal-string? if
+        help:append-word-description-to-here,comment
+        append-word-description-to-here
+        Exit
+      then
       dup2 Key-word:if equal-string? if
         help:append-word-description-to-here,if
         append-word-description-to-here
@@ -379,8 +393,8 @@
     (* redefine define-recursive-function & define-function *)
 
     : define-function
-      (* wordList[address, the number of words] -- *)
-      tail-and-head-of-word-list
+      (* word-string[address, the number of words] -- *)
+      tail-and-head-of-word-string
       create-word-header-for-function
       set-size-of-function-body
       xx|swap|x
@@ -391,8 +405,8 @@
     ; define-function
 
     : define-recursive-function
-      (* wordList[address, the number of words] -- *)
-      tail-and-head-of-word-list
+      (* word-string[address, the number of words] -- *)
+      tail-and-head-of-word-string
       create-word-header-for-function
       set-size-of-function-body
       add-new-word-to-dictionary
@@ -1310,13 +1324,13 @@
     2. there will be syntax-check after the implementation of ``list''
 *** implementation
     #+begin_src cicada :tangle english-core.cicada
-    : print-word-list (* WordList[address, the number of words] -- *)
-      dup zero? if
+    : print-word-list (* word-string[address, the number of words] -- *)
+      dup2 string-full-of-blank? if
         drop2
         cr Exit
       then
       Three write-some-space
-      tail-and-head-of-word-list print-string cr
+      tail-and-head-of-word-string print-string cr
       print-word-list
       Exit
     ; define-recursive-function
@@ -1325,7 +1339,7 @@
     :" an error occurs!
     append-word-description-to-here said:
        ``I am a tail-recursive-function.
-         My function-type is (* WordList[address, the number of words] -- *)
+         My function-type is (* word-string[address, the number of words] -- *)
          `define-recursive-function' and `define-function' call me.
          The following word is undefined.
          I will print the rest of the Word-list and call debuger.''
@@ -1343,12 +1357,17 @@
 
 
     : append-word-description-to-here
-      (* WordList[address, the number of words] -- *)
-      dup zero? if
+      (* word-string[address, the number of words] -- *)
+      dup2 string-full-of-blank? if
         drop2
         Exit
       then
-      tail-and-head-of-word-list
+      tail-and-head-of-word-string
+      dup2 Bra:comment equal-string? if
+        help:append-word-description-to-here,comment
+        append-word-description-to-here
+        Exit
+      then
       dup2 Key-word:if equal-string? if
         help:append-word-description-to-here,if
         append-word-description-to-here
@@ -1393,8 +1412,8 @@
 
 
     : define-function
-      (* wordList[address, the number of words] -- *)
-      tail-and-head-of-word-list
+      (* word-string[address, the number of words] -- *)
+      tail-and-head-of-word-string
       create-word-header-for-function
       set-size-of-function-body
       xx|swap|x
@@ -1405,45 +1424,15 @@
     ; define-function
 
     : define-recursive-function
-      (* wordList[address, the number of words] -- *)
-      tail-and-head-of-word-list
+      (* word-string[address, the number of words] -- *)
+      tail-and-head-of-word-string
       create-word-header-for-function
       set-size-of-function-body
       add-new-word-to-dictionary
       Function-body-explainer append-number-to-here
       append-word-description-to-here
       Exit
-    ; define-function
-
-    (*
-     ,* (\* wordy version for testing *\)
-     ,* : define-function
-     ,*   (\* wordList[address, the number of words] -- *\)
-     ,*   tail-and-head-of-word-list
-     ,*     dup2 print-string
-     ,*     'newline' write-char
-     ,*   create-word-header-for-function
-     ,*   set-size-of-function-body
-     ,*   xx|swap|x
-     ,*   Function-body-explainer append-number-to-here
-     ,*   append-word-description-to-here
-     ,*   add-new-word-to-dictionary
-     ,*   Exit
-     ,* ; define-function
-     ,*
-     ,* : define-recursive-function
-     ,*   (\* wordList[address, the number of words] -- *\)
-     ,*   tail-and-head-of-word-list
-     ,*     dup2 print-string
-     ,*     'newline' write-char
-     ,*   create-word-header-for-function
-     ,*   set-size-of-function-body
-     ,*   add-new-word-to-dictionary
-     ,*   Function-body-explainer append-number-to-here
-     ,*   append-word-description-to-here
-     ,*   Exit
-     * ; define-function
-     *)
+    ; define-function    
     #+end_src
 * hash
 ** note
@@ -1742,9 +1731,9 @@
       if 2 is setted to a symbol, this symbol is a pair like data type *)
 
    : define-data-type
-     (* wordList[address, the number of words] -- *)
+     (* word-string[address, the number of words] -- *)
      dup2
-       head-of-word-list
+       head-of-word-string
        string-hash->index
        dup
          index->address One swap save
@@ -1754,9 +1743,9 @@
    ; define-function
 
    : define-pair-like-data-type
-     (* wordList[address, the number of words] -- *)
+     (* word-string[address, the number of words] -- *)
      dup2
-       head-of-word-list
+       head-of-word-string
        string-hash->index
        dup
          index->address Two swap save
@@ -2613,8 +2602,8 @@
     ; define-function
 
     : define
-      (* [value, type], wordList[address, the number of words] -- *)
-      head-of-word-list
+      (* [value, type], word-string[address, the number of words] -- *)
+      head-of-word-string
       define,by-string
       Exit
     ; define-function
@@ -6541,7 +6530,7 @@
 
     : defineLambda,byString
       (* [value, type], wordlist[address, number of words] -- *)
-      head-of-word-list
+      head-of-word-string
       defineLambda,byString
       Exit
     ; define-function

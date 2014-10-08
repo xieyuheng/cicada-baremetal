@@ -360,47 +360,6 @@
 ** string->line-dali
    as a parser of fundamental-mode
    #+begin_src cicada
-   : find-char-address
-     (* char, [address, length] -- address or -1 *)
-     dup zero? if
-       drop2 drop
-       One negate
-       Exit
-     then
-     tailAndHeadOfString
-     x|over|xxx == if
-       drop swap drop
-       sub1 Exit
-     then
-     find-char-address
-     Exit
-   ; defineRecursiveFunction
-
-   : find-char-index
-     (* char, [address, length] -- index or -1 *)
-     (* index start from Zero *)
-     over
-     xxx|swap|x
-     find-char-address
-     dup Zero < if
-       swap drop Exit
-     then
-     swap -
-     Exit
-   ; define-function
-
-
-   (* little test:
-    ,* 'k' s" k" find-char-index . (\* 0 *\) cr
-    ,* 'k' s" kkk" find-char-index . (\* 0 *\) cr
-    ,* 'k' s" skkk" find-char-index . (\* 1 *\) cr
-    ,* 'k' s"  kkk" find-char-index . (\* 1 *\) cr
-    ,* 'k' s" 0123456789k" find-char-index . (\* 10 *\) cr
-    ,* 'k' s" 0123456789" find-char-index . (\* -1 *\) cr
-    ,*)
-
-
-
    : help,string->line-dali
      (* [address, length] -- head[address, <dali>] *)
      (* LambdaStack:: [address, <dali>] -- *)
