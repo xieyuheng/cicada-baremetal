@@ -40,306 +40,306 @@
   #+end_src
 * terminal
 ** esc
-#+begin_src cicada
-(*
-   esc%            Start sequence selecting character set
-   esc%@                      Select default (ISO 646 / ISO 8859-1)
-   esc%G                      Select UTF-8
-   esc%8                      Select UTF-8 (obsolete)
+   #+begin_src cicada
+   (*
+      esc%            Start sequence selecting character set
+      esc%@                      Select default (ISO 646 / ISO 8859-1)
+      esc%G                      Select UTF-8
+      esc%8                      Select UTF-8 (obsolete)
 
-   esc(            Start sequence defining G0 character set
-   esc(B                      Select default (ISO 8859-1 mapping)
-   esc(0                      Select VT100 graphics mapping
-   esc(U                      Select null mapping - straight to character ROM
-   esc(K                      Select user mapping - the map that is loaded by the utility mapscrn(8).
+      esc(            Start sequence defining G0 character set
+      esc(B                      Select default (ISO 8859-1 mapping)
+      esc(0                      Select VT100 graphics mapping
+      esc(U                      Select null mapping - straight to character ROM
+      esc(K                      Select user mapping - the map that is loaded by the utility mapscrn(8).
 
-   esc)            Start sequence defining G1 (followed by one of B, 0, U, K, as above).
+      esc)            Start sequence defining G1 (followed by one of B, 0, U, K, as above).
 
- ,*)
+    ,*)
 
 
-(*
- ,* 'esc' writeChar  'c' writeChar  (\* Reset *\)
- ,* 'esc' writeChar  'M' writeChar  (\* Reverse linefeed *\)
- ,*)
+   (*
+    ,* 'esc' writeChar  'c' writeChar  (\* Reset *\)
+    ,* 'esc' writeChar  'M' writeChar  (\* Reverse linefeed *\)
+    ,*)
 
-: esc[ (* -- *)
-  'esc' writeChar '[' writeChar Exit
-; define-function
+   : esc[ (* -- *)
+     'esc' writeChar '[' writeChar Exit
+   ; define-function
 
-: crazy-E (* -- *)
-  (* screen alignment test - fill screen with E's *)
-  'esc' writeChar '#' writeChar '8' writeChar  Exit
-; define-function
-#+end_src
+   : crazy-E (* -- *)
+     (* screen alignment test - fill screen with E's *)
+     'esc' writeChar '#' writeChar '8' writeChar  Exit
+   ; define-function
+   #+end_src
 ** move cursor
-#+begin_src cicada
-: save-cursor-location (* -- *)
-  (* esc[s or esc7 *)
-  esc[ 's' writeChar Exit
-; define-function
+   #+begin_src cicada
+   : save-cursor-location (* -- *)
+     (* esc[s or esc7 *)
+     esc[ 's' writeChar Exit
+   ; define-function
 
-: fetch-cursor-location (* -- *)
-  (* esc[u or esc8 *)
-  esc[ 'u' writeChar Exit
-; define-function
-
-
-
-: move-cursor-up (* number -- *)
-  (* esc[_A *)
-  esc[  writeDecNumber  'A' writeChar  Exit
-; define-function
-
-: move-cursor-down (* number -- *)
-  (* esc[_B or esc[_e *)
-  esc[  writeDecNumber  'B' writeChar  Exit
-; define-function
-
-: move-cursor-right (* number -- *)
-  (* esc[_C or esc[_a *)
-  esc[  writeDecNumber  'C' writeChar  Exit
-; define-function
-
-: move-cursor-left (* number -- *)
-  (* esc[_D *)
-  esc[  writeDecNumber  'D' writeChar  Exit
-; define-function
-
-
-(* to the following two functions,
-   Zero as arg is the same as One *)
-: move-cursor-down-&-to-the-begin-of-line (* number -- *)
-  (* esc[_E *)
-  esc[  writeDecNumber  'E' writeChar  Exit
-; define-function
-
-: move-cursor-up-&-to-the-begin-of-line (* number -- *)
-  (* esc[_F *)
-  esc[  writeDecNumber  'F' writeChar  Exit
-; define-function
+   : fetch-cursor-location (* -- *)
+     (* esc[u or esc8 *)
+     esc[ 'u' writeChar Exit
+   ; define-function
 
 
 
-(* the following indexes are begin at 1 *)
+   : move-cursor-up (* number -- *)
+     (* esc[_A *)
+     esc[  writeDecNumber  'A' writeChar  Exit
+   ; define-function
 
-: move-cursor-to-col (* col-index -- *)
-  (* esc[_` or esc[_G *)
-  esc[  writeDecNumber  '`' writeChar  Exit
-; define-function
+   : move-cursor-down (* number -- *)
+     (* esc[_B or esc[_e *)
+     esc[  writeDecNumber  'B' writeChar  Exit
+   ; define-function
 
-: move-cursor-to-row (* row-index -- *)
-  (* esc[_d *)
-  esc[  writeDecNumber  'd' writeChar  Exit
-; define-function
+   : move-cursor-right (* number -- *)
+     (* esc[_C or esc[_a *)
+     esc[  writeDecNumber  'C' writeChar  Exit
+   ; define-function
 
-: move-cursor-to-row-&-col (* row-index, col-index -- *)
-  (* esc[_;_H or esc[_;_f *)
-  esc[
-  swap writeDecNumber  ';' writeChar
-  writeDecNumber  'H' writeChar
-  Exit
-; define-function
-#+end_src
+   : move-cursor-left (* number -- *)
+     (* esc[_D *)
+     esc[  writeDecNumber  'D' writeChar  Exit
+   ; define-function
+
+
+   (* to the following two functions,
+      Zero as arg is the same as One *)
+   : move-cursor-down-&-to-the-begin-of-line (* number -- *)
+     (* esc[_E *)
+     esc[  writeDecNumber  'E' writeChar  Exit
+   ; define-function
+
+   : move-cursor-up-&-to-the-begin-of-line (* number -- *)
+     (* esc[_F *)
+     esc[  writeDecNumber  'F' writeChar  Exit
+   ; define-function
+
+
+
+   (* the following indexes are begin at 1 *)
+
+   : move-cursor-to-col (* col-index -- *)
+     (* esc[_` or esc[_G *)
+     esc[  writeDecNumber  '`' writeChar  Exit
+   ; define-function
+
+   : move-cursor-to-row (* row-index -- *)
+     (* esc[_d *)
+     esc[  writeDecNumber  'd' writeChar  Exit
+   ; define-function
+
+   : move-cursor-to-row-&-col (* row-index, col-index -- *)
+     (* esc[_;_H or esc[_;_f *)
+     esc[
+     swap writeDecNumber  ';' writeChar
+     writeDecNumber  'H' writeChar
+     Exit
+   ; define-function
+   #+end_src
 ** erase & delete
-#+begin_src cicada
-(* the position of the cursor
- ,* is also as an argument of the following functions
- ,* but the cursor do not move when these functions are executed
- ,*)
+   #+begin_src cicada
+   (* the position of the cursor
+    ,* is also as an argument of the following functions
+    ,* but the cursor do not move when these functions are executed
+    ,*)
 
-: erase-chars (* number -- *)
-  (* esc[_X *)
-  esc[  writeDecNumber  'X' writeChar  Exit
-; define-function
-
-
-
-: delete-chars (* number -- *)
-  (* esc[_P *)
-  esc[  writeDecNumber  'P' writeChar  Exit
-; define-function
-
-: delete-lines (* number -- *)
-  (* esc[_M *)
-  esc[  writeDecNumber  'M' writeChar  Exit
-; define-function
+   : erase-chars (* number -- *)
+     (* esc[_X *)
+     esc[  writeDecNumber  'X' writeChar  Exit
+   ; define-function
 
 
 
-: erase-half-screen-to-end (* -- *)
-  (* esc[0J *)
-  esc[ '0' writeChar 'J' writeChar  Exit
-; define-function
+   : delete-chars (* number -- *)
+     (* esc[_P *)
+     esc[  writeDecNumber  'P' writeChar  Exit
+   ; define-function
 
-: erase-half-screen-to-start (* -- *)
-  (* esc[1J *)
-  esc[ '1' writeChar 'J' writeChar  Exit
-; define-function
-
-: erase-screen (* -- *)
-  (* esc[2J *)
-  esc[ '2' writeChar 'J' writeChar  Exit
-; define-function
+   : delete-lines (* number -- *)
+     (* esc[_M *)
+     esc[  writeDecNumber  'M' writeChar  Exit
+   ; define-function
 
 
 
-: erase-half-line-to-end (* -- *)
-  (* esc[0K *)
-  esc[ '0' writeChar 'K' writeChar  Exit
-; define-function
+   : erase-half-screen-to-end (* -- *)
+     (* esc[0J *)
+     esc[ '0' writeChar 'J' writeChar  Exit
+   ; define-function
 
-: erase-half-line-to-start (* -- *)
-  (* esc[1K *)
-  esc[ '1' writeChar 'K' writeChar  Exit
-; define-function
+   : erase-half-screen-to-start (* -- *)
+     (* esc[1J *)
+     esc[ '1' writeChar 'J' writeChar  Exit
+   ; define-function
 
-: erase-line (* -- *)
-  (* esc[2K *)
-  esc[ '2' writeChar 'K' writeChar  Exit
-; define-function
-#+end_src
+   : erase-screen (* -- *)
+     (* esc[2J *)
+     esc[ '2' writeChar 'J' writeChar  Exit
+   ; define-function
+
+
+
+   : erase-half-line-to-end (* -- *)
+     (* esc[0K *)
+     esc[ '0' writeChar 'K' writeChar  Exit
+   ; define-function
+
+   : erase-half-line-to-start (* -- *)
+     (* esc[1K *)
+     esc[ '1' writeChar 'K' writeChar  Exit
+   ; define-function
+
+   : erase-line (* -- *)
+     (* esc[2K *)
+     esc[ '2' writeChar 'K' writeChar  Exit
+   ; define-function
+   #+end_src
 ** set*
-#+begin_src cicada
-(* the default of the following three are `off' *)
+   #+begin_src cicada
+   (* the default of the following three are `off' *)
 
-: set-display-mode,to-display-control-chars (* -- *)
-  (* esc[3h *)
-  esc[ '3' writeChar 'h' writeChar  Exit
-; define-function
+   : set-display-mode,to-display-control-chars (* -- *)
+     (* esc[3h *)
+     esc[ '3' writeChar 'h' writeChar  Exit
+   ; define-function
 
-: set-display-mode,to-insert-mode
-  (* esc[4h *)
-  esc[ '4' writeChar 'h' writeChar  Exit
-; define-function
+   : set-display-mode,to-insert-mode
+     (* esc[4h *)
+     esc[ '4' writeChar 'h' writeChar  Exit
+   ; define-function
 
-: set-display-mode,to-auto-follow-echo
-  (* esc[20h *)
-  esc[ '2' writeChar '0' writeChar 'h' writeChar  Exit
-; define-function
-
-
-
-: set-scrolling-row-region (* top, bottom -- *)
-  (* esc[_;_r *)
-  (* the cursor will be set to 1,1 after then *)
-  esc[
-  swap  writeDecNumber ';' writeChar
-  writeDecNumber 'r' writeChar
-  Exit
-; define-function
+   : set-display-mode,to-auto-follow-echo
+     (* esc[20h *)
+     esc[ '2' writeChar '0' writeChar 'h' writeChar  Exit
+   ; define-function
 
 
 
-: set-display-attribute (* number -- *)
-  (* esc[_m *)
-  esc[ writeDecNumber 'm' writeChar Exit
-; define-function
-
-0  : DisplayAttribute,set,all-to-default ; defineConst
-
-1  : DisplayAttribute,set,bold ; defineConst
-22 : DisplayAttribute,off,bold ; defineConst
-
-3  : DisplayAttribute,set,italicized ; defineConst
-23 : DisplayAttribute,off,italicized ; defineConst
-
-2  : DisplayAttribute,set,half-bright ; defineConst
-21 : DisplayAttribute,off,half-bright ; defineConst
-(* >< no use in xterm or urxvt ??? *)
-
-4  : DisplayAttribute,set,underscore  ; defineConst
-24 : DisplayAttribute,off,underscore  ; defineConst
-(* simulated with color on a color display
-   the colors used to simulate half-bright or underline are set using esc]___ *)
-
-5  : DisplayAttribute,set,blink ; defineConst
-25 : DisplayAttribute,off,blink ; defineConst
-
-7  : DisplayAttribute,set,reverse-color ; defineConst
-27 : DisplayAttribute,off,reverse-color ; defineConst
-
-8  : DisplayAttribute,set,hidden ; defineConst
-28 : DisplayAttribute,off,hidden ; defineConst
+   : set-scrolling-row-region (* top, bottom -- *)
+     (* esc[_;_r *)
+     (* the cursor will be set to 1,1 after then *)
+     esc[
+     swap  writeDecNumber ';' writeChar
+     writeDecNumber 'r' writeChar
+     Exit
+   ; define-function
 
 
-(*
- ,* 10
- ,* reset selected mapping, display control flag, and toggle meta flag (ECMA-48 says "primary font").
- ,* 11
- ,* select null mapping, set display control flag, reset toggle meta flag (ECMA-48 says "first alternate font").
- ,* 12
- ,* select null mapping, set display control flag, set toggle meta flag (ECMA-48 says "second alternate font").
- ,*
- ,* The toggle meta flag causes the high bit of a byte to be toggled before the mapping table translation is done.
- ,*)
+
+   : set-display-attribute (* number -- *)
+     (* esc[_m *)
+     esc[ writeDecNumber 'm' writeChar Exit
+   ; define-function
+
+   0  : DisplayAttribute,set,all-to-default ; defineConst
+
+   1  : DisplayAttribute,set,bold ; defineConst
+   22 : DisplayAttribute,off,bold ; defineConst
+
+   3  : DisplayAttribute,set,italicized ; defineConst
+   23 : DisplayAttribute,off,italicized ; defineConst
+
+   2  : DisplayAttribute,set,half-bright ; defineConst
+   21 : DisplayAttribute,off,half-bright ; defineConst
+   (* >< no use in xterm or urxvt ??? *)
+
+   4  : DisplayAttribute,set,underscore  ; defineConst
+   24 : DisplayAttribute,off,underscore  ; defineConst
+   (* simulated with color on a color display
+      the colors used to simulate half-bright or underline are set using esc]___ *)
+
+   5  : DisplayAttribute,set,blink ; defineConst
+   25 : DisplayAttribute,off,blink ; defineConst
+
+   7  : DisplayAttribute,set,reverse-color ; defineConst
+   27 : DisplayAttribute,off,reverse-color ; defineConst
+
+   8  : DisplayAttribute,set,hidden ; defineConst
+   28 : DisplayAttribute,off,hidden ; defineConst
 
 
-(* color test:
+   (*
+    ,* 10
+    ,* reset selected mapping, display control flag, and toggle meta flag (ECMA-48 says "primary font").
+    ,* 11
+    ,* select null mapping, set display control flag, reset toggle meta flag (ECMA-48 says "first alternate font").
+    ,* 12
+    ,* select null mapping, set display control flag, set toggle meta flag (ECMA-48 says "second alternate font").
+    ,*
+    ,* The toggle meta flag causes the high bit of a byte to be toggled before the mapping table translation is done.
+    ,*)
 
- ,* (\* foreground :: *\)
- ,* 30 esc[_m black
- ,* 31 esc[_m red
- ,* 32 esc[_m green
- ,* 33 esc[_m brown
- ,* 34 esc[_m blue
- ,* 35 esc[_m magenta
- ,* 36 esc[_m cyan
- ,* 37 esc[_m white
- ,* 38 esc[_m default-color & underscore on
- ,* 39 esc[_m default-color & underscore off
- ,* (\* 16-color foreground :: *\)
- ,* 90 esc[_m black
- ,* 91 esc[_m red
- ,* 92 esc[_m green
- ,* 93 esc[_m yellow
- ,* 94 esc[_m blue
- ,* 95 esc[_m magenta
- ,* 96 esc[_m cyan
- ,* 97 esc[_m white
 
- ,* (\* background :: *\)
- ,* 40 esc[_m black
- ,* 41 esc[_m red
- ,* 42 esc[_m green
- ,* 43 esc[_m yellow
- ,* 44 esc[_m blue
- ,* 45 esc[_m magenta
- ,* 46 esc[_m cyan
- ,* 47 esc[_m white
- ,* 49 esc[_m default color
- ,* (\* 16-color background :: *\)
- ,* 100 esc[_m black
- ,* 101 esc[_m red
- ,* 102 esc[_m green
- ,* 103 esc[_m yellow
- ,* 104 esc[_m blue
- ,* 105 esc[_m magenta
- * 106 esc[_m cyan
- * 107 esc[_m white
+   (* color test:
 
- *)
-#+end_src
+    ,* (\* foreground :: *\)
+    ,* 30 esc[_m black
+    ,* 31 esc[_m red
+    ,* 32 esc[_m green
+    ,* 33 esc[_m brown
+    ,* 34 esc[_m blue
+    ,* 35 esc[_m magenta
+    ,* 36 esc[_m cyan
+    ,* 37 esc[_m white
+    ,* 38 esc[_m default-color & underscore on
+    ,* 39 esc[_m default-color & underscore off
+    ,* (\* 16-color foreground :: *\)
+    ,* 90 esc[_m black
+    ,* 91 esc[_m red
+    ,* 92 esc[_m green
+    ,* 93 esc[_m yellow
+    ,* 94 esc[_m blue
+    ,* 95 esc[_m magenta
+    ,* 96 esc[_m cyan
+    ,* 97 esc[_m white
+
+    ,* (\* background :: *\)
+    ,* 40 esc[_m black
+    ,* 41 esc[_m red
+    ,* 42 esc[_m green
+    ,* 43 esc[_m yellow
+    ,* 44 esc[_m blue
+    ,* 45 esc[_m magenta
+    ,* 46 esc[_m cyan
+    ,* 47 esc[_m white
+    ,* 49 esc[_m default color
+    ,* (\* 16-color background :: *\)
+    ,* 100 esc[_m black
+    ,* 101 esc[_m red
+    ,* 102 esc[_m green
+    ,* 103 esc[_m yellow
+    ,* 104 esc[_m blue
+    ,* 105 esc[_m magenta
+    * 106 esc[_m cyan
+    * 107 esc[_m white
+
+    *)
+   #+end_src
 ** test
-#+begin_src cicada
-:" cicada language is interesting ^_^"
-: String,cicada-language-is-interesting ; defineConstString
+   #+begin_src cicada
+   :" cicada language is interesting ^_^"
+   : String,cicada-language-is-interesting ; defineConstString
 
-: cicada-language-is-interesting (* -- *)
-  erase-screen
-  Six Six move-cursor-to-row-&-col
-    literal 93 set-display-attribute (* foreground yellow *)
-    DisplayAttribute,set,blink set-display-attribute
-    DisplayAttribute,set,underscore set-display-attribute
-  String,cicada-language-is-interesting printString cr
-    DisplayAttribute,off,underscore set-display-attribute
-    DisplayAttribute,off,blink set-display-attribute
-    literal 39 set-display-attribute (* foreground default-color *)
-  Exit
-; define-function
+   : cicada-language-is-interesting (* -- *)
+     erase-screen
+     Six Six move-cursor-to-row-&-col
+       literal 93 set-display-attribute (* foreground yellow *)
+       DisplayAttribute,set,blink set-display-attribute
+       DisplayAttribute,set,underscore set-display-attribute
+     String,cicada-language-is-interesting printString cr
+       DisplayAttribute,off,underscore set-display-attribute
+       DisplayAttribute,off,blink set-display-attribute
+       literal 39 set-display-attribute (* foreground default-color *)
+     Exit
+   ; define-function
 
-cicada-language-is-interesting
-#+end_src
+   cicada-language-is-interesting
+   #+end_src
 * >< cicada-editor
 ** note
    1. the loop :
@@ -357,7 +357,7 @@ cicada-language-is-interesting
       one for display
    3. key binding :
       every key can be bound to any function
-** string->line-dalin
+** string->line-dali
    as a parser of fundamental-mode
    #+begin_src cicada
    : find-char-address
@@ -401,15 +401,15 @@ cicada-language-is-interesting
 
 
 
-   : help,string->line-dalin
-     (* [address, length] -- head[address, <dalin>] *)
-     (* LambdaStack:: [address, <dalin>] -- *)
+   : help,string->line-dali
+     (* [address, length] -- head[address, <dali>] *)
+     (* LambdaStack:: [address, <dali>] -- *)
      dup zero? if
        getBack
        dup2
          cdr null [cons,cdr]!
          drop2
-       head<-dalin
+       head<-dali
        Exit
      then
      dup2
@@ -422,14 +422,14 @@ cicada-language-is-interesting
        xx|tuck|x
        swap copyByteString
        <substring>
-       cons drop <dalin>
+       cons drop <dali>
        [car,cons]!
          cons null [cons,cdr]!
        [cons,cdr]!
        getBack
        xx|swap|xx
        ^_^
-       head<-dalin
+       head<-dali
        Exit
      then
      (* [address, length], index-of-linefeed *)
@@ -440,7 +440,7 @@ cicada-language-is-interesting
      (* [new address, new length], address, index-of-linefeed *)
      dup zero? if
        (* 'linefeed' is the 1st char of the string
-          so we meet an empty line, it will be stored as `null' in dalin *)
+          so we meet an empty line, it will be stored as `null' in dali *)
        drop2
        null
      else
@@ -450,7 +450,7 @@ cicada-language-is-interesting
        swap copyByteString
        <substring>
      then
-     cons drop <dalin>
+     cons drop <dali>
      [car,cons]!
        cons null [cons,cdr]!
      [cons,cdr]!
@@ -458,37 +458,37 @@ cicada-language-is-interesting
        xx|swap|xx
        ^_^
      ready
-     help,string->line-dalin
+     help,string->line-dali
      Exit
    ; defineRecursiveFunction
 
-   : string->line-dalin
-     (* [address, length] -- head[address, <dalin>] *)
-     (* which parses a string and return a dalin of substring
+   : string->line-dali
+     (* [address, length] -- head[address, <dali>] *)
+     (* which parses a string and return a dali of substring
         one substring denotes one line of text
-        empty line is stored as `null' in dalin *)
+        empty line is stored as `null' in dali *)
      null ready
-     help,string->line-dalin
+     help,string->line-dali
      Exit
    ; define-function
    #+end_src
-** test: string->line-dalin
+** test: string->line-dali
    #+begin_src cicada
-   s" kkk" string->line-dalin
+   s" kkk" string->line-dali
    car printTypeTag (* <substring> *) cr
    dup getLengthOfString
    printString (* kkk *) cr
 
    s" kkk
-   " string->line-dalin
-   dup2 dalin*? . (* 1 *) cr
+   " string->line-dali
+   dup2 dali*? . (* 1 *) cr
    car printTypeTag (* <substring> *) cr
    dup getLengthOfString
    printString (* kkk *) cr
 
    s" kkk
-   aaa" string->line-dalin
-   dup2 dalin*? . (* 0 *) cr
+   aaa" string->line-dali
+   dup2 dali*? . (* 0 *) cr
    dup2
    car printTypeTag (* <substring> *) cr
    dup getLengthOfString
@@ -500,8 +500,8 @@ cicada-language-is-interesting
 
    s" kkk
    aaa
-   " string->line-dalin
-   dup2 dalin*? . (* 0 *) cr
+   " string->line-dali
+   dup2 dali*? . (* 0 *) cr
    dup2
    car printTypeTag (* <substring> *) cr
    dup getLengthOfString
@@ -915,4 +915,3 @@ cicada-language-is-interesting
   : t tryREDL Exit ; define-function
   #+end_src
 * ==================================================
-

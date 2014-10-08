@@ -34,7 +34,7 @@
           It said on the door
           "Please don't spit on the floor"
       So he carefully spat on the ceiling
-   ---
+   ------
    text: >
       Wrapped text
       will be folded
@@ -43,7 +43,7 @@
 
       Blank lines  denote
       paragraph breaks
-   ---
+   ------
    #+end_src
 ** list
    #+begin_src cicada 

@@ -1,58 +1,39 @@
 ;; if you want to extend cicada in assembly,
 ;; the following four registers must not be used
 ;; =================================
-define NextWordPointer      r15
-define ReturnStackPointer   r14
-define ArgumentStackPointer r13
-define GreyPairStackPointer r12
+define Next_word_pointer       r15
+define Return_stack_pointer    r14
+define Argument_stack_pointer  r13
+define Grey_pair_stack_pointer r12
 ;; =================================
 
-define ExplainerPointer     rax
-define TemporaryRegister    r11
-define TemporaryRegister2   r10
+define Explainer_pointer     rax
+define Temporary_register    r11
+define Temporary_register2   r10
 
 
-macro pushReturnStack Register {
-       sub ReturnStackPointer, CellWidth
-       mov [ReturnStackPointer], Register
+macro push_return_stack Register {
+       sub Return_stack_pointer, Cell_width
+       mov [Return_stack_pointer], Register
        }
-macro popReturnStack Register {
-       mov Register, [ReturnStackPointer]
-       add ReturnStackPointer, CellWidth
-       }
-
-macro pushArgumentStack Register {
-       sub ArgumentStackPointer, CellWidth
-       mov [ArgumentStackPointer], Register
-       }
-macro popArgumentStack Register {
-       mov Register, [ArgumentStackPointer]
-       add ArgumentStackPointer, CellWidth
+macro pop_return_stack Register {
+       mov Register, [Return_stack_pointer]
+       add Return_stack_pointer, Cell_width
        }
 
-
-;; macro pushReturnStack Register {
-;;    lea ReturnStackPointer, [ReturnStackPointer - CellWidth]
-;;    mov [ReturnStackPointer], Register
-;;    }
-;; macro popReturnStack Register {
-;;    mov Register, [ReturnStackPointer]
-;;    lea ReturnStackPointer, [ReturnStackPointer + CellWidth]
-;;    }
-
-;; macro pushArgumentStack Register {
-;;    lea ArgumentStackPointer, [ArgumentStackPointer - CellWidth]
-;;    mov [ArgumentStackPointer], Register
-;;    }
-;; macro popArgumentStack Register {
-;;    mov Register, [ArgumentStackPointer]
-;;    lea ArgumentStackPointer, [ArgumentStackPointer + CellWidth]
-;;    }
+macro push_argument_stack Register {
+       sub Argument_stack_pointer, Cell_width
+       mov [Argument_stack_pointer], Register
+       }
+macro pop_argument_stack Register {
+       mov Register, [Argument_stack_pointer]
+       add Argument_stack_pointer, Cell_width
+       }
 ;; notations :
 ;; 1. ``the dictionary'' as a datastructure is a single-linked-list
 ;; 2. an entry in ``the dictionary'' is ``a word''
 ;; 3. ``a word'' as a datastructure looks like the following :
-;;       (unit : CellWidth)
+;;       (unit : Cell_width)
 ;;    ||  1 : name-string-header-which-contains-the-length-of-name-string  ||
 ;;    ||  m : name-string  ||
 ;;    ||  1 : SizeOfFunctionBody  ||
@@ -76,19 +57,19 @@ macro popArgumentStack Register {
 
 
 ;; not matter what way you use to set :
-;;   [ExplainerPointer] == address-of-explainer (of a word you want to jump to)
+;;   [Explainer_pointer] == address-of-explainer (of a word you want to jump to)
 ;; then :
-;;   jmp qword[ExplainerPointer]
+;;   jmp qword[Explainer_pointer]
 ;; it will works just well !!!
 
 ;; specially, about ``next'',
 ;; the way we use to set :
-;;   [ExplainerPointer] == address-of-explainer (of a word you want to jump to)
+;;   [Explainer_pointer] == address-of-explainer (of a word you want to jump to)
 ;; is to find the address-of-explainer by :
-;;    NextWordPointer  == an address in a function-body
-;;   [NextWordPointer] == word-to-jump[explainer]
-;; so, NextWordPointer is all that ``next'' needed
-;; set [NextWordPointer] == word-to-jump[explainer]  correctly
+;;    Next_word_pointer  == an address in a function-body
+;;   [Next_word_pointer] == word-to-jump[explainer]
+;; so, Next_word_pointer is all that ``next'' needed
+;; set [Next_word_pointer] == word-to-jump[explainer]  correctly
 ;; then call ``next''
 ;; it will works just well !!!
 
@@ -102,20 +83,20 @@ macro popArgumentStack Register {
 macro next {
        local at_the_end_of_function_body
 
-       mov ExplainerPointer, [NextWordPointer]
-       add NextWordPointer, CellWidth
-       cmp dword[NextWordPointer], Exit
+       mov Explainer_pointer, [Next_word_pointer]
+       add Next_word_pointer, Cell_width
+       cmp dword[Next_word_pointer], Exit
        je at_the_end_of_function_body
-       cmp dword[NextWordPointer], 已矣
+       cmp dword[Next_word_pointer], 已矣
        je at_the_end_of_function_body
-       jmp qword[ExplainerPointer]
+       jmp qword[Explainer_pointer]
 at_the_end_of_function_body:
-       popReturnStack NextWordPointer
-       jmp qword[ExplainerPointer]
+       pop_return_stack Next_word_pointer
+       jmp qword[Explainer_pointer]
        }
        ;; maybe need more optimization,
-       ;; for the above ``popReturnStack NextWordPointer'' may be
-       ;; followed by ``pushReturnStack NextWordPointer'' (in explainFunctionBody)
+       ;; for the above ``pop_return_stack Next_word_pointer'' may be
+       ;; followed by ``push_return_stack Next_word_pointer'' (in explain_function_body)
        ;; ><><>< 其实在 写 16-bits 的版本的时候 我想到了做这个优化的方法
        ;; 但是现在我暂时没有时间把这些改动加进来
 
@@ -136,7 +117,7 @@ WordStringOf#Word:
 EndOfWordStringOf#Word:
 ;;--------------------------------------
 SizeOfFunctionBodyOf#Word:
-        xx (EndOfFunctionBodyOf#Word - Word)/CellWidth - 1
+        xx (EndOfFunctionBodyOf#Word - Word)/Cell_width - 1
 ;;--------------------------------------
 IdentificationOf#Word:
         xx IdentificationOf#Word
@@ -151,7 +132,7 @@ TypeOf#Word:
 AddressOfWordStringHeaderOf#Word:
         xx WordStringHeaderOf#Word
 ;;======================================
-Word:   xx explainFunctionBody
+Word:   xx explain_function_body
 ;;--------------------------------------
         ;; here follows a list of word[explainer]
         }
@@ -161,11 +142,11 @@ EndOfFunctionBodyOf#Word:
 
 
 ;; 1. if ``next'' meet ``Exit'',
-;;    ``next'' will ``popReturnStack NextWordPointer''
+;;    ``next'' will ``pop_return_stack Next_word_pointer''
 ;; 2. on the other hand,
-;;    explainFunctionBody is the only explainer
-;;    who ``pushReturnStack NextWordPointer''
-;; 3. so, it is these two functions, ``next'' and ``explainFunctionBody'',
+;;    explain_function_body is the only explainer
+;;    who ``push_return_stack Next_word_pointer''
+;; 3. so, it is these two functions, ``next'' and ``explain_function_body'',
 ;;    which handle the nested function calls
 
 
@@ -228,7 +209,7 @@ TypeOf#Word:
 AddressOfWordStringHeaderOf#Word:
         xx WordStringHeaderOf#Word
 ;;======================================
-Word:   xx explainVar
+Word:   xx explain_variable
 ;;--------------------------------------
         xx InitialValue
 ;;--------------------------------------
@@ -261,7 +242,7 @@ TypeOf#Word:
 AddressOfWordStringHeaderOf#Word:
         xx WordStringHeaderOf#Word
 ;;======================================
-Word:   xx explainConst
+Word:   xx explain_constant
 ;;--------------------------------------
         xx InitialValue
 ;;--------------------------------------
@@ -299,7 +280,7 @@ TypeOf#Word:
 AddressOfWordStringHeaderOf#Word:
         xx WordStringHeaderOf#Word
 ;;======================================
-Word:   xx explainConstString
+Word:   xx explain_constant_string
 ;;--------------------------------------
         xx (EndOfConstStringValueOf#Word - ConstStringValueOf#Word)
 ;;--------------------------------------

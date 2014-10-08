@@ -299,7 +299,7 @@
     append-word-description-to-here
     Exit
   then
-  dup2 string-denote-literal&branch? if
+  dup2 string-denote-literal-or-branch? if
     help:append-word-description-to-here,literal&branch
     append-word-description-to-here
     Exit
@@ -344,7 +344,6 @@
   dup literal branch            == if drop True Exit then
   dup literal zero?branch       == if drop True Exit then
   dup literal false?branch      == if drop True Exit then
-  dup literal not-false?branch  == if drop True Exit then
   drop False
   Exit
 ; define-function
@@ -1101,7 +1100,7 @@ append-word-description-to-here said:
     append-word-description-to-here
     Exit
   then
-  dup2 string-denote-literal&branch? if
+  dup2 string-denote-literal-or-branch? if
     help:append-word-description-to-here,literal&branch
     append-word-description-to-here
     Exit
@@ -4139,6 +4138,12 @@ symbol-REPL
  *     [address, <dali>] will be push to ArgumentStack
  *   when meet [address, <wodili>]
  *     [address, <wodili>] will be push to ArgumentStack
+ *)
+
+(*
+ * 下面的两个 函数是主要的辅助函数
+ * 它们不是术语函数范式
+ * 它们是 沿着 ``<-'' 方向 对 dali 做副作用
  *)
 
 

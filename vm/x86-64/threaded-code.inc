@@ -1,28 +1,28 @@
-defWord "basic-REPL", basicREPL
+defWord "basic-REPL", basic_REPL
        ;; (* unknown -- unknown *)
-       xx TheReturnStackTop, resetReturnStackPointer
-       xx TheArgumentStackTop, resetArgumentStackPointer
-       xx readWordForRuntime
-       xx executeWord
+       xx TheReturnStackTop, reset_return_stack_pointer
+       xx TheArgumentStackTop, reset_argument_stack_pointer
+       xx read_word_for_runtime
+       xx execute_word
        xx branch, -3
        ;; must not end with Exit here
-defWordEnd basicREPL
+defWordEnd basic_REPL
 
-defWord "execute-word", executeWord
+defWord "execute-word", execute_word
        ;; (* string[address, length] -- unknown *)
-       xx dup2, stringDenoteInteger?, false?branch, 4
-       xx   stringToInteger_withError, drop
+       xx dup2, string_denote_integer?, false?branch, 4
+       xx   string_to_integer__with_error, drop
        xx   Exit
        xx dup2, find, dup, zero?branch, 6
        xx   xxswapx, drop2
-       xx   wordLinkToWordExplainer, execute
+       xx   word_link_to_word_explainer, execute
        xx   Exit
        xx drop ;; drop zero
        xx Message_undefined_word, printString
        xx printString
        xx literal, ASCII_linefeed, writeChar
        xx Exit
-defWordEnd executeWord
+defWordEnd execute_word
 
 defConstString "Message:undefined-word", "   UNDEFINED WORD: ", Message_undefined_word
 defVar "Here",  0, Here
@@ -33,7 +33,7 @@ defVar "first-word-in-dictionary", LinkOfTheLatestWordInAssembly , FirstWordInDi
 ;;   NOT TheLatestWordInThisFile
 
 ;; ------------------------------------------
-defConst "Cell-width", CellWidth, TheCellWidth
+defConst "Cell-width", Cell_width, _Cell_width
 
 defConst "Zero",  0, Zero
 defConst "One",   1, One
@@ -50,7 +50,7 @@ defConst "Ten",  10, Ten
 defConst "False", 0, False
 defConst "True",  1, True
 ;; special key words are not functions
-;; but all about defineFunction is to use old functions to make new function
+;; but all about define_function is to use old functions to make new function
 ;; so, more appropriately,
 ;; when using ``literal'' or ``branch''
 ;; we are making new functions,
@@ -70,16 +70,16 @@ defConst "True",  1, True
 ;;    is definitely has no function-semantic.
 
 defCode "literal", literal
-   mov  rax, [NextWordPointer]
-   add  NextWordPointer, CellWidth
-   pushArgumentStack rax
-   cmp dword[NextWordPointer], Exit
+   mov  rax, [Next_word_pointer]
+   add  Next_word_pointer, Cell_width
+   push_argument_stack rax
+   cmp dword[Next_word_pointer], Exit
    je literal_meet_Exit
-   cmp dword[NextWordPointer], 已矣
+   cmp dword[Next_word_pointer], 已矣
    je literal_meet_Exit
    next
 literal_meet_Exit:
-   popReturnStack NextWordPointer
+   pop_return_stack Next_word_pointer
    next
 
 
@@ -87,39 +87,39 @@ defCode "branch", branch
    ;; usage(in assembly): xx branch, number
    ;; the number denotes an offset
    ;; the base point of the offset is the place where the number stored
-   ;; note that: in the function branch, [NextWordPointer] = offset
-   mov  TemporaryRegister, [NextWordPointer]
-   imul TemporaryRegister, CellWidth
-   add  NextWordPointer, TemporaryRegister
-   cmp dword[NextWordPointer], Exit
+   ;; note that: in the function branch, [Next_word_pointer] = offset
+   mov  Temporary_register, [Next_word_pointer]
+   imul Temporary_register, Cell_width
+   add  Next_word_pointer, Temporary_register
+   cmp dword[Next_word_pointer], Exit
    je branch_meet_Exit
-   cmp dword[NextWordPointer], 已矣
+   cmp dword[Next_word_pointer], 已矣
    je branch_meet_Exit
    next
 branch_meet_Exit:
-   popReturnStack NextWordPointer
+   pop_return_stack Next_word_pointer
    next
 
 
 defCode "zero?branch", zero?branch
    ;; ( n -- )
-   popArgumentStack rax
+   pop_argument_stack rax
    test rax, rax
    jnz zero?branch_toBranch
-   mov  TemporaryRegister, [NextWordPointer]
-   imul TemporaryRegister, CellWidth
-   add  NextWordPointer, TemporaryRegister
+   mov  Temporary_register, [Next_word_pointer]
+   imul Temporary_register, Cell_width
+   add  Next_word_pointer, Temporary_register
    jmp zero?branch_help_toBranch
 zero?branch_toBranch:
-   add NextWordPointer, CellWidth
+   add Next_word_pointer, Cell_width
 zero?branch_help_toBranch:
-   cmp dword[NextWordPointer], Exit
+   cmp dword[Next_word_pointer], Exit
    je zero?branch_meet_Exit
-   cmp dword[NextWordPointer], 已矣
+   cmp dword[Next_word_pointer], 已矣
    je zero?branch_meet_Exit
    next
 zero?branch_meet_Exit:
-   popReturnStack NextWordPointer
+   pop_return_stack Next_word_pointer
    next
 
 defCode "false?branch", false?branch
@@ -127,462 +127,420 @@ defCode "false?branch", false?branch
    ;; false?branch is identical to zero?branch
    ;; but we can not use defWord to define false?branch by false?branch
    ;; for it is a special key word
-   popArgumentStack rax
+   pop_argument_stack rax
    test rax, rax
    jnz false?branch_toBranch
-   mov  TemporaryRegister, [NextWordPointer]
-   imul TemporaryRegister, CellWidth
-   add  NextWordPointer, TemporaryRegister
+   mov  Temporary_register, [Next_word_pointer]
+   imul Temporary_register, Cell_width
+   add  Next_word_pointer, Temporary_register
    jmp false?branch_help_toBranch
 false?branch_toBranch:
-   add NextWordPointer, CellWidth
+   add Next_word_pointer, Cell_width
 false?branch_help_toBranch:
-   cmp dword[NextWordPointer], Exit
+   cmp dword[Next_word_pointer], Exit
    je false?branch_meet_Exit
-   cmp dword[NextWordPointer], 已矣
+   cmp dword[Next_word_pointer], 已矣
    je false?branch_meet_Exit
    next
 false?branch_meet_Exit:
-   popReturnStack NextWordPointer
-   next
-
-defCode "notFalse?branch", notFalse?branch
-   ;; ( n -- )
-   popArgumentStack rax
-   test rax, rax
-   jz notFalse?branch_toBranch
-   mov  TemporaryRegister, [NextWordPointer]
-   imul TemporaryRegister, CellWidth
-   add  NextWordPointer, TemporaryRegister
-   jmp notFalse?branch_help_toBranch
-notFalse?branch_toBranch:
-   add NextWordPointer, CellWidth
-notFalse?branch_help_toBranch:
-   cmp dword[NextWordPointer], Exit
-   je notFalse?branch_meet_Exit
-   cmp dword[NextWordPointer], 已矣
-   je notFalse?branch_meet_Exit
-   next
-notFalse?branch_meet_Exit:
-   popReturnStack NextWordPointer
+   pop_return_stack Next_word_pointer
    next
 defCode "即", 即
-   mov  rax, [NextWordPointer]
-   add  NextWordPointer, CellWidth
-   pushArgumentStack rax
-   cmp dword[NextWordPointer], Exit
+   mov  rax, [Next_word_pointer]
+   add  Next_word_pointer, Cell_width
+   push_argument_stack rax
+   cmp dword[Next_word_pointer], Exit
    je 即_meet_Exit
-   cmp dword[NextWordPointer], 已矣
+   cmp dword[Next_word_pointer], 已矣
    je 即_meet_Exit
    next
 即_meet_Exit:
-   popReturnStack NextWordPointer
+   pop_return_stack Next_word_pointer
    next
 
 defCode "转", 转
-   mov  TemporaryRegister, [NextWordPointer]
-   imul TemporaryRegister, CellWidth
-   add  NextWordPointer, TemporaryRegister
-   cmp dword[NextWordPointer], Exit
+   mov  Temporary_register, [Next_word_pointer]
+   imul Temporary_register, Cell_width
+   add  Next_word_pointer, Temporary_register
+   cmp dword[Next_word_pointer], Exit
    je 转_meet_Exit
-   cmp dword[NextWordPointer], 已矣
+   cmp dword[Next_word_pointer], 已矣
    je 转_meet_Exit
    next
 转_meet_Exit:
-   popReturnStack NextWordPointer
+   pop_return_stack Next_word_pointer
    next
 
 defCode "零则转", 零则转
    ;; ( n -- )
-   popArgumentStack rax
+   pop_argument_stack rax
    test rax, rax
    jnz 零则转_去转
-   mov  TemporaryRegister, [NextWordPointer]
-   imul TemporaryRegister, CellWidth
-   add  NextWordPointer, TemporaryRegister
+   mov  Temporary_register, [Next_word_pointer]
+   imul Temporary_register, Cell_width
+   add  Next_word_pointer, Temporary_register
    jmp 零则转_help_去转
 零则转_去转:
-   add NextWordPointer, CellWidth
+   add Next_word_pointer, Cell_width
 零则转_help_去转:
-   cmp dword[NextWordPointer], Exit
+   cmp dword[Next_word_pointer], Exit
    je 零则转_meet_Exit
-   cmp dword[NextWordPointer], 已矣
+   cmp dword[Next_word_pointer], 已矣
    je 零则转_meet_Exit
    next
 零则转_meet_Exit:
-   popReturnStack NextWordPointer
+   pop_return_stack Next_word_pointer
    next
 
 defCode "假则转", 假则转
    ;; ( n -- )
-   popArgumentStack rax
+   pop_argument_stack rax
    test rax, rax
    jnz 假则转_去转
-   mov  TemporaryRegister, [NextWordPointer]
-   imul TemporaryRegister, CellWidth
-   add  NextWordPointer, TemporaryRegister
+   mov  Temporary_register, [Next_word_pointer]
+   imul Temporary_register, Cell_width
+   add  Next_word_pointer, Temporary_register
    jmp 假则转_help_去转
 假则转_去转:
-   add NextWordPointer, CellWidth
+   add Next_word_pointer, Cell_width
 假则转_help_去转:
-   cmp dword[NextWordPointer], Exit
+   cmp dword[Next_word_pointer], Exit
    je 假则转_meet_Exit
-   cmp dword[NextWordPointer], 已矣
+   cmp dword[Next_word_pointer], 已矣
    je 假则转_meet_Exit
    next
 假则转_meet_Exit:
-   popReturnStack NextWordPointer
-   next
-
-defCode "非假则转", 非假则转
-   ;; ( n -- )
-   popArgumentStack rax
-   test rax, rax
-   jz 非假则转_去转
-   mov  TemporaryRegister, [NextWordPointer]
-   imul TemporaryRegister, CellWidth
-   add  NextWordPointer, TemporaryRegister
-   jmp 非假则转_help_去转
-非假则转_去转:
-   add NextWordPointer, CellWidth
-非假则转_help_去转:
-   cmp dword[NextWordPointer], Exit
-   je 非假则转_meet_Exit
-   cmp dword[NextWordPointer], 已矣
-   je 非假则转_meet_Exit
-   next
-非假则转_meet_Exit:
-   popReturnStack NextWordPointer
+   pop_return_stack Next_word_pointer
    next
 defCode "drop", drop
    ;; (* a -- *)
-   popArgumentStack rax
+   pop_argument_stack rax
    next
 
 defCode "drop2", drop2
    ;; (* a b -- *)
-   popArgumentStack rax
-   popArgumentStack rax
+   pop_argument_stack rax
+   pop_argument_stack rax
    next
 
 defCode "dup", dup
    ;; (* a -- a a *)
-   mov  rax, [ArgumentStackPointer]
-   pushArgumentStack rax
+   mov  rax, [Argument_stack_pointer]
+   push_argument_stack rax
    next
 
 defCode "dup2", dup2
    ;; (* a b -- a b a b *)
-   mov  rbx, [ArgumentStackPointer]
-   mov  rax, [ArgumentStackPointer + CellWidth]
-   pushArgumentStack rax
-   pushArgumentStack rbx
+   mov  rbx, [Argument_stack_pointer]
+   mov  rax, [Argument_stack_pointer + Cell_width]
+   push_argument_stack rax
+   push_argument_stack rbx
    next
 defCode "over", over
    ;; (* a b -- a b | a *)
-   mov  rax, [ArgumentStackPointer + CellWidth]
-   pushArgumentStack rax
+   mov  rax, [Argument_stack_pointer + Cell_width]
+   push_argument_stack rax
    next
 
 defCode "x|over|xx", xoverxx
    ;; (* a | b c -- a | b c | a *)
-   mov  rax, [ArgumentStackPointer + (2 * CellWidth)]
-   pushArgumentStack rax
+   mov  rax, [Argument_stack_pointer + (2 * Cell_width)]
+   push_argument_stack rax
    next
 
 defCode "xx|over|x", xxoverx
    ;; (* a b | c -- a b | c | a b *)
-   mov  rax, [ArgumentStackPointer + (2 * CellWidth)]
-   pushArgumentStack rax
-   mov  rax, [ArgumentStackPointer + (2 * CellWidth)] ;; not (1 * CellWidth)
-   pushArgumentStack rax
+   mov  rax, [Argument_stack_pointer + (2 * Cell_width)]
+   push_argument_stack rax
+   mov  rax, [Argument_stack_pointer + (2 * Cell_width)] ;; not (1 * Cell_width)
+   push_argument_stack rax
    next
 
 defCode "xx|over|xx", xxoverxx
    ;; (* a b | c d -- a b | c d | a b *)
-   mov  rax, [ArgumentStackPointer + (3 * CellWidth)]
-   pushArgumentStack rax
-   mov  rax, [ArgumentStackPointer + (3 * CellWidth)] ;; not (2 * CellWidth)
-   pushArgumentStack rax
+   mov  rax, [Argument_stack_pointer + (3 * Cell_width)]
+   push_argument_stack rax
+   mov  rax, [Argument_stack_pointer + (3 * Cell_width)] ;; not (2 * Cell_width)
+   push_argument_stack rax
    next
 
 defCode "x|over|xxx", xoverxxx
    ;; (* a | b c d -- a | b c d | a *)
-   mov  rax, [ArgumentStackPointer + (3 * CellWidth)]
-   pushArgumentStack rax
+   mov  rax, [Argument_stack_pointer + (3 * Cell_width)]
+   push_argument_stack rax
    next
 
 defCode "xx|over|xxxx", xxoverxxxx
    ;; (* a b | c d e f -- a b | c d e f | a b *)
-   mov  rax, [ArgumentStackPointer + (5 * CellWidth)]
-   pushArgumentStack rax
-   mov  rax, [ArgumentStackPointer + (5 * CellWidth)] ;; not (4 * CellWidth)
-   pushArgumentStack rax
+   mov  rax, [Argument_stack_pointer + (5 * Cell_width)]
+   push_argument_stack rax
+   mov  rax, [Argument_stack_pointer + (5 * Cell_width)] ;; not (4 * Cell_width)
+   push_argument_stack rax
    next
 defCode "tuck", tuck
    ;; (* a b -- b | a b *)
-   popArgumentStack rbx
-   popArgumentStack rax
-   pushArgumentStack rbx
-   pushArgumentStack rax
-   pushArgumentStack rbx
+   pop_argument_stack rbx
+   pop_argument_stack rax
+   push_argument_stack rbx
+   push_argument_stack rax
+   push_argument_stack rbx
    next
 
 defCode "x|tuck|xx", xtuckxx
    ;; (* a | b c -- b c | a | b c *)
-   popArgumentStack rcx
-   popArgumentStack rbx
-   popArgumentStack rax
-   pushArgumentStack rbx
-   pushArgumentStack rcx
-   pushArgumentStack rax
-   pushArgumentStack rbx
-   pushArgumentStack rcx
+   pop_argument_stack rcx
+   pop_argument_stack rbx
+   pop_argument_stack rax
+   push_argument_stack rbx
+   push_argument_stack rcx
+   push_argument_stack rax
+   push_argument_stack rbx
+   push_argument_stack rcx
    next
 
 defCode "xx|tuck|x", xxtuckx
    ;; (* a b | c -- c | a b | c *)
-   popArgumentStack rcx
-   popArgumentStack rbx
-   popArgumentStack rax
-   pushArgumentStack rcx
-   pushArgumentStack rax
-   pushArgumentStack rbx
-   pushArgumentStack rcx
+   pop_argument_stack rcx
+   pop_argument_stack rbx
+   pop_argument_stack rax
+   push_argument_stack rcx
+   push_argument_stack rax
+   push_argument_stack rbx
+   push_argument_stack rcx
    next
 
 defCode "xx|tuck|xx", xxtuckxx
    ;; (* a b | c d -- c d | a b | c d *)
-   popArgumentStack rdx
-   popArgumentStack rcx
-   popArgumentStack rbx
-   popArgumentStack rax
-   pushArgumentStack rcx
-   pushArgumentStack rdx
-   pushArgumentStack rax
-   pushArgumentStack rbx
-   pushArgumentStack rcx
-   pushArgumentStack rdx
+   pop_argument_stack rdx
+   pop_argument_stack rcx
+   pop_argument_stack rbx
+   pop_argument_stack rax
+   push_argument_stack rcx
+   push_argument_stack rdx
+   push_argument_stack rax
+   push_argument_stack rbx
+   push_argument_stack rcx
+   push_argument_stack rdx
    next
 
 defCode "xxx|tuck|x", xxxtuckx
    ;; (* a b c | d -- d | a b c | d *)
-   popArgumentStack rdx
-   popArgumentStack rcx
-   popArgumentStack rbx
-   popArgumentStack rax
-   pushArgumentStack rdx
-   pushArgumentStack rax
-   pushArgumentStack rbx
-   pushArgumentStack rcx
-   pushArgumentStack rdx
+   pop_argument_stack rdx
+   pop_argument_stack rcx
+   pop_argument_stack rbx
+   pop_argument_stack rax
+   push_argument_stack rdx
+   push_argument_stack rax
+   push_argument_stack rbx
+   push_argument_stack rcx
+   push_argument_stack rdx
    next
 defCode "swap", swap
    ;; (* a b -- b a *)
-   popArgumentStack rbx
-   popArgumentStack rax
-   pushArgumentStack rbx
-   pushArgumentStack rax
+   pop_argument_stack rbx
+   pop_argument_stack rax
+   push_argument_stack rbx
+   push_argument_stack rax
    next
 
 defCode "x|swap|xx", xswapxx
    ;; (* a | b c -- b c | a *)
-   popArgumentStack rcx
-   popArgumentStack rbx
-   popArgumentStack rax
-   pushArgumentStack rbx
-   pushArgumentStack rcx
-   pushArgumentStack rax
+   pop_argument_stack rcx
+   pop_argument_stack rbx
+   pop_argument_stack rax
+   push_argument_stack rbx
+   push_argument_stack rcx
+   push_argument_stack rax
    next
 
 defCode "xx|swap|x", xxswapx
    ;; (* a b | c -- c | a b *)
-   popArgumentStack rcx
-   popArgumentStack rbx
-   popArgumentStack rax
-   pushArgumentStack rcx
-   pushArgumentStack rax
-   pushArgumentStack rbx
+   pop_argument_stack rcx
+   pop_argument_stack rbx
+   pop_argument_stack rax
+   push_argument_stack rcx
+   push_argument_stack rax
+   push_argument_stack rbx
    next
 
 defCode "x|swap|xxx", xswapxxx
    ;; (* a | b c d -- b c d | a *)
-   popArgumentStack rdx
-   popArgumentStack rcx
-   popArgumentStack rbx
-   popArgumentStack rax
-   pushArgumentStack rbx
-   pushArgumentStack rcx
-   pushArgumentStack rdx
-   pushArgumentStack rax
+   pop_argument_stack rdx
+   pop_argument_stack rcx
+   pop_argument_stack rbx
+   pop_argument_stack rax
+   push_argument_stack rbx
+   push_argument_stack rcx
+   push_argument_stack rdx
+   push_argument_stack rax
    next
 
 defCode "xxx|swap|x", xxxswapx
    ;; (* a b c | d -- d | a b c *)
-   popArgumentStack rdx
-   popArgumentStack rcx
-   popArgumentStack rbx
-   popArgumentStack rax
-   pushArgumentStack rdx
-   pushArgumentStack rax
-   pushArgumentStack rbx
-   pushArgumentStack rcx
+   pop_argument_stack rdx
+   pop_argument_stack rcx
+   pop_argument_stack rbx
+   pop_argument_stack rax
+   push_argument_stack rdx
+   push_argument_stack rax
+   push_argument_stack rbx
+   push_argument_stack rcx
    next
 
 defCode "xx|swap|xx", xxswapxx
    ;; (* a b | c d -- c d | a b *)
-   popArgumentStack rdx
-   popArgumentStack rcx
-   popArgumentStack rbx
-   popArgumentStack rax
-   pushArgumentStack rcx
-   pushArgumentStack rdx
-   pushArgumentStack rax
-   pushArgumentStack rbx
+   pop_argument_stack rdx
+   pop_argument_stack rcx
+   pop_argument_stack rbx
+   pop_argument_stack rax
+   push_argument_stack rcx
+   push_argument_stack rdx
+   push_argument_stack rax
+   push_argument_stack rbx
    next
 
 
 defCode "x|swap|xxxx", xswapxxxx
    ;; (* a | b c d e -- b c d e | a *)
-   popArgumentStack r8 ;; e
-   popArgumentStack rdx
-   popArgumentStack rcx
-   popArgumentStack rbx
-   popArgumentStack rax
-   pushArgumentStack rbx
-   pushArgumentStack rcx
-   pushArgumentStack rdx
-   pushArgumentStack r8 ;; e
-   pushArgumentStack rax
+   pop_argument_stack r8 ;; e
+   pop_argument_stack rdx
+   pop_argument_stack rcx
+   pop_argument_stack rbx
+   pop_argument_stack rax
+   push_argument_stack rbx
+   push_argument_stack rcx
+   push_argument_stack rdx
+   push_argument_stack r8 ;; e
+   push_argument_stack rax
    next
 
 defCode "xxxx|swap|x", xxxxswapx
    ;; (* a b c d | e --  e | a b c d *)
-   popArgumentStack r8 ;; e
-   popArgumentStack rdx
-   popArgumentStack rcx
-   popArgumentStack rbx
-   popArgumentStack rax
-   pushArgumentStack r8 ;; e
-   pushArgumentStack rax
-   pushArgumentStack rbx
-   pushArgumentStack rcx
-   pushArgumentStack rdx
+   pop_argument_stack r8 ;; e
+   pop_argument_stack rdx
+   pop_argument_stack rcx
+   pop_argument_stack rbx
+   pop_argument_stack rax
+   push_argument_stack r8 ;; e
+   push_argument_stack rax
+   push_argument_stack rbx
+   push_argument_stack rcx
+   push_argument_stack rdx
    next
 
 
 defCode "xx|swap|xxxx", xxswapxxxx
    ;; (* a b | c d e f -- c d e f | a b *)
-   popArgumentStack r9 ;; f
-   popArgumentStack r8 ;; e
-   popArgumentStack rdx
-   popArgumentStack rcx
-   popArgumentStack rbx
-   popArgumentStack rax
-   pushArgumentStack rcx
-   pushArgumentStack rdx
-   pushArgumentStack r8 ;; e
-   pushArgumentStack r9 ;; f
-   pushArgumentStack rax
-   pushArgumentStack rbx
+   pop_argument_stack r9 ;; f
+   pop_argument_stack r8 ;; e
+   pop_argument_stack rdx
+   pop_argument_stack rcx
+   pop_argument_stack rbx
+   pop_argument_stack rax
+   push_argument_stack rcx
+   push_argument_stack rdx
+   push_argument_stack r8 ;; e
+   push_argument_stack r9 ;; f
+   push_argument_stack rax
+   push_argument_stack rbx
    next
 
 defCode "xxxx|swap|xx", xxxxswapxx
    ;; (* a b c d | e f --  e f | a b c d *)
-   popArgumentStack r9 ;; f
-   popArgumentStack r8 ;; e
-   popArgumentStack rdx
-   popArgumentStack rcx
-   popArgumentStack rbx
-   popArgumentStack rax
-   pushArgumentStack r8 ;; e
-   pushArgumentStack r9 ;; f
-   pushArgumentStack rax
-   pushArgumentStack rbx
-   pushArgumentStack rcx
-   pushArgumentStack rdx
+   pop_argument_stack r9 ;; f
+   pop_argument_stack r8 ;; e
+   pop_argument_stack rdx
+   pop_argument_stack rcx
+   pop_argument_stack rbx
+   pop_argument_stack rax
+   push_argument_stack r8 ;; e
+   push_argument_stack r9 ;; f
+   push_argument_stack rax
+   push_argument_stack rbx
+   push_argument_stack rcx
+   push_argument_stack rdx
    next
-defCode "|123->321|", abcTOcba
-   popArgumentStack rax
-   popArgumentStack rbx
-   popArgumentStack rcx
-   pushArgumentStack rax
-   pushArgumentStack rbx
-   pushArgumentStack rcx
+defCode "|123->321|", abc_to_cba
+   pop_argument_stack rax
+   pop_argument_stack rbx
+   pop_argument_stack rcx
+   push_argument_stack rax
+   push_argument_stack rbx
+   push_argument_stack rcx
    next
 defCode "add1", add1
    ;; (* n -- n+1 *)
-   inc qword[ArgumentStackPointer]
+   inc qword[Argument_stack_pointer]
    next
 
 defCode "add2", add2
    ;; (* n -- n+1 *)
-   add qword[ArgumentStackPointer], 2
+   add qword[Argument_stack_pointer], 2
    next
 
 defCode "add3", add3
    ;; (* n -- n+1 *)
-   add qword[ArgumentStackPointer], 3
+   add qword[Argument_stack_pointer], 3
    next
 
 defCode "add4", add4
    ;; (* n -- n+4 *)
-   add qword[ArgumentStackPointer], 4
+   add qword[Argument_stack_pointer], 4
    next
 
 defCode "add8", add8
    ;; (* n -- n+8 *)
-   add qword[ArgumentStackPointer], 8
+   add qword[Argument_stack_pointer], 8
    next
 
 
 defCode "sub1", sub1
    ;; (* n -- n-1 *)
-   dec qword[ArgumentStackPointer]
+   dec qword[Argument_stack_pointer]
    next
 
 defCode "sub2", sub2
    ;; (* n -- n-1 *)
-   sub qword[ArgumentStackPointer], 2
+   sub qword[Argument_stack_pointer], 2
    next
 
 defCode "sub3", sub3
    ;; (* n -- n-1 *)
-   sub qword[ArgumentStackPointer], 3
+   sub qword[Argument_stack_pointer], 3
    next
 
 defCode "sub4", sub4
    ;; (* n -- n-4 *)
-   sub qword[ArgumentStackPointer], 4
+   sub qword[Argument_stack_pointer], 4
    next
 
 defCode "sub8", sub8
    ;; (* n -- n-8 *)
-   sub qword[ArgumentStackPointer], 8
+   sub qword[Argument_stack_pointer], 8
    next
 
 
 defCode "+", addition
    ;; (* a b -- a+b *)
-   popArgumentStack rax
-   add qword[ArgumentStackPointer], rax
+   pop_argument_stack rax
+   add qword[Argument_stack_pointer], rax
    next
 
 defCode "-", subtraction
    ;; (* a b -- a-b *)
-   popArgumentStack rax
-   sub qword[ArgumentStackPointer], rax
+   pop_argument_stack rax
+   sub qword[Argument_stack_pointer], rax
    next
 
 defCode "*", multiple
    ;; (* a b -- a*b *)
-   popArgumentStack  rbx ;; 2ed arg
-   popArgumentStack  rax ;; 1st arg
+   pop_argument_stack  rbx ;; 2ed arg
+   pop_argument_stack  rax ;; 1st arg
    imul rbx, rax
    ;; imul will ignore overflow
    ;; when there are two registers as arg
    ;; imul will save the result into the first register
-   pushArgumentStack rbx
+   push_argument_stack rbx
    next
 
 defCode "mod/", moddiv
@@ -592,13 +550,13 @@ defCode "mod/", moddiv
    ;; the lower half of dividend is taken from rax
    ;; the upper half of dividend is taken from rdx
    xor  rdx, rdx   ;; high-part of dividend is not used
-   popArgumentStack  rbx ;; 2ed arg
-   popArgumentStack  rax ;; 1st arg
+   pop_argument_stack  rbx ;; 2ed arg
+   pop_argument_stack  rax ;; 1st arg
    idiv rbx
    ;; the remainder is stored in rdx
    ;; the quotient  is stored in rax
-   pushArgumentStack rdx ;; remainder
-   pushArgumentStack rax ;; quotient
+   push_argument_stack rdx ;; remainder
+   push_argument_stack rax ;; quotient
    next
 defWord "negate", negate
    ;; (* n --  -n *)
@@ -628,7 +586,7 @@ defWord "power", power
    xx help_power
    xx Exit
 defWordEnd power
-;; ``save'' and ``fetch'' default to a CellWidth (== 8 bytes)
+;; ``save'' and ``fetch'' default to a Cell_width (== 8 bytes)
 ;; the rule of ``fetch2'' and so on are:
 ;;   in memory:
 ;;     ||  1 : value-1  ||
@@ -643,239 +601,239 @@ defWordEnd power
 
 defCode "save", save
    ;; ( value, address -- )
-   popArgumentStack rbx
-   popArgumentStack rax
+   pop_argument_stack rbx
+   pop_argument_stack rax
    mov qword[rbx], rax
    next
 
 defCode "save2", save2
    ;; ( value-2, value-1, address -- )
-   popArgumentStack rbx
-   popArgumentStack rax
+   pop_argument_stack rbx
+   pop_argument_stack rax
    mov qword[rbx], rax
-   popArgumentStack rax
-   mov qword[rbx + CellWidth], rax
+   pop_argument_stack rax
+   mov qword[rbx + Cell_width], rax
    next
 
 
 
 defCode "fetch", fetch
    ;; ( address -- value )
-   popArgumentStack  rbx
+   pop_argument_stack  rbx
    mov rax, qword[rbx]
-   pushArgumentStack rax
+   push_argument_stack rax
    next
 
 defCode "fetch2", fetch2
    ;; ( address -- value-1, value-2 )
-   popArgumentStack  rbx
-   mov rax, qword[rbx + CellWidth]
-   pushArgumentStack rax
+   pop_argument_stack  rbx
+   mov rax, qword[rbx + Cell_width]
+   push_argument_stack rax
    mov rax, qword[rbx]
-   pushArgumentStack rax
+   push_argument_stack rax
    next
 
 
 
-defCode "add-save", addSave
+defCode "add-save", add_save
    ;; ( number to add, address -- )
-   popArgumentStack rbx
-   popArgumentStack rax
+   pop_argument_stack rbx
+   pop_argument_stack rax
    add qword[rbx], rax
    next
 
-defCode "sub-save", subSave
+defCode "sub-save", sub_save
    ;; ( number to add, address -- )
-   popArgumentStack rbx
-   popArgumentStack rax
+   pop_argument_stack rbx
+   pop_argument_stack rax
    sub qword[rbx], rax
    next
 
 
-defCode "save-byte", saveByte
+defCode "save-byte", save_byte
    ;; ( value, address -- )
-   popArgumentStack rbx
-   popArgumentStack rax
+   pop_argument_stack rbx
+   pop_argument_stack rax
    mov byte[rbx], al
    next
 
-defCode "save-two-bytes", saveTwoBytes
+defCode "save-two-bytes", save_two_bytes
    ;; ( value, address -- )
-   popArgumentStack rbx
-   popArgumentStack rax
+   pop_argument_stack rbx
+   pop_argument_stack rax
    mov word [rbx], ax
    next
 
-defCode "save-four-bytes", saveFourBytes
+defCode "save-four-bytes", save_four_bytes
    ;; ( value, address -- )
-   popArgumentStack rbx
-   popArgumentStack rax
+   pop_argument_stack rbx
+   pop_argument_stack rax
    mov dword [rbx], eax
    next
 
 
-defCode "fetch-byte", fetchByte
+defCode "fetch-byte", fetch_byte
    ;; ( address -- value )
-   popArgumentStack rbx
+   pop_argument_stack rbx
    xor rax, rax
    mov al, byte[rbx]
-   pushArgumentStack rax
+   push_argument_stack rax
    next
 
-defCode "fetch-two-bytes", fetchTwoBytes
+defCode "fetch-two-bytes", fetch_two_bytes
    ;; ( address -- value )
-   popArgumentStack rbx
+   pop_argument_stack rbx
    xor rax, rax
    mov ax, word[rbx]
-   pushArgumentStack rax
+   push_argument_stack rax
    next
 
-defCode "fetch-four-bytes", fetchFourBytes
+defCode "fetch-four-bytes", fetch_four_bytes
    ;; ( address -- value )
-   popArgumentStack rbx
+   pop_argument_stack rbx
    xor rax, rax
    mov eax, dword[rbx]
-   pushArgumentStack rax
+   push_argument_stack rax
    next
 
 
 
 
-defCode "copy-byte", copyByte
+defCode "copy-byte", copy_byte
    ;; ( source address, destination address --
    ;;   source address + 1, destination address + 1 )
-   mov rbx, [ArgumentStackPointer + CellWidth] ;; source address
+   mov rbx, [Argument_stack_pointer + Cell_width] ;; source address
    mov al,  byte[rbx]                        ;; get a char from source address
-   popArgumentStack rdi                        ;; destination address
+   pop_argument_stack rdi                        ;; destination address
    stosb                                     ;; copy to destination
-   pushArgumentStack rdi                       ;; destination address is incremented by stosb
-   inc qword[ArgumentStackPointer + CellWidth] ;; increment source address
+   push_argument_stack rdi                       ;; destination address is incremented by stosb
+   inc qword[Argument_stack_pointer + Cell_width] ;; increment source address
    next
 
-defCode "copy-byte-string", copyByteString
+defCode "copy-byte-string", copy_byte_string
    ;; ( source address, destination address, length -- )
-   popArgumentStack rcx
-   popArgumentStack rdi
-   popArgumentStack rsi
+   pop_argument_stack rcx
+   pop_argument_stack rdi
+   pop_argument_stack rsi
    rep movsb
    next
 ;; return false when length == 0
-defCode "compare-string?", compareString?
+defCode "compare-string?", compare_string?
    ;; (* address of string-1, address of string-2, length -- True or False *)
-   popArgumentStack rcx
-   popArgumentStack rdi
-   popArgumentStack rsi
+   pop_argument_stack rcx
+   pop_argument_stack rdi
+   pop_argument_stack rsi
    repe cmpsb
    sete al
    movzx rax, al
-   pushArgumentStack rax
+   push_argument_stack rax
    next
 
-defWord "equal-string?", equalString?
+defWord "equal-string?", equal_string?
    ;; (* string-1[address-1, length-1], string-2[address-2, length-2] -- True or False *)
    xx xoverxx, equal?, false?branch, 4
-   xx swap, compareString?, Exit
+   xx swap, compare_string?, Exit
    xx drop, drop, drop, False
    xx Exit
-defWordEnd equalString?
+defWordEnd equal_string?
 
 
 ;; ><><>< there are no proper error handling for the following two functions
 
-defCode "head-of-string", headOfString
+defCode "head-of-string", head_of_string
    ;; (* string[address, length] -- first char *)
-   popArgumentStack rcx
-   popArgumentStack rbx
+   pop_argument_stack rcx
+   pop_argument_stack rbx
    xor rax, rax
    mov al, byte [rbx]
-   pushArgumentStack rax
+   push_argument_stack rax
    next
 
-defCode "tail-of-string", tailOfString
+defCode "tail-of-string", tail_of_string
    ;; (* string[address, length] -- string[address + 1, length - 1] *)
-   popArgumentStack rcx
-   popArgumentStack rbx
+   pop_argument_stack rcx
+   pop_argument_stack rbx
    dec rcx
    inc rbx
-   pushArgumentStack rbx
-   pushArgumentStack rcx
+   push_argument_stack rbx
+   push_argument_stack rcx
    next
 
-defWord "tail-and-head-of-string", tailAndHeadOfString
+defWord "tail-and-head-of-string", tail_and_head_of_string
    ;; (* string[address, length] -- string[address + 1, length - 1], first char *)
-   xx dup2, tailOfString
+   xx dup2, tail_of_string
    xx xxswapxx
-   xx headOfString
+   xx head_of_string
    xx Exit
-defWordEnd tailAndHeadOfString
+defWordEnd tail_and_head_of_string
 defCode "==", equal?
-   popArgumentStack rbx
-   popArgumentStack rax
+   pop_argument_stack rbx
+   pop_argument_stack rax
    cmp   rbx, rax
    sete  al
    movzx rax, al
-   pushArgumentStack rax
+   push_argument_stack rax
    next
 
-defCode "=/=", notEqual?
-   popArgumentStack rbx
-   popArgumentStack rax
+defCode "=/=", not_equal?
+   pop_argument_stack rbx
+   pop_argument_stack rax
    cmp   rbx, rax
    setne al
    movzx rax, al
-   pushArgumentStack rax
+   push_argument_stack rax
    next
 
-defCode "<", lessThan?
-   popArgumentStack rbx
-   popArgumentStack rax
+defCode "<", less_than?
+   pop_argument_stack rbx
+   pop_argument_stack rax
    cmp   rax, rbx
    setl  al
    movzx rax, al
-   pushArgumentStack rax
+   push_argument_stack rax
    next
 
-defCode ">", greaterThan?
-   popArgumentStack   rbx
-   popArgumentStack   rax
+defCode ">", greater_than?
+   pop_argument_stack   rbx
+   pop_argument_stack   rax
    cmp   rax, rbx
    setg  al
    movzx rax, al
-   pushArgumentStack  rax
+   push_argument_stack  rax
    next
 
-defCode "<=", lessOrEqual?
-   popArgumentStack rbx
-   popArgumentStack rax
+defCode "<=", less_or_equal?
+   pop_argument_stack rbx
+   pop_argument_stack rax
    cmp   rax, rbx
    setle al
    movzx rax, al
-   pushArgumentStack rax
+   push_argument_stack rax
    next
 
-defCode ">=", greaterOrEqual?
-   popArgumentStack rbx
-   popArgumentStack rax
+defCode ">=", greater_or_equal?
+   pop_argument_stack rbx
+   pop_argument_stack rax
    cmp   rax, rbx
    setge al
    movzx rax, al
-   pushArgumentStack rax
+   push_argument_stack rax
    next
 
 defCode "zero?", zero?
-   popArgumentStack rax
+   pop_argument_stack rax
    test  rax,rax
    setz  al
    movzx rax, al
-   pushArgumentStack rax
+   push_argument_stack rax
    next
 
-defCode "not-zero?", notZero?
-   popArgumentStack rax
+defCode "not-zero?", not_zero?
+   pop_argument_stack rax
    test  rax,rax
    setnz al
    movzx rax, al
-   pushArgumentStack rax
+   push_argument_stack rax
    next
 
 
@@ -893,73 +851,73 @@ defWord "false?", false?
    xx zero?
    xx Exit
 defWordEnd false?
-defWord "char-denote-number?", charDenoteNumber?
+defWord "char-denote-number?", char_denote_number?
    ;; (* char -- True or False *)
    xx dup
-   xx literal, '0', lessThan?, false?branch, 4
+   xx literal, '0', less_than?, false?branch, 4
    xx   drop, False
    xx   Exit
-   xx literal, '9', greaterThan?, false?branch, 3
+   xx literal, '9', greater_than?, false?branch, 3
    xx   False
    xx   Exit
    xx True
    xx Exit
-defWordEnd charDenoteNumber?
-defCode "bitwise-and", bitwiseAnd
+defWordEnd char_denote_number?
+defCode "bitwise-and", bitwise_and
    ;; ( a, b -- a and b )
-   popArgumentStack rbx
-   and [ArgumentStackPointer], rbx
+   pop_argument_stack rbx
+   and [Argument_stack_pointer], rbx
    next
 
-defCode "bitwise-or", bitwiseOr
+defCode "bitwise-or", bitwise_or
    ;; ( a, b -- a or b )
-   popArgumentStack rbx
-   or  [ArgumentStackPointer], rbx
+   pop_argument_stack rbx
+   or  [Argument_stack_pointer], rbx
    next
 
-defCode "bitwise-xor", bitwiseXor
+defCode "bitwise-xor", bitwise_xor
    ;; ( a, b -- a xor b )
-   popArgumentStack rbx
-   xor [ArgumentStackPointer], rbx
+   pop_argument_stack rbx
+   xor [Argument_stack_pointer], rbx
    next
 
-defCode "bitwise-invert", bitwiseInvert
+defCode "bitwise-invert", bitwise_invert
    ;; ( a -- invert a )
-   not qword[ArgumentStackPointer]
+   not qword[Argument_stack_pointer]
    next
 ;; BT copies a bit from a given register to the carry flag
-defCode "fetch-bit", fetchBit
+defCode "fetch-bit", fetch_bit
    ;; ( fixnum, offset -- bit )
-   popArgumentStack rbx
-   popArgumentStack rax
+   pop_argument_stack rbx
+   pop_argument_stack rax
    bt rax, rbx
    setc al
    movzx rax, al
-   pushArgumentStack rax
+   push_argument_stack rax
    next
 
 defCode "set-bit", setBit
    ;; ( fixnum, offset -- fixnum )
-   popArgumentStack rbx
-   popArgumentStack rax
+   pop_argument_stack rbx
+   pop_argument_stack rax
    bts rax, rbx
-   pushArgumentStack rax
+   push_argument_stack rax
    next
 
 defCode "clear-bit", clearBit
    ;; ( fixnum, offset -- fixnum )
-   popArgumentStack rbx
-   popArgumentStack rax
+   pop_argument_stack rbx
+   pop_argument_stack rax
    btr rax, rbx
-   pushArgumentStack rax
+   push_argument_stack rax
    next
 
 defCode "invert-bit", invertBit
    ;; ( fixnum, offset -- fixnum )
-   popArgumentStack rbx
-   popArgumentStack rax
+   pop_argument_stack rbx
+   pop_argument_stack rax
    btc rax, rbx
-   pushArgumentStack rax
+   push_argument_stack rax
    next
 
 
@@ -983,28 +941,28 @@ defCode "invert-bit", invertBit
 ;; if can not find ``SetBit''
 ;; the following functions will return -1
 
-defCode "find-lowest-set-bit", findLowestSetBit
+defCode "find-lowest-set-bit", find_lowest_set_bit
    ;; ( fixnum -- offset )
-   popArgumentStack rax
+   pop_argument_stack rax
    bsf rax, rax
-   jz tryToFindLowestSetBit_But_NoSetBitIsFound
-   pushArgumentStack rax
+   jz @f
+   push_argument_stack rax
    next
-tryToFindLowestSetBit_But_NoSetBitIsFound:
+@@:
    mov rax, -1
-   pushArgumentStack rax
+   push_argument_stack rax
    next
 
-defCode "find-highest-set-bit", findHighestSetBit
+defCode "find-highest-set-bit", find_highest_set_bit
    ;; ( fixnum -- offset )
-   popArgumentStack rax
+   pop_argument_stack rax
    bsr rax, rax
-   jz tryToFindHighestSetBit_But_NoSetBitIsFound
-   pushArgumentStack rax
+   jz @f
+   push_argument_stack rax
    next
-tryToFindHighestSetBit_But_NoSetBitIsFound:
+@@:
    mov rax, -1
-   pushArgumentStack rax
+   push_argument_stack rax
    next
 ;; "shl"
 ;; shifts the destination operand left
@@ -1014,105 +972,33 @@ tryToFindHighestSetBit_But_NoSetBitIsFound:
 ;; as bits exit from the left, zeros in from the right
 ;; The last bit that exited is stored in CF
 ;; "sal" is a synonym for "shl"
-defCode "shift-left", shiftLeft
+defCode "shift-left", shift_left
    ;; ( fixnum, step -- fixnum * 2^step )
-   popArgumentStack rcx
-   shl qword[ArgumentStackPointer], cl
+   pop_argument_stack rcx
+   shl qword[Argument_stack_pointer], cl
    next
 
-defCode "shift-right", shiftRight
+defCode "shift-right", shift_right
    ;; ( fixnum, step -- fixnum / 2^step )
-   popArgumentStack rcx
-   shr qword[ArgumentStackPointer], cl
+   pop_argument_stack rcx
+   shr qword[Argument_stack_pointer], cl
    next
 
-defCode "shift-right-preserve-sign", shiftRightPreserveSign
+defCode "shift-right-preserve-sign", shift_right_preserve_sign
    ;; ( fixnum, step -- new fixnum )
-   popArgumentStack rcx
-   sar qword[ArgumentStackPointer], cl
+   pop_argument_stack rcx
+   sar qword[Argument_stack_pointer], cl
    next
-
-
-
-;; note that:
-;; ``double'' is 128 bit value here
-
-;; "shld"
-;; shifts bits of the destination operand to the left
-;; by the number of bits specified in third operand,
-;; while shifting
-;; move high order bits from the source operand
-;; into the destination operand on the right.
-;; The source operand remains unmodified.
-;; The destination operand can be a word or double word general register or memory,
-;; the source operand must be a general register,
-;; third operand can be an immediate value or the CL register.
-defCode "double-shift-left", doubleShiftLeft
-   ;; ( fixnum-1, fixnum-2, step --
-   ;;   new fixnum-1, new fixnum-2 )
-   popArgumentStack rcx
-   popArgumentStack rax
-   shld qword[ArgumentStackPointer], rax, cl
-   shl rax, cl
-   pushArgumentStack rax
-   next
-
-
-;; "shrd"
-;; shifts bits of the destination operand to the right,
-;; while shifting
-;; move low order bits from the source operand
-;; into the destination operand on the left.
-;; The source operand remains unmodified.
-;; Rules for operands are the same as for the "shld" instruction.
-defCode "double-shift-right", doubleShiftRight
-   ;; ( fixnum-1, fixnum-2, step --
-   ;;   new fixnum-1, new fixnum-2 )
-   popArgumentStack rcx
-   popArgumentStack rbx
-   popArgumentStack rax
-   shrd rbx, rax, cl
-   shr rax, cl
-   pushArgumentStack rax
-   pushArgumentStack rbx
-   next
-
-defCode "double-shift-right-preserve-sign", doubleShiftRightPreserveSign
-   ;; ( fixnum-1, fixnum-2, step --
-   ;;   new fixnum-1, new fixnum-2 )
-   popArgumentStack rcx
-   popArgumentStack rbx
-   popArgumentStack rax
-   shrd rbx, rax, cl
-   sar rax, cl
-   pushArgumentStack rax
-   pushArgumentStack rbx
-   next
-
-
-
-
-defCode "rotate-left", rotateLeft
-   ;; ( fixnum, step -- new fixnum )
-   popArgumentStack rcx
-   rol qword[ArgumentStackPointer], cl
-   next
-
-defCode "rotate-right", rotateRight
-   ;; ( fixnum, step -- new fixnum )
-   popArgumentStack rcx
-   ror qword[ArgumentStackPointer], cl
-   next
-defCode "push-return-stack", toPushReturnStack
+defCode "push-return-stack", _push_return_stack
    ;; (* address --> ReturnStack: address *)
-   popArgumentStack  rax
-   pushReturnStack rax
+   pop_argument_stack  rax
+   push_return_stack rax
    next
 
-defCode "pop-return-stack", toPopReturnStack
+defCode "pop-return-stack", _pop_return_stack
    ;; (* ReturnStack: address --> address *)
-   popReturnStack  rax
-   pushArgumentStack rax
+   pop_return_stack  rax
+   push_argument_stack rax
    next
 
 ;; up to now
@@ -1120,128 +1006,128 @@ defCode "pop-return-stack", toPopReturnStack
 ;; have not been used by cicada yet
 
 
-defCode "fetch-return-stack-pointer", fetchReturnStackPointer
+defCode "fetch-return-stack-pointer", fetch_return_stack_pointer
    ;; (* -- an address in the ReturnStack *)
-   pushArgumentStack ReturnStackPointer
+   push_argument_stack Return_stack_pointer
    next
 
-defCode "reset-return-stack-pointer", resetReturnStackPointer
+defCode "reset-return-stack-pointer", reset_return_stack_pointer
    ;; (* an address in the ReturnStack -- *)
-   popArgumentStack ReturnStackPointer
+   pop_argument_stack Return_stack_pointer
    next
 
-defCode "drop-return-stack", dropReturnStack
+defCode "drop-return-stack", drop_return_stack
    ;; (* -- *)
-   add ReturnStackPointer, CellWidth
+   add Return_stack_pointer, Cell_width
    next
 ;; to know why the following funny thing happens,
-;; see the definition of the macro ``pushArgumentStack'',
-defCode "make-self-reference-value", makeSelfReferenceValue
+;; see the definition of the macro ``push_argument_stack'',
+defCode "make-self-reference-value", make_self_reference_value
    ;; ( -- address )
-   pushArgumentStack ArgumentStackPointer
+   push_argument_stack Argument_stack_pointer
    next
 
-defWord "fetch-argument-stack-pointer", fetchArgumentStackPointer
-   xx makeSelfReferenceValue, add8, Exit
-defWordEnd fetchArgumentStackPointer
+defWord "fetch-argument-stack-pointer", fetch_argument_stack_pointer
+   xx make_self_reference_value, add8, Exit
+defWordEnd fetch_argument_stack_pointer
 
-defCode "reset-argument-stack-pointer", resetArgumentStackPointer
+defCode "reset-argument-stack-pointer", reset_argument_stack_pointer
    ;; ( address -- )
-   popArgumentStack ArgumentStackPointer
+   pop_argument_stack Argument_stack_pointer
    next
-defCode "push-grey-pair-stack", pushGreyPairStack
+defCode "push-grey-pair-stack", push_grey_pair_stack
    ;; (* pair[address] --> GreyPairStack: pair[address] *)
-   popArgumentStack rax
-   lea GreyPairStackPointer, [GreyPairStackPointer - CellWidth]
-   mov [GreyPairStackPointer], rax
+   pop_argument_stack rax
+   lea Grey_pair_stack_pointer, [Grey_pair_stack_pointer - Cell_width]
+   mov [Grey_pair_stack_pointer], rax
    next
 
-defCode "pop-grey-pair-stack", popGreyPairStack
+defCode "pop-grey-pair-stack", pop_grey_pair_stack
    ;; (* GreyPairStack: pair[address] --> pair[address] *)
-   mov rax, [GreyPairStackPointer]
-   lea GreyPairStackPointer, [GreyPairStackPointer + CellWidth]
-   pushArgumentStack rax
+   mov rax, [Grey_pair_stack_pointer]
+   lea Grey_pair_stack_pointer, [Grey_pair_stack_pointer + Cell_width]
+   push_argument_stack rax
    next
 
-defCode "empty-grey-pair-stack?", emptyGreyPairStack?
+defCode "empty-grey-pair-stack?", empty_grey_pair_stack?
    ;; (* -- True or False *)
    mov rax, GreyPairStackTop
-   cmp GreyPairStackPointer, rax
+   cmp Grey_pair_stack_pointer, rax
    ;; note that:
-   ;; GreyPairStackPointer >= GreyPairStackTop
+   ;; Grey_pair_stack_pointer >= GreyPairStackTop
    ;; means stack over flow
    setge al
    movzx rax, al
-   pushArgumentStack rax
+   push_argument_stack rax
    next
 ;; 1. not to much stack-processing is needed here
 ;; 2. LambdaStack can be used to save the faked-local-vars
 
 defVar "Lambda-stack-pointer", LambdaStackTop, LambdaStackPointer
 
-defWord "push-lambda-stack", pushLambdaStack
+defWord "push-lambda-stack", push_lambda_stack
    ;; (* ArgumentStack::  value -->
    ;;    LambdaStack::    value *)
-   xx literal, CellWidth, LambdaStackPointer, subSave
+   xx literal, Cell_width, LambdaStackPointer, sub_save
    xx LambdaStackPointer, fetch, save
    xx Exit
-defWordEnd pushLambdaStack
+defWordEnd push_lambda_stack
 
-defWord "pop-lambda-stack", popLambdaStack
+defWord "pop-lambda-stack", pop_lambda_stack
    ;; (* LambdaStack::    value -->
    ;;    ArgumentStack::  value *)
    xx LambdaStackPointer, fetch, fetch
-   xx literal, CellWidth, LambdaStackPointer, addSave
+   xx literal, Cell_width, LambdaStackPointer, add_save
    xx Exit
-defWordEnd popLambdaStack
+defWordEnd pop_lambda_stack
 
 defWord "ready", ready
    ;; (* ArgumentStack::  value-a, value-b -->
    ;;    LambdaStack::    value-a, value-b *)
    ;; (* beware of the order of the two values *)
-   xx swap, pushLambdaStack, pushLambdaStack
+   xx swap, push_lambda_stack, push_lambda_stack
    xx Exit
 defWordEnd ready
 
-defWord "get-back", getBack
+defWord "get-back", get_back
    ;; (* beware of the order of the two values *)
    ;; (* LambdaStack::    value-a, value-b -->
    ;;    ArgumentStack::  value-a, value-b *)
-   xx popLambdaStack, popLambdaStack, swap
+   xx pop_lambda_stack, pop_lambda_stack, swap
    xx Exit
-defWordEnd getBack
-defCode "tail-of-word-list", tailOfWordList
+defWordEnd get_back
+defCode "tail-of-word-list", tail_of_word_list
    ;; (* wordList[address, the number of words] --
    ;;    wordList[new address, number - 1] *)
-   popArgumentStack rcx
-   popArgumentStack rsi
+   pop_argument_stack rcx
+   pop_argument_stack rsi
    lodsq
    add rsi, rax
-   pushArgumentStack rsi
+   push_argument_stack rsi
    dec rcx
-   pushArgumentStack rcx
+   push_argument_stack rcx
    next
 
-defCode "head-of-word-list", headOfWordList
+defCode "head-of-word-list", head_of_word_list
    ;; (* wordList[address, the number of words] --
    ;;    wordString[address, length] *)
-   popArgumentStack rbx ;; do not need this arg
-   popArgumentStack rsi
+   pop_argument_stack rbx ;; do not need this arg
+   pop_argument_stack rsi
    mov rcx, qword[rsi]
-   add rsi, CellWidth
-   pushArgumentStack rsi
-   pushArgumentStack rcx
+   add rsi, Cell_width
+   push_argument_stack rsi
+   push_argument_stack rcx
    next
 
-defWord "tail-and-head-of-word-list", tailAndHeadOfWordList
+defWord "tail-and-head-of-word-list", tail_and_head_of_word_list
    ;; (* wordList[address, the number of words] --
    ;;    wordList[new address, number - 1], wordString[address, length] *)
    xx dup2
-   xx tailOfWordList
+   xx tail_of_word_list
    xx xxswapxx
-   xx headOfWordList
+   xx head_of_word_list
    xx Exit
-defWordEnd tailAndHeadOfWordList
+defWordEnd tail_and_head_of_word_list
 ;; 1. just take the 10 based number on the left of "#" as base
 ;;    while the base must be not-zero
 ;;    (actually, when it is zero, just let the zero return,
@@ -1254,427 +1140,453 @@ defWordEnd tailAndHeadOfWordList
 ;;    just reture zero
 ;; 3. this function is really a perfect example
 ;;    of how to make good use of Lambda-stack :)
-defWord "base-of-string", baseOfString
+defWord "base-of-string", base_of_string
    ;; (* string[address, length] -- base  or zero *)
-   xx literal, 0, pushLambdaStack ;; init counter for help_base_of_string_push_char
-   xx help_base_of_string_push_char
+   xx literal, 0, push_lambda_stack ;; init counter for help__base_of_string__push_char
+   xx help__base_of_string__push_char
    xx dup, false?, false?branch, 2
    xx   Exit
    xx drop
-   xx literal, 0  ;; init base for help_base_of_string_pop_char
-   xx popLambdaStack
+   xx literal, 0  ;; init base for help__base_of_string__pop_char
+   xx pop_lambda_stack
    xx literal, 0
-   xx pushLambdaStack  ;; init index for help_base_of_string_pop_char
-   xx help_base_of_string_pop_char
+   xx push_lambda_stack  ;; init index for help__base_of_string__pop_char
+   xx help__base_of_string__pop_char
    xx Exit
-defWordEnd baseOfString
+defWordEnd base_of_string
 
-defWord "help:help:base-of-string,push-char,clear-lambda-stack", help_help_base_of_string_push_char_clear_lambda_stack
+defWord "help:help:base-of-string,push-char,clear-lambda-stack", help__help__base_of_string__push_char__clear_lambda_stack
    ;; (* char-counter[N] -- *)
    ;; (* Lambda-stack::  char, ... --  *)
    xx dup, zero?, false?branch, 3
    xx   drop
    xx   Exit
-   xx sub1, popLambdaStack, drop
-   xx help_help_base_of_string_push_char_clear_lambda_stack
+   xx sub1, pop_lambda_stack, drop
+   xx help__help__base_of_string__push_char__clear_lambda_stack
    xx Exit
-defWordEnd help_help_base_of_string_push_char_clear_lambda_stack
+defWordEnd help__help__base_of_string__push_char__clear_lambda_stack
 
-defWord "help:base-of-string,push-char", help_base_of_string_push_char
+defWord "help:base-of-string,push-char", help__base_of_string__push_char
    ;; (* string[address, length] -- True *)
    ;; (* Lambda-stack:: char-counter[0] -- char-counter[N], char, ... *)
    ;; (* or *)
    ;; (* string[address, length] -- False *)
    ;; (* Lambda-stack:: char-counter[0] -- *)
-   xx dup, literal, 2, lessThan?, false?branch, 7
+   xx dup, literal, 2, less_than?, false?branch, 7
    xx   drop2
-   xx   popLambdaStack
-   xx   help_help_base_of_string_push_char_clear_lambda_stack
+   xx   pop_lambda_stack
+   xx   help__help__base_of_string__push_char__clear_lambda_stack
    xx   literal, 0
    xx   Exit
-   xx tailAndHeadOfString
+   xx tail_and_head_of_string
    xx dup, literal, '#', equal?, false?branch, 6
    xx   drop, drop2
    xx   literal, 1
    xx   Exit
-   xx dup, charDenoteNumber?, false?, false?branch, 8
+   xx dup, char_denote_number?, false?, false?branch, 8
    xx   drop, drop2
-   xx   popLambdaStack
-   xx   help_help_base_of_string_push_char_clear_lambda_stack
+   xx   pop_lambda_stack
+   xx   help__help__base_of_string__push_char__clear_lambda_stack
    xx   literal, 0
    xx   Exit
-   xx popLambdaStack, add1
-   xx swap, pushLambdaStack, pushLambdaStack
-   xx help_base_of_string_push_char
+   xx pop_lambda_stack, add1
+   xx swap, push_lambda_stack, push_lambda_stack
+   xx help__base_of_string__push_char
    xx Exit
-defWordEnd help_base_of_string_push_char
+defWordEnd help__base_of_string__push_char
 
 ;; over-flow of 64 bits is not handled
-defWord "help:base-of-string,pop-char", help_base_of_string_pop_char
+defWord "help:base-of-string,pop-char", help__base_of_string__pop_char
    ;; (* base, char-counter[N] -- base *)
    ;; (* Lambda-stack::  index, char, ... -- *)
    xx dup, zero?, false?branch, 5
    xx   drop
-   xx   popLambdaStack, drop
+   xx   pop_lambda_stack, drop
    xx   Exit
    xx sub1
-   xx swap, popLambdaStack
+   xx swap, pop_lambda_stack
    ;; (* char-counter[N], base, index *)
    xx dup, literal, 10, swap, power
-   xx   popLambdaStack
+   xx   pop_lambda_stack
    xx   literal, '0', subtraction
    xx   multiple
-   xx   swap, add1, pushLambdaStack
+   xx   swap, add1, push_lambda_stack
    xx   addition
    xx swap
-   xx help_base_of_string_pop_char
+   xx help__base_of_string__pop_char
    xx Exit
-defWordEnd help_base_of_string_pop_char
+defWordEnd help__base_of_string__pop_char
 ;; 1. just take whatever the sub-string on the rigth of "#"
 ;;    while the length of this sub-string must be not-zero
 ;; 2. if can not find "#" in the string
 ;;    or there is nothing after the first occur of "#"
 ;;    or there is nothing in front of the first occur of "#"
 ;;    just reture zero
-defWord "digit-of-string", digitOfString
+defWord "digit-of-string", digit_of_string
    ;; (* string[address, length] -- digit[address, length]  or zero *)
-   xx dup2, headOfString
+   xx dup2, head_of_string
    xx literal, '#', equal?, false?branch, 5
    xx   drop2
    xx   literal, 0
    xx   Exit
-   xx help_digitOfString
+   xx help__digit_of_string
    xx Exit
-defWordEnd digitOfString
+defWordEnd digit_of_string
 
 ;; this helper-function do not handle "#123" as error
 ;; i.e. when there is nothing in front of the first occur of "#"
 ;; it does not reture 0
-defWord "help:digit-of-string", help_digitOfString
+defWord "help:digit-of-string", help__digit_of_string
    ;; (* string[address, length] -- digit[address, length]  or zero *)
-   xx dup, literal, 2, lessThan?, false?branch, 5
+   xx dup, literal, 2, less_than?, false?branch, 5
    xx   drop2
    xx   literal, 0
    xx   Exit
-   xx tailAndHeadOfString
+   xx tail_and_head_of_string
    xx literal, '#', equal?, false?branch, 2
    xx   Exit
-   xx help_digitOfString
+   xx help__digit_of_string
    xx Exit
-defWordEnd help_digitOfString
+defWordEnd help__digit_of_string
 ;; 1. if char is not in [0-9] [A-Z] [a-z]
 ;;    reture -1 to denote error
-defWord "char->number", charToNumber
+defWord "char->number", char_to_number
    ;; (* char -- the number it denotes *)
-   xx dup, literal, '0', lessThan?, false?branch, 5
+   xx dup, literal, '0', less_than?, false?branch, 5
    xx   drop
    xx   literal, -1
    xx   Exit
-   xx dup, literal, '9', lessOrEqual?, false?branch, 5
+   xx dup, literal, '9', less_or_equal?, false?branch, 5
    xx   literal, '0'
    xx   subtraction
    xx   Exit
-   xx dup, literal, 'A', lessThan?, false?branch, 5
+   xx dup, literal, 'A', less_than?, false?branch, 5
    xx   drop
    xx   literal, -1
    xx   Exit
-   xx dup, literal, 'Z', lessOrEqual?, false?branch, 8
+   xx dup, literal, 'Z', less_or_equal?, false?branch, 8
    xx   literal, 'A', subtraction
    xx   literal, 10, addition
    xx   Exit
-   xx dup, literal, 'a', lessThan?, false?branch, 5
+   xx dup, literal, 'a', less_than?, false?branch, 5
    xx   drop
    xx   literal, -1
    xx   Exit
-   xx dup, literal, 'z', lessOrEqual?, false?branch, 8
+   xx dup, literal, 'z', less_or_equal?, false?branch, 8
    xx   literal, 'a', subtraction
    xx   literal, 10, addition
    xx   Exit
    xx drop
    xx literal, -1
    xx Exit
-defWordEnd charToNumber
-defWord "with-base:char-denote-number?", withBase_charDenoteNumber?
+defWordEnd char_to_number
+defWord "with-base:char-denote-number?", with_base__char_denote_number?
    ;; (* base, char -- True of False *)
    ;; (* char -- True or False *)
-   xx charToNumber
+   xx char_to_number
    xx dup, literal, -1, equal?, false?branch, 4
    xx   drop2
    xx   False
    xx   Exit
-   xx greaterThan?, false?branch, 3
+   xx greater_than?, false?branch, 3
    xx   True
    xx   Exit
    xx False
    xx Exit
-defWordEnd withBase_charDenoteNumber?
+defWordEnd with_base__char_denote_number?
 ;; in the following function "with-base:string-denote-digit?"
 ;; I also need to handle the separater "_"
 
 ;; use with-base:char-denote-number?
-;; to check if each "digit-cher" greaterOrEqual then "base"
+;; to check if each "digit-cher" greater_or_equal then "base"
 
-defWord "with-base:string-denote-digit?", withBase_stringDenoteDigit?
+defWord "with-base:string-denote-digit?", with_base__string_denote_digit?
    ;; (* base, string[address, length] -- True or False *)
    xx dup, zero?, false?branch, 5
    xx   drop2, drop
    xx   False
    xx   Exit
-   xx dup2, headOfString, literal, '-', equal?, false?branch, 2
+   xx dup2, head_of_string, literal, '-', equal?, false?branch, 2
    ;; note the way how to uses "if then" here
    ;; it is enough to use "if then" to handle
    ;; an optional executed function call, without the use of "Exit"
-   xx   tailOfString
-   xx dup2, stringFullOfUnderscore?, false?branch, 5
+   xx   tail_of_string
+   xx dup2, string_full_of_underscore?, false?branch, 5
    xx   drop2, drop
    xx   False
    xx   Exit
-   xx help_withBase_stringDenoteDigit?
+   xx help__with_base__string_denote_digit?
    xx Exit
-defWordEnd withBase_stringDenoteDigit?
+defWordEnd with_base__string_denote_digit?
 
 ;; this helper function :
 ;; 0. when meet zero-length string always reture True
-defWord "string-full-of-underscore?", stringFullOfUnderscore?
+defWord "string-full-of-underscore?", string_full_of_underscore?
    ;; (* string[address, length] -- True or False *)
    xx dup, zero?, false?branch, 4
    xx   drop2
    xx   True
    xx   Exit
-   xx tailAndHeadOfString
+   xx tail_and_head_of_string
    xx literal, '_', equal?, false?branch, 3
-   xx   stringFullOfUnderscore?
+   xx   string_full_of_underscore?
    xx   Exit
    xx drop2
    xx False
    xx Exit
-defWordEnd stringFullOfUnderscore?
+defWordEnd string_full_of_underscore?
 
 ;; this helper function :
 ;; 0. when meet zero-length string always reture True
 ;; 1. do not handle "-"
 ;; 2. do not handle string-full-of-underscore
-defWord "help:with-base:string-denote-digit?", help_withBase_stringDenoteDigit?
+defWord "help:with-base:string-denote-digit?", help__with_base__string_denote_digit?
    ;; (* base, string[address, length] -- True or False *)
    xx dup, zero?, false?branch, 5
    xx   drop2, drop
    xx   True
    xx   Exit
-   xx tailAndHeadOfString
+   xx tail_and_head_of_string
    xx dup, literal, '_', equal?, false?branch, 4
    xx   drop
-   xx   help_withBase_stringDenoteDigit?
+   xx   help__with_base__string_denote_digit?
    xx   Exit
    xx xoverxxx, swap
-   xx withBase_charDenoteNumber?, false?branch, 3
-   xx   help_withBase_stringDenoteDigit?
+   xx with_base__char_denote_number?, false?branch, 3
+   xx   help__with_base__string_denote_digit?
    xx   Exit
    xx drop2, drop
    xx False
    xx Exit
-defWordEnd help_withBase_stringDenoteDigit?
+defWordEnd help__with_base__string_denote_digit?
 
 
-defWord "with-base:string-denote-digit?without-sign", withBase_stringDenoteDigit?withoutSign
+defWord "with-base:string-denote-digit?without-sign", with_base__string_denote_digit?without_sign
    ;; (* base, string[address, length] -- True or False *)
-   xx dup2, headOfString, literal, '-', equal?, false?branch, 5
+   xx dup2, head_of_string, literal, '-', equal?, false?branch, 5
    xx   drop2, drop
    xx   False
    xx   Exit
-   xx withBase_stringDenoteDigit?
+   xx with_base__string_denote_digit?
    xx Exit
-defWordEnd withBase_stringDenoteDigit?withoutSign
+defWordEnd with_base__string_denote_digit?without_sign
 ;; now with very good factoring
 ;; we can write the following function easily :)
 
 ;; with "#"
-defWord "string-denote-base#digit?", stringDenoteBaseDigit?
+defWord "string-denote-base#digit?", string_denote_base_digit?
    ;; (* string[address, length] -- True or False *)
-   xx dup2, baseOfString
+   xx dup2, base_of_string
    xx dup, zero?, false?branch, 5
    xx   drop  ;; drop zero
    xx   drop2 ;; drop string
    xx   False
    xx   Exit
    xx xxswapx
-   xx digitOfString
+   xx digit_of_string
    xx dup, zero?, false?branch, 5
    xx   drop  ;; drop zero
    xx   drop  ;; drop base
    xx   False
    xx   Exit
-   xx withBase_stringDenoteDigit?
+   xx with_base__string_denote_digit?
    xx Exit
-defWordEnd stringDenoteBaseDigit?
+defWordEnd string_denote_base_digit?
 
 ;; without "#"
-defWord "string-denote-digit?", stringDenoteDigit?
+defWord "string-denote-digit?", string_denote_digit?
    ;; (* string[address, length] -- True or False *)
    xx literal, 10, xxswapx
-   xx withBase_stringDenoteDigit?
+   xx with_base__string_denote_digit?
    xx Exit
-defWordEnd stringDenoteDigit?
+defWordEnd string_denote_digit?
 ;; in the following functions
 ;; I also need to handle the separater "_"
 
 ;; two sub-type of string as above
-defWord "string-denote-integer?", stringDenoteInteger?
+defWord "string-denote-integer?", string_denote_integer?
    ;; (* string[address, length] -- True or False *)
-   xx dup2, stringDenoteDigit?, false?branch, 4
+   xx dup2, string_denote_digit?, false?branch, 4
    xx   drop2, True
    xx   Exit
-   xx stringDenoteBaseDigit?, false?branch, 3
+   xx string_denote_base_digit?, false?branch, 3
    xx   True
    xx   Exit
    xx False
    xx Exit
-defWordEnd stringDenoteInteger?
+defWordEnd string_denote_integer?
 ;; we need to return an error indication
 ;; so we let the following function returns two items on the stack
 ;; is this the right way to do it?
 ;; for sometimes one might do not want to call "debuger"
 ;; when calling "string->integer" and meet a parsing error
-defWord "with-base:string->natural-number,with-error", withBase_stringToNaturalNumber_withError
+defWord "with-base:string->natural-number,with-error", with_base__string_to_natural_number__with_error
    ;; (* base, string[address, length] -- natural-number, True *)
    ;; (* or *)
    ;; (* base, string[address, length] -- 0, False *)
    xx xoverxx, xxoverx
-   xx withBase_stringDenoteDigit?withoutSign, false?, false?branch, 7
+   xx with_base__string_denote_digit?without_sign, false?, false?branch, 7
    xx   drop2, drop
    xx   literal, 0
    xx   False
    xx   Exit
-   xx literal, 0, pushLambdaStack ;; number-counter[0]
-   xx helpPush_withBase_stringToNaturalNumber_withError
+   xx literal, 0, push_lambda_stack ;; number-counter[0]
+   xx help_push__with_base__string_to_natural_number__with_error
    xx literal, 0 ;; sum
    xx literal, 0 ;; index
-   xx helpPop_withBase_stringToNaturalNumber_withError
+   xx help_pop__with_base__string_to_natural_number__with_error
    xx Exit
-defWordEnd withBase_stringToNaturalNumber_withError
+defWordEnd with_base__string_to_natural_number__with_error
 
 
-defWord "help-push:with-base:string->natural-number,with-error", helpPush_withBase_stringToNaturalNumber_withError
+defWord "help-push:with-base:string->natural-number,with-error", help_push__with_base__string_to_natural_number__with_error
    ;; (* base, string[address, length] -- base *)
    ;; (* Lambda-stack:: number-counter[0] -- number-counter[N], number, ... *)
    xx dup, zero?, false?branch, 3
    xx   drop2
    xx   Exit
-   xx tailAndHeadOfString
+   xx tail_and_head_of_string
    xx dup, literal, '_', equal?, false?branch, 4
    xx   drop
-   xx   helpPush_withBase_stringToNaturalNumber_withError
+   xx   help_push__with_base__string_to_natural_number__with_error
    xx   Exit
-   xx charToNumber, popLambdaStack, add1
-   xx swap, pushLambdaStack, pushLambdaStack
-   xx helpPush_withBase_stringToNaturalNumber_withError
+   xx char_to_number, pop_lambda_stack, add1
+   xx swap, push_lambda_stack, push_lambda_stack
+   xx help_push__with_base__string_to_natural_number__with_error
    xx Exit
-defWordEnd helpPush_withBase_stringToNaturalNumber_withError
+defWordEnd help_push__with_base__string_to_natural_number__with_error
 
-defWord "help-pop:with-base:string->natural-number,with-error", helpPop_withBase_stringToNaturalNumber_withError
+defWord "help-pop:with-base:string->natural-number,with-error", help_pop__with_base__string_to_natural_number__with_error
    ;; (* base, sum, index -- natural-number, True *)
    ;; (* Lambda-stack:: number-counter[N], number, ... -- *)
-   xx popLambdaStack
+   xx pop_lambda_stack
    xx dup, zero?, false?branch, 7
    xx   drop
    xx   drop, swap, drop
    xx   True
    xx   Exit
-   xx popLambdaStack, swap, sub1, pushLambdaStack
+   xx pop_lambda_stack, swap, sub1, push_lambda_stack
    ;; (* base, sum, index, number *)
    xx xoverxxx, xoverxx
    xx power
    ;; (* base, sum, index, number, base^index *)
    xx multiple
-   xx pushLambdaStack
-   xx swap, popLambdaStack, addition
+   xx push_lambda_stack
+   xx swap, pop_lambda_stack, addition
    xx swap, add1
-   xx helpPop_withBase_stringToNaturalNumber_withError
+   xx help_pop__with_base__string_to_natural_number__with_error
    xx Exit
-defWordEnd helpPop_withBase_stringToNaturalNumber_withError
-defWord "with-base:string->integer,with-error", withBase_stringToInteger_withError
+defWordEnd help_pop__with_base__string_to_natural_number__with_error
+defWord "with-base:string->integer,with-error", with_base__string_to_integer__with_error
    ;; (* base, string[address, length] -- natural-number, True *)
    ;; (* or *)
    ;; (* base, string[address, length] -- 0, False *)
    xx xoverxx, xxoverx
-   xx withBase_stringDenoteDigit?, false?, false?branch, 7
+   xx with_base__string_denote_digit?, false?, false?branch, 7
    xx   drop2, drop
    xx   literal, 0
    xx   False
    xx   Exit
-   xx dup2, headOfString, literal, '-', equal?, false?branch, 7
-   xx   tailOfString
-   xx   withBase_stringToNaturalNumber_withError
+   xx dup2, head_of_string, literal, '-', equal?, false?branch, 7
+   xx   tail_of_string
+   xx   with_base__string_to_natural_number__with_error
    xx   swap
    xx   negate
    xx   swap
    xx   Exit
-   xx withBase_stringToNaturalNumber_withError
+   xx with_base__string_to_natural_number__with_error
    xx Exit
-defWordEnd withBase_stringToInteger_withError
-defWord "string->integer,with-error", stringToInteger_withError
+defWordEnd with_base__string_to_integer__with_error
+defWord "string->integer,with-error", string_to_integer__with_error
    ;; (* string[address, length] -- integer, True *)
    ;; (* or *)
    ;; (* string[address, length] -- 0, False *)
-   xx dup2, stringDenoteBaseDigit?, false?branch, 7
-   xx   dup2, baseOfString
-   xx   xxswapx, digitOfString
-   xx   withBase_stringToInteger_withError
+   xx dup2, string_denote_base_digit?, false?branch, 7
+   xx   dup2, base_of_string
+   xx   xxswapx, digit_of_string
+   xx   with_base__string_to_integer__with_error
    xx   Exit
-   xx dup2, stringDenoteDigit?, false?branch, 6
+   xx dup2, string_denote_digit?, false?branch, 6
    xx   literal, 10
    xx   xxswapx
-   xx   withBase_stringToInteger_withError
+   xx   with_base__string_to_integer__with_error
    xx   Exit
    xx drop2
    xx literal, 0
    xx False
    xx Exit
-defWordEnd stringToInteger_withError
+defWordEnd string_to_integer__with_error
+hereUnInitializedData
+;; ------------------------------------------
+;; note that, Subsequent calls will overwrite Basic_string_buffer
+MaxStringLength = 1024*1024
+
+Basic_string_buffer labeling
+        preserve MaxStringLength
+
+defConst "Basic-string-buffer", Basic_string_buffer, _Basic_string_buffer
+
+defWord "read-string-into-buffer", read_string_into_buffer
+   ;; (*  -- string[address of Basic_string_buffer, length] *)
+   xx literal, Basic_string_buffer ;; (* leave one of the return values *)
+   xx Zero                         ;; (* leave length counter *)
+
+   xx literal, Basic_string_buffer
+
+   .read_char:
+   xx read_char, dup, literal, '"', equal?, false?branch, 3
+   xx   drop2
+   xx   Exit
+
+   xx over, save_byte, add1
+   xx swap, add1, swap
+   xx branch, (- ($ - .read_char) / Cell_width)
+defWordEnd read_string_into_buffer
 hereCode
-explainVar:
+explain_variable:
    ;; ( -- address )
-   add ExplainerPointer, CellWidth
-   pushArgumentStack ExplainerPointer
+   add Explainer_pointer, Cell_width
+   push_argument_stack Explainer_pointer
    next
 
 hereCode
-explainConst:
+explain_constant:
    ;; ( -- value )
-   add ExplainerPointer, CellWidth
-   mov TemporaryRegister, [ExplainerPointer]
-   pushArgumentStack TemporaryRegister
+   add Explainer_pointer, Cell_width
+   mov Temporary_register, [Explainer_pointer]
+   push_argument_stack Temporary_register
    next
 
 hereCode
-explainFunctionBody:
-   pushReturnStack NextWordPointer
+explain_function_body:
+   push_return_stack Next_word_pointer
    ;; to calculate the address in a word where the function-body is stored
-   ;; this address is as an ``argumt'' of explainFunctionBody
-   add ExplainerPointer, CellWidth
-   mov NextWordPointer, ExplainerPointer
+   ;; this address is as an ``argumt'' of explain_function_body
+   add Explainer_pointer, Cell_width
+   mov Next_word_pointer, Explainer_pointer
    next
 
 hereCode
-explainConstString:
+explain_constant_string:
    ;; ( -- string[address, length] )
-   add ExplainerPointer, CellWidth
-   mov TemporaryRegister, [ExplainerPointer]
-   add ExplainerPointer, CellWidth
-   pushArgumentStack ExplainerPointer
-   pushArgumentStack TemporaryRegister
+   add Explainer_pointer, Cell_width
+   mov Temporary_register, [Explainer_pointer]
+   add Explainer_pointer, Cell_width
+   push_argument_stack Explainer_pointer
+   push_argument_stack Temporary_register
    next
 
 
 
 defCode "execute", execute
   ;; ( word[address of explainer] -- )
-  popArgumentStack ExplainerPointer
-  jmp qword[ExplainerPointer]
+  pop_argument_stack Explainer_pointer
+  jmp qword[Explainer_pointer]
 
 ;; not matter what way you use to set :
-;;   [ExplainerPointer] == address-of-explainer (of a word you want to jump to)
+;;   [Explainer_pointer] == address-of-explainer (of a word you want to jump to)
 ;; then :
-;;   jmp qword[ExplainerPointer]
+;;   jmp qword[Explainer_pointer]
 ;; it will works just well !!!
 
 
@@ -1687,15 +1599,15 @@ defConst "Exit", Exit, Exit
 defConst "已矣", 已矣, 已矣
 ;; (* so, the following numbers are the same :
 ;;   Exit
-;;   readWord Exit find wordLinkToWordExplainer
+;;   read_word Exit find word_link_to_word_explainer
 ;;   *)
 
-defConst "Function-body-explainer",   explainFunctionBody, FunctionBodyExplainer
-defConst "Variable-explainer",        explainVar,          VarExplainer
-defConst "Constant-explainer",        explainConst,        ConstExplainer
-defConst "Constant-string-explainer", explainConstString,  ConstStringExplainer
+defConst "Function-body-explainer",   explain_function_body,     _Function_body_explainer
+defConst "Variable-explainer",        explain_variable,          _Variable_explainer
+defConst "Constant-explainer",        explain_constant,          _Constant_explainer
+defConst "Constant-string-explainer", explain_constant_string,   _Constant_string_explainer
 ;; recall
-;; a word in the dictionary (unit : CellWidth = 8 bytes)
+;; a word in the dictionary (unit : Cell_width = 8 bytes)
 ;; ==
 ;;    ||  1 : name-string-header-which-contains-the-length-of-name-string  ||
 ;;    ||  m : name-string  ||
@@ -1715,178 +1627,150 @@ defConst "Constant-string-explainer", explainConstString,  ConstStringExplainer
 WordType_HiddenMask = 00000001h
 
 
-defWord "word-link->word-string", wordLinkToWordString
+defWord "word-link->word-string", word_link_to_word_string
    ;; (* link[address] -- string[address, length] *)
-   xx literal, CellWidth
+   xx literal, Cell_width
    xx Two, multiple
    xx addition
    xx fetch
-   xx dup, literal, CellWidth, addition
+   xx dup, literal, Cell_width, addition
    xx swap, fetch
    xx Exit
-defWordEnd wordLinkToWordString
+defWordEnd word_link_to_word_string
 
-defWord "help,find", help_find
+defWord "help,find", help__find
    ;; (* wordString[address, length], link[address] -- word[address of link] or Zero *)
    xx dup, zero?, false?branch, 4
    xx   xxswapx, drop2
    xx   Exit
-   xx xxtuckx, wordLinkToWordString, xxoverxx, equalString?, false?branch, 3
+   xx xxtuckx, word_link_to_word_string, xxoverxx, equal_string?, false?branch, 3
    xx   drop2
    xx   Exit
    xx xswapxx, fetch
-   xx help_find
+   xx help__find
    xx Exit
-defWordEnd help_find
+defWordEnd help__find
 
 defWord "find", find
    ;; (* wordString[address, length] -- word[address of link] or Zero *)
    xx FirstWordInDictionary, fetch
-   xx help_find
+   xx help__find
    xx Exit
 defWordEnd find
 
 
-;; usage;
-;; 1 2 readWord + find wordLinkToWordExplainer execute . (* 3 *)
-defWord "word-link->word-explainer", wordLinkToWordExplainer
+defWord "word-link->word-explainer", word_link_to_word_explainer
    ;; (* word[address of link] -- word[address of explainer] or Zero *)
-   xx literal, CellWidth
+   xx literal, Cell_width
    xx Three, multiple
    xx addition
    xx Exit
-defWordEnd wordLinkToWordExplainer
-defWord "read-first-non-blank-char", readFirstNonBlankChar
+defWordEnd word_link_to_word_explainer
+defWord "read-first-non-blank-char", read_first_non_blank_char
    ;; (* -- FirstNonBlankChar *)
-   xx readChar, dup
+   xx read_char, dup
    xx literal, ASCII_space
-   xx greaterThan?, false?branch, 2
+   xx greater_than?, false?branch, 2
    xx   Exit
    xx drop
    xx branch, -10
-defWordEnd readFirstNonBlankChar
+defWordEnd read_first_non_blank_char
 
-defWord "read-non-blank-char", readNonBlankChar
+defWord "read-non-blank-char", read_non_blank_char
    ;; (* -- FirstNonBlankChar or Zero *)
-   xx readChar, dup
+   xx read_char, dup
    xx literal, ASCII_space
-   xx greaterThan?, false?branch, 2
+   xx greater_than?, false?branch, 2
    xx   Exit
    xx drop
    xx Zero
    xx Exit
-defWordEnd readNonBlankChar
+defWordEnd read_non_blank_char
 hereUnInitializedData
 ;; ------------------------------------------
-;; note that, Subsequent calls will overwrite BufferForReadWord
-;; this is why there is another function ``readWordForRuntime''
-MaxWordLength = 1024
+;; note that, Subsequent calls will overwrite Buffer_for_read_word
+;; this is why there is another function ``read_word_for_runtime''
+Max_word_length = 1024
 
-BufferForReadWord labeling
-        preserve MaxWordLength
+Buffer_for_read_word labeling
+        preserve Max_word_length
 
-BufferForReadWordForRuntime labeling
-        preserve MaxWordLength
+Buffer_for_read_wordForRuntime labeling
+        preserve Max_word_length
 
 
-defWord "read-word", readWord
+defWord "read-word", read_word
    ;; (*  -- wordString[address, length] *)
    ;; 1. skips any blanks (spaces, tabs, newlines)
-   ;; 2. calls readChar to read characters into BufferForReadWord
+   ;; 2. calls read_char to read characters into Buffer_for_read_word
    ;;    until it hits a blank
-   ;; 3. returns the address of BufferForReadWord and length on the stack
+   ;; 3. returns the address of Buffer_for_read_word and length on the stack
 
-   xx literal, BufferForReadWord ;; (* leave return one of the values *)
+   xx literal, Buffer_for_read_word ;; (* leave one of the return values *)
    xx Zero                       ;; (* leave length counter *)
 
-   xx literal, BufferForReadWord
-   xx readFirstNonBlankChar
-   xx over, saveByte, add1
+   xx literal, Buffer_for_read_word
+   xx read_first_non_blank_char
+   xx over, save_byte, add1
    xx swap, add1, swap
 
-   xx readNonBlankChar, dup, zero?branch, 9
-   xx   over, saveByte, add1
+   xx read_non_blank_char, dup, zero?branch, 9
+   xx   over, save_byte, add1
    xx   swap, add1, swap
    xx   branch, -11
 
    xx drop2
    xx Exit
-defWordEnd readWord
+defWordEnd read_word
 
-defWord "read-word-for-runtime", readWordForRuntime
+defWord "read-word-for-runtime", read_word_for_runtime
    ;; (*  -- wordString[address, length] *)
    ;; 1. skips any blanks (spaces, tabs, newlines)
-   ;; 2. calls readChar to read characters into BufferForReadWord
+   ;; 2. calls read_char to read characters into Buffer_for_read_word
    ;;    until it hits a blank
-   ;; 3. returns the address of BufferForReadWord and length on the stack
+   ;; 3. returns the address of Buffer_for_read_word and length on the stack
 
-   xx literal, BufferForReadWordForRuntime ;; (* leave return one of the values *)
+   xx literal, Buffer_for_read_wordForRuntime ;; (* leave return one of the values *)
    xx Zero                                 ;; (* leave length counter *)
 
-   xx literal, BufferForReadWordForRuntime
-   xx readFirstNonBlankChar
-   xx over, saveByte, add1
+   xx literal, Buffer_for_read_wordForRuntime
+   xx read_first_non_blank_char
+   xx over, save_byte, add1
    xx swap, add1, swap
 
-   xx readNonBlankChar, dup, zero?branch, 9
-   xx   over, saveByte, add1
+   xx read_non_blank_char, dup, zero?branch, 9
+   xx   over, save_byte, add1
    xx   swap, add1, swap
    xx   branch, -11
 
    xx drop2
    xx Exit
-defWordEnd readWordForRuntime
-hereUnInitializedData
-;; ------------------------------------------
-;; note that, Subsequent calls will overwrite BasicStringBuffer
-MaxStringLength = 1024*1024
+defWordEnd read_word_for_runtime
+defConstString "Comment-begin-string",  "(*", Comment_begin_string
+defConstString "Comment-ending-string", "*)", Comment_ending_string
 
-BasicStringBuffer labeling
-        preserve MaxStringLength
-
-defConst "Basic-string-buffer", BasicStringBuffer, TheBasicStringBuffer
-
-defWord "read-string-into-buffer", readStringInToBuffer
-   ;; (*  -- string[address of BasicStringBuffer, length] *)
-   xx literal, BasicStringBuffer ;; (* leave return one of the values *)
-   xx Zero                         ;; (* leave length counter *)
-
-   xx literal, BasicStringBuffer
-
-   xx readChar, dup
-   xx literal, 34 ;; ASCII_doublequote
-   xx equal?, notFalse?branch, 9
-   xx   over, saveByte, add1
-   xx   swap, add1, swap
-   xx   branch, -14
-
-   xx drop2
-   xx Exit
-defWordEnd readStringInToBuffer
-defConstString "Comment-begin-string",  "(*", CommentBeginString
-defConstString "Comment-ending-string", "*)", CommentEndingString
-
-defWord "ignore-comment", ignoreComment
+defWord "ignore-comment", ignore_comment
    ;; (* -- *)
    ;; (* ignore a list of comment words from stdin *)
-   xx readWord
-   xx dup2, CommentBeginString, equalString?, false?branch, 5
-   xx   drop2, ignoreComment, branch, -9
+   xx read_word
+   xx dup2, Comment_begin_string, equal_string?, false?branch, 5
+   xx   drop2, ignore_comment, branch, -9
    ;; beware of the tail-call-optimization
    ;; a tail-recursive-call is really a loop
-   xx CommentEndingString, equalString?, false?branch, -13
+   xx Comment_ending_string, equal_string?, false?branch, -13
    xx   Exit
-defWordEnd ignoreComment
+defWordEnd ignore_comment
 
-
+;; 这个词是为 REPL 中对 注释的处理而定义的
+;; 编译时需要 调用 ignore_comment 以另外处理注释
 defWord "(*", comment
-   xx ignoreComment
+   xx ignore_comment
    xx Exit
 defWordEnd comment
 
 ;; test:
 ;; (* ok (* ok *) ok *) ok
-;; a WordList (unit : CellWidth = 8 bytes)
+;; a WordList (unit : Cell_width = 8 bytes)
 ;;   ||  1 : length-of-Word-1     ||
 ;;   ||  a : Word-1--as-a-string  ||
 ;;   ||  1 : length-of-Word-2     ||
@@ -1895,204 +1779,202 @@ defWordEnd comment
 
 hereUnInitializedData
 ;; ------------------------------------------
-;; note that, Subsequent calls will overwrite BufferForReadWordListForLexicographer
-SizeOfBufferForReadWordListForLexicographer = 2*1024*1024
+;; note that, Subsequent calls will overwrite Buffer_for_read_word_list_for_lexicographer
+SizeOfBuffer_for_read_word_list_for_lexicographer = 2*1024*1024
 
-BufferForReadWordListForLexicographer labeling
-        preserve SizeOfBufferForReadWordListForLexicographer
+Buffer_for_read_word_list_for_lexicographer labeling
+        preserve SizeOfBuffer_for_read_word_list_for_lexicographer
 
 defConstString "Ket:cosemi", ";", Ket_cosemi
 defConstString "Ket:fuzhe", "者", Ket_fuzhe
 
-defVar "Next-word-for-read-word-list-for-lexicographer", BufferForReadWordListForLexicographer, NextWordForReadWordListForLexicographer
+defVar "Next-word-for-read-word-list-for-lexicographer", Buffer_for_read_word_list_for_lexicographer, Next_word_for_read_word_list_for_lexicographer
 
-defWord "read-word-list-for-lexicographer", readWordListForLexicographer
+defWord "read-word-list-for-lexicographer", read_word_list_for_lexicographer
    ;; (* read a WordList from stdin (ForLexicographer) *)
    ;; (* -- wordList[address, the number of words] *)
 
-   ;; (* initialize NextWordForReadWordListForLexicographer *)
-   xx literal, BufferForReadWordListForLexicographer
-   xx NextWordForReadWordListForLexicographer
+   ;; (* initialize Next_word_for_read_word_list_for_lexicographer *)
+   xx literal, Buffer_for_read_word_list_for_lexicographer
+   xx Next_word_for_read_word_list_for_lexicographer
    xx save
 
    ;; (* leave return value: [buffer-address, counter] *)
-   xx literal, BufferForReadWordListForLexicographer
+   xx literal, Buffer_for_read_word_list_for_lexicographer
    xx Zero
 
-   xx readWord
+   xx read_word
 
    xx dup2
-   xx CommentBeginString, equalString?, false?branch, 5
-   xx drop2, ignoreComment, branch, -9
+   xx Comment_begin_string, equal_string?, false?branch, 5
+   xx drop2, ignore_comment, branch, -9
 
    xx dup2
-   xx Ket_cosemi, equalString?, false?branch, 3
+   xx Ket_cosemi, equal_string?, false?branch, 3
    xx drop2
    xx Exit
 
    xx dup2
-   xx Ket_fuzhe, equalString?, false?branch, 3
+   xx Ket_fuzhe, equal_string?, false?branch, 3
    xx drop2
    xx Exit
 
-   xx addWordToListForLexicographer
+   xx add_word_to_list_for_lexicographer
    xx add1
    xx branch, -27
-defWordEnd readWordListForLexicographer
+defWordEnd read_word_list_for_lexicographer
 
-defWord ":", readWordListForLexicographer_Bra_cosemi
-   xx readWordListForLexicographer
+defWord ":", read_word_list_for_lexicographer_Bra_cosemi
+   xx read_word_list_for_lexicographer
    xx Exit
-defWordEnd readWordListForLexicographer_Bra_cosemi
+defWordEnd read_word_list_for_lexicographer_Bra_cosemi
 
-defWord "夫", readWordListForLexicographer_Bra_fuzhe
-   xx readWordListForLexicographer
+defWord "夫", read_word_list_for_lexicographer_Bra_fuzhe
+   xx read_word_list_for_lexicographer
    xx Exit
-defWordEnd readWordListForLexicographer_Bra_fuzhe
+defWordEnd read_word_list_for_lexicographer_Bra_fuzhe
 
 
-defWord "add-word-to-list-for-lexicographer", addWordToListForLexicographer
+defWord "add-word-to-list-for-lexicographer", add_word_to_list_for_lexicographer
    ;; ( wordString[address, length] -- )
-   ;; leave a length behind, for update NextWordForReadWordListForLexicographer at the end
+   ;; leave a length behind, for update Next_word_for_read_word_list_for_lexicographer at the end
    xx dup, xxswapx
    ;;   ||  1 : length-of-Word-1     ||
-   xx dup, NextWordForReadWordListForLexicographer, fetch, save
-   ;; update NextWordForReadWordListForLexicographer
-   xx NextWordForReadWordListForLexicographer, fetch, add8, NextWordForReadWordListForLexicographer, save
+   xx dup, Next_word_for_read_word_list_for_lexicographer, fetch, save
+   ;; update Next_word_for_read_word_list_for_lexicographer
+   xx Next_word_for_read_word_list_for_lexicographer, fetch, add8, Next_word_for_read_word_list_for_lexicographer, save
    ;;   ||  a : Word-1--as-a-string  ||
-   xx NextWordForReadWordListForLexicographer, fetch, swap, copyByteString
-   ;; update NextWordForReadWordListForLexicographer again
-   xx NextWordForReadWordListForLexicographer, addSave
+   xx Next_word_for_read_word_list_for_lexicographer, fetch, swap, copy_byte_string
+   ;; update Next_word_for_read_word_list_for_lexicographer again
+   xx Next_word_for_read_word_list_for_lexicographer, add_save
    xx Exit
-defWordEnd addWordToListForLexicographer
-defWord "append-number-to-here", appendNumberToHere
+defWordEnd add_word_to_list_for_lexicographer
+defWord "append-number-to-here", append_number_to_here
    ;; (* a 64 bits number -- *)
    ;; reset ``Here'', which points next free memory
    xx Here, fetch
    xx save
    xx Here, fetch
-   xx literal, CellWidth, addition
+   xx literal, Cell_width, addition
    xx Here, save
    xx Exit
-defWordEnd appendNumberToHere
+defWordEnd append_number_to_here
 
 ;; note that:
 ;; a string in stack is string[address, length]
 ;; a string in memory is ||  1 : length  ||  n : string  ||
-defWord "append-string-to-here", appendStringToHere
+defWord "append-string-to-here", append_string_to_here
    ;; (* string[address, length] -- *)
    ;; for update Here
-   xx dup, pushLambdaStack
-   xx   dup, appendNumberToHere
-   xx   Here, fetch, swap, copyByteString
+   xx dup, push_lambda_stack
+   xx   dup, append_number_to_here
+   xx   Here, fetch, swap, copy_byte_string
    ;; update Here
-   xx popLambdaStack
+   xx pop_lambda_stack
    xx Here, fetch, addition, Here, save
    xx Exit
-defWordEnd appendStringToHere
+defWordEnd append_string_to_here
 
-defWord "create-word-header", createWordHeader ;; by string
+defWord "create-word-header", create_word_header ;; by string
    ;; (* string[address, length] -- word[address of link] *)
    ;; for address-of-name-string-header
-   xx Here, fetch, pushLambdaStack
-   xx   appendStringToHere
-   xx   Here, fetch, appendNumberToHere ;; (* identification *)
+   xx Here, fetch, push_lambda_stack
+   xx   append_string_to_here
+   xx   Here, fetch, append_number_to_here ;; (* identification *)
    xx   Here, fetch ;; (* leave the word[link] as return-value *)
-   xx   Zero, appendNumberToHere ;; (* link *)
-   xx   Zero, appendNumberToHere ;; (* type *)
+   xx   Zero, append_number_to_here ;; (* link *)
+   xx   Zero, append_number_to_here ;; (* type *)
    ;; address-of-name-string-header
-   xx popLambdaStack, appendNumberToHere
+   xx pop_lambda_stack, append_number_to_here
    xx Exit
-defWordEnd createWordHeader
+defWordEnd create_word_header
 
-defWord "create-word-header-for-function", createWordHeaderForFunction ;; by string
+defWord "create-word-header-for-function", create_word_header_for_function ;; by string
    ;; (* SizeOfFunctionBody *) is new
    ;; (* string[address, length] -- word[address of link] *)
    ;; for address-of-name-string-header
-   xx Here, fetch, pushLambdaStack
-   xx   appendStringToHere
-   xx   Zero, appendNumberToHere ;; (* SizeOfFunctionBody *)
-   xx   Here, fetch, appendNumberToHere ;; (* identification *)
+   xx Here, fetch, push_lambda_stack
+   xx   append_string_to_here
+   xx   Zero, append_number_to_here ;; (* SizeOfFunctionBody *)
+   xx   Here, fetch, append_number_to_here ;; (* identification *)
    xx   Here, fetch ;; (* leave the word[link] as return-value *)
-   xx   Zero, appendNumberToHere ;; (* link *)
-   xx   Zero, appendNumberToHere ;; (* type *)
-   xx popLambdaStack, appendNumberToHere ;; address-of-name-string-header
+   xx   Zero, append_number_to_here ;; (* link *)
+   xx   Zero, append_number_to_here ;; (* type *)
+   xx pop_lambda_stack, append_number_to_here ;; address-of-name-string-header
    xx Exit
-defWordEnd createWordHeaderForFunction
+defWordEnd create_word_header_for_function
 
 
-defWord "help:append-word-description-to-here,number", help_append_word_description_to_here_number
+defWord "help:append-word-description-to-here,number", help__append_word_description_to_here__number
    ;; (* string[address, length] -- *)
    ;; reading-error reported by ``number'' is not handled
-   xx literal, literal, appendNumberToHere
-   xx stringToInteger_withError, drop, appendNumberToHere
+   xx literal, literal, append_number_to_here
+   xx string_to_integer__with_error, drop, append_number_to_here
    xx Exit
-defWordEnd help_append_word_description_to_here_number
+defWordEnd help__append_word_description_to_here__number
 
 defWord "help:append-word-description-to-here,word", help_append_word_description_to_here_word
    ;; (* string[address, length] -- *)
-   xx find, wordLinkToWordExplainer, appendNumberToHere
+   xx find, word_link_to_word_explainer, append_number_to_here
    xx Exit
 defWordEnd help_append_word_description_to_here_word
 
-defWord "help:append-word-description-to-here,literal&branch", help_append_word_description_to_here_literal_branch
+defWord "help:append-word-description-to-here,literal&branch", help__append_word_description_to_here__literal_branch
    ;; (* string[address, length] -- *)
    xx help_append_word_description_to_here_word
    ;; ><><>< 如果后面什么都没有了 就需要报错 但是 这里没有处理这个 error
-   xx tailAndHeadOfWordList
-   xx dup2, stringDenoteInteger?, false?branch, 5
-   xx   stringToInteger_withError, drop, appendNumberToHere
+   xx tail_and_head_of_word_list
+   xx dup2, string_denote_integer?, false?branch, 5
+   xx   string_to_integer__with_error, drop, append_number_to_here
    xx   Exit
    xx help_append_word_description_to_here_word
    xx Exit
-defWordEnd help_append_word_description_to_here_literal_branch
+defWordEnd help__append_word_description_to_here__literal_branch
 
-defConstString "Key-word:literal", "literal", Key_word_literal
-defConstString "Key-word:branch", "branch", Key_word_branch
-defConstString "Key-word:zero?branch", "zero?branch", Key_word_zero_branch
-defConstString "Key-word:false?branch", "false?branch", Key_word_false_branch
-defConstString "Key-word:not-false?branch", "not-false?branch", Key_word_not_false_branch
+defConstString "Key-word:literal", "literal", Key_word__literal
+defConstString "Key-word:branch", "branch", Key_word__branch
+defConstString "Key-word:zero?branch", "zero?branch", Key_word__zero_branch
+defConstString "Key-word:false?branch", "false?branch", Key_word__false_branch
+defConstString "Key-word:not-false?branch", "not-false?branch", Key_word__not_false_branch
 
-defWord "string-denote-literal&branch?", stringDenoteLiteralAndBranch?
+defWord "string-denote-literal-or-branch?", string_denote_literal_or_branch?
    ;; (* string[address, length] -- True or False *)
-   xx dup2, Key_word_literal, equalString?, false?branch, 4
+   xx dup2, Key_word__literal, equal_string?, false?branch, 4
    xx   drop2, True
    xx   Exit
-   xx dup2, Key_word_branch, equalString?, false?branch, 4
+   xx dup2, Key_word__branch, equal_string?, false?branch, 4
    xx   drop2, True
    xx   Exit
-   xx dup2, Key_word_zero_branch, equalString?, false?branch, 4
+   xx dup2, Key_word__zero_branch, equal_string?, false?branch, 4
    xx   drop2, True
    xx   Exit
-   xx dup2, Key_word_false_branch, equalString?, false?branch, 4
+   xx dup2, Key_word__false_branch, equal_string?, false?branch, 4
    xx   drop2, True
    xx   Exit
-   xx dup2, Key_word_not_false_branch, equalString?, false?branch, 4
+   xx dup2, Key_word__not_false_branch, equal_string?, false?branch, 4
    xx   drop2, True
    xx   Exit
    xx drop2, False
    xx Exit
-defWordEnd stringDenoteLiteralAndBranch?
+defWordEnd string_denote_literal_or_branch?
 
-defWord "append-word-description-to-here", appendWordDescriptionToHere
+defWord "append-word-description-to-here", append_word_description_to_here
    ;; (* wordList[address, the number of words] -- *)
    xx dup, zero?, false?branch, 3
    xx   drop2
    xx   Exit
-   xx tailAndHeadOfWordList
-   xx dup2, stringDenoteLiteralAndBranch?, false?branch, 4
-   xx   help_append_word_description_to_here_literal_branch
+   xx tail_and_head_of_word_list
+   xx dup2, string_denote_literal_or_branch?, false?branch, 4
+   xx   help__append_word_description_to_here__literal_branch
    xx   branch, -13
-   xx dup2, stringDenoteInteger?, false?branch, 4
-   xx   help_append_word_description_to_here_number
+   xx dup2, string_denote_integer?, false?branch, 4
+   xx   help__append_word_description_to_here__number
    xx   branch, -20
    ;; else
    xx   help_append_word_description_to_here_word
    xx   branch, -23
-defWordEnd appendWordDescriptionToHere
-
-
-defWord "add-new-word-to-dictionary", addNewWordToDictionary
+defWordEnd append_word_description_to_here
+defWord "add-new-word-to-dictionary", add_new_word_to_dictionary
    ;; reset FirstWordInDictionary to point to the newly defined word
    ;; (* word[address of link] -- *)
    xx dup
@@ -2101,36 +1983,36 @@ defWord "add-new-word-to-dictionary", addNewWordToDictionary
    xx save
    xx FirstWordInDictionary, save
    xx Exit
-defWordEnd addNewWordToDictionary
+defWordEnd add_new_word_to_dictionary
 
-defWord "set-size-of-function-body", setSizeOfFunctionBody
+defWord "set-size-of-function-body", set_size_of_function_body
    ;; (* wordList[address, the number of words], word[address of link] --
    ;;    wordList[address, the number of words], word[address of link] *)
    xx dup
-   xx literal, CellWidth, subtraction
-   xx literal, CellWidth, subtraction
+   xx literal, Cell_width, subtraction
+   xx literal, Cell_width, subtraction
    xx xoverxx
    xx swap
    xx save
    xx Exit
-defWordEnd setSizeOfFunctionBody
+defWordEnd set_size_of_function_body
 
-defWord "define-function", defineFunction
+defWord "define-function", define_function
    ;; (* wordList[address, the number of words] -- *)
    ;;  to create a new word
    ;;  is to use some words to describe the new word,
    ;;  and let an explainer to explain the description of the new word.
    ;;  to define a new word
    ;;  is to add the new created word to the dictionary.
-   xx tailAndHeadOfWordList
-   xx createWordHeaderForFunction
-   xx FunctionBodyExplainer, appendNumberToHere
-   xx setSizeOfFunctionBody
+   xx tail_and_head_of_word_list
+   xx create_word_header_for_function
+   xx _Function_body_explainer, append_number_to_here
+   xx set_size_of_function_body
    xx xxswapx
-   xx appendWordDescriptionToHere
-   xx addNewWordToDictionary
+   xx append_word_description_to_here
+   xx add_new_word_to_dictionary
    xx Exit
-defWordEnd defineFunction
+defWordEnd define_function
 hereUnInitializedData
 ;; ------------------------------------------
 ;; PairConstructionsArray

@@ -6,11 +6,35 @@
 * ==================================================
 * TODO
 ** note
-   1. 在更改核心语法 的时候 顺便把 字符串 的语法改了
+   1. 不能统一命名空间 是一件很烦人的事
+      也许 在有自己的汇编器之前
+      我应该 用 ocaml 或 pearl 写一个简单的 编译器
+   2. 当把 word-list 这个数据结构消除之后
+      我就可以统一 define 的使用了
+      将 只有 单一的 define 没有别的 东西了
+      1) ><><>< 注意
+         这里要更改跟 GC 有关的代码
+   3. 通过 引入 类似 address 的语法关键词
+      我还能实现更多的的 有趣的效果
+      1) 一个问题
+         目前
+         语法关键词 是解释器 统一处理的
+         我不能很容易地想定义函数一样 定义一个新的 语法关键词
+         也许 通过 好好利用 word 的类型
+         我就能解决这个问题
+   4. 新的 define 还有一个问题是
+      每个名词 可以给出 几个值到 Argument-stack
+      是不确定的
+      这是可以接受的
+      就像是 对函数的注释 一样
+      只要给 对名词的定义 相应的注释就行了
+      并且 之后 还可以用 设计良好的 文本 编辑器 来解决这个问题
+   5. ><><>< 也许 我现在 就应该 试着实现 对 函数性质 的 询问器
+   6. 在更改核心语法 的时候 顺便把 字符串 的语法改了
       从 yaml 学可读性更强的语法
       并允许在函数体内使用简单的字符串
       - 这需要先取消 word-list 这个数据结构
-   2. 我有点不知道应该如何继续下去了
+   7. 我有点不知道应该如何继续下去了
       下一个着手点是哪里 ?
       目标是 我需要自己的 编译器
       我将使用 lambda-calculus 所提供的代入语义 来实现它
@@ -25,80 +49,80 @@
       4) 从最简单 的 babystep 开始
       5) 编译 bootloader
       6) 编译 ...
-      7) 注意要保持设计的灵活性 
+      7) 注意要保持设计的灵活性
          或者直接从 文档开始
          用中文写文档 以加快速度
-   3. 关于 linux下 图形界面 的 文本编辑器
+   8. 关于 linux下 图形界面 的 文本编辑器
       因为我已经能把 动态链接的库加载到 cicada 中了
-      所以是有可能实现的 
+      所以是有可能实现的
       需要用 C 把某先函数包装好
       在 cicada 中调用 C 函数的时候需要保护跟栈 有关的寄存器
-   4. 用一个新的语法关键词 来处理常量与变量 这两种名词对语义的过载
+   9. 用一个新的语法关键词 来处理常量与变量 这两种名词对语义的过载
       就像 literal 一样 这是很容易在 函数体中实现的
       但是在 REPL 中却没有这种机制
       特殊的语法关键词 不能在 REPL 中调用
       应该保护它们
       目前 特殊的语法关键词 在函数体中是被当作标记来使用的
-   5. 如果想要在 REPL 中使用这些特殊的语法关键词
-      那么 在编译语义和解释语义之间
-      就一定要用 两种不同的方式来处理 它们
-      address 是这样 if 和 branch 也是这样
-      我应该去处理它们
-      而不是为了"实现"的简单性而放弃在解释器中对它们的处理
-   6. 完成编译器后实现 hash-table 的 dictionary
-   7. 用字符串来实现 ":"
-      redesign the syntax about chars (to allow ...)
-      and strings (to allow ...)
-   8. I simply won't allow myself to do something ad hoc anymore
-      for if you use something ad hoc
-      when you wish to well-design something related to it
-      you have to go back and redesign the ad hoc better
-   9. I have learned something about yaml
-      gonna use the good parts of it to redesign something in cicada
-      if I can disign the syntax of cicada about data structures
-      to let them be used as a "human-readable data serialization format"
-      then I can say that I have designed something good and new
-      1) 但是注意如果 把 类 yaml 的 对 indentation 的解析
-         也加入到 cicada 中那就必须要使用另一个 REPL 了
-      2) 应该 在 wodili 的已有的 解析器 的基础上
-         增加一个 好好 利用 indentation 的解析器
-         两种解析器各自有各自的用处
-      3) 把 利用"支撑树" 来进行相对引用的 性质加到 yaml 中
-         就能 形成 我想要的 digrap 的语法
-      4) 处理 这些语法 的 解析器 原来叫做这些 文档格式 的 API
-   10. it also feels fun
+   10. 如果想要在 REPL 中使用这些特殊的语法关键词
+       那么 在编译语义和解释语义之间
+       就一定要用 两种不同的方式来处理 它们
+       address 是这样 if 和 branch 也是这样
+       我应该去处理它们
+       而不是为了"实现"的简单性而放弃在解释器中对它们的处理
+   11. 完成编译器后实现 hash-table 的 dictionary
+   12. 用字符串来实现 ":"
+       redesign the syntax about chars (to allow ...)
+       and strings (to allow ...)
+   13. I simply won't allow myself to do something ad hoc anymore
+       for if you use something ad hoc
+       when you wish to well-design something related to it
+       you have to go back and redesign the ad hoc better
+   14. I have learned something about yaml
+       gonna use the good parts of it to redesign something in cicada
+       if I can disign the syntax of cicada about data structures
+       to let them be used as a "human-readable data serialization format"
+       then I can say that I have designed something good and new
+       1) 但是注意如果 把 类 yaml 的 对 indentation 的解析
+          也加入到 cicada 中那就必须要使用另一个 REPL 了
+       2) 应该 在 wodili 的已有的 解析器 的基础上
+          增加一个 好好 利用 indentation 的解析器
+          两种解析器各自有各自的用处
+       3) 把 利用"支撑树" 来进行相对引用的 性质加到 yaml 中
+          就能 形成 我想要的 digrap 的语法
+       4) 处理 这些语法 的 解析器 原来叫做这些 文档格式 的 API
+   15. it also feels fun
        to reimplement some UNIX userland functions :)
-   11. 关于io主页文档中的 code listing 需能制定我所喜欢的字体
-   12. 写汇编器是必须的
+   16. 关于io主页文档中的 code listing 需能制定我所喜欢的字体
+   17. 写汇编器是必须的
        单单写一个 以 fasm 为输出 的编译器
        是满足不了要求的
-   13. 当在执行一个函数 到一半的时候
+   18. 当在执行一个函数 到一半的时候
        发现其中的某个函数(或变量)没有被定义
        我将可以 把用户代入到 一个 REPL 中
        让用户有机会补全这个定义 然后在从一半的位置重新开始计算
-   14. 比如 当同时考虑 整数 还有 实数 等等 数据类型的时候
+   19. 比如 当同时考虑 整数 还有 实数 等等 数据类型的时候
        面向对象的 节省命名空间 的优点 就充分地体现出来了
        这在于 (也只在于) 这样写出来的 代码
        更接近于人们日常对数学运算的模糊表达
-   15. 需要好好 分析一下 增加了 Lambda-stack 之后
+   20. 需要好好 分析一下 增加了 Lambda-stack 之后
        整个系统的数学性质的变化
        因为 感觉上 太帅了
        好像 增加了一个维度
        好像 走出了柏拉图的洞穴一样
-   16. as the "debuger" is defined in cicada code
+   21. as the "debuger" is defined in cicada code
        it is hard to do good error handling in assembly code
        这是因为我没法在出错的时候即使调用 debuger 来报错
        - 比如 通常的函数类型的错误
          我应该 及时的 调用 debuger 来报告错误
          而在不利的条件下 我必须 返回一个出错码
          来表示函数 所接受的数据类型不对
-   17. >< maybe get rid of "One" "Two" "Three" ...
-   18. do not use the data structure "word-list" anymore
+   22. >< maybe get rid of "One" "Two" "Three" ...
+   23. do not use the data structure "word-list" anymore
        just let ":" and ";" read a string to a buffer
        this will force me to refine the functions about string processing
-   19. really need a better way to do tests
+   24. really need a better way to do tests
        and I need to design better test-suit
-   20. 需要 cicada-assembler 的理由:
+   25. 需要 cicada-assembler 的理由:
        1) 统一 命名规则
        2) 让我 能够探索一些关于编译的技术
        3) 有些 小的 CPU 并没有 类似 fasm 的 合适的编译器的
@@ -112,39 +136,38 @@
           但是如果我想保持
           我的 类文学编程 组织代码的风格的话
           也许 创造一些新的东西来支持 我的风格就是必须的了
-   21. 不需要 cicada-assembler 的理由:
+   26. 不需要 cicada-assembler 的理由:
        1) 一个人认为 一个语言需要这种东西
           可能只是因为 当这个语言的编译器能够自己编译自己的时候
           看起来很 cool 而已
        2) 为了 实现 一个 x86-64 的汇编器
           有太多的 关于 CPU 的底层细节需要 被掌握
-   22. 就用户接口的设计而言
+   27. 就用户接口的设计而言
        我可以把那几个 核心的栈 的图示 放在 左边的一个窗口里
        在这之后 我就能设计 debuger 的更好的使用方式
        但是一个问题是 当我的界面不再是一个简单的解释器的时候
        我就不能 直接利用 emacs 了
        也就是必须 要先写自己的 文本编辑器
        之后才能考虑窗口 之类的问题
-   23. 也许 可以从 isforth 那里 学习在 linux 下写文本编辑器的基本工作
-   24. fix the load-file function of linux version
-   25. 生成中文字典 交给 Recaler
-   26. 支持 windows 及其环境下的开发
-   27. 支持 Mac 及其环境下的开发
+   28. 也许 可以从 isforth 那里 学习在 linux 下写文本编辑器的基本工作
+   29. 生成中文字典 交给 Recaler
+   30. 支持 windows 及其环境下的开发
+   31. 支持 Mac 及其环境下的开发
 ** the right thing
-   - Simplicity  
-     the design must be simple, 
-     both in implementation and interface. 
+   - Simplicity
+     the design must be simple,
+     both in implementation and interface.
      It is more important for the interface to be simple than the implementation.
    - Correctness
-     the design must be correct in all observable aspects. 
+     the design must be correct in all observable aspects.
      Incorrectness is simply not allowed.
-   - Completeness 
-     the design must cover as many important situations as is practical. 
-     All reasonably expected cases must be covered. 
-     Simplicity is not allowed to overly reduce completeness. 
-   - Consistency 
-     the design must not be inconsistent. 
-     A design is allowed to be slightly less simple and less complete to avoid inconsistency. 
+   - Completeness
+     the design must cover as many important situations as is practical.
+     All reasonably expected cases must be covered.
+     Simplicity is not allowed to overly reduce completeness.
+   - Consistency
+     the design must not be inconsistent.
+     A design is allowed to be slightly less simple and less complete to avoid inconsistency.
      Consistency is as important as correctness.
 ** 关于 错误处理
    1. 有两种 错误处理机制在 cicada 中被使用了

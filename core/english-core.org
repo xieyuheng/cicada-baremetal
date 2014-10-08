@@ -360,7 +360,7 @@
         append-word-description-to-here
         Exit
       then
-      dup2 string-denote-literal&branch? if
+      dup2 string-denote-literal-or-branch? if
         help:append-word-description-to-here,literal&branch
         append-word-description-to-here
         Exit
@@ -466,7 +466,6 @@
      dup literal branch            == if drop True Exit then
      dup literal zero?branch       == if drop True Exit then
      dup literal false?branch      == if drop True Exit then
-     dup literal not-false?branch  == if drop True Exit then
      drop False
      Exit
    ; define-function
@@ -1365,7 +1364,7 @@
         append-word-description-to-here
         Exit
       then
-      dup2 string-denote-literal&branch? if
+      dup2 string-denote-literal-or-branch? if
         help:append-word-description-to-here,literal&branch
         append-word-description-to-here
         Exit
@@ -5902,6 +5901,7 @@
        这种 对栈的利用在 单核 的时候还 顺利进行
        当多核的时候就不行了
 *** lambda-body-stack
+    1. >< 这里对栈的需要 值得被分析一下
     #+begin_src cicada :tangle english-core.cicada
     (* note that:
          when a explainer is been executed
@@ -6124,9 +6124,10 @@
 *** test
     #+begin_src cicada
     [ :x 1 + ]  (* push a dali to ArgumentStack *)
-    ( :x )      (* push a symbol `:x' to ArgumentStack *)
-    λ           (* digests some symbols and a dali in the ArgumentStack,
-                   and return a lambda-function by them *)
+    ( :x )      (* push a wodili of bound-variables to ArgumentStack *)
+    λ           (* digests wodili as bound-variables
+                   and a dali in the ArgumentStack as function-body in the Argument-stack
+                   and return a lambda-function made by them *)
     ready (* pop ArgumentStack, push the lambda-function to LambdaStack *)
 
     3   (* push 3 into the ArgumentStack *)
@@ -6311,7 +6312,7 @@
     2. and again
        about substitution
        note that you can only use bound-variable (such as ::x :n) in a lambda-body
-       bot NOT a dali or list or wodili
+       bot NOT in a list or dali or wodili
 *** play
     #+begin_src cicada
     [ ::x ]
@@ -6517,10 +6518,10 @@
        因为只要你理解了 "有向图" 你就理解了一切
        但是
        使用 lambda-calculus 的方式
-       即 语言中这个性状的语法 
+       即 语言中这个性状的语法
        或 这个程序的这个功能的用户接口
        要想把这一点设计好 才是困难的地方
-    2. 
+    2.
 *** implementation
     #+begin_src cicada
     [ ::x ]

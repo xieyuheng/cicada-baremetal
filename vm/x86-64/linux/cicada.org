@@ -548,7 +548,7 @@
 
    ;; 64-bits
    xx equ dq
-   CellWidth = 8
+   Cell_width = 8
 
    ;; ><><><
    ;; the following comment-out-ed segment headers
@@ -573,7 +573,7 @@
 
    ;; 64-bits
    xx equ dq
-   CellWidth = 8
+   Cell_width = 8
 
 
    hereCode               equ align 16
@@ -597,7 +597,7 @@
    hereUnInitializedData  equ alignTo16InMemoryMap
    #+end_src
 ** ASCII
-   #+begin_src fasm :tangle cicada.fasm
+   #+begin_src fasm :tangle cicada.fasm 
    ASCII_backspace = 8
    ASCII_tab       = 9
    ASCII_linefeed  = 10
@@ -863,15 +863,15 @@
 
           cld ;; set DF = 0, then rsi and rdi are incremented
 
-          mov ArgumentStackPointer,   ArgumentStackTop
-          mov GreyPairStackPointer, GreyPairStackTop
-          mov ReturnStackPointer,   ReturnStackTop
+          mov Argument_stack_pointer,   ArgumentStackTop
+          mov Grey_pair_stack_pointer, GreyPairStackTop
+          mov Return_stack_pointer,   ReturnStackTop
 
           ;; initialize the variable ``Here''
           ;; to point at beginning of UserDataArea
-          mov TemporaryRegister, UserDataArea
-          mov [Here + CellWidth], TemporaryRegister
-          mov NextWordPointer, cicada_begin_thread
+          mov Temporary_register, UserDataArea
+          mov [Here + Cell_width], Temporary_register
+          mov Next_word_pointer, cicada_begin_thread
 
           next
 
@@ -879,7 +879,7 @@
   cicada_begin_thread:
 
           xx initialize
-          xx basicREPL
+          xx basic_REPL
           ;; xx assemblyDebug
   #+end_src
 * loadCoreFile & InitialFilesToLoad
@@ -890,8 +890,8 @@
      mov rdi, InputBuffer
      mov rcx, SizeOfInitialFilesToLoad
      rep movsb
-     ;; reset [ReadingBoundary + CellWidth]
-     mov [ReadingBoundary + CellWidth], rdi
+     ;; reset [ReadingBoundary + Cell_width]
+     mov [ReadingBoundary + Cell_width], rdi
      next
 
   hereInitializedData
@@ -995,12 +995,12 @@
       syscall
       ;; xor rax, rax
       mov ax, word[ScreenSize]
-      pushArgumentStack rax
+      push_argument_stack rax
       mov ax, word[ScreenSize + 2]
-      pushArgumentStack rax
+      push_argument_stack rax
       next
    #+end_src
-** readChar
+** read-char
    #+begin_src fasm :tangle cicada.fasm
    SizeOfInputBuffer = 3*1024*1024
 
@@ -1019,70 +1019,70 @@
    ;; 2. note that, there is no char in the address of a ``ReadingBoundary''
    ;;    an example of ``ReadingBoundary'' is ``EndOfInputBuffer''
    ;; 3. when ``CurrentReading'' == ``ReadingBoundary''
-   ;;    for the function ``readChar''
+   ;;    for the function ``read_char''
    ;;    we need to reset it to read from ``InputBuffer''
    ;;    and call ``inputLine'' to fetch more chars
    ;;    and loop back
    defVar "Current-reading",  InputBuffer, CurrentReading
    defVar "Reading-boundary", InputBuffer, ReadingBoundary
 
-   defCode "read-char", readChar
+   defCode "read-char", read_char
       ;; read a char from stdin, return it into the ArgumentStack as following
       ;; (*  -- char *)
-      ;; readChar calls the Linux read system call to fill InputBuffer
-      ;; The other thing that readChar does is
+      ;; read_char calls the Linux read system call to fill InputBuffer
+      ;; The other thing that read_char does is
       ;; if it detects that stdin has closed, it exits the program
       ;; which is why when you hit C-d, the system exits
-      call _readChar
-      ;; _readChar will save the return value in rax
-      pushArgumentStack rax
+      call _read_char
+      ;; _read_char will save the return value in rax
+      push_argument_stack rax
       next
 
-   _readChar:
-      ;; TemporaryRegister is a helper-register for ``cmp''
-      mov TemporaryRegister, [CurrentReading + CellWidth]
-      cmp TemporaryRegister, [ReadingBoundary + CellWidth]
-      ;-- IF: [CurrentReading + CellWidth] < [ReadingBoundary + CellWidth]
+   _read_char:
+      ;; Temporary_register is a helper-register for ``cmp''
+      mov Temporary_register, [CurrentReading + Cell_width]
+      cmp Temporary_register, [ReadingBoundary + Cell_width]
+      ;-- IF: [CurrentReading + Cell_width] < [ReadingBoundary + Cell_width]
       ;-- WK: there is still some chars in the InputBuffer to be processed
-      jl readChar_stillSomeChars
-      ;-- EL: [CurrentReading + CellWidth] >= [ReadingBoundary + CellWidth]
+      jl read_char_stillSomeChars
+      ;-- EL: [CurrentReading + Cell_width] >= [ReadingBoundary + Cell_width]
       ;-- WK: all chars in InputBuffer have been processed
       mov rax, EndOfInputBuffer
-      cmp TemporaryRegister, rax
-      jg readChar_addBlankAtTheEnding
+      cmp Temporary_register, rax
+      jg read_char_addBlankAtTheEnding
       mov rax, InputBuffer
-      cmp TemporaryRegister, rax
-      jl readChar_addBlankAtTheEnding
-      jmp readChar_fetchMoreCharsFromStdinToInputBuffer
-   readChar_addBlankAtTheEnding:
+      cmp Temporary_register, rax
+      jl read_char_addBlankAtTheEnding
+      jmp read_char_fetchMoreCharsFromStdinToInputBuffer
+   read_char_addBlankAtTheEnding:
       ;; otherwise,  when the a string not ending with blank
       ;; `evalString' will not work correctly
       mov rax, InputBuffer
-      mov [CurrentReading + CellWidth], rax
-      mov [ReadingBoundary + CellWidth], rax
+      mov [CurrentReading + Cell_width], rax
+      mov [ReadingBoundary + Cell_width], rax
       xor rax, rax
       mov al, 10
       ret
-   readChar_stillSomeChars:
+   read_char_stillSomeChars:
       ;; for the following will just uses the al part of rax
       ;; it is necessary to clear rax
       xor rax, rax
       ;-- DO: fetch a char from InputBuffer to rax
-      ;-- NT: after _readChar return rax will be pushArgumentStack
-      mov al, byte[TemporaryRegister]
-      ;-- DO: increment [CurrentReading + CellWidth]
-      inc TemporaryRegister
-      mov [CurrentReading + CellWidth], TemporaryRegister
+      ;-- NT: after _read_char return rax will be push_argument_stack
+      mov al, byte[Temporary_register]
+      ;-- DO: increment [CurrentReading + Cell_width]
+      inc Temporary_register
+      mov [CurrentReading + Cell_width], Temporary_register
       ret
    ;; note that, in the following subroutine
-   ;; set [CurrentReading + CellWidth]  == InputBuffer
-   ;; set [ReadingBoundary + CellWidth] == InputBuffer + length of string that was input (NULL not counted)
-   readChar_fetchMoreCharsFromStdinToInputBuffer:
+   ;; set [CurrentReading + Cell_width]  == InputBuffer
+   ;; set [ReadingBoundary + Cell_width] == InputBuffer + length of string that was input (NULL not counted)
+   read_char_fetchMoreCharsFromStdinToInputBuffer:
       ;; read to fetch more input chars from STDIN to InputBuffer
       mov sys_3_rdx,     SizeOfInputBuffer    ;; max length to be read
       mov sys_2_rsi,     InputBuffer        ;; buffer address
-      ;; reset [CurrentReading + CellWidth] to InputBuffer
-      mov [CurrentReading + CellWidth], sys_2_rsi
+      ;; reset [CurrentReading + Cell_width] to InputBuffer
+      mov [CurrentReading + Cell_width], sys_2_rsi
       xor sys_1_rdi,     sys_1_rdi          ;; stdin
       mov sys_n_rax,     syscall_read
       syscall
@@ -1092,21 +1092,21 @@
       ;-- IF: rax <= 0
       ;-- WK: there is an error or it is end of input
       ;-- DO: exit
-      jz readChar_exit
-      js readChar_exit
+      jz read_char_exit
+      js read_char_exit
       ;-- EL: rax > 0
       ;-- WK: there are some chars has been fetched by syscall read
-      ;-- DO: set [ReadingBoundary + CellWidth] to the right place
+      ;-- DO: set [ReadingBoundary + Cell_width] to the right place
       ;--     ReadingBoundary = InputBuffer + the count of the number of bytes transferred
       ;-- NT: sys_2_rsi = InputBuffer
       ;--     rax = the count of the number of bytes transferred
       add sys_2_rsi, rax
-      mov [ReadingBoundary + CellWidth], sys_2_rsi
+      mov [ReadingBoundary + Cell_width], sys_2_rsi
       ;-- DO: jump back
-      jmp _readChar
+      jmp _read_char
 
 
-   readChar_exit:
+   read_char_exit:
       ;; exit with exit code = the value syscall_read returned
       xor sys_1_rdi, sys_1_rdi
       mov sys_n_rax, syscall_exit
@@ -1121,7 +1121,7 @@
    defCode "write-char", writeChar
       ;; ( char --  ) write a char to stdin
       ;; just calls the Linux write system call
-      popArgumentStack rax
+      pop_argument_stack rax
       call _writeChar
       next
 
@@ -1144,7 +1144,7 @@
       xx   drop2
       xx   Exit
       xx sub1, swap
-      xx dup, fetchByte, writeChar
+      xx dup, fetch_byte, writeChar
       xx add1, swap
       xx branch, -14
    defWordEnd printString
@@ -1156,26 +1156,26 @@
     #+begin_src fasm :tangle cicada.fasm
     ;; buffer->file,with-error == string->file,with-error
 
-    defWord "buffer->file,with-error", bufferToFile_withError
+    defWord "buffer->file,with-error", bufferToFile__with_error
        ;; (* string[address, length], file-name-string[address, length] -- True or False *)
-       xx stringToFile_withError
+       xx stringToFile__with_error
        xx Exit
-    defWordEnd bufferToFile_withError
+    defWordEnd bufferToFile__with_error
 
 
-    defCode "string->file,with-error", stringToFile_withError
+    defCode "string->file,with-error", stringToFile__with_error
        ;; (* string[address, length], file-name-string[address, length] -- True or False *)
-       popArgumentStack rcx
-       popArgumentStack rsi
-       popArgumentStack r8
-       popArgumentStack r9
-       call _stringToFile_withError
-       pushArgumentStack rax
+       pop_argument_stack rcx
+       pop_argument_stack rsi
+       pop_argument_stack r8
+       pop_argument_stack r9
+       call _stringToFile__with_error
+       push_argument_stack rax
        next
 
-    _stringToFile_withError:
+    _stringToFile__with_error:
        ;; copy file-name as a null-terminal string
-       mov rdi, NameBufferOfStringToFile_withError
+       mov rdi, NameBufferOfStringToFile__with_error
        rep movsb
        xor rax, rax
        mov byte [rdi], al
@@ -1184,11 +1184,11 @@
        ;; 当文件路径不存在的时候不会创造路径 而出错
        mov     sys_3_rdx, 110100100b   ;; 文件的权限 644 改为别的值的时候会出问题
        mov     sys_2_rsi, open_readAndWrite or open_creat or open_rewrite
-       mov     sys_1_rdi, NameBufferOfStringToFile_withError
+       mov     sys_1_rdi, NameBufferOfStringToFile__with_error
        mov     sys_n_rax, syscall_open
        syscall
 
-       mov     qword [FileHandleOfStringToFile_withError], rax
+       mov     qword [FileHandleOfStringToFile__with_error], rax
 
        or      rax, rax
        js      _stringToFile_meetError
@@ -1196,7 +1196,7 @@
        ;; string->file
        mov     sys_3_rdx, r8
        mov     sys_2_rsi, r9
-       mov     sys_1_rdi, qword [FileHandleOfStringToFile_withError]
+       mov     sys_1_rdi, qword [FileHandleOfStringToFile__with_error]
        mov     sys_n_rax, syscall_write
        syscall
 
@@ -1204,7 +1204,7 @@
        js      _stringToFile_meetError
 
        ;; 关闭文件
-       mov     sys_1_rdi, qword [FileHandleOfStringToFile_withError]
+       mov     sys_1_rdi, qword [FileHandleOfStringToFile__with_error]
        mov     sys_n_rax, syscall_close
        syscall
 
@@ -1222,46 +1222,46 @@
        ret
 
 
-    FileHandleOfStringToFile_withError:
+    FileHandleOfStringToFile__with_error:
        dq 0
-    NameBufferOfStringToFile_withError:
+    NameBufferOfStringToFile__with_error:
        rb 1024
     #+end_src
 *** file->buffer,with-error
     #+begin_src fasm :tangle cicada.fasm
     ;; file->buffer,with-error == file->string,with-error
 
-    defWord "file->buffer,with-error", fileToBuffer_withError
+    defWord "file->buffer,with-error", fileToBuffer__with_error
        ;; (* file-name-string[address, length], string[address, length] -- True or False *)
-       xx fileToString_withError
+       xx fileToString__with_error
        xx Exit
-    defWordEnd fileToBuffer_withError
+    defWordEnd fileToBuffer__with_error
 
 
-    defCode "file->string,with-error", fileToString_withError
+    defCode "file->string,with-error", fileToString__with_error
        ;; (* file-name-string[address, length], string[address, length] -- True or False *)
-       popArgumentStack r8
-       popArgumentStack r9
-       popArgumentStack rcx
-       popArgumentStack rsi
-       call _fileToString_withError
-       pushArgumentStack rax
+       pop_argument_stack r8
+       pop_argument_stack r9
+       pop_argument_stack rcx
+       pop_argument_stack rsi
+       call _fileToString__with_error
+       push_argument_stack rax
        next
 
-    _fileToString_withError:
+    _fileToString__with_error:
        ;; copy file-name as a null-terminal string
-       mov rdi, NameBufferOfFileToString_withError
+       mov rdi, NameBufferOfFileToString__with_error
        rep movsb
        xor rax, rax
        mov byte [rdi], al
 
        ;; read only
        mov     sys_2_rsi, open_read
-       mov     sys_1_rdi, NameBufferOfFileToString_withError
+       mov     sys_1_rdi, NameBufferOfFileToString__with_error
        mov     sys_n_rax, syscall_open
        syscall
 
-       mov     qword [FileHandleOfFileToString_withError], rax
+       mov     qword [FileHandleOfFileToString__with_error], rax
 
        or      rax, rax
        js      _fileToString_meetError
@@ -1272,7 +1272,7 @@
        ;; seek_end       the offset is set to the size of the file plus offset bytes
        mov     sys_3_rdx, seek_set
        xor     sys_2_rsi, sys_2_rsi  ;; offset
-       mov     sys_1_rdi, qword [FileHandleOfFileToString_withError]
+       mov     sys_1_rdi, qword [FileHandleOfFileToString__with_error]
        mov     sys_n_rax, syscall_lseek
        syscall
 
@@ -1282,7 +1282,7 @@
        ;; file->string
        mov     sys_3_rdx, r8
        mov     sys_2_rsi, r9
-       mov     sys_1_rdi, qword [FileHandleOfFileToString_withError]
+       mov     sys_1_rdi, qword [FileHandleOfFileToString__with_error]
        mov     sys_n_rax, syscall_read
        syscall
 
@@ -1290,7 +1290,7 @@
        js      _fileToString_meetError
 
        ;; 关闭文件
-       mov     sys_1_rdi, qword [FileHandleOfFileToString_withError]
+       mov     sys_1_rdi, qword [FileHandleOfFileToString__with_error]
        mov     sys_n_rax, syscall_close
        syscall
 
@@ -1308,9 +1308,9 @@
        ret
 
 
-    FileHandleOfFileToString_withError:
+    FileHandleOfFileToString__with_error:
        dq 0
-    NameBufferOfFileToString_withError:
+    NameBufferOfFileToString__with_error:
        rb 1024
     #+end_src
 *** >< eval-file
@@ -1351,7 +1351,7 @@
    defWordEnd printLittleNumber
 
    defCode "exitWithTOS", exitWithTOS
-      popArgumentStack sys_1_rdi
+      pop_argument_stack sys_1_rdi
       mov sys_n_rax, syscall_exit
       syscall
 

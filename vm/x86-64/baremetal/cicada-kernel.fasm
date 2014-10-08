@@ -6,7 +6,7 @@ dup equ duplicate
 
 ;; 64-bits
 xx equ dq
-CellWidth = 8
+Cell_width = 8
 
 
 hereCode               equ align 16
@@ -453,30 +453,30 @@ cicada_virtual_machine:
        ;; Store rax to [rdi], rcx - 1, rdi + 8, if rcx > 0 then do it again
        rep stosq
 
-       mov ArgumentStackPointer,   ArgumentStackTop
-       mov GreyPairStackPointer, GreyPairStackTop
-       mov ReturnStackPointer,   ReturnStackTop
+       mov Argument_stack_pointer,   ArgumentStackTop
+       mov Grey_pair_stack_pointer, GreyPairStackTop
+       mov Return_stack_pointer,   ReturnStackTop
 
        ;; initialize the variable ``Here''
        ;; to point at beginning of UserDataArea
-       mov TemporaryRegister, UserDataArea
-       mov [Here + CellWidth], TemporaryRegister
-       mov NextWordPointer, cicada_begin_thread
+       mov Temporary_register, UserDataArea
+       mov [Here + Cell_width], Temporary_register
+       mov Next_word_pointer, cicada_begin_thread
 
        next
 
 hereInitializedData
 cicada_begin_thread:
        xx initialize
-       xx basicREPL
+       xx basic_REPL
 defCode "load-core-file", loadCoreFile
    ;; (* -- *)
    mov rsi, InitialFilesToLoad
    mov rdi, InputBuffer
    mov rcx, SizeOfInitialFilesToLoad
    rep movsb
-   ;; reset [ReadingBoundary + CellWidth]
-   mov [ReadingBoundary + CellWidth], rdi
+   ;; reset [ReadingBoundary + Cell_width]
+   mov [ReadingBoundary + Cell_width], rdi
    next
 
 hereInitializedData
@@ -512,8 +512,8 @@ defCode "open-interrupt", openInterrupt
    next
 defCode "create-gate", createGate
    ;; (* gate number to configure, address of handler -- *)
-   popArgumentStack rax
-   popArgumentStack rdi
+   pop_argument_stack rax
+   pop_argument_stack rdi
    shl rdi, 4     ; quickly multiply rdi by 16
    stosw          ; store the low word (15..0)
    shr rax, 16
@@ -649,12 +649,12 @@ defCode "empty?scan-code-queue", empty?ScancodeQueue
    jne @f
    inc rcx
     @@:
-   pushArgumentStack rcx
+   push_argument_stack rcx
    next
 
 defCode "in-scan-code-queue", inScancodeQueue
    ;; (* Scancode -- *)
-   popArgumentStack rax
+   pop_argument_stack rax
    mov rcx, [FrontOfScancodeQueue]
    mov byte [ScancodeQueue + rcx], al
    inc rcx
@@ -676,7 +676,7 @@ defCode "out-scan-code-queue", outScancodeQueue
    mov [RearOfScancodeQueue], rcx
    xor rax, rax
    mov al, byte [ScancodeQueue + rcx]
-   pushArgumentStack rax
+   push_argument_stack rax
    next
 
 defCode "halt", halt
@@ -710,7 +710,7 @@ defWord "input-char", inputChar
    xx dup, scancodeIsLeftShift?, false?branch, 5
    xx   toggleLeftShift
    xx   drop, branch, -8  ;; inputKey
-   xx dup, literal, 128, greaterThan?, false?branch, 4
+   xx dup, literal, 128, greater_than?, false?branch, 4
    xx   drop, branch, -17 ;; inputKey
    xx scancodeToASCII
    xx dup, zero?, false?branch, 4
@@ -741,18 +741,18 @@ defWordEnd scancodeIsLeftShift?
 ;;    but by ``inputChar''
 defCode "scan-code->ASCII", scancodeToASCII
    ;; (* scancode -- ASCII char or Zero *)
-   popArgumentStack rax
-   mov rbx, [StateOfLeftShift + CellWidth]
+   pop_argument_stack rax
+   mov rbx, [StateOfLeftShift + Cell_width]
    test rbx, rbx
    jz @f
    xor rcx, rcx
    mov cl, byte [BarekeyboardLayout_Upper + rax]
-   pushArgumentStack rcx
+   push_argument_stack rcx
    next
     @@:
    xor rcx, rcx
    mov cl, byte [BarekeyboardLayout_Lower + rax]
-   pushArgumentStack rcx
+   push_argument_stack rcx
    next
 
 
@@ -760,15 +760,15 @@ defConst "State-of-left-shift", 0, StateOfLeftShift
 
 defCode "toggle-left-shift", toggleLeftShift
    ;; (* -- *)
-   mov rax, [StateOfLeftShift + CellWidth]
+   mov rax, [StateOfLeftShift + Cell_width]
    test rax, rax
    jz @f
    xor rax, rax
-   mov [StateOfLeftShift + CellWidth], rax
+   mov [StateOfLeftShift + Cell_width], rax
    next
     @@:
    inc rax
-   mov [StateOfLeftShift + CellWidth], rax
+   mov [StateOfLeftShift + Cell_width], rax
    next
 
 
@@ -898,7 +898,7 @@ defWord "input-line", inputLine
    xx   literal, ' ', writeChar, decrementCursor
    ;;   clear the '_', the cursor, leaved by every writed chars
    xx   dup, writeChar
-   xx   xoverxx, saveByte
+   xx   xoverxx, save_byte
    xx   sub1, swap
    xx   add1, swap
    ;;   (* address, max length, [address, length] *)
@@ -910,7 +910,7 @@ defWord "input-line", inputLine
    xx dup, writeChar
    xx literal, '_', writeChar, decrementCursor
    ;; leave a '_' after every writed chars as cursor
-   xx xoverxx, saveByte
+   xx xoverxx, save_byte
    xx sub1, swap
    xx add1, swap
    ;; (* address, max length, [address, length] *)
@@ -936,22 +936,22 @@ defConst "End-of-input-buffer",   EndOfInputBuffer,   TheEndOfInputBuffer
 ;; 2. note that, there is no char in the address of a ``ReadingBoundary''
 ;;    an example of ``ReadingBoundary'' is ``EndOfInputBuffer''
 ;; 3. when ``CurrentReading'' == ``ReadingBoundary''
-;;    for the function ``readChar''
+;;    for the function ``read_char''
 ;;    we need to reset it to read from ``InputBuffer''
 ;;    and call ``inputLine'' to fetch more chars
 ;;    and loop back
 defVar "Current-reading",  InputBuffer, CurrentReading
 defVar "Reading-boundary", InputBuffer, ReadingBoundary
 
-defWord "read-char", readChar
+defWord "read-char", read_char
    ;; (*  -- char *)
    xx CurrentReading, fetch
    xx ReadingBoundary, fetch
-   xx lessThan?, false?branch, 8
+   xx less_than?, false?branch, 8
    ;;   there is still some chars in the InputBuffer
    ;;   (or any other buffer) to be processed
-   xx   CurrentReading, fetch, fetchByte
-   xx   One, CurrentReading, addSave
+   xx   CurrentReading, fetch, fetch_byte
+   xx   One, CurrentReading, add_save
    xx   Exit
    ;; all chars in InputBuffer
    ;; (or any other buffer) have been processed
@@ -973,19 +973,19 @@ defWord "read-char", readChar
    xx closeInterrupt
    ;; set ReadingBoundary ==
    ;;     InputBuffer + length of string that was inputed
-   xx ReadingBoundary, addSave
+   xx ReadingBoundary, add_save
    xx drop
    xx branch, -31
-defWordEnd readChar
+defWordEnd read_char
 
 defWord "not-reading-from-input-buffer?", notReadingFromInputBuffer?
    ;; (* -- True of False *)
    xx CurrentReading, fetch
-   xx TheEndOfInputBuffer, greaterThan?, false?branch, 3
+   xx TheEndOfInputBuffer, greater_than?, false?branch, 3
    xx   True
    xx   Exit
    xx CurrentReading, fetch
-   xx TheInputBuffer, lessThan?, false?branch, 3
+   xx TheInputBuffer, less_than?, false?branch, 3
    xx   True
    xx   Exit
    xx False
@@ -1021,7 +1021,7 @@ defCode "scroll-screen-buffer", scrollScreenBuffer
    ;; (* screen buffer[address] -- *)
    ;; scrolls a screen Buffer up by one line
    ;; DefaultBackColorOfChar should be used
-   popArgumentStack rdi              ; Start of video text memory for row 1
+   pop_argument_stack rdi              ; Start of video text memory for row 1
    mov rsi, rdi
    add rsi, 0xA0                   ; Start of video text memory for row 2
    cld ;; clear the direction flag as we want to increment through memory
@@ -1029,9 +1029,9 @@ defCode "scroll-screen-buffer", scrollScreenBuffer
    mov cx, (80 * 24)
    rep movsw                       ; Copy the Character and Attribute
    ; Clear the last line in video memory
-   mov bl, byte [DefaultBackColorOfChar + CellWidth]
+   mov bl, byte [DefaultBackColorOfChar + Cell_width]
    shl bl, 4
-   mov ah, byte [DefaultForeColorOfChar + CellWidth]
+   mov ah, byte [DefaultForeColorOfChar + Cell_width]
    or ah, bl
    mov al, ' '
    mov cx, 80
@@ -1040,11 +1040,11 @@ defCode "scroll-screen-buffer", scrollScreenBuffer
 
 defCode "clear-screen-buffer", clearScreenBuffer
    ;; (* screen buffer[address] -- *)
-   popArgumentStack rdi              ; Address for start of frame buffer
+   pop_argument_stack rdi              ; Address for start of frame buffer
    cld ;; clear the direction flag as we want to increment through memory
-   mov bl, byte [DefaultBackColorOfChar + CellWidth]
+   mov bl, byte [DefaultBackColorOfChar + Cell_width]
    shl bl, 4
-   mov ah, byte [DefaultForeColorOfChar + CellWidth]
+   mov ah, byte [DefaultForeColorOfChar + Cell_width]
    or ah, bl
    mov al, ' '
    xor rcx, rcx
@@ -1054,7 +1054,7 @@ defCode "clear-screen-buffer", clearScreenBuffer
 defCode "update-screen", updateScreen
    ;; (* screen buffer[address] -- *)
    ;; print a screen buffer to screen
-   popArgumentStack rsi
+   pop_argument_stack rsi
    cld ;; clear the direction flag as we want to increment through memory
    mov rdi, 0xb8000
    mov cx, 2000                    ; 80 x 25
@@ -1122,9 +1122,9 @@ defWord "increment-cursor", incrementCursor
    xx getCurrentCursorAddress, fetch, add1
    xx NumberOfCharsOfScreen, equal?, false?branch, 6
    xx   scrollScreen
-   xx   NumberOfColumnsOfScreen, getCurrentCursorAddress, subSave
+   xx   NumberOfColumnsOfScreen, getCurrentCursorAddress, sub_save
    xx   Exit
-   xx One, getCurrentCursorAddress, addSave
+   xx One, getCurrentCursorAddress, add_save
    xx Exit
 defWordEnd incrementCursor
 
@@ -1133,7 +1133,7 @@ defWord "decrement-cursor", decrementCursor
    xx getCurrentCursorAddress, fetch
    xx zero?, false?branch, 2
    xx   Exit
-   xx One, getCurrentCursorAddress, subSave
+   xx One, getCurrentCursorAddress, sub_save
    xx Exit
 defWordEnd decrementCursor
 ;; text mode (aka. mode 0) -- the most simple output
@@ -1182,9 +1182,9 @@ defCode "put-char-with-color", putCharWithColor
    ;; (* char, back color, fore color -- *)
    ;; put a ASCII char with color to the position of the cursor
    ;; but can not handle ASCII_linefeed as my wish
-   popArgumentStack rcx
-   popArgumentStack rbx
-   popArgumentStack rax
+   pop_argument_stack rcx
+   pop_argument_stack rbx
+   pop_argument_stack rax
 
    shl rbx, 4
    or rbx, rcx
@@ -1194,7 +1194,7 @@ defCode "put-char-with-color", putCharWithColor
    push rax
 
 
-   mov rdx, [CurrentScreenBuffer + CellWidth]
+   mov rdx, [CurrentScreenBuffer + Cell_width]
    mov ax, [rdx - 8]
 
    shl ax, 1                       ; multiply by 2
@@ -1239,11 +1239,11 @@ defWord "print-newline", printNewline
    xx NumberOfRowsOfScreen, equal?, false?branch, 7
    xx   scrollScreen
    xx   getCurrentCursorColumn, sub1
-   xx   getCurrentCursorAddress, subSave
+   xx   getCurrentCursorAddress, sub_save
    xx   Exit
    xx NumberOfColumnsOfScreen
    xx getCurrentCursorColumn, sub1, subtraction
-   xx getCurrentCursorAddress, addSave
+   xx getCurrentCursorAddress, add_save
    xx Exit
 defWordEnd printNewline
 defWord "write-char-with-color", writeCharWithColor
@@ -1274,7 +1274,7 @@ defWord "print-string", printString
    xx   drop2
    xx   Exit
    xx sub1, swap
-   xx dup, fetchByte, writeChar
+   xx dup, fetch_byte, writeChar
    xx add1, swap
    xx branch, -14
 defWordEnd printString
