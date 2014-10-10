@@ -871,7 +871,9 @@
           ;; to point at beginning of UserDataArea
           mov Temporary_register, UserDataArea
           mov [Here + Cell_width], Temporary_register
-          mov Next_word_pointer, cicada_begin_thread
+
+          mov rax, cicada_begin_thread
+          push_return_stack rax
 
           next
 
@@ -896,8 +898,8 @@
 
   hereInitializedData
   InitialFilesToLoad:
-     file "../../../core/english-core.cicada"
-     file "../../../lib/x86-64/linux/compiler.cicada"
+     ;; file "../../../core/english-core.cicada"
+     ;; file "../../../lib/x86-64/linux/compiler.cicada"
   SizeOfInitialFilesToLoad = ($ - InitialFilesToLoad) ;; unit :: byte
   #+end_src
 * initialize
@@ -1140,13 +1142,13 @@
    #+begin_src fasm :tangle cicada.fasm
    defWord "print-string", printString
       ;; (* string[address, length] -- *)
-      xx dup, zero?, false?branch, 3
+      xx dup, zero?, _false?branch, 3
       xx   drop2
       xx   Exit
       xx sub1, swap
       xx dup, fetch_byte, writeChar
       xx add1, swap
-      xx branch, -14
+      xx _branch, -14
    defWordEnd printString
    #+end_src
 ** file
@@ -1341,11 +1343,11 @@
 ** assemblyDebug
    #+begin_src fasm :tangle cicada.fasm
    defWord ".", printLittleNumber
-      xx literal, '0'
+      xx _literal, '0'
       xx addition, writeChar
-      xx literal, 32
+      xx _literal, 32
       xx writeChar
-      xx literal, 32
+      xx _literal, 32
       xx writeChar
       xx Exit
    defWordEnd printLittleNumber
@@ -1355,7 +1357,7 @@
       mov sys_n_rax, syscall_exit
       syscall
 
-   defWord "assemblyDebug", assemblyDebug
+   defWord "assemblyDebug", assemblyDebug      
       ;; xx ><><><
       xx exitWithTOS
    defWordEnd assemblyDebug

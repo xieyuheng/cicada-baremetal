@@ -461,7 +461,9 @@ cicada_virtual_machine:
        ;; to point at beginning of UserDataArea
        mov Temporary_register, UserDataArea
        mov [Here + Cell_width], Temporary_register
-       mov Next_word_pointer, cicada_begin_thread
+
+       mov rax, cicada_begin_thread
+       push_return_stack rax
 
        next
 
@@ -481,7 +483,7 @@ defCode "load-core-file", loadCoreFile
 
 hereInitializedData
 InitialFilesToLoad:
-   file "../../../core/english-core.cicada"
+   ;; file "../../../core/english-core.cicada"
 SizeOfInitialFilesToLoad = ($ - InitialFilesToLoad) ;; unit :: byte
 defWord "initialize", initialize
        ;; (* -- *)
@@ -573,8 +575,8 @@ FrontOfScancodeQueue: dq 1
 defWord "create-barekeyboard", createBarekeyboard
    ;; (* -- *)
    ;; create the function to handle keyboard interrupt
-   xx literal, 32+1
-   xx literal, barekeyboard
+   xx _literal, 32+1
+   xx _literal, barekeyboard
    xx createGate
    xx Exit
 defWordEnd createBarekeyboard
@@ -689,8 +691,8 @@ defWord "input-key", inputKey
    ;; call``halt'' to wait for more keystroke
    ;; note that, when you type fast
    ;; one ``halt'' maybe breaked by many interrupt events
-   xx empty?ScancodeQueue, false?branch, 4
-   xx   halt, branch, -5
+   xx empty?ScancodeQueue, _false?branch, 4
+   xx   halt, _branch, -5
    xx outScancodeQueue
    xx Exit
 defWordEnd inputKey
@@ -707,14 +709,14 @@ defWordEnd inputKey
 defWord "input-char", inputChar
    ;; (* -- ASCII char *)
    xx inputKey
-   xx dup, scancodeIsLeftShift?, false?branch, 5
+   xx dup, scancodeIsLeftShift?, _false?branch, 5
    xx   toggleLeftShift
-   xx   drop, branch, -8  ;; inputKey
-   xx dup, literal, 128, greater_than?, false?branch, 4
-   xx   drop, branch, -17 ;; inputKey
+   xx   drop, _branch, -8  ;; inputKey
+   xx dup, _literal, 128, greater_than?, _false?branch, 4
+   xx   drop, _branch, -17 ;; inputKey
    xx scancodeToASCII
-   xx dup, zero?, false?branch, 4
-   xx   drop, branch, -25 ;; inputKey
+   xx dup, zero?, _false?branch, 4
+   xx   drop, _branch, -25 ;; inputKey
    xx Exit
 defWordEnd inputChar
 
@@ -722,11 +724,11 @@ defWordEnd inputChar
 defWord "scan-code-is-left-shift?", scancodeIsLeftShift?
    ;; (* scancode -- True or False*)
    xx dup
-   xx literal, 42, equal?, false?branch, 4
+   xx _literal, 42, equal?, _false?branch, 4
    xx   drop, True
    xx   Exit
-   xx literal, 128, subtraction
-   xx literal, 42, equal?, false?branch, 3
+   xx _literal, 128, subtraction
+   xx _literal, 42, equal?, _false?branch, 3
    xx   True
    xx   Exit
    xx False
@@ -846,7 +848,7 @@ db ASCII_space
 ;; test
 
 ;; defWord "test_inputChar", test_inputChar
-;;    xx inputChar, writeChar, branch, -3
+;;    xx inputChar, writeChar, _branch, -3
 ;;    xx Exit
 ;; defWordEnd test_inputChar
 ;; 1. this function is like a little editor
@@ -862,40 +864,40 @@ db ASCII_space
 defWord "input-line", inputLine
    ;; (* [address, max length] -- string[address, actual length] *)
    xx dup2 ;; leave address and to calculate actual length
-   xx literal, '_', writeChar, decrementCursor
+   xx _literal, '_', writeChar, decrementCursor
 
    ;; (* address, max length, [address, length] *)
    xx inputChar
 
    ;; (* address, max length, [address, length], ASCII char *)
-   xx dup, literal, ASCII_backspace
-   xx equal?, false?branch, 24
+   xx dup, _literal, ASCII_backspace
+   xx equal?, _false?branch, 24
    xx   drop
-   xx   dup, xoverxxx, equal?, false?branch, 3
-   xx     branch, -14 ;; inputChar
-   xx   literal, ' ', writeChar, decrementCursor
+   xx   dup, xoverxxx, equal?, _false?branch, 3
+   xx     _branch, -14 ;; inputChar
+   xx   _literal, ' ', writeChar, decrementCursor
    ;;   clear the '_', the cursor, leaved by every writed chars
    xx   decrementCursor
    ;;   write the new cursor
-   xx   literal, '_', writeChar, decrementCursor
+   xx   _literal, '_', writeChar, decrementCursor
    xx   add1, swap
    xx   sub1, swap
-   xx   branch, -29 ;; inputChar
+   xx   _branch, -29 ;; inputChar
 
    ;; (* address, max length, [address, length], ASCII char *)
-   xx over, zero?, false?branch, 4
+   xx over, zero?, _false?branch, 4
    ;;   if really meet max length
    ;;   type any key should sent a little warn (but this is not implemented)
    ;;   even type enter key will NOT ``Exit'' this function
    xx   drop
    ;;   (* address, max length, [address, length] *)
-   xx   branch, -36 ;; inputChar
+   xx   _branch, -36 ;; inputChar
 
    ;; (* address, max length, [address, length], ASCII char *)
    ;; ``Exit'' only on ``newline''
-   xx dup, literal, ASCII_newline
-   xx equal?, false?branch, 17
-   xx   literal, ' ', writeChar, decrementCursor
+   xx dup, _literal, ASCII_newline
+   xx equal?, _false?branch, 17
+   xx   _literal, ' ', writeChar, decrementCursor
    ;;   clear the '_', the cursor, leaved by every writed chars
    xx   dup, writeChar
    xx   xoverxx, save_byte
@@ -908,13 +910,13 @@ defWord "input-line", inputLine
 
    ;; (* address, max length, [address, length], ASCII char *)
    xx dup, writeChar
-   xx literal, '_', writeChar, decrementCursor
+   xx _literal, '_', writeChar, decrementCursor
    ;; leave a '_' after every writed chars as cursor
    xx xoverxx, save_byte
    xx sub1, swap
    xx add1, swap
    ;; (* address, max length, [address, length] *)
-   xx branch, -72 ;; inputChar
+   xx _branch, -72 ;; inputChar
 
 defWordEnd inputLine
 hereUnInitializedData
@@ -947,19 +949,19 @@ defWord "read-char", read_char
    ;; (*  -- char *)
    xx CurrentReading, fetch
    xx ReadingBoundary, fetch
-   xx less_than?, false?branch, 8
+   xx less_than?, _false?branch, 8
    ;;   there is still some chars in the InputBuffer
    ;;   (or any other buffer) to be processed
    xx   CurrentReading, fetch, fetch_byte
-   xx   One, CurrentReading, add_save
+   xx   _literal, 1, CurrentReading, add_save
    xx   Exit
    ;; all chars in InputBuffer
    ;; (or any other buffer) have been processed
-   xx notReadingFromInputBuffer?, false?branch, 5
+   xx notReadingFromInputBuffer?, _false?branch, 5
    ;;   add blank at the end
    ;;   otherwise,  when the a string not ending with blank
    ;;   ``evalString'' will not work correctly
-   xx   literal, ASCII_linefeed
+   xx   _literal, ASCII_linefeed
    xx   toReadFromInputBuffer
    xx   Exit
    ;; when ``CurrentReading'' == ``ReadingBoundary''
@@ -975,17 +977,17 @@ defWord "read-char", read_char
    ;;     InputBuffer + length of string that was inputed
    xx ReadingBoundary, add_save
    xx drop
-   xx branch, -31
+   xx _branch, -31
 defWordEnd read_char
 
 defWord "not-reading-from-input-buffer?", notReadingFromInputBuffer?
    ;; (* -- True of False *)
    xx CurrentReading, fetch
-   xx TheEndOfInputBuffer, greater_than?, false?branch, 3
+   xx TheEndOfInputBuffer, greater_than?, _false?branch, 3
    xx   True
    xx   Exit
    xx CurrentReading, fetch
-   xx TheInputBuffer, less_than?, false?branch, 3
+   xx TheInputBuffer, less_than?, _false?branch, 3
    xx   True
    xx   Exit
    xx False
@@ -1094,7 +1096,7 @@ defWordEnd getCurrentCursorAddress
 
 defWord "reset-current-cursor", resetCurrentCursor
    ;; (* -- *)
-   xx Zero, getCurrentCursorAddress, save
+   xx _literal, 0, getCurrentCursorAddress, save
    xx Exit
 defWordEnd resetCurrentCursor
 
@@ -1120,20 +1122,20 @@ defWordEnd getCurrentCursorColumn
 defWord "increment-cursor", incrementCursor
    ;; (* -- *)
    xx getCurrentCursorAddress, fetch, add1
-   xx NumberOfCharsOfScreen, equal?, false?branch, 6
+   xx NumberOfCharsOfScreen, equal?, _false?branch, 6
    xx   scrollScreen
    xx   NumberOfColumnsOfScreen, getCurrentCursorAddress, sub_save
    xx   Exit
-   xx One, getCurrentCursorAddress, add_save
+   xx _literal, 1, getCurrentCursorAddress, add_save
    xx Exit
 defWordEnd incrementCursor
 
 defWord "decrement-cursor", decrementCursor
    ;; (* -- *)
    xx getCurrentCursorAddress, fetch
-   xx zero?, false?branch, 2
+   xx zero?, _false?branch, 2
    xx   Exit
-   xx One, getCurrentCursorAddress, sub_save
+   xx _literal, 1, getCurrentCursorAddress, sub_save
    xx Exit
 defWordEnd decrementCursor
 ;; text mode (aka. mode 0) -- the most simple output
@@ -1236,7 +1238,7 @@ defWordEnd putChar
 defWord "print-newline", printNewline
    ;; (* -- *)
    xx getCurrentCursorRow
-   xx NumberOfRowsOfScreen, equal?, false?branch, 7
+   xx NumberOfRowsOfScreen, equal?, _false?branch, 7
    xx   scrollScreen
    xx   getCurrentCursorColumn, sub1
    xx   getCurrentCursorAddress, sub_save
@@ -1248,8 +1250,8 @@ defWord "print-newline", printNewline
 defWordEnd printNewline
 defWord "write-char-with-color", writeCharWithColor
    ;; (* char, back color, fore color --  *)
-   xx xoverxx, literal, ASCII_linefeed
-   xx equal?, false?branch, 5
+   xx xoverxx, _literal, ASCII_linefeed
+   xx equal?, _false?branch, 5
    xx   drop2, drop, printNewline
    xx   Exit
    xx putCharWithColor
@@ -1260,8 +1262,8 @@ defWordEnd writeCharWithColor
 
 defWord "write-char", writeChar
    ;; (* char --  *)
-   xx dup, literal, ASCII_linefeed
-   xx equal?, false?branch, 4
+   xx dup, _literal, ASCII_linefeed
+   xx equal?, _false?branch, 4
    xx   drop, printNewline
    xx   Exit
    xx putChar
@@ -1270,13 +1272,13 @@ defWord "write-char", writeChar
 defWordEnd writeChar
 defWord "print-string", printString
    ;; (* string[address, length] -- *)
-   xx dup, zero?, false?branch, 3
+   xx dup, zero?, _false?branch, 3
    xx   drop2
    xx   Exit
    xx sub1, swap
    xx dup, fetch_byte, writeChar
    xx add1, swap
-   xx branch, -14
+   xx _branch, -14
 defWordEnd printString
 include "../threaded-code.inc"
 defCode "reboot", reboot
@@ -1289,11 +1291,11 @@ defCode "reboot", reboot
        out 0x64, al                    ; Send the reboot call to the keyboard controller
        jmp .loop
 defWord ".", printLittleNumber
-       xx literal, '0'
+       xx _literal, '0'
        xx addition, writeChar
-       xx literal, 32
+       xx _literal, 32
        xx writeChar
-       xx literal, 32
+       xx _literal, 32
        xx writeChar
        xx Exit
 defWordEnd printLittleNumber

@@ -1,10 +1,9 @@
 ;; if you want to extend cicada in assembly,
 ;; the following four registers must not be used
 ;; =================================
-define Next_word_pointer       r15
-define Return_stack_pointer    r14
-define Argument_stack_pointer  r13
-define Grey_pair_stack_pointer r12
+define Return_stack_pointer    r15
+define Argument_stack_pointer  r14
+define Grey_pair_stack_pointer r13
 ;; =================================
 
 define Explainer_pointer     rax
@@ -29,82 +28,29 @@ macro pop_argument_stack Register {
        mov Register, [Argument_stack_pointer]
        add Argument_stack_pointer, Cell_width
        }
-;; notations :
-;; 1. ``the dictionary'' as a datastructure is a single-linked-list
-;; 2. an entry in ``the dictionary'' is ``a word''
-;; 3. ``a word'' as a datastructure looks like the following :
-;;       (unit : Cell_width)
-;;    ||  1 : name-string-header-which-contains-the-length-of-name-string  ||
-;;    ||  m : name-string  ||
-;;    ||  1 : SizeOfFunctionBody  ||
-;;    ||  1 : identification  ||
-;;    ||  1 : link  ||
-;;    ||  1 : type  ||
-;;    ||  1 : address-of-name-string-header  ||
-;;    ||  1 : address-of-explainer  ||
-;;    ||  n : body  ||
-;; 4. so, I adopt two notations to represent ``a word'' :
-;;    word[link]      == address in a word where the link is stored
-;;    word[explainer] == address in a word where the address-of-explainer is stored
-;;    word[explainer] == address in a word before the function-body
-;;    word[explainer] == address in a word as the head of a function-body
-
-
-;; note that:
-;;   there are only two ways to jump to a explainer
-;;   1. next
-;;   2. execute
-
-
-;; not matter what way you use to set :
-;;   [Explainer_pointer] == address-of-explainer (of a word you want to jump to)
-;; then :
-;;   jmp qword[Explainer_pointer]
-;; it will works just well !!!
-
-;; specially, about ``next'',
-;; the way we use to set :
-;;   [Explainer_pointer] == address-of-explainer (of a word you want to jump to)
-;; is to find the address-of-explainer by :
-;;    Next_word_pointer  == an address in a function-body
-;;   [Next_word_pointer] == word-to-jump[explainer]
-;; so, Next_word_pointer is all that ``next'' needed
-;; set [Next_word_pointer] == word-to-jump[explainer]  correctly
-;; then call ``next''
-;; it will works just well !!!
-
-
-;; 1. this ``next'' do tail-call-optimization
-;; 2. in the following FASM marco, anonymous label of FASM is used
-;;    (of course, label in marco must be anonymous !)
-;;    hence, when using anonymous labels in assembly,
-;;    they can not across ``next'' !
-
 macro next {
-       local at_the_end_of_function_body
-
-       mov Explainer_pointer, [Next_word_pointer]
-       add Next_word_pointer, Cell_width
-       cmp dword[Next_word_pointer], Exit
-       je at_the_end_of_function_body
-       cmp dword[Next_word_pointer], 已矣
-       je at_the_end_of_function_body
-       jmp qword[Explainer_pointer]
+   ;; 1. if NOT at the end of the function body
+   ;;    (* Return-stack::
+   ;;         [address of explainer] -- [address of explainer] + Cell_width *)
+   ;; 2. if at the end of the function body
+   ;;    (* Return-stack::
+   ;;         [address of explainer] -- *)
+   ;; and jump to the explainer of the [address of explainer]
+local at_the_end_of_function_body
+   pop_return_stack rbx
+   mov Explainer_pointer, qword[rbx]
+   add rbx, Cell_width
+   cmp dword[rbx], Exit
+   je at_the_end_of_function_body
+   cmp dword[rbx], 已矣
+   je at_the_end_of_function_body
+   push_return_stack rbx
 at_the_end_of_function_body:
-       pop_return_stack Next_word_pointer
-       jmp qword[Explainer_pointer]
-       }
-       ;; maybe need more optimization,
-       ;; for the above ``pop_return_stack Next_word_pointer'' may be
-       ;; followed by ``push_return_stack Next_word_pointer'' (in explain_function_body)
-       ;; ><><>< 其实在 写 16-bits 的版本的时候 我想到了做这个优化的方法
-       ;; 但是现在我暂时没有时间把这些改动加进来
-
-
+   jmp qword[Explainer_pointer]
+   }
 
 ;; initial Link to point to NULL
 Link = 0
-
 
 macro defWord WordString, Word {
 hereInitializedData
@@ -140,16 +86,39 @@ macro defWordEnd Word {
 EndOfFunctionBodyOf#Word:
 }
 
-
-;; 1. if ``next'' meet ``Exit'',
-;;    ``next'' will ``pop_return_stack Next_word_pointer''
-;; 2. on the other hand,
-;;    explain_function_body is the only explainer
-;;    who ``push_return_stack Next_word_pointer''
-;; 3. so, it is these two functions, ``next'' and ``explain_function_body'',
-;;    which handle the nested function calls
-
-
+macro defKeyWord KeyWordString, KeyWord {
+hereInitializedData
+;;--------------------------------------
+KeyWordStringHeaderOf#KeyWord:
+        xx (EndOfKeyWordStringOf#KeyWord - KeyWordStringOf#KeyWord)
+;;--------------------------------------
+KeyWordStringOf#KeyWord:
+        db KeyWordString
+EndOfKeyWordStringOf#KeyWord:
+;;--------------------------------------
+SizeOfFunctionBodyOf#KeyWord:
+        xx (EndOfFunctionBodyOf#KeyWord - KeyWord)/Cell_width - 1
+;;--------------------------------------
+IdentificationOf#KeyWord:
+        xx IdentificationOf#KeyWord
+;;--------------------------------------
+LinkOf#KeyWord:
+        xx Link
+        Link = LinkOf#KeyWord
+;;--------------------------------------
+TypeOf#KeyWord:
+        xx 1
+;;--------------------------------------
+AddressOfKeyWordStringHeaderOf#KeyWord:
+        xx KeyWordStringHeaderOf#KeyWord
+;;======================================
+KeyWord:   xx explain_function_body
+;;--------------------------------------
+        ;; here follows a list of word[explainer]
+        }
+macro defKeyWordEnd KeyWord {
+EndOfFunctionBodyOf#KeyWord:
+}
 
 ;; assembly code have no explainer
 macro defCode WordString, Word {
@@ -181,11 +150,6 @@ AssemblerCodeOf#Word:
         ;; here follows the assembly code
         }
 
-
-
-
-
-
 macro defVar WordString, InitialValue, Word {
 hereInitializedData
 ;;--------------------------------------
@@ -215,10 +179,6 @@ Word:   xx explain_variable
 ;;--------------------------------------
         }
 
-
-
-
-
 macro defConst WordString, InitialValue, Word {
 hereInitializedData
 ;;--------------------------------------
@@ -247,10 +207,6 @@ Word:   xx explain_constant
         xx InitialValue
 ;;--------------------------------------
         }
-
-
-
-
 
 ;; in stack:
 ;;   string[address, length]

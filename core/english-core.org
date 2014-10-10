@@ -5,6 +5,64 @@
 
 * ==================================================
 * basic
+** test
+   #+begin_src cicada
+   : factorial (* n -- n! *)
+     dup one? if
+       Exit
+     then
+     dup sub1 factorial * Exit
+   ; define-function
+
+
+
+   1 factorial .
+   2 factorial .
+   3 factorial .
+   4 factorial .
+   5 factorial .
+   6 factorial .
+   7 factorial .
+   8 factorial .
+   9 factorial .
+   10 factorial .
+   11 factorial .
+   12 factorial .
+   13 factorial .
+   14 factorial .
+   15 factorial .
+   16 factorial .
+   17 factorial .
+   18 factorial .
+   19 factorial .
+   20 factorial .
+
+
+
+   : .12 (* 1 2 -- *)
+     2 == if
+       '2' write-char
+       1 == if
+         '1' write-char
+       else
+         '_' write-char
+       then
+     else
+       '_' write-char
+       1 == if
+         '1' write-char
+       else
+         '_' write-char
+       then
+     then
+     Exit
+   ; define-function
+
+   1 2 .12 cr
+   6 2 .12 cr
+   1 6 .12 cr
+   6 6 .12 cr
+   #+end_src
 ** define-variable & define-constant (new lexicographers)
 *** implementation
     #+begin_src cicada :tangle english-core.cicada
@@ -231,254 +289,11 @@
     : k ; define-constant-string
     k print-string (* xxx *)
     #+end_src
-** recursive function & decision (new lexicographers)
-*** note
-    one predicate can make two branchs
-    three predicates can make four branchs
-    three predicates may only make three branchs
-    but indeed there must be an invisible branch
-*** implementation
-    bug:
-    if there is one ``if,then'' pair mismatch
-    there will be crazy bug which is very hard to test !!
-    #+begin_src cicada :tangle english-core.cicada
-    (* the following is a basic function
-       that allow you to define recursive function with tail call optimization *)
-    : define-recursive-function
-      (* word-string[address, the number of words] -- *)
-      tail-and-head-of-word-string
-      create-word-header-for-function
-      set-size-of-function-body
-      add-new-word-to-dictionary
-      Function-body-explainer append-number-to-here
-      append-word-description-to-here
-      Exit
-    ; define-function
-
-    :" if"    : Key-word:if   ; define-constant-string
-    :" else"  : Key-word:else ; define-constant-string
-    :" then"  : Key-word:then ; define-constant-string
-
-    (* the following is an old function
-       direct literal number is not handled
-       it is no big deal, for this function is only used once *)
-
-    : append-word-description-to-here,with-if&then
-      (* word-string[address, the number of words] -- *)
-      dup2 string-full-of-blank? false?branch 3
-        drop2 Exit
-
-      tail-and-head-of-word-string
-
-      dup2 Bra:comment equal-string? false?branch 4
-        help:append-word-description-to-here,comment
-        append-word-description-to-here,with-if&then 
-        Exit
-
-      dup2 Key-word:if equal-string? false?branch 12
-        drop2
-        literal false?branch append-number-to-here
-        Here fetch xx|swap|x
-        Zero append-number-to-here (* leave a place *)
-        append-word-description-to-here,with-if&then 
-        Exit
-
-      dup2 Key-word:then equal-string? false?branch 13
-        drop2
-        x|swap|xx
-        Here fetch over -  Cell-width /
-        swap save
-        append-word-description-to-here,with-if&then  
-        Exit
-
-      dup2 string-denote-integer? false?branch 6
-        string->integer,with-error drop append-number-to-here
-        append-word-description-to-here,with-if&then 
-        Exit
-
-        find word-link->word-explainer append-number-to-here
-        append-word-description-to-here,with-if&then 
-        Exit
-    ; define-recursive-function
-
-    : define-recursive-function,with-if&then
-      (* word-string[address, the number of words] -- *)
-      tail-and-head-of-word-string
-      create-word-header-for-function
-      set-size-of-function-body
-      add-new-word-to-dictionary
-      Function-body-explainer append-number-to-here
-      append-word-description-to-here,with-if&then
-      Exit
-    ; define-function
-
-
-    (* redefine append-word-description-to-here add "else"
-       this also can be viewed as a basic test of new implemented "if&then"
-       and this time, I use Lambda-stack *)
-
-    : help:append-word-description-to-here,if
-      (* string if [address, length] -- *)
-      drop2
-      literal false?branch append-number-to-here
-      Here fetch xx|swap|x
-      Zero append-number-to-here (* leave a place *)
-      Exit
-    ; define-function
-
-    : help:append-word-description-to-here,else
-      (* string else [address, length] -- *)
-      drop2
-      literal branch append-number-to-here
-      Here fetch xxx|swap|x
-      Zero append-number-to-here (* leave a place *)
-      x|swap|xx
-      Here fetch over -  Cell-width /
-      swap save
-      Exit
-    ; define-function
-
-    : help:append-word-description-to-here,then
-      (* string then [address, length] -- *)
-      drop2
-      x|swap|xx
-      Here fetch over -  Cell-width /
-      swap save
-      Exit
-    ; define-function
-
-    : append-word-description-to-here
-      (* word-string[address, the number of words] -- *)
-      dup2 string-full-of-blank? if
-        drop2
-        Exit
-      then
-      tail-and-head-of-word-string
-      dup2 Bra:comment equal-string? if
-        help:append-word-description-to-here,comment
-        append-word-description-to-here
-        Exit
-      then
-      dup2 Key-word:if equal-string? if
-        help:append-word-description-to-here,if
-        append-word-description-to-here
-        Exit
-      then
-      dup2 Key-word:else equal-string? if
-        help:append-word-description-to-here,else
-        append-word-description-to-here
-        Exit
-      then
-      dup2 Key-word:then equal-string? if
-        help:append-word-description-to-here,then
-        append-word-description-to-here
-        Exit
-      then
-      dup2 string-denote-literal-or-branch? if
-        help:append-word-description-to-here,literal&branch
-        append-word-description-to-here
-        Exit
-      then
-      dup2 string-denote-integer? if
-        help:append-word-description-to-here,number
-        append-word-description-to-here
-        Exit
-      then
-      help:append-word-description-to-here,word
-      append-word-description-to-here
-      Exit
-    ; define-recursive-function,with-if&then
-
-
-    (* redefine define-recursive-function & define-function *)
-
-    : define-function
-      (* word-string[address, the number of words] -- *)
-      tail-and-head-of-word-string
-      create-word-header-for-function
-      set-size-of-function-body
-      xx|swap|x
-      Function-body-explainer append-number-to-here
-      append-word-description-to-here
-      add-new-word-to-dictionary
-      Exit
-    ; define-function
-
-    : define-recursive-function
-      (* word-string[address, the number of words] -- *)
-      tail-and-head-of-word-string
-      create-word-header-for-function
-      set-size-of-function-body
-      add-new-word-to-dictionary
-      Function-body-explainer append-number-to-here
-      append-word-description-to-here
-      Exit
-    ; define-function
-    #+end_src
-*** test
-    #+begin_src cicada
-    : factorial (* n -- n! *)
-      dup one? if
-        Exit
-      then
-      dup sub1 factorial * Exit
-    ; define-recursive-function
-
-
-
-    1 factorial .
-    2 factorial .
-    3 factorial .
-    4 factorial .
-    5 factorial .
-    6 factorial .
-    7 factorial .
-    8 factorial .
-    9 factorial .
-    10 factorial .
-    11 factorial .
-    12 factorial .
-    13 factorial .
-    14 factorial .
-    15 factorial .
-    16 factorial .
-    17 factorial .
-    18 factorial .
-    19 factorial .
-    20 factorial .
-
-
-
-    : .12 (* 1 2 -- *)
-      2 == if
-        '2' write-char
-        1 == if
-          '1' write-char
-        else
-          '_' write-char
-        then
-      else
-        '_' write-char
-        1 == if
-          '1' write-char
-        else
-          '_' write-char
-        then
-      then
-      Exit
-    ; define-function
-
-    1 2 .12 cr
-    6 2 .12 cr
-    1 6 .12 cr
-    6 6 .12 cr
-    #+end_src
 ** predicates
    #+begin_src cicada :tangle english-core.cicada
    : special-key-word? (* word[explainer] -- True or False *)
      dup literal literal           == if drop True Exit then
      dup literal branch            == if drop True Exit then
-     dup literal zero?branch       == if drop True Exit then
      dup literal false?branch      == if drop True Exit then
      drop False
      Exit
@@ -513,7 +328,7 @@
        xx|swap|x xx|swap|x add1 swap
        help:write-dec-number,push-chars
        Exit
-     ; define-recursive-function
+     ; define-function
 
      : help:write-dec-number,write-chars
        (* ... , number of small DecNumbers -- *)
@@ -522,18 +337,18 @@
        sub1 swap write-dec-number-char
        help:write-dec-number,write-chars
        Exit
-     ; define-recursive-function
+     ; define-function
 
 
      : write-dec-number,unsign (* fixnum -- *)
-       Zero swap
+       0 swap
        help:write-dec-number,push-chars
        help:write-dec-number,write-chars
        Exit
      ; define-function
 
      : write-dec-number,sign (* fixnum -- *)
-       dup Zero < if
+       dup 0 < if
          '-' write-char
          negate
        then
@@ -563,7 +378,7 @@
        xx|swap|x xx|swap|x add1 swap
        help:write-bin-number,push-chars
        Exit
-     ; define-recursive-function
+     ; define-function
 
      : help:write-bin-number,write-chars
        (* ... , number of small BinNumbers -- *)
@@ -572,17 +387,17 @@
        sub1 swap write-bin-number-char
        help:write-bin-number,write-chars
        Exit
-     ; define-recursive-function
+     ; define-function
 
      : write-bin-number,unsign (* fixnum -- *)
-       Zero swap
+       0 swap
        help:write-bin-number,push-chars
        help:write-bin-number,write-chars
        Exit
      ; define-function
 
      : write-bin-number,sign (* fixnum -- *)
-       dup Zero < if
+       dup 0 < if
          '-' write-char
          negate
        then
@@ -612,7 +427,7 @@
        xx|swap|x xx|swap|x add1 swap
        help:write-oct-number,push-chars
        Exit
-     ; define-recursive-function
+     ; define-function
 
      : help:write-oct-number,write-chars
        (* ... , number of small OctNumbers -- *)
@@ -621,17 +436,17 @@
        sub1 swap write-oct-number-char
        help:write-oct-number,write-chars
        Exit
-     ; define-recursive-function
+     ; define-function
 
      : write-oct-number,unsign (* fixnum -- *)
-       Zero swap
+       0 swap
        help:write-oct-number,push-chars
        help:write-oct-number,write-chars
        Exit
      ; define-function
 
      : write-oct-number,sign (* fixnum -- *)
-       dup Zero < if
+       dup 0 < if
          '-' write-char
          negate
        then
@@ -647,19 +462,19 @@
 **** write-hex-number
      #+begin_src cicada :tangle english-core.cicada
      : write-hex-number-char (* byte -- *)
-       dup Ten < if
+       dup 10 < if
          '0' + write-char Exit
        then
-       Ten -
+       10 -
        'a' + write-char
        Exit
      ; define-function
 
      : write-hex-number-char,capital (* byte -- *)
-       dup Ten < if
+       dup 10 < if
          '0' + write-char Exit
        then
-       Ten -
+       10 -
        'A' + write-char
        Exit
      ; define-function
@@ -674,7 +489,7 @@
        xx|swap|x xx|swap|x add1 swap
        help:write-hex-number,push-chars
        Exit
-     ; define-recursive-function
+     ; define-function
 
      : help:write-hex-number,write-chars
        (* ... , number of small HexNumbers -- *)
@@ -683,7 +498,7 @@
        sub1 swap write-hex-number-char
        help:write-hex-number,write-chars
        Exit
-     ; define-recursive-function
+     ; define-function
 
      : help:write-hex-number,write-chars,capital
        (* ... , number of small HexNumbers -- *)
@@ -692,24 +507,24 @@
        sub1 swap write-hex-number-char,capital
        help:write-hex-number,write-chars,capital
        Exit
-     ; define-recursive-function
+     ; define-function
 
      : write-hex-number,unsign (* fixnum -- *)
-       Zero swap
+       0 swap
        help:write-hex-number,push-chars
        help:write-hex-number,write-chars
        Exit
      ; define-function
 
      : write-hex-number,capital (* fixnum -- *)
-       Zero swap
+       0 swap
        help:write-hex-number,push-chars
        help:write-hex-number,write-chars,capital
        Exit
      ; define-function
 
      : write-hex-number,sign (* fixnum -- *)
-       dup Zero < if
+       dup 0 < if
          '-' write-char
          negate
        then
@@ -718,7 +533,7 @@
      ; define-function
 
      : write-hex-number,sign,capital (* fixnum -- *)
-       dup Zero < if
+       dup 0 < if
          '-' write-char
          negate
        then
@@ -734,19 +549,19 @@
 **** write-aph-number
      #+begin_src cicada :tangle english-core.cicada
      : write-aph-number-char (* byte -- *)
-       dup Ten < if
+       dup 10 < if
          '0' + write-char Exit
        then
-       Ten -
+       10 -
        'a' + write-char
        Exit
      ; define-function
 
      : write-aph-number-char,capital (* byte -- *)
-       dup Ten < if
+       dup 10 < if
          '0' + write-char Exit
        then
-       Ten -
+       10 -
        'A' + write-char
        Exit
      ; define-function
@@ -761,7 +576,7 @@
        xx|swap|x xx|swap|x add1 swap
        help:write-aph-number,push-chars
        Exit
-     ; define-recursive-function
+     ; define-function
 
      : help:write-aph-number,write-chars
        (* ... , number of small AphNumbers -- *)
@@ -770,7 +585,7 @@
        sub1 swap write-aph-number-char
        help:write-aph-number,write-chars
        Exit
-     ; define-recursive-function
+     ; define-function
 
      : help:write-aph-number,write-chars,capital
        (* ... , number of small AphNumbers -- *)
@@ -779,24 +594,24 @@
        sub1 swap write-aph-number-char,capital
        help:write-aph-number,write-chars,capital
        Exit
-     ; define-recursive-function
+     ; define-function
 
      : write-aph-number,unsign (* fixnum -- *)
-       Zero swap
+       0 swap
        help:write-aph-number,push-chars
        help:write-aph-number,write-chars
        Exit
      ; define-function
 
      : write-aph-number,capital (* fixnum -- *)
-       Zero swap
+       0 swap
        help:write-aph-number,push-chars
        help:write-aph-number,write-chars,capital
        Exit
      ; define-function
 
      : write-aph-number,sign (* fixnum -- *)
-       dup Zero < if
+       dup 0 < if
          '-' write-char
          negate
        then
@@ -805,7 +620,7 @@
      ; define-function
 
      : write-aph-number,sign,capital (* fixnum -- *)
-       dup Zero < if
+       dup 0 < if
          '-' write-char
          negate
        then
@@ -926,7 +741,7 @@
        write-space
        write-some-space
        Exit
-     ; define-recursive-function
+     ; define-function
      #+end_src
 *** test
     #+begin_src cicada
@@ -963,7 +778,7 @@
      add1
      print-string,null-terminated
      Exit
-   ; define-recursive-function
+   ; define-function
    #+end_src
 * debuger
 ** debuger-REPL & trace-function
@@ -978,14 +793,14 @@
     #+begin_src cicada :tangle english-core.cicada
     : count-return-stack (* -- the length of ReturnStack *)
       Return-stack-top fetch-return-stack-pointer -
-      Eight /
+      Cell-width /
       sub1 (* for we are in this function call *)
       Exit
     ; define-function
 
     : count-argument-stack (* -- the length of ArgumentStack *)
       Argument-stack-top fetch-argument-stack-pointer -
-      Eight /
+      Cell-width /
       Exit
     ; define-function
 
@@ -995,14 +810,14 @@
 
     (* the following two function are as interface *)
     : debuger,fetch-from-return-stack (* n -- *)
-      sub1 Eight *
+      sub1 Cell-width *
       Return-stack-position fetch +
       fetch
       Exit
     ; define-function
 
     : debuger,fetch-from-argument-stack (* n -- *)
-      sub1 Eight *
+      sub1 Cell-width *
       Argument-stack-position fetch +
       fetch
       Exit
@@ -1039,7 +854,7 @@
       execute-word
       debuger-REPL
       Exit
-    ; define-recursive-function
+    ; define-function
 
     :" debuger said: ``Welcome! Hope you find what's wrong.''"
     : Message:debuger,welcome ; define-constant-string
@@ -1055,9 +870,9 @@
 
     : debuger (* unknown -- unknown *)
       Message:debuger,welcome print-string cr
-      Three write-some-space Message:debuger,the-length-of-returnstack print-string
+      3 write-some-space Message:debuger,the-length-of-returnstack print-string
         count-return-stack write-dec-number cr
-      Three write-some-space Message:debuger,the-length-of-argument-stack print-string
+      3 write-some-space Message:debuger,the-length-of-argument-stack print-string
         count-argument-stack write-dec-number cr
       fetch-return-stack-pointer Return-stack-position save
       fetch-argument-stack-pointer Argument-stack-position save
@@ -1095,11 +910,11 @@
       Cell-width -
       word,body->id
       Exit
-    ; define-recursive-function
+    ; define-function
 
     : word,id->name
       (* word[identification] -- string[address, length] *)
-      Cell-width Three * +
+      Cell-width 3 * +
       fetch dup
       add8 swap
       fetch
@@ -1108,7 +923,7 @@
 
     : word,id->explainer
       (* word[identification] -- explainer *)
-      Cell-width Four * +
+      Cell-width 4 * +
       fetch
       Exit
     ; define-function
@@ -1123,7 +938,7 @@
     : word,id->body-list
       (* word[identification] -- body-list[address, length] *)
       dup
-        Cell-width Five * +
+        Cell-width 5 * +
       swap
       word,id->body-size
       Exit
@@ -1166,13 +981,13 @@
       dup zero? if
         drop2 Exit
       then
-      Six write-some-space
+      6 write-some-space
       over fetch word,body->id word,id->name print-string cr
       sub1 swap
       Cell-width + swap
       print-function-body-list
       Exit
-    ; define-recursive-function
+    ; define-function
 
     :"  -->  "
     : Message:_-->__ ; define-constant-string
@@ -1187,16 +1002,16 @@
       x|over|xx x|over|xx == if
         Message:_-->__ print-string
       else
-        Six write-some-space
+        6 write-some-space
       then
       over
       dup fetch special-key-word? if
         fetch word,body->id word,id->name print-string cr
         sub2 swap
         dup
-        Six write-some-space
+        6 write-some-space
         Cell-width + fetch write-dec-number cr
-        Cell-width Two * + swap
+        Cell-width 2 * + swap
         with-pointer,print-function-body-list
         Exit
       then
@@ -1205,7 +1020,7 @@
       Cell-width + swap
       with-pointer,print-function-body-list
       Exit
-    ; define-recursive-function
+    ; define-function
 
 
     :" trace-function said: ``Ya! Let's trace a function!''"
@@ -1230,17 +1045,17 @@
       (* [an address of a cell in a word] -- *)
       Message:trace-function,welcome print-string cr
       dup
-        Three write-some-space Message:trace-function,function-to-trace print-string cr
-        Six write-some-space fetch word,body->id word,id->name print-string cr
+        3 write-some-space Message:trace-function,function-to-trace print-string cr
+        6 write-some-space fetch word,body->id word,id->name print-string cr
       dup (* with-pointer,print-function-body-list still uses original arg *)
       word,body->id
         dup
-          Three write-some-space Message:trace-function,function-be-traced-to print-string cr
-          Six write-some-space word,id->name print-string cr
+          3 write-some-space Message:trace-function,function-be-traced-to print-string cr
+          6 write-some-space word,id->name print-string cr
         dup
-          Three write-some-space Message:trace-function,function-body-size print-string cr
-          Six write-some-space word,id->body-size write-dec-number cr
-        Three write-some-space Message:trace-function,function-body print-string cr
+          3 write-some-space Message:trace-function,function-body-size print-string cr
+          6 write-some-space word,id->body-size write-dec-number cr
+        3 write-some-space Message:trace-function,function-body print-string cr
         word,id->body-list with-pointer,print-function-body-list
       Message:trace-function,goodbye print-string cr
       Exit
@@ -1279,7 +1094,7 @@
           Exit
         then
         dup sub1 factorial * Exit
-    ; define-recursive-function
+    ; define-function
 
     10 factorial
       1 debuger,fetch-from-return-stack
@@ -1303,7 +1118,7 @@
         debuger
         write-some-space
         Exit
-    ; define-recursive-function
+    ; define-function
 
     100 write-some-space
       1 debuger,fetch-from-return-stack
@@ -1329,18 +1144,18 @@
         drop2
         cr Exit
       then
-      Three write-some-space
+      3 write-some-space
       tail-and-head-of-word-string print-string cr
       print-word-list
       Exit
-    ; define-recursive-function
+    ; define-function
 
 
     :" an error occurs!
     append-word-description-to-here said:
        ``I am a tail-recursive-function.
          My function-type is (* word-string[address, the number of words] -- *)
-         `define-recursive-function' and `define-function' call me.
+         `define-function' and `define-function' call me.
          The following word is undefined.
          I will print the rest of the Word-list and call debuger.''
        --> "
@@ -1399,7 +1214,7 @@
         append-word-description-to-here
         Exit
       then
-      drop (* drop the Zero *)
+      drop (* drop the 0 *)
       Message:append-word-description-to-here,meet-undefined-word print-string
       print-string cr
       Message:append-word-description-to-here,length-of-the-rest-of-the-word-list
@@ -1408,31 +1223,23 @@
       print-word-list
       debuger
       Exit
-    ; define-recursive-function
+    ; define-function
 
+    : _define-function
+      define-function
+      Exit
+    ; define-function
 
     : define-function
       (* word-string[address, the number of words] -- *)
       tail-and-head-of-word-string
       create-word-header-for-function
       set-size-of-function-body
-      xx|swap|x
-      Function-body-explainer append-number-to-here
-      append-word-description-to-here
-      add-new-word-to-dictionary
-      Exit
-    ; define-function
-
-    : define-recursive-function
-      (* word-string[address, the number of words] -- *)
-      tail-and-head-of-word-string
-      create-word-header-for-function
-      set-size-of-function-body
       add-new-word-to-dictionary
       Function-body-explainer append-number-to-here
       append-word-description-to-here
       Exit
-    ; define-function    
+    ; _define-function
     #+end_src
 * hash
 ** note
@@ -1483,7 +1290,7 @@
        dup write-dec-number cr
        debuger Exit
      then
-     dup Zero < if
+     dup 0 < if
        Message:index->address,error print-string
        dup write-dec-number cr
        debuger Exit
@@ -1495,7 +1302,7 @@
 
    : index-hashback->string
      (* index -- string[address, length] *)
-     index->address Eight +
+     index->address Cell-width +
      dup add1 swap
      fetch-byte
      Exit
@@ -1512,7 +1319,7 @@
      x|swap|xxx  +  xx|swap|x
      help:string-hash->index,sum-up
      Exit
-   ; define-recursive-function
+   ; define-function
 
    : help:string-hash->index,find-old-or-creat-new
      (* string[address, length], index -- index *)
@@ -1538,14 +1345,14 @@
      (* string[address, length], index *)
      dup index->address Last-symbol-entry == if
        drop
-       Zero
+       0
        help:string-hash->index,find-old-or-creat-new
        Exit
      then
      add1
      help:string-hash->index,find-old-or-creat-new
      Exit
-   ; define-recursive-function
+   ; define-function
 
    : help:string-hash->index,sum-up->index
      (* sum-up -- index *)
@@ -1560,7 +1367,7 @@
          drop Symbol-max-length
          (* this means only first Symbol-max-length of the string is used by the hash-function *)
        then
-       Zero xx|swap|x
+       0 xx|swap|x
        help:string-hash->index,sum-up
        help:string-hash->index,sum-up->index
      help:string-hash->index,find-old-or-creat-new
@@ -1736,7 +1543,7 @@
        head-of-word-string
        string-hash->index
        dup
-         index->address One swap save
+         index->address 1 swap save
        xx|swap|x
      define-constant
      Exit
@@ -1748,7 +1555,7 @@
        head-of-word-string
        string-hash->index
        dup
-         index->address Two swap save
+         index->address 2 swap save
        xx|swap|x
      define-constant
      Exit
@@ -1768,7 +1575,7 @@
 
 
    : <fixnum-like>? (* type -- True or False *)
-       index->address fetch One ==
+       index->address fetch 1 ==
        Exit
    ; define-function
 
@@ -1807,12 +1614,12 @@
 
 
    : <pair-like>? (* type -- True or False *)
-       index->address fetch Two ==
+       index->address fetch 2 ==
        Exit
    ; define-function
 
    : <not-pair-like>? (* type -- True or False *)
-       index->address fetch Two =/=
+       index->address fetch 2 =/=
        Exit
    ; define-function
 
@@ -1852,11 +1659,11 @@
    : print-type-tag
      (* type-tag[index of hash-table] -- *)
      dup
-     index->address fetch One == if
+     index->address fetch 1 == if
        index-hashback->string print-string Exit
      then
      dup
-     index->address fetch Two == if
+     index->address fetch 2 == if
        index-hashback->string print-string Exit
      then
      Message:print-type-tag,error print-string
@@ -1973,9 +1780,9 @@
 
     (*
      * : fetch-four-bytes (\* address -- value *\)
-     *   Zero fetch-argument-stack-pointer
+     *   0 fetch-argument-stack-pointer
      *   x|over|xx swap
-     *   Four copy-byte-string
+     *   4 copy-byte-string
      *   swap drop
      *   Exit
      * ; define-function
@@ -1983,7 +1790,7 @@
      * : save-four-bytes (\* value, address -- *\)
      *   swap fetch-argument-stack-pointer
      *   x|over|xx
-     *   Four copy-byte-string
+     *   4 copy-byte-string
      *   drop2
      *   Exit
      * ; define-function
@@ -2125,10 +1932,10 @@
     #+end_src
 *** read-string
     #+begin_src cicada :tangle english-core.cicada
-    : read-non-string-ending-char (* -- FirstNonBlankChar or Zero *)
+    : read-non-string-ending-char (* -- FirstNonBlankChar or 0 *)
       read-char
       dup '"' == if
-        drop Zero
+        drop 0
       then Exit
     ; define-function
 
@@ -2141,7 +1948,7 @@
       add1
       help:read-string,loop
       Exit
-    ; define-recursive-function
+    ; define-function
 
     : read-string (* -- string[address, length] *)
       Current-free-string-address,from fetch add4
@@ -2374,7 +2181,7 @@
       then
       one,grey->black
       all,grey->black Exit
-    ; define-recursive-function
+    ; define-function
     #+end_src
 *** set!, set-car!, set-cdr!
     in cicada, to make the gc to be incremental
@@ -2581,8 +2388,8 @@
       append-string-to-here
       Here fetch append-number-to-here (* identification *)
       Here fetch (* leave the word[link] *)
-      Zero append-number-to-here (* link *)
-      Two append-number-to-here  (* type *)
+      0 append-number-to-here (* link *)
+      2 append-number-to-here  (* type *)
       swap
       append-number-to-here (* address-of-name-string-header *)
       Exit
@@ -2627,9 +2434,9 @@
     ; define-function
 
     : find-next-free-pair-construction
-      (* pair[address] -- Zero or NextFreePairConstruction[address] *)
+      (* pair[address] -- 0 or NextFreePairConstruction[address] *)
       dup Last-pair-construction == if
-        drop Zero Exit
+        drop 0 Exit
       then
       Cons-bytes-size +
       clear-color-bit-of-pair-for-cleaning
@@ -2639,7 +2446,7 @@
       then
       find-next-free-pair-construction
       Exit
-    ; define-recursive-function
+    ; define-function
 
 
 
@@ -2684,7 +2491,7 @@
       next-word-in-dictionary
       help:push-all-root-node-into-grey-pair-stack
       Exit
-    ; define-recursive-function
+    ; define-function
 
     : push-all-root-node-into-grey-pair-stack (* -- *)
         first-word-in-dictionary fetch
@@ -2730,7 +2537,7 @@
         Cell-width +
         help:all-pairs-in-argument-stack,try,white->grey
         Exit
-    ; define-recursive-function
+    ; define-function
 
     : all-pairs-in-argument-stack,try,white->grey (* -- *)
         fetch-argument-stack-pointer
@@ -2752,7 +2559,7 @@
       Cell-width +
       help:all-pairs-in-lambda-stack,try,white->grey
       Exit
-    ; define-recursive-function
+    ; define-function
 
     : all-pairs-in-lambda-stack,try,white->grey (* -- *)
       Lambda-stack-pointer fetch
@@ -2780,10 +2587,10 @@
     : cons (* -- [address, <pair>] *)
         Current-free-pair-construction fetch <pair> (* leave the return <value> *)
         Current-free-pair-construction fetch find-next-free-pair-construction
-        dup not-zero? (* Zero denotes fail to find *) if
+        dup not-zero? (* 0 denotes fail to find *) if
           Current-free-pair-construction save
           Exit
-        then drop (* drop the Zero, which denotes fail to find, need gc *)
+        then drop (* drop the 0, which denotes fail to find, need gc *)
         all-pairs-in-argument-stack,try,white->grey
         all,grey->black
         reset-color-offsets resetVariablesAboutString (* note the timing to reset *)
@@ -2838,7 +2645,7 @@
       (* allocate a substring of the given length *)
       Current-free-string-address,from fetch add4 swap (* leave begin-address *)
       dup Current-free-string-address,from fetch save-four-bytes
-      Four + Current-free-string-address,from add-save
+      4 + Current-free-string-address,from add-save
       Exit
     ; define-function
 
@@ -2870,7 +2677,7 @@
         drop2
         ask-for-lots-of-cons
         Exit
-    ; define-recursive-function
+    ; define-function
 
     : ask-for-lots-of-cons,leave-them-on-the-argument-stack (* n -- *)
         dup zero? if drop Exit
@@ -2882,7 +2689,7 @@
         x|swap|xx
         ask-for-lots-of-cons,leave-them-on-the-argument-stack
         Exit
-    ; define-recursive-function
+    ; define-function
     #+end_src
 ** test
    #+begin_src cicada
@@ -3012,7 +2819,7 @@
        drop2
        ask-for-lots-of-cons
        Exit
-   ; define-recursive-function
+   ; define-function
 
 
    Number-of-pair-constructions ask-for-lots-of-cons
@@ -3337,7 +3144,7 @@
       print-string cr
       list-escape-REPL
       Exit
-    ; define-recursive-function
+    ; define-function
 
     : (esc list-escape-REPL Exit ; define-function
     #+end_src
@@ -3360,7 +3167,7 @@
         xx|swap|xx  set-car!
         read-list   set-cdr!
       Exit
-    ; define-recursive-function
+    ; define-function
 
     : { read-list Exit ; define-function
     #+end_src
@@ -3379,7 +3186,7 @@
       Mid:dot print-string write-space
       write
       Exit
-    ; define-recursive-function
+    ; define-function
 
 
     :" write-list said:
@@ -3644,7 +3451,7 @@
       xx|swap|xx
       help:list->dali
       Exit
-    ; define-recursive-function
+    ; define-function
 
 
     :" list->*dali* said:
@@ -3755,7 +3562,7 @@
       xx|swap|xx
       help:nested-list->dali
       Exit
-    ; define-recursive-function
+    ; define-function
 
 
     :" nested-list->*dali said:
@@ -3802,7 +3609,7 @@
       then
       ->  dali->tail
       Exit
-    ; define-recursive-function
+    ; define-function
 
 
     :" head<-dali said:
@@ -3825,7 +3632,7 @@
       then
       <-  head<-dali
       Exit
-    ; define-recursive-function
+    ; define-function
     #+end_src
 *** [value,dali]-associate & [value,dali]-member?
     #+begin_src cicada :tangle english-core.cicada
@@ -3872,7 +3679,7 @@
       then
       ->  help:[value,dali]-associate
       Exit
-    ; define-recursive-function
+    ; define-function
 
     : [value,dali]-associate
       (* [value, type], head[address, <dali-like>] --
@@ -3899,7 +3706,7 @@
       then
       ->  [value,dali]-member?
       Exit
-    ; define-recursive-function
+    ; define-function
     #+end_src
 *** ^_^
     the following function is very important
@@ -4116,7 +3923,7 @@
       ^_^
       help:read-*dali
       Exit
-    ; define-recursive-function
+    ; define-function
 
 
     : read-*dali (* -- head[address, <dali>] *)
@@ -4137,7 +3944,7 @@
       dup2
         car write
       -> help:write-*dali Exit
-    ; define-recursive-function
+    ; define-function
 
 
     :" write-*dali said:
@@ -4237,7 +4044,7 @@
       (* LambdaStack::
          [address, <list>] -- *)
       dup zero? if
-        drop (* drop Zero *)
+        drop (* drop 0 *)
         get-back null set-cdr!
         drop2 Exit
       then
@@ -4248,7 +4055,7 @@
       ready
       help:stack-LIAF->list
       Exit
-    ; define-recursive-function
+    ; define-function
 
     : stack-LIAF->list
       (* ..., number -- [address, <list>] *)
@@ -4269,7 +4076,7 @@
       (* LambdaStack::
          [address, <list>] -- [address, <list>] *)
       dup zero? if
-        drop (* drop Zero *)
+        drop (* drop 0 *)
         Exit
       then
       sub1
@@ -4277,7 +4084,7 @@
       get-back [cons,cdr]! ready
       help:stack-FIAF->list
       Exit
-    ; define-recursive-function
+    ; define-function
 
     : stack-FIAF->list
       (* ..., number -- [address, <list>] *)
@@ -4298,7 +4105,7 @@
       (* LambdaStack::
          [address, <list>] -- *)
       dup zero? if
-        drop (* drop Zero *)
+        drop (* drop 0 *)
         get-back
         dup2 cdr
         null set-cdr!
@@ -4314,7 +4121,7 @@
       ready
       help:stack-LIAF->dali
       Exit
-    ; define-recursive-function
+    ; define-function
 
     : stack-LIAF->dali
       (* ..., number -- [address, <dali>] *)
@@ -4333,7 +4140,7 @@
       (* LambdaStack::
          [address, <list>] -- *)
       dup zero? if
-        drop (* drop Zero *)
+        drop (* drop 0 *)
         get-back
         dup2 cdr
         null set-car!
@@ -4347,7 +4154,7 @@
       ready
       help:stack-FIAF->dali
       Exit
-    ; define-recursive-function
+    ; define-function
 
     : stack-FIAF->dali
       (* ..., number -- [address, <dali>] *)
@@ -4402,7 +4209,7 @@
       (* leave the value of the [value, <not-pair-like>] *)
       help:stack<-FIAF-list
       Exit
-    ; define-recursive-function
+    ; define-function
 
     : stack<-FIAF-list
       (* [address, <list>] -- ... *)
@@ -4487,7 +4294,7 @@
       ':' =/= if
         drop2 False (* Exit *)
       else
-        dup Zero == if
+        dup 0 == if
           drop2 False (* Exit *)
         else
           tail-and-head-of-string
@@ -4525,7 +4332,7 @@
 
     : string-denote-bound-variable,two?
       (* [address, length] -- True or False *)
-      dup Two <= if
+      dup 2 <= if
         drop2 False Exit
       then
       tail-and-head-of-string ':' =/= if
@@ -4560,7 +4367,7 @@
 
     : string-denote-bound-variable,three?
       (* [address, length] -- True or False *)
-      dup Three <= if
+      dup 3 <= if
         drop2 False Exit
       then
       tail-and-head-of-string ':' =/= if
@@ -4594,7 +4401,7 @@
 
     : string-denote-bound-variable,four?
       (* [address, length] -- True or False *)
-      dup Four <= if
+      dup 4 <= if
         drop2 False Exit
       then
       tail-and-head-of-string ':' =/= if
@@ -4672,7 +4479,7 @@
 
     : string-denote-wodi?
       (* [address, length] -- True or False *)
-      dup Two < if
+      dup 2 < if
         drop2 False Exit
       then
       dup2 head-of-string
@@ -4714,7 +4521,7 @@
     (* `<' plus a string-denote-bound-variable,one *)
     : string-denote-lambda-argument,one?
       (* [address, length] -- True or False *)
-      dup Two <= if
+      dup 2 <= if
         drop2 False Exit
       then
       tail-and-head-of-string '<' =/= if
@@ -4748,7 +4555,7 @@
     (* `<' plus a string-denote-bound-variable,two *)
     : string-denote-lambda-argument,two?
       (* [address, length] -- True or False *)
-      dup Three <= if
+      dup 3 <= if
         drop2 False Exit
       then
       tail-and-head-of-string '<' =/= if
@@ -4783,7 +4590,7 @@
     (* `<' plus a string-denote-bound-variable,three *)
     : string-denote-lambda-argument,three?
       (* [address, length] -- True or False *)
-      dup Four <= if
+      dup 4 <= if
         drop2 False Exit
       then
       tail-and-head-of-string '<' =/= if
@@ -4818,7 +4625,7 @@
     (* `<' plus a string-denote-bound-variable,four *)
     : string-denote-lambda-argument,four?
       (* [address, length] -- True or False *)
-      dup Five <= if
+      dup 5 <= if
         drop2 False Exit
       then
       tail-and-head-of-string '<' =/= if
@@ -5011,7 +4818,7 @@
           help:with-word,read-wodi-or-bound-variable
         set-cdr!
       Exit
-    ; define-recursive-function
+    ; define-function
 
 
     : with-word,read-wodi-or-bound-variable
@@ -5080,7 +4887,7 @@
       xx|swap|xx
       help:read-wodili
       Exit
-    ; define-recursive-function
+    ; define-function
 
 
 
@@ -5131,7 +4938,7 @@
       dup2
         car write
       -> help:write-wodili Exit
-    ; define-recursive-function
+    ; define-function
 
 
     :" write-wodili said:
@@ -5234,7 +5041,7 @@
         cons drop <lambda-argument-one>
           xx|swap|xx set-car!
           ready
-            One stack-FIAF->list
+            1 stack-FIAF->list
           get-back
           xx|swap|xx set-cdr!
         Exit
@@ -5245,7 +5052,7 @@
         cons drop <lambda-argument-two>
           xx|swap|xx set-car!
           ready
-            Two stack-FIAF->list
+            2 stack-FIAF->list
           get-back
           xx|swap|xx set-cdr!
         Exit
@@ -5256,7 +5063,7 @@
         cons drop <lambda-argument-three>
           xx|swap|xx set-car!
           ready
-            Three stack-FIAF->list
+            3 stack-FIAF->list
           get-back
           xx|swap|xx set-cdr!
         Exit
@@ -5267,7 +5074,7 @@
         cons drop <lambda-argument-four>
           xx|swap|xx set-car!
           ready
-            Four stack-FIAF->list
+            4 stack-FIAF->list
           get-back
           xx|swap|xx set-cdr!
         Exit
@@ -5276,7 +5083,7 @@
         xx|swap|x drop2
         word-link->word-explainer execute Exit
       then
-      drop (* drop the Zero that denotes finding-error *)
+      drop (* drop the 0 that denotes finding-error *)
       Message:undefined-word print-string
       print-string (* print the word *) cr
       Exit
@@ -5293,7 +5100,7 @@
       execute-word
       symbol-REPL
       Exit
-    ; define-recursive-function
+    ; define-function
     #+end_src
 *** test
     #+begin_src cicada
@@ -5439,7 +5246,7 @@
       then
       ->  bound-variable-wodili?
       Exit
-    ; define-recursive-function
+    ; define-function
 
 
     (*
@@ -5526,7 +5333,7 @@
         (* so the order of bound-variable-wodili will be preserved *)
       ready
       ->  help:bound-variable-wodili-subtraction Exit
-    ; define-recursive-function
+    ; define-function
 
 
     (* the following function will creat a new wodili, maybe ``null'' *)
@@ -5674,7 +5481,7 @@
       (* here is general symbol *)
       drop2
       <-  help:lambda,set-bound-variables Exit
-    ; define-recursive-function
+    ; define-function
 
 
     : help:lambda,set-function-body
@@ -5719,7 +5526,7 @@
         [cdr,cons]!  [car,cons]!
       [cons,car]!
       <-  help:lambda,set-function-body Exit
-    ; define-recursive-function
+    ; define-function
 
 
 
@@ -6023,7 +5830,7 @@
          leave the value and the type in the stack *)
       help:apply,eval-lambda-body
       Exit
-    ; define-recursive-function
+    ; define-function
     #+end_src
 *** apply
     #+begin_src cicada :tangle english-core.cicada
@@ -6058,7 +5865,7 @@
       [cons,cdr]!  drop2
       help-to-rec,help:apply,set-variables
       Exit
-    ; define-recursive-function
+    ; define-function
 
 
     : help:apply,set-variables
@@ -6440,7 +6247,7 @@
     : Y Var,Y fetch2 Exit ; define-function
 
 
-    [ [ [ One ] null λ <::true
+    [ [ [ 1 ] null λ <::true
         [ :n :n sub1 <:n ::rec @ @ * ] null λ <::false
          IF @ ready
         :n one? <:if apply ]
@@ -6462,15 +6269,15 @@
     (* ================================================== *)
     (* TODO the heuristic about Y *)
 
-    [ [ One ] null λ <::true
+    [ [ 1 ] null λ <::true
       [ :n :n sub1
 
           <:n
-          [ [ One ] null λ <::true
+          [ [ 1 ] null λ <::true
             [ :n :n sub1
 
             <:n
-            [ [ One ] null λ <::true
+            [ [ 1 ] null λ <::true
               [ :n :n sub1
 
                   ,* ]
@@ -6634,7 +6441,7 @@
      (* char, [address, length] -- address or -1 *)
      dup zero? if
        drop2 drop
-       One negate
+       1 negate
        Exit
      then
      tail-and-head-of-string
@@ -6644,15 +6451,15 @@
      then
      find-char-address
      Exit
-   ; define-recursive-function
+   ; define-function
 
    : find-char-index
      (* char, [address, length] -- index or -1 *)
-     (* index start from Zero *)
+     (* index start from 0 *)
      over
      xxx|swap|x
      find-char-address
-     dup Zero < if
+     dup 0 < if
        swap drop Exit
      then
      swap -
@@ -6684,7 +6491,7 @@
      then
      dup2
      'linefeed' xx|over|x find-char-index
-     dup Zero < if
+     dup 0 < if
        (* this means if a string is not end with 'linefeed'
           a 'linefeed' will be added at the end *)
        drop
@@ -6730,7 +6537,7 @@
      ready
      help:string->line-dali
      Exit
-   ; define-recursive-function
+   ; define-function
 
    : string->line-dali
      (* [address, length] -- head[address, <dali>] *)
@@ -6788,7 +6595,7 @@
       line: ==
         buffer[address, length], cursors[address, <list>]
       where:
-        cursor is a Zero-based-index, from Zero to length *)
+        cursor is a zero-based-index, from 0 to length *)
 
 
    0 : Var,LineBuffer ; define-variable
@@ -6830,7 +6637,7 @@
         buffer[address, length], cursors[address, <list>] *)
      copyStringToBuffer
      cons drop <list>
-     Zero <fixnum>
+     0 <fixnum>
      [cons,car]!
      Exit
    ; define-function
@@ -7066,7 +6873,7 @@
      (* L *)
      help:tryREDL
      Exit
-   ; define-recursive-function
+   ; define-function
    "
    : String-for,aaa
    ; define-constant-string
@@ -7127,7 +6934,7 @@
      (* L *)
      help:tryREDL
      Exit
-   ; define-recursive-function
+   ; define-function
 
    : tryREDL (*  --  *)
      setTerminalToReadKey

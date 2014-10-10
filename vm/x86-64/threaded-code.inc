@@ -1,26 +1,26 @@
 defWord "basic-REPL", basic_REPL
        ;; (* unknown -- unknown *)
-       xx TheReturnStackTop, reset_return_stack_pointer
+       ;; ><><><>< xx TheReturnStackTop, reset_return_stack_pointer
        xx TheArgumentStackTop, reset_argument_stack_pointer
        xx read_word_for_runtime
        xx execute_word
-       xx branch, -3
+       xx _branch, -3
        ;; must not end with Exit here
 defWordEnd basic_REPL
 
 defWord "execute-word", execute_word
        ;; (* string[address, length] -- unknown *)
-       xx dup2, string_denote_integer?, false?branch, 4
+       xx dup2, string_denote_integer?, _false?branch, 4
        xx   string_to_integer__with_error, drop
        xx   Exit
-       xx dup2, find, dup, zero?branch, 6
+       xx dup2, find, dup, _false?branch, 6
        xx   xxswapx, drop2
        xx   word_link_to_word_explainer, execute
        xx   Exit
        xx drop ;; drop zero
        xx Message_undefined_word, printString
        xx printString
-       xx literal, ASCII_linefeed, writeChar
+       xx _literal, ASCII_linefeed, writeChar
        xx Exit
 defWordEnd execute_word
 
@@ -35,183 +35,141 @@ defVar "first-word-in-dictionary", LinkOfTheLatestWordInAssembly , FirstWordInDi
 ;; ------------------------------------------
 defConst "Cell-width", Cell_width, _Cell_width
 
-defConst "Zero",  0, Zero
-defConst "One",   1, One
-defConst "Two",   2, Two
-defConst "Three", 3, Three
-defConst "Four",  4, Four
-defConst "Five",  5, Five
-defConst "Six",   6, Six
-defConst "Seven", 7, Seven
-defConst "Eight", 8, Eight
-defConst "Nine",  9, Nine
-defConst "Ten",  10, Ten
-
 defConst "False", 0, False
 defConst "True",  1, True
-;; special key words are not functions
-;; but all about define_function is to use old functions to make new function
-;; so, more appropriately,
-;; when using ``literal'' or ``branch''
-;; we are making new functions,
-;; in a way, which is different from function-composition.
-;; hence :
-;; 1. ``literal'' is a set of function,
-;;    ``literal 666'' is a function in this set.
-;;    or ``literal'' is a function
-;;    which takes ``666'' as an argumt, and returns a function.
-;; 2. ``branch'' by itself has no function-semantic.
-;; 3. it is obvious that,
-;;    how ``== false?branch 6 ... ...'' is a means
-;;    to make new function out of old functions.
-;; 4. note that to achieve the function-semantic,
-;;    we have to constrain ourself when using these special key words,
-;;    for example, ``infinite-loop'' built by ``branch''
-;;    is definitely has no function-semantic.
-
-defCode "literal", literal
-   mov  rax, [Next_word_pointer]
-   add  Next_word_pointer, Cell_width
+;; this word should not be found
+;; the interface of this word is the next word "literal"
+defCode "", _literal
+   ;; (* -- number *)
+   ;; 1. if NOT at the end of the function body
+   ;;    (* Return-stack::
+   ;;         address -- address + Cell_width *)
+   ;; 2. if at the end of the function body
+   ;;    (* Return-stack::
+   ;;         address -- *)
+   pop_return_stack rbx
+   mov  rax, [rbx]
    push_argument_stack rax
-   cmp dword[Next_word_pointer], Exit
-   je literal_meet_Exit
-   cmp dword[Next_word_pointer], 已矣
-   je literal_meet_Exit
-   next
-literal_meet_Exit:
-   pop_return_stack Next_word_pointer
-   next
-
-
-defCode "branch", branch
-   ;; usage(in assembly): xx branch, number
-   ;; the number denotes an offset
-   ;; the base point of the offset is the place where the number stored
-   ;; note that: in the function branch, [Next_word_pointer] = offset
-   mov  Temporary_register, [Next_word_pointer]
-   imul Temporary_register, Cell_width
-   add  Next_word_pointer, Temporary_register
-   cmp dword[Next_word_pointer], Exit
-   je branch_meet_Exit
-   cmp dword[Next_word_pointer], 已矣
-   je branch_meet_Exit
-   next
-branch_meet_Exit:
-   pop_return_stack Next_word_pointer
+   add  rbx, Cell_width
+   cmp dword[rbx], Exit
+   je _literal__meet_end
+   cmp dword[rbx], 已矣
+   je _literal__meet_end
+   push_return_stack rbx
+_literal__meet_end:
    next
 
+;; no error handling for string_full_of_blank
+defKeyWord "literal", literal
+   ;; (* word-string[address, length] -- word-string[address, length] *)
+   ;; (* compile::
+   ;;      _literal[address of explainer], number *)
+   xx _literal, _literal, append_number_to_here
+   xx tail_and_head_of_word_string
+   xx dup2, string_denote_integer?, _false?branch, 5
+   xx   string_to_integer__with_error, drop, append_number_to_here
+   xx   Exit
+   xx find, word_link_to_word_explainer, execute, append_number_to_here
+   xx Exit
+defKeyWordEnd literal
 
-defCode "zero?branch", zero?branch
-   ;; ( n -- )
+
+;; the following handles _branch to "Exit"
+;; >< alth branch to "Exit" should never be used
+defCode "", _branch
+   ;; 1. if NOT at the end of the function body
+   ;;    (* Return-stack::
+   ;;         address -- address + offset * Cell_width *)
+   ;; 2. if at the end of the function body
+   ;;    (* Return-stack::
+   ;;         address -- *)
+   ;; and "next"
+   ;; (could be optimize by not using "next")
+   pop_return_stack rbx
+   mov  rax, [rbx]
+   imul rax, Cell_width
+   add  rbx, rax
+   cmp dword[rbx], Exit
+   je _branch__meet_end
+   cmp dword[rbx], 已矣
+   je _branch__meet_end
+   push_return_stack rbx
+_branch__meet_end:
+   next
+
+;; no error handling for string_full_of_blank
+defKeyWord "branch", branch
+   ;; (* word-string[address, length] -- word-string[address, length] *)
+   ;; (* compile::
+   ;;      _literal[address of explainer], number *)
+   xx _literal, _branch, append_number_to_here
+   xx tail_and_head_of_word_string
+   xx dup2, string_denote_integer?, _false?branch, 5
+   xx   string_to_integer__with_error, drop, append_number_to_here
+   xx   Exit
+   xx find, word_link_to_word_explainer, execute, append_number_to_here
+   xx Exit
+defKeyWordEnd branch
+
+
+;; the following handles _false?branch to "Exit"
+defCode "", _false?branch
+   ;; (* True of False -- *)
+   ;; 0. if NOT _branch
+   ;;    (* Return-stack::
+   ;;         address -- address + Cell_width *)
+   ;; 1. if NOT at the end of the function body
+   ;;    (* Return-stack::
+   ;;         address -- address + offset * Cell_width *)
+   ;; 2. if at the end of the function body
+   ;;    (* Return-stack::
+   ;;         address -- *)
+   ;; and "next"
+   ;; (could be optimize by not using "next")
    pop_argument_stack rax
    test rax, rax
-   jnz zero?branch_toBranch
-   mov  Temporary_register, [Next_word_pointer]
-   imul Temporary_register, Cell_width
-   add  Next_word_pointer, Temporary_register
-   jmp zero?branch_help_toBranch
-zero?branch_toBranch:
-   add Next_word_pointer, Cell_width
-zero?branch_help_toBranch:
-   cmp dword[Next_word_pointer], Exit
-   je zero?branch_meet_Exit
-   cmp dword[Next_word_pointer], 已矣
-   je zero?branch_meet_Exit
-   next
-zero?branch_meet_Exit:
-   pop_return_stack Next_word_pointer
+   jnz _false?branch__not_to_branch
+
+   pop_return_stack rbx
+   mov  rax, [rbx]
+   imul rax, Cell_width
+   add  rbx, rax
+   cmp dword[rbx], Exit
+   je _false?branch__meet_end
+   cmp dword[rbx], 已矣
+   je _false?branch__meet_end
+   push_return_stack rbx
+_false?branch__meet_end:
    next
 
-defCode "false?branch", false?branch
-   ;; ( n -- )
-   ;; false?branch is identical to zero?branch
-   ;; but we can not use defWord to define false?branch by false?branch
-   ;; for it is a special key word
-   pop_argument_stack rax
-   test rax, rax
-   jnz false?branch_toBranch
-   mov  Temporary_register, [Next_word_pointer]
-   imul Temporary_register, Cell_width
-   add  Next_word_pointer, Temporary_register
-   jmp false?branch_help_toBranch
-false?branch_toBranch:
-   add Next_word_pointer, Cell_width
-false?branch_help_toBranch:
-   cmp dword[Next_word_pointer], Exit
-   je false?branch_meet_Exit
-   cmp dword[Next_word_pointer], 已矣
-   je false?branch_meet_Exit
-   next
-false?branch_meet_Exit:
-   pop_return_stack Next_word_pointer
-   next
-defCode "即", 即
-   mov  rax, [Next_word_pointer]
-   add  Next_word_pointer, Cell_width
-   push_argument_stack rax
-   cmp dword[Next_word_pointer], Exit
-   je 即_meet_Exit
-   cmp dword[Next_word_pointer], 已矣
-   je 即_meet_Exit
-   next
-即_meet_Exit:
-   pop_return_stack Next_word_pointer
+_false?branch__not_to_branch:
+   pop_return_stack rbx
+   add rbx, Cell_width
+   cmp dword[rbx], Exit
+   je _false?branch__not_to_branch__meet_end
+   cmp dword[rbx], 已矣
+   je _false?branch__not_to_branch__meet_end
+   push_return_stack rbx
+_false?branch__not_to_branch__meet_end:
    next
 
-defCode "转", 转
-   mov  Temporary_register, [Next_word_pointer]
-   imul Temporary_register, Cell_width
-   add  Next_word_pointer, Temporary_register
-   cmp dword[Next_word_pointer], Exit
-   je 转_meet_Exit
-   cmp dword[Next_word_pointer], 已矣
-   je 转_meet_Exit
-   next
-转_meet_Exit:
-   pop_return_stack Next_word_pointer
-   next
+;; no error handling for string_full_of_blank
+defKeyWord "false?branch", false?branch
+   ;; (* word-string[address, length] -- word-string[address, length] *)
+   ;; (* compile::
+   ;;      _literal[address of explainer], number *)
+   xx _literal, _false?branch, append_number_to_here
+   xx tail_and_head_of_word_string
+   xx dup2, string_denote_integer?, _false?branch, 5
+   xx   string_to_integer__with_error, drop, append_number_to_here
+   xx   Exit
+   xx find, word_link_to_word_explainer, execute, append_number_to_here
+   xx Exit
+defKeyWordEnd branch
 
-defCode "零则转", 零则转
-   ;; ( n -- )
-   pop_argument_stack rax
-   test rax, rax
-   jnz 零则转_去转
-   mov  Temporary_register, [Next_word_pointer]
-   imul Temporary_register, Cell_width
-   add  Next_word_pointer, Temporary_register
-   jmp 零则转_help_去转
-零则转_去转:
-   add Next_word_pointer, Cell_width
-零则转_help_去转:
-   cmp dword[Next_word_pointer], Exit
-   je 零则转_meet_Exit
-   cmp dword[Next_word_pointer], 已矣
-   je 零则转_meet_Exit
-   next
-零则转_meet_Exit:
-   pop_return_stack Next_word_pointer
-   next
-
-defCode "假则转", 假则转
-   ;; ( n -- )
-   pop_argument_stack rax
-   test rax, rax
-   jnz 假则转_去转
-   mov  Temporary_register, [Next_word_pointer]
-   imul Temporary_register, Cell_width
-   add  Next_word_pointer, Temporary_register
-   jmp 假则转_help_去转
-假则转_去转:
-   add Next_word_pointer, Cell_width
-假则转_help_去转:
-   cmp dword[Next_word_pointer], Exit
-   je 假则转_meet_Exit
-   cmp dword[Next_word_pointer], 已矣
-   je 假则转_meet_Exit
-   next
-假则转_meet_Exit:
-   pop_return_stack Next_word_pointer
-   next
+;; ><><><
+;; Chinese version
+;; 即 转 假则转
 defCode "drop", drop
    ;; (* a -- *)
    pop_argument_stack rax
@@ -560,14 +518,14 @@ defCode "mod/", moddiv
    next
 defWord "negate", negate
    ;; (* n --  -n *)
-   xx literal, 0
+   xx _literal, 0
    xx swap, subtraction
    xx Exit
 defWordEnd negate
 
 defWord "help:power", help_power
    ;; (* a, m, n -- a^n *)
-   xx dup, zero?, false?branch, 5
+   xx dup, zero?, _false?branch, 5
    xx   drop, swap, drop
    xx   Exit
    xx sub1
@@ -581,7 +539,7 @@ defWordEnd help_power
 defWord "power", power
    ;; n must be naturl number for now
    ;; (* a, n -- a^n *)
-   xx literal, 1
+   xx _literal, 1
    xx swap
    xx help_power
    xx Exit
@@ -731,7 +689,7 @@ defCode "compare-string?", compare_string?
 
 defWord "equal-string?", equal_string?
    ;; (* string-1[address-1, length-1], string-2[address-2, length-2] -- True or False *)
-   xx xoverxx, equal?, false?branch, 4
+   xx xoverxx, equal?, _false?branch, 4
    xx swap, compare_string?, Exit
    xx drop, drop, drop, False
    xx Exit
@@ -838,7 +796,7 @@ defCode "not-zero?", not_zero?
 
 
 defWord "one?", one?
-   xx One, equal?
+   xx literal, 1, equal?
    xx Exit
 defWordEnd one?
 
@@ -854,10 +812,10 @@ defWordEnd false?
 defWord "char-denote-number?", char_denote_number?
    ;; (* char -- True or False *)
    xx dup
-   xx literal, '0', less_than?, false?branch, 4
+   xx _literal, '0', less_than?, _false?branch, 4
    xx   drop, False
    xx   Exit
-   xx literal, '9', greater_than?, false?branch, 3
+   xx _literal, '9', greater_than?, _false?branch, 3
    xx   False
    xx   Exit
    xx True
@@ -1068,7 +1026,7 @@ defVar "Lambda-stack-pointer", LambdaStackTop, LambdaStackPointer
 defWord "push-lambda-stack", push_lambda_stack
    ;; (* ArgumentStack::  value -->
    ;;    LambdaStack::    value *)
-   xx literal, Cell_width, LambdaStackPointer, sub_save
+   xx _literal, Cell_width, LambdaStackPointer, sub_save
    xx LambdaStackPointer, fetch, save
    xx Exit
 defWordEnd push_lambda_stack
@@ -1077,7 +1035,7 @@ defWord "pop-lambda-stack", pop_lambda_stack
    ;; (* LambdaStack::    value -->
    ;;    ArgumentStack::  value *)
    xx LambdaStackPointer, fetch, fetch
-   xx literal, Cell_width, LambdaStackPointer, add_save
+   xx _literal, Cell_width, LambdaStackPointer, add_save
    xx Exit
 defWordEnd pop_lambda_stack
 
@@ -1110,14 +1068,14 @@ defWordEnd get_back
 ;;    of how to make good use of Lambda-stack :)
 defWord "base-of-string", base_of_string
    ;; (* string[address, length] -- base  or zero *)
-   xx literal, 0, push_lambda_stack ;; init counter for help__base_of_string__push_char
+   xx _literal, 0, push_lambda_stack ;; init counter for help__base_of_string__push_char
    xx help__base_of_string__push_char
-   xx dup, false?, false?branch, 2
+   xx dup, false?, _false?branch, 2
    xx   Exit
    xx drop
-   xx literal, 0  ;; init base for help__base_of_string__pop_char
+   xx _literal, 0  ;; init base for help__base_of_string__pop_char
    xx pop_lambda_stack
-   xx literal, 0
+   xx _literal, 0
    xx push_lambda_stack  ;; init index for help__base_of_string__pop_char
    xx help__base_of_string__pop_char
    xx Exit
@@ -1126,7 +1084,7 @@ defWordEnd base_of_string
 defWord "help:help:base-of-string,push-char,clear-lambda-stack", help__help__base_of_string__push_char__clear_lambda_stack
    ;; (* char-counter[N] -- *)
    ;; (* Lambda-stack::  char, ... --  *)
-   xx dup, zero?, false?branch, 3
+   xx dup, zero?, _false?branch, 3
    xx   drop
    xx   Exit
    xx sub1, pop_lambda_stack, drop
@@ -1140,22 +1098,22 @@ defWord "help:base-of-string,push-char", help__base_of_string__push_char
    ;; (* or *)
    ;; (* string[address, length] -- False *)
    ;; (* Lambda-stack:: char-counter[0] -- *)
-   xx dup, literal, 2, less_than?, false?branch, 7
+   xx dup, _literal, 2, less_than?, _false?branch, 7
    xx   drop2
    xx   pop_lambda_stack
    xx   help__help__base_of_string__push_char__clear_lambda_stack
-   xx   literal, 0
+   xx   _literal, 0
    xx   Exit
    xx tail_and_head_of_string
-   xx dup, literal, '#', equal?, false?branch, 6
+   xx dup, _literal, '#', equal?, _false?branch, 6
    xx   drop, drop2
-   xx   literal, 1
+   xx   _literal, 1
    xx   Exit
-   xx dup, char_denote_number?, false?, false?branch, 8
+   xx dup, char_denote_number?, false?, _false?branch, 8
    xx   drop, drop2
    xx   pop_lambda_stack
    xx   help__help__base_of_string__push_char__clear_lambda_stack
-   xx   literal, 0
+   xx   _literal, 0
    xx   Exit
    xx pop_lambda_stack, add1
    xx swap, push_lambda_stack, push_lambda_stack
@@ -1167,16 +1125,16 @@ defWordEnd help__base_of_string__push_char
 defWord "help:base-of-string,pop-char", help__base_of_string__pop_char
    ;; (* base, char-counter[N] -- base *)
    ;; (* Lambda-stack::  index, char, ... -- *)
-   xx dup, zero?, false?branch, 5
+   xx dup, zero?, _false?branch, 5
    xx   drop
    xx   pop_lambda_stack, drop
    xx   Exit
    xx sub1
    xx swap, pop_lambda_stack
    ;; (* char-counter[N], base, index *)
-   xx dup, literal, 10, swap, power
+   xx dup, _literal, 10, swap, power
    xx   pop_lambda_stack
-   xx   literal, '0', subtraction
+   xx   _literal, '0', subtraction
    xx   multiple
    xx   swap, add1, push_lambda_stack
    xx   addition
@@ -1193,9 +1151,9 @@ defWordEnd help__base_of_string__pop_char
 defWord "digit-of-string", digit_of_string
    ;; (* string[address, length] -- digit[address, length]  or zero *)
    xx dup2, head_of_string
-   xx literal, '#', equal?, false?branch, 5
+   xx _literal, '#', equal?, _false?branch, 5
    xx   drop2
-   xx   literal, 0
+   xx   _literal, 0
    xx   Exit
    xx help__digit_of_string
    xx Exit
@@ -1206,12 +1164,12 @@ defWordEnd digit_of_string
 ;; it does not reture 0
 defWord "help:digit-of-string", help__digit_of_string
    ;; (* string[address, length] -- digit[address, length]  or zero *)
-   xx dup, literal, 2, less_than?, false?branch, 5
+   xx dup, _literal, 2, less_than?, _false?branch, 5
    xx   drop2
-   xx   literal, 0
+   xx   _literal, 0
    xx   Exit
    xx tail_and_head_of_string
-   xx literal, '#', equal?, false?branch, 2
+   xx _literal, '#', equal?, _false?branch, 2
    xx   Exit
    xx help__digit_of_string
    xx Exit
@@ -1220,43 +1178,43 @@ defWordEnd help__digit_of_string
 ;;    reture -1 to denote error
 defWord "char->number", char_to_number
    ;; (* char -- the number it denotes *)
-   xx dup, literal, '0', less_than?, false?branch, 5
+   xx dup, _literal, '0', less_than?, _false?branch, 5
    xx   drop
-   xx   literal, -1
+   xx   _literal, -1
    xx   Exit
-   xx dup, literal, '9', less_or_equal?, false?branch, 5
-   xx   literal, '0'
+   xx dup, _literal, '9', less_or_equal?, _false?branch, 5
+   xx   _literal, '0'
    xx   subtraction
    xx   Exit
-   xx dup, literal, 'A', less_than?, false?branch, 5
+   xx dup, _literal, 'A', less_than?, _false?branch, 5
    xx   drop
-   xx   literal, -1
+   xx   _literal, -1
    xx   Exit
-   xx dup, literal, 'Z', less_or_equal?, false?branch, 8
-   xx   literal, 'A', subtraction
-   xx   literal, 10, addition
+   xx dup, _literal, 'Z', less_or_equal?, _false?branch, 8
+   xx   _literal, 'A', subtraction
+   xx   _literal, 10, addition
    xx   Exit
-   xx dup, literal, 'a', less_than?, false?branch, 5
+   xx dup, _literal, 'a', less_than?, _false?branch, 5
    xx   drop
-   xx   literal, -1
+   xx   _literal, -1
    xx   Exit
-   xx dup, literal, 'z', less_or_equal?, false?branch, 8
-   xx   literal, 'a', subtraction
-   xx   literal, 10, addition
+   xx dup, _literal, 'z', less_or_equal?, _false?branch, 8
+   xx   _literal, 'a', subtraction
+   xx   _literal, 10, addition
    xx   Exit
    xx drop
-   xx literal, -1
+   xx _literal, -1
    xx Exit
 defWordEnd char_to_number
 defWord "with-base:char-denote-number?", with_base__char_denote_number?
    ;; (* base, char -- True of False *)
    ;; (* char -- True or False *)
    xx char_to_number
-   xx dup, literal, -1, equal?, false?branch, 4
+   xx dup, _literal, -1, equal?, _false?branch, 4
    xx   drop2
    xx   False
    xx   Exit
-   xx greater_than?, false?branch, 3
+   xx greater_than?, _false?branch, 3
    xx   True
    xx   Exit
    xx False
@@ -1270,16 +1228,16 @@ defWordEnd with_base__char_denote_number?
 
 defWord "with-base:string-denote-digit?", with_base__string_denote_digit?
    ;; (* base, string[address, length] -- True or False *)
-   xx dup, zero?, false?branch, 5
+   xx dup, zero?, _false?branch, 5
    xx   drop2, drop
    xx   False
    xx   Exit
-   xx dup2, head_of_string, literal, '-', equal?, false?branch, 2
+   xx dup2, head_of_string, _literal, '-', equal?, _false?branch, 2
    ;; note the way how to uses "if then" here
    ;; it is enough to use "if then" to handle
    ;; an optional executed function call, without the use of "Exit"
    xx   tail_of_string
-   xx dup2, string_full_of_underscore?, false?branch, 5
+   xx dup2, string_full_of_underscore?, _false?branch, 5
    xx   drop2, drop
    xx   False
    xx   Exit
@@ -1291,12 +1249,12 @@ defWordEnd with_base__string_denote_digit?
 ;; 0. when meet zero-length string always reture True
 defWord "string-full-of-underscore?", string_full_of_underscore?
    ;; (* string[address, length] -- True or False *)
-   xx dup, zero?, false?branch, 4
+   xx dup, zero?, _false?branch, 4
    xx   drop2
    xx   True
    xx   Exit
    xx tail_and_head_of_string
-   xx literal, '_', equal?, false?branch, 3
+   xx _literal, '_', equal?, _false?branch, 3
    xx   string_full_of_underscore?
    xx   Exit
    xx drop2
@@ -1310,17 +1268,17 @@ defWordEnd string_full_of_underscore?
 ;; 2. do not handle string-full-of-underscore
 defWord "help:with-base:string-denote-digit?", help__with_base__string_denote_digit?
    ;; (* base, string[address, length] -- True or False *)
-   xx dup, zero?, false?branch, 5
+   xx dup, zero?, _false?branch, 5
    xx   drop2, drop
    xx   True
    xx   Exit
    xx tail_and_head_of_string
-   xx dup, literal, '_', equal?, false?branch, 4
+   xx dup, _literal, '_', equal?, _false?branch, 4
    xx   drop
    xx   help__with_base__string_denote_digit?
    xx   Exit
    xx xoverxxx, swap
-   xx with_base__char_denote_number?, false?branch, 3
+   xx with_base__char_denote_number?, _false?branch, 3
    xx   help__with_base__string_denote_digit?
    xx   Exit
    xx drop2, drop
@@ -1331,7 +1289,7 @@ defWordEnd help__with_base__string_denote_digit?
 
 defWord "with-base:string-denote-digit?without-sign", with_base__string_denote_digit?without_sign
    ;; (* base, string[address, length] -- True or False *)
-   xx dup2, head_of_string, literal, '-', equal?, false?branch, 5
+   xx dup2, head_of_string, _literal, '-', equal?, _false?branch, 5
    xx   drop2, drop
    xx   False
    xx   Exit
@@ -1345,14 +1303,14 @@ defWordEnd with_base__string_denote_digit?without_sign
 defWord "string-denote-base#digit?", string_denote_base_digit?
    ;; (* string[address, length] -- True or False *)
    xx dup2, base_of_string
-   xx dup, zero?, false?branch, 5
+   xx dup, zero?, _false?branch, 5
    xx   drop  ;; drop zero
    xx   drop2 ;; drop string
    xx   False
    xx   Exit
    xx xxswapx
    xx digit_of_string
-   xx dup, zero?, false?branch, 5
+   xx dup, zero?, _false?branch, 5
    xx   drop  ;; drop zero
    xx   drop  ;; drop base
    xx   False
@@ -1364,7 +1322,7 @@ defWordEnd string_denote_base_digit?
 ;; without "#"
 defWord "string-denote-digit?", string_denote_digit?
    ;; (* string[address, length] -- True or False *)
-   xx literal, 10, xxswapx
+   xx _literal, 10, xxswapx
    xx with_base__string_denote_digit?
    xx Exit
 defWordEnd string_denote_digit?
@@ -1374,10 +1332,10 @@ defWordEnd string_denote_digit?
 ;; two sub-type of string as above
 defWord "string-denote-integer?", string_denote_integer?
    ;; (* string[address, length] -- True or False *)
-   xx dup2, string_denote_digit?, false?branch, 4
+   xx dup2, string_denote_digit?, _false?branch, 4
    xx   drop2, True
    xx   Exit
-   xx string_denote_base_digit?, false?branch, 3
+   xx string_denote_base_digit?, _false?branch, 3
    xx   True
    xx   Exit
    xx False
@@ -1393,15 +1351,15 @@ defWord "with-base:string->natural-number,with-error", with_base__string_to_natu
    ;; (* or *)
    ;; (* base, string[address, length] -- 0, False *)
    xx xoverxx, xxoverx
-   xx with_base__string_denote_digit?without_sign, false?, false?branch, 7
+   xx with_base__string_denote_digit?without_sign, false?, _false?branch, 7
    xx   drop2, drop
-   xx   literal, 0
+   xx   _literal, 0
    xx   False
    xx   Exit
-   xx literal, 0, push_lambda_stack ;; number-counter[0]
+   xx _literal, 0, push_lambda_stack ;; number-counter[0]
    xx help_push__with_base__string_to_natural_number__with_error
-   xx literal, 0 ;; sum
-   xx literal, 0 ;; index
+   xx _literal, 0 ;; sum
+   xx _literal, 0 ;; index
    xx help_pop__with_base__string_to_natural_number__with_error
    xx Exit
 defWordEnd with_base__string_to_natural_number__with_error
@@ -1410,11 +1368,11 @@ defWordEnd with_base__string_to_natural_number__with_error
 defWord "help-push:with-base:string->natural-number,with-error", help_push__with_base__string_to_natural_number__with_error
    ;; (* base, string[address, length] -- base *)
    ;; (* Lambda-stack:: number-counter[0] -- number-counter[N], number, ... *)
-   xx dup, zero?, false?branch, 3
+   xx dup, zero?, _false?branch, 3
    xx   drop2
    xx   Exit
    xx tail_and_head_of_string
-   xx dup, literal, '_', equal?, false?branch, 4
+   xx dup, _literal, '_', equal?, _false?branch, 4
    xx   drop
    xx   help_push__with_base__string_to_natural_number__with_error
    xx   Exit
@@ -1428,7 +1386,7 @@ defWord "help-pop:with-base:string->natural-number,with-error", help_pop__with_b
    ;; (* base, sum, index -- natural-number, True *)
    ;; (* Lambda-stack:: number-counter[N], number, ... -- *)
    xx pop_lambda_stack
-   xx dup, zero?, false?branch, 7
+   xx dup, zero?, _false?branch, 7
    xx   drop
    xx   drop, swap, drop
    xx   True
@@ -1450,12 +1408,12 @@ defWord "with-base:string->integer,with-error", with_base__string_to_integer__wi
    ;; (* or *)
    ;; (* base, string[address, length] -- 0, False *)
    xx xoverxx, xxoverx
-   xx with_base__string_denote_digit?, false?, false?branch, 7
+   xx with_base__string_denote_digit?, false?, _false?branch, 7
    xx   drop2, drop
-   xx   literal, 0
+   xx   _literal, 0
    xx   False
    xx   Exit
-   xx dup2, head_of_string, literal, '-', equal?, false?branch, 7
+   xx dup2, head_of_string, _literal, '-', equal?, _false?branch, 7
    xx   tail_of_string
    xx   with_base__string_to_natural_number__with_error
    xx   swap
@@ -1469,18 +1427,18 @@ defWord "string->integer,with-error", string_to_integer__with_error
    ;; (* string[address, length] -- integer, True *)
    ;; (* or *)
    ;; (* string[address, length] -- 0, False *)
-   xx dup2, string_denote_base_digit?, false?branch, 7
+   xx dup2, string_denote_base_digit?, _false?branch, 7
    xx   dup2, base_of_string
    xx   xxswapx, digit_of_string
    xx   with_base__string_to_integer__with_error
    xx   Exit
-   xx dup2, string_denote_digit?, false?branch, 6
-   xx   literal, 10
+   xx dup2, string_denote_digit?, _false?branch, 6
+   xx   _literal, 10
    xx   xxswapx
    xx   with_base__string_to_integer__with_error
    xx   Exit
    xx drop2
-   xx literal, 0
+   xx _literal, 0
    xx False
    xx Exit
 defWordEnd string_to_integer__with_error
@@ -1496,19 +1454,19 @@ defConst "Basic-string-buffer", Basic_string_buffer, _Basic_string_buffer
 
 defWord "read-string-into-buffer", read_string_into_buffer
    ;; (*  -- string[address of Basic_string_buffer, length] *)
-   xx literal, Basic_string_buffer ;; (* leave one of the return values *)
-   xx Zero                         ;; (* leave length counter *)
+   xx _literal, Basic_string_buffer ;; (* leave one of the return values *)
+   xx _literal, 0                   ;; (* leave length counter *)
 
-   xx literal, Basic_string_buffer
+   xx _literal, Basic_string_buffer
 
    .read_char:
-   xx read_char, dup, literal, '"', equal?, false?branch, 3
+   xx read_char, dup, _literal, '"', equal?, _false?branch, 3
    xx   drop2
    xx   Exit
 
    xx over, save_byte, add1
    xx swap, add1, swap
-   xx branch, (- ($ - .read_char) / Cell_width)
+   xx _branch, (- ($ - .read_char) / Cell_width)
 defWordEnd read_string_into_buffer
 ;; : find-char-address
 ;;   (* char, [address, length] -- address or -1 *)
@@ -1529,12 +1487,12 @@ defWordEnd read_string_into_buffer
 
 defWord "find-char-address", find_char_address
    ;; (* char, [address, length] -- address or -1 *)
-   xx dup, zero?, false?branch, 6
+   xx dup, zero?, _false?branch, 6
    xx   drop2, drop
-   xx   literal, -1
+   xx   _literal, -1
    xx   Exit
    xx tail_and_head_of_string
-   xx xoverxxx, equal?, false?branch, 6
+   xx xoverxxx, equal?, _false?branch, 6
    xx   drop, swap, drop
    xx   sub1
    xx   Exit
@@ -1548,7 +1506,7 @@ defWordEnd find_char_address
 ;;   over
 ;;   xxx|swap|x
 ;;   find-char-address
-;;   dup Zero < if
+;;   dup 0 < if
 ;;     swap drop
 ;;     Exit
 ;;   then
@@ -1562,7 +1520,7 @@ defWord "find-char-index", find_char_index
    xx over
    xx xxxswapx
    xx find_char_address
-   xx dup, literal, 0, less_than?, false?branch, 4
+   xx dup, _literal, 0, less_than?, _false?branch, 4
    xx   swap, drop
    xx   Exit
    xx swap, subtraction
@@ -1578,65 +1536,91 @@ defWordEnd find_char_index
 ;;  * 'k' s" 0123456789k" find-char-index . (* 10 *) cr
 ;;  * 'k' s" 0123456789" find-char-index . (* -1 *) cr
 ;;  *)
+defCode "execute", execute
+  ;; ( word[address of explainer] -- )
+  pop_argument_stack Explainer_pointer
+  jmp qword[Explainer_pointer]
+
+
+;; explain_function_body 会贴贴一个 纸条 到 木条 上
+
+;; the version handles empty function-body
+hereCode
+explain_function_body:
+   ;;  Explainer_pointer  == address
+   ;; [Explainer_pointer] == explain_function_body
+   ;; 1. if NOT at the end of the function body
+   ;;    (* Return-stack::
+   ;;          -- [address of explainer] + Cell_width *)
+   ;; 2. if at the end of the function body
+   ;;    (* Return-stack::
+   ;;          -- *)
+   ;; and jump to the explainer of the [address of explainer]
+   mov rbx, Explainer_pointer
+   add rbx, Cell_width
+   mov Explainer_pointer, [rbx]
+   add rbx, Cell_width
+   cmp dword[rbx], Exit
+   je at_the_end_of_function_body
+   cmp dword[rbx], 已矣
+   je at_the_end_of_function_body
+   push_return_stack rbx
+at_the_end_of_function_body:
+   jmp qword[Explainer_pointer]
+
+;; ;; the version does NOT handle empty function-body
+;; hereCode
+;; explain_function_body:
+;;    ;;  Explainer_pointer  == address
+;;    ;; [Explainer_pointer] == explain_function_body
+;;    ;; must NOT at the end of the function body
+;;    ;; (* Return-stack::
+;;    ;;       -- [address of explainer] + Cell_width *)
+;;    ;; and jump to the explainer of the [address of explainer]
+;;    mov rbx, Explainer_pointer
+;;    add rbx, Cell_width
+;;    mov Explainer_pointer, [rbx]
+;;    add rbx, Cell_width
+;;    push_return_stack rbx
+;;    jmp qword[Explainer_pointer]
+
+
 hereCode
 explain_variable:
-   ;; ( -- address )
+   ;;  Explainer_pointer  == address
+   ;; [Explainer_pointer] == explainVar
+   ;; (* -- address *)
    add Explainer_pointer, Cell_width
    push_argument_stack Explainer_pointer
    next
 
 hereCode
 explain_constant:
-   ;; ( -- value )
+   ;;  Explainer_pointer  == address
+   ;; [Explainer_pointer] == explainConst
+   ;; (* -- value *)
    add Explainer_pointer, Cell_width
-   mov Temporary_register, [Explainer_pointer]
-   push_argument_stack Temporary_register
-   next
-
-hereCode
-explain_function_body:
-   push_return_stack Next_word_pointer
-   ;; to calculate the address in a word where the function-body is stored
-   ;; this address is as an ``argumt'' of explain_function_body
-   add Explainer_pointer, Cell_width
-   mov Next_word_pointer, Explainer_pointer
+   mov Explainer_pointer, [Explainer_pointer]
+   push_argument_stack Explainer_pointer
    next
 
 hereCode
 explain_constant_string:
-   ;; ( -- string[address, length] )
-   add Explainer_pointer, Cell_width
-   mov Temporary_register, [Explainer_pointer]
-   add Explainer_pointer, Cell_width
+   ;;  Explainer_pointer  == address
+   ;; [Explainer_pointer] == explainConstString
+   ;; (* -- string[address, length] *)
+   add Explainer_pointer, (2 * Cell_width)
    push_argument_stack Explainer_pointer
-   push_argument_stack Temporary_register
+   sub Explainer_pointer, Cell_width
+   mov Explainer_pointer, [Explainer_pointer]
+   push_argument_stack Explainer_pointer
    next
-
-
-
-defCode "execute", execute
-  ;; ( word[address of explainer] -- )
-  pop_argument_stack Explainer_pointer
-  jmp qword[Explainer_pointer]
-
-;; not matter what way you use to set :
-;;   [Explainer_pointer] == address-of-explainer (of a word you want to jump to)
-;; then :
-;;   jmp qword[Explainer_pointer]
-;; it will works just well !!!
-
-
-
 
 ;; the following Exit helps tail-call-optimization
 ;; it just let you decide where is the end of FunctionBody
 ;; in a FunctionBody, the ``Exit'' as a word will never be called
 defConst "Exit", Exit, Exit
 defConst "已矣", 已矣, 已矣
-;; (* so, the following numbers are the same :
-;;   Exit
-;;   read_word Exit find word_link_to_word_explainer
-;;   *)
 
 defConst "Function-body-explainer",   explain_function_body,     _Function_body_explainer
 defConst "Variable-explainer",        explain_variable,          _Variable_explainer
@@ -1658,28 +1642,32 @@ defConst "Constant-string-explainer", explain_constant_string,   _Constant_strin
 ;;   ||  1 : type  ||
 ;; ==
 ;;   | type-bit-63 | ... | type-bit-1 | type-bit-0 |
-;; type-bit-0 is for HiddenWord
+;; type-bit-63 is for HiddenWord
+;; type-bit-0,1,2 are for word type
+;; 0 -- function
+;; 1 -- key word
 
-WordType_HiddenMask = 00000001h
+
+WordType_HiddenMask = (1 shl 63)
 
 
 defWord "word-link->name-string", word_link_to_name_string
    ;; (* link[address] -- string[address, length] *)
-   xx literal, Cell_width
-   xx Two, multiple
+   xx _literal, Cell_width
+   xx _literal, 1, multiple
    xx addition
    xx fetch
-   xx dup, literal, Cell_width, addition
+   xx dup, _literal, Cell_width, addition
    xx swap, fetch
    xx Exit
 defWordEnd word_link_to_name_string
 
 defWord "help,find", help__find
    ;; (* wordString[address, length], link[address] -- word[address of link] or Zero *)
-   xx dup, zero?, false?branch, 4
+   xx dup, zero?, _false?branch, 4
    xx   xxswapx, drop2
    xx   Exit
-   xx xxtuckx, word_link_to_name_string, xxoverxx, equal_string?, false?branch, 3
+   xx xxtuckx, word_link_to_name_string, xxoverxx, equal_string?, _false?branch, 3
    xx   drop2
    xx   Exit
    xx xswapxx, fetch
@@ -1697,19 +1685,19 @@ defWordEnd find
 
 defWord "word-link->word-explainer", word_link_to_word_explainer
    ;; (* word[address of link] -- word[address of explainer] or Zero *)
-   xx literal, Cell_width
-   xx Three, multiple
+   xx _literal, Cell_width
+   xx _literal, 3, multiple
    xx addition
    xx Exit
 defWordEnd word_link_to_word_explainer
 defWord "read-first-non-blank-char", read_first_non_blank_char
    ;; (* -- FirstNonBlankChar *)
    xx read_char, dup
-   xx literal, ASCII_space
-   xx greater_than?, false?branch, 2
+   xx _literal, ASCII_space
+   xx greater_than?, _false?branch, 2
    xx   Exit
    xx drop
-   xx branch, -10
+   xx _branch, -10
 defWordEnd read_first_non_blank_char
 
 
@@ -1734,20 +1722,20 @@ defWord "read-word", read_word
    ;;    until it hits a blank
    ;; 3. returns the address of Buffer_for_read_word and length on the stack
 
-   xx literal, Buffer_for_read_word ;; (* leave one of the return values *)
-   xx Zero                          ;; (* leave length counter *)
+   xx _literal, Buffer_for_read_word ;; (* leave one of the return values *)
+   xx _literal, 0                    ;; (* leave length counter *)
 
-   xx literal, Buffer_for_read_word
+   xx _literal, Buffer_for_read_word
    xx read_first_non_blank_char
    xx over, save_byte, add1
    xx swap, add1, swap
 
    .read_char:
    xx read_char
-   xx dup, literal, ASCII_space, greater_than?, false?branch, 9
+   xx dup, _literal, ASCII_space, greater_than?, _false?branch, 9
    xx   over, save_byte, add1
    xx   swap, add1, swap
-   xx   branch, (-($ - .read_char) / Cell_width)
+   xx   _branch, (-($ - .read_char) / Cell_width)
 
    xx drop2
    xx Exit
@@ -1760,20 +1748,20 @@ defWord "read-word-for-runtime", read_word_for_runtime
    ;;    until it hits a blank
    ;; 3. returns the address of Buffer_for_read_word and length on the stack
 
-   xx literal, Buffer_for_read_wordForRuntime ;; (* leave return one of the values *)
-   xx Zero                                 ;; (* leave length counter *)
+   xx _literal, Buffer_for_read_wordForRuntime ;; (* leave return one of the values *)
+   xx _literal, 0                              ;; (* leave length counter *)
 
-   xx literal, Buffer_for_read_wordForRuntime
+   xx _literal, Buffer_for_read_wordForRuntime
    xx read_first_non_blank_char
    xx over, save_byte, add1
    xx swap, add1, swap
 
    .read_char:
    xx read_char
-   xx dup, literal, ASCII_space, greater_than?, false?branch, 9
+   xx dup, _literal, ASCII_space, greater_than?, _false?branch, 9
    xx   over, save_byte, add1
    xx   swap, add1, swap
-   xx   branch, (-($ - .read_char) / Cell_width)
+   xx   _branch, (-($ - .read_char) / Cell_width)
 
    xx drop2
    xx Exit
@@ -1785,11 +1773,11 @@ defWord "(*", ignore_comment
    ;; (* -- *)
    ;; (* ignore a list of comment words from stdin *)
    xx read_word
-   xx dup2, Bra__comment, equal_string?, false?branch, 5
-   xx   drop2, ignore_comment, branch, -9
+   xx dup2, Bra__comment, equal_string?, _false?branch, 5
+   xx   drop2, ignore_comment, _branch, -9
    ;; beware of the tail-call-optimization
    ;; a tail-recursive-call is really a loop
-   xx Ket__comment, equal_string?, false?branch, -13
+   xx Ket__comment, equal_string?, _false?branch, -13
    xx   Exit
 defWordEnd ignore_comment
 
@@ -1801,11 +1789,11 @@ defWord "ignore-comment,in-string", ignore_comment__in_string
    ;; (* word-string[address, length] -- word-string[address, length] *)
    ;; (* ignore a list of comment words from stdin *)
    xx tail_and_head_of_word_string
-   xx dup2, Bra__comment, equal_string?, false?branch, 5
-   xx   drop2, ignore_comment__in_string, branch, -9
+   xx dup2, Bra__comment, equal_string?, _false?branch, 5
+   xx   drop2, ignore_comment__in_string, _branch, -9
    ;; beware of the tail-call-optimization
    ;; a tail-recursive-call is really a loop
-   xx Ket__comment, equal_string?, false?branch, -13
+   xx Ket__comment, equal_string?, _false?branch, -13
    xx   Exit
 defWordEnd ignore_comment__in_string
 ;; (* helper functions *)
@@ -1824,7 +1812,7 @@ defWord "read-first-non-blank-char,while-saving-to-string", read_first_non_blank
    xx read_char, dup, push_lambda_stack
    xx   string_append_char
    xx pop_lambda_stack
-   xx dup, literal, ASCII_space, greater_than?, false?branch, 2
+   xx dup, _literal, ASCII_space, greater_than?, _false?branch, 2
    xx   Exit
    xx drop
    xx read_first_non_blank_char__while_saving_to_string
@@ -1846,25 +1834,25 @@ defWord "read-word,while-saving-to-string", read_word__while_saving_to_string
    ;;    string-with-word[address, length], word-string[address, length] *)
 
    xx read_first_non_blank_char__while_saving_to_string
-   xx literal, Buffer_for_read_word__while_saving_to_string, save_byte
-   xx literal, 1, push_lambda_stack
-   xx literal, Buffer_for_read_word__while_saving_to_string, add1
+   xx _literal, Buffer_for_read_word__while_saving_to_string, save_byte
+   xx _literal, 1, push_lambda_stack
+   xx _literal, Buffer_for_read_word__while_saving_to_string, add1
    xx push_lambda_stack
 
    .read_char:
    xx read_char
    xx dup, xxoverxx, addition, save_byte, swap, add1, swap
-   xx dup, literal, ASCII_space, greater_than?, false?branch, ((.then - $) / Cell_width)
+   xx dup, _literal, ASCII_space, greater_than?, _false?branch, ((.then - $) / Cell_width)
    xx   pop_lambda_stack, tuck, save_byte, add1
    xx   pop_lambda_stack, add1
    xx   push_lambda_stack
    xx   push_lambda_stack
-   xx   branch, (-($ - .read_char) / Cell_width)
+   xx   _branch, (-($ - .read_char) / Cell_width)
    .then:
 
    xx drop
    xx pop_lambda_stack, drop
-   xx literal, Buffer_for_read_word__while_saving_to_string
+   xx _literal, Buffer_for_read_word__while_saving_to_string
    xx pop_lambda_stack
    xx Exit
 defWordEnd read_word__while_saving_to_string
@@ -1897,32 +1885,32 @@ defWordEnd __read_word_string__for_lexicographer
 ;; 这样 也许 方便之后 对 doc-string 的实现
 defWord "read-word-string,for-lexicographer", read_word_string__for_lexicographer
    ;; (* -- string[address, length] *)
-   xx literal, Buffer_for_lexicographer
-   xx literal, 0
+   xx _literal, Buffer_for_lexicographer
+   xx _literal, 0
    .read_word__while_saving_to_string:
    xx read_word__while_saving_to_string
-   ;; xx dup2, Bra__comment, equal_string?, false?branch, (.dup2-$)/Cell_width
+   ;; xx dup2, Bra__comment, equal_string?, _false?branch, (.dup2-$)/Cell_width
    ;; xx   drop2, ignore_comment
-   ;; xx   literal, 3, subtraction
-   ;; xx   branch, (.read_word__while_saving_to_string - $)/Cell_width
+   ;; xx   _literal, 3, subtraction
+   ;; xx   _branch, (.read_word__while_saving_to_string - $)/Cell_width
    ;; .dup2:
-   xx dup2, Ket__cosemi, equal_string?, false?branch, (.drop2-$)/Cell_width
+   xx dup2, Ket__cosemi, equal_string?, _false?branch, (.drop2-$)/Cell_width
    xx   drop2
-   xx   literal, 2, subtraction
+   xx   _literal, 2, subtraction
    xx   Exit
    .drop2:
    xx drop2
-   xx branch, (.read_word__while_saving_to_string - $)/Cell_width
+   xx _branch, (.read_word__while_saving_to_string - $)/Cell_width
    xx Exit
 defWordEnd read_word_string__for_lexicographer
 defWord "find-word-boundary-address,begin", find_word_boundary_address__begin
    ;; (* [address, length] -- address or -1 *)
-   xx dup, zero?, false?branch, 5
+   xx dup, zero?, _false?branch, 5
    xx   drop2
-   xx   literal, -1
+   xx   _literal, -1
    xx   Exit
    xx tail_and_head_of_string
-   xx literal, ASCII_space, greater_than?, false?branch, 4
+   xx _literal, ASCII_space, greater_than?, _false?branch, 4
    xx   drop
    xx   sub1
    xx   Exit
@@ -1935,31 +1923,31 @@ defWordEnd find_word_boundary_address__begin
 ;; ><><>< 也许我应该给每个 string 都加的 0 做结尾 这样也许会好一些
 defWord "find-word-boundary-address,end", find_word_boundary_address__end
    ;; (* [address, length] -- address or -1 *)
-   xx dup, zero?, false?branch, 3
+   xx dup, zero?, _false?branch, 3
    xx   drop
    xx   Exit
    ;; 对第一个做特殊处理 以保证 不再 word 内时 也能有效
    xx tail_and_head_of_string
-   xx literal, ASCII_space
-   xx less_or_equal?, false?branch, (.dup-$)/Cell_width
+   xx _literal, ASCII_space
+   xx less_or_equal?, _false?branch, (.dup-$)/Cell_width
    xx   dup2, find_word_boundary_address__begin
-   xx   dup, literal, -1, equal?, false?branch, 6
+   xx   dup, _literal, -1, equal?, _false?branch, 6
    xx     drop, drop2
-   xx     literal, -1
+   xx     _literal, -1
    xx     Exit
    xx   xxtuckx
    xx   xswapxx
    xx   subtraction, subtraction
    .dup:
-   xx dup, zero?, false?branch, 3
+   xx dup, zero?, _false?branch, 3
    xx   drop
    xx   Exit
    xx tail_and_head_of_string
-   xx literal, ASCII_space, less_or_equal?, false?branch, 4
+   xx _literal, ASCII_space, less_or_equal?, _false?branch, 4
    xx   drop
    xx   sub1
    xx   Exit
-   xx branch, (.dup-$)/Cell_width
+   xx _branch, (.dup-$)/Cell_width
    xx Exit
 defWordEnd find_word_boundary_address__end
 
@@ -1970,7 +1958,7 @@ defWord "find-word-boundary-index,begin", find_word_boundary_index__begin
    xx over
    xx swap
    xx find_word_boundary_address__begin
-   xx dup, literal, -1, equal?, false?branch, 4
+   xx dup, _literal, -1, equal?, _false?branch, 4
    xx   swap, drop
    xx   Exit
    xx swap, subtraction
@@ -1983,7 +1971,7 @@ defWord "find-word-boundary-index,end", find_word_boundary_index__end
    xx over
    xx swap
    xx find_word_boundary_address__end
-   xx dup, literal, -1, equal?, false?branch, 4
+   xx dup, _literal, -1, equal?, _false?branch, 4
    xx   swap, drop
    xx   Exit
    xx swap, subtraction
@@ -2005,12 +1993,12 @@ defWordEnd find_word_boundary_index__end
 ;; 0. when meet zero-length string always reture True
 defWord "string-full-of-blank?", string_full_of_blank?
    ;; (* string[address, length] -- True or False *)
-   xx dup, zero?, false?branch, 4
+   xx dup, zero?, _false?branch, 4
    xx   drop2
    xx   True
    xx   Exit
    xx tail_and_head_of_string
-   xx literal, ASCII_space, less_or_equal?, false?branch, 3
+   xx _literal, ASCII_space, less_or_equal?, _false?branch, 3
    xx   string_full_of_blank?
    xx   Exit
    xx drop2
@@ -2055,13 +2043,58 @@ defWord "tail-and-head-of-word-string", tail_and_head_of_word_string
    xx head_of_word_string
    xx Exit
 defWordEnd tail_and_head_of_word_string
+;; one predicate can make two branchs
+;; three predicates can make four branchs
+;; three predicates may only make three branchs
+;; but indeed there must be an invisible branch
+
+defKeyWord "if", _if
+   ;; (* word-string[address, length] -- word-string[address, length] *)
+   ;; (* Lambda-stack::
+   ;;       -- address after _false?branch *)
+   ;; (* compile::
+   ;;      _false?branch[address of explainer], 0 *)
+   xx _literal, _false?branch, append_number_to_here
+   xx Here, fetch, push_lambda_stack
+   xx _literal, 0, append_number_to_here ;; (* leave a place *)
+   xx Exit
+defKeyWordEnd _if
+
+defKeyWord "else", _else
+   ;; (* word-string[address, length] -- word-string[address, length] *)
+   ;; (* Lambda-stack ::
+   ;;      [address after _false?branch] -- [address after _branch] *)
+   ;; (* compile ::
+   ;;      _branch[address of explainer], 0 *)
+   ;; (* compile to [address after _false?branch] ::
+   ;;      [appropriate offset] *)
+   xx _literal, _branch, append_number_to_here
+   xx pop_lambda_stack
+   xx   Here, fetch, push_lambda_stack
+   xx   _literal, 0, append_number_to_here ;; (* leave a place *)
+   xx Here, fetch, over, subtraction, literal, Cell_width, moddiv, swap, drop
+   xx swap, save
+   xx Exit
+defKeyWordEnd _else
+
+defKeyWord "then", _then
+   ;; (* word-string[address, length] -- word-string[address, length] *)
+   ;; (* Lambda-stack ::
+   ;;      [address after _false?branch] or [address after _branch] --  *)
+   ;; (* compile to [address after _false?branch] or [address after _branch] ::
+   ;;      [appropriate offset] *)
+   xx pop_lambda_stack
+   xx Here, fetch, over, subtraction, literal, Cell_width, moddiv, swap, drop
+   xx swap, save
+   xx Exit  
+defKeyWordEnd _then
 defWord "append-number-to-here", append_number_to_here
    ;; (* a 64 bits number -- *)
    ;; reset ``Here'', which points next free memory
    xx Here, fetch
    xx save
    xx Here, fetch
-   xx literal, Cell_width, addition
+   xx _literal, Cell_width, addition
    xx Here, save
    xx Exit
 defWordEnd append_number_to_here
@@ -2081,6 +2114,60 @@ defWord "append-string-to-here", append_string_to_here
    xx Exit
 defWordEnd append_string_to_here
 
+
+defWord "string-denote-key-word?", string_denote_key_word?
+   ;; (* string[address, length] -- True or False *)
+   xx find, word_link_to_word_type
+   xx _literal, 111b, bitwise_and
+   xx _literal, 1, equal?, _false?branch, 3
+   xx   True
+   xx   Exit
+   xx False
+   xx Exit
+defWordEnd string_denote_key_word?
+
+
+defWord "help:append-word-description-to-here,number", help__append_word_description_to_here__number
+   ;; (* string[address, length] -- *)
+   ;; reading-error reported by ``number'' is not handled
+   xx _literal, _literal, append_number_to_here
+   xx string_to_integer__with_error, drop, append_number_to_here
+   xx Exit
+defWordEnd help__append_word_description_to_here__number
+
+;; error handling when not found is after debuger
+defWord "help:append-word-description-to-here,word", help__append_word_description_to_here__word
+   ;; (* string[address, length] -- *)
+   xx find, word_link_to_word_explainer, append_number_to_here
+   xx Exit
+defWordEnd help__append_word_description_to_here__word
+
+defWord "help:append-word-description-to-here,key-word", help__append_word_description_to_here__key_word
+   ;; (* word-string[address, length], string[address, length] -- word-string[address, length] *)
+   xx find, word_link_to_word_explainer, execute
+   xx Exit
+defWordEnd help__append_word_description_to_here__key_word
+
+
+defWord "append-word-description-to-here", append_word_description_to_here
+   ;; (* word-string[address, the number of words] -- *)
+   xx dup2, string_full_of_blank?, _false?branch, 3
+   xx   drop2
+   xx   Exit
+   xx tail_and_head_of_word_string
+   xx dup2, string_denote_integer?, _false?branch, 4
+   xx   help__append_word_description_to_here__number
+   xx   append_word_description_to_here
+   xx   Exit
+   xx dup2, string_denote_key_word?, _false?branch, 4
+   xx   help__append_word_description_to_here__key_word
+   xx   append_word_description_to_here
+   xx   Exit
+   ;; else
+   xx   help__append_word_description_to_here__word
+   xx   append_word_description_to_here
+   xx   Exit
+defWordEnd append_word_description_to_here
 defWord "create-word-header", create_word_header ;; by string
    ;; (* string[address, length] -- word[address of link] *)
    ;; for address-of-name-string-header
@@ -2110,86 +2197,6 @@ defWord "create-word-header-for-function", create_word_header_for_function ;; by
    xx Exit
 defWordEnd create_word_header_for_function
 
-
-defWord "help:append-word-description-to-here,number", help__append_word_description_to_here__number
-   ;; (* string[address, length] -- *)
-   ;; reading-error reported by ``number'' is not handled
-   xx literal, literal, append_number_to_here
-   xx string_to_integer__with_error, drop, append_number_to_here
-   xx Exit
-defWordEnd help__append_word_description_to_here__number
-
-defWord "help:append-word-description-to-here,word", help_append_word_description_to_here_word
-   ;; (* string[address, length] -- *)
-   xx find, word_link_to_word_explainer, append_number_to_here
-   xx Exit
-defWordEnd help_append_word_description_to_here_word
-
-defWord "help:append-word-description-to-here,literal&branch", help__append_word_description_to_here__literal_branch
-   ;; (* string[address, length] -- *)
-   xx help_append_word_description_to_here_word
-   ;; ><><>< 如果后面什么都没有了 就需要报错 但是 这里没有处理这个 error
-   xx tail_and_head_of_word_string
-   xx dup2, string_denote_integer?, false?branch, 5
-   xx   string_to_integer__with_error, drop, append_number_to_here
-   xx   Exit
-   xx help_append_word_description_to_here_word
-   xx Exit
-defWordEnd help__append_word_description_to_here__literal_branch
-
-defWord "help:append-word-description-to-here,comment", help__append_word_description_to_here__comment
-   ;; (* word-string[address, length], string[address, length] -- word-string[address, length] *)
-   xx drop2
-   xx ignore_comment__in_string
-   xx Exit
-defWordEnd help__append_word_description_to_here__comment
-
-defConstString "Key-word:literal",      "literal",      Key_word__literal
-defConstString "Key-word:branch",       "branch",       Key_word__branch
-defConstString "Key-word:zero?branch",  "zero?branch",  Key_word__zero_branch
-defConstString "Key-word:false?branch", "false?branch", Key_word__false_branch
-
-defWord "string-denote-literal-or-branch?", string_denote_literal_or_branch?
-   ;; (* string[address, length] -- True or False *)
-   xx dup2, Key_word__literal, equal_string?, false?branch, 4
-   xx   drop2, True
-   xx   Exit
-   xx dup2, Key_word__branch, equal_string?, false?branch, 4
-   xx   drop2, True
-   xx   Exit
-   xx dup2, Key_word__zero_branch, equal_string?, false?branch, 4
-   xx   drop2, True
-   xx   Exit
-   xx dup2, Key_word__false_branch, equal_string?, false?branch, 4
-   xx   drop2, True
-   xx   Exit
-   xx drop2, False
-   xx Exit
-defWordEnd string_denote_literal_or_branch?
-
-defWord "append-word-description-to-here", append_word_description_to_here
-   ;; (* wordList[address, the number of words] -- *)
-   xx dup2, string_full_of_blank?, false?branch, 3
-   xx   drop2
-   xx   Exit
-   xx tail_and_head_of_word_string
-   xx dup2, Bra__comment, equal_string?, false?branch, 4
-   xx   help__append_word_description_to_here__comment
-   xx   append_word_description_to_here
-   xx   Exit
-   xx dup2, string_denote_literal_or_branch?, false?branch, 4
-   xx   help__append_word_description_to_here__literal_branch
-   xx   append_word_description_to_here
-   xx   Exit
-   xx dup2, string_denote_integer?, false?branch, 4
-   xx   help__append_word_description_to_here__number
-   xx   append_word_description_to_here
-   xx   Exit
-   ;; else
-   xx   help_append_word_description_to_here_word
-   xx   append_word_description_to_here
-   xx   Exit
-defWordEnd append_word_description_to_here
 defWord "add-new-word-to-dictionary", add_new_word_to_dictionary
    ;; reset FirstWordInDictionary to point to the newly defined word
    ;; (* word[address of link] -- *)
@@ -2202,19 +2209,25 @@ defWord "add-new-word-to-dictionary", add_new_word_to_dictionary
 defWordEnd add_new_word_to_dictionary
 
 defWord "set-size-of-function-body", set_size_of_function_body
-   ;; (* wordList[address, the number of words], word[address of link] --
-   ;;    wordList[address, the number of words], word[address of link] *)
+   ;; (* words-string[address, the number of words], word[address of link] --
+   ;;    words-string[address, the number of words], word[address of link] *)
    xx dup
-   xx literal, Cell_width, subtraction
-   xx literal, Cell_width, subtraction
+   xx _literal, Cell_width, subtraction
+   xx _literal, Cell_width, subtraction
    xx xoverxx
    xx swap
    xx save
    xx Exit
 defWordEnd set_size_of_function_body
 
+;; 当在函数定义内引用自身的时候
+;; 总会形成递归调用
+;; 如果字典中已经 有要定义的函数了 也不会去找它
+;; 唯一不 使得这种特性变得不理想的情形是:
+;; 你在重新定义一个词的时候 需要调用旧的词本身
+;; 这种情况非常少 并且出现的时候也很容易解决
 defWord "define-function", define_function
-   ;; (* wordList[address, the number of words] -- *)
+   ;; (* words-string[address, the number of words] -- *)
    ;;  to create a new word
    ;;  is to use some words to describe the new word,
    ;;  and let an explainer to explain the description of the new word.
@@ -2222,11 +2235,10 @@ defWord "define-function", define_function
    ;;  is to add the new created word to the dictionary.
    xx tail_and_head_of_word_string
    xx create_word_header_for_function
-   xx _Function_body_explainer, append_number_to_here
    xx set_size_of_function_body
-   xx xxswapx
-   xx append_word_description_to_here
    xx add_new_word_to_dictionary
+   xx _Function_body_explainer, append_number_to_here
+   xx append_word_description_to_here
    xx Exit
 defWordEnd define_function
 hereUnInitializedData
