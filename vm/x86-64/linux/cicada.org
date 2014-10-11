@@ -880,9 +880,9 @@
   hereInitializedData
   cicada_begin_thread:
 
-          xx initialize
-          xx basic_REPL
-          ;; xx assemblyDebug
+          ;; xx initialize
+          ;; xx basic_REPL
+          xx assemblyDebug
   #+end_src
 * loadCoreFile & InitialFilesToLoad
   #+begin_src fasm :tangle cicada.fasm
@@ -1358,7 +1358,15 @@
       syscall
 
    defWord "assemblyDebug", assemblyDebug      
-      ;; xx ><><><
+ 
+      .read_phrase:
+      xx read_phrase
+      ;; xx printString
+      ;; xx _branch, (.read_phrase-$)/Cell_width
+      xx compile_phrase, call_phrase
+      xx _branch, (.read_phrase-$)/Cell_width
+
+      xx _literal, 6
       xx exitWithTOS
    defWordEnd assemblyDebug
    #+end_src

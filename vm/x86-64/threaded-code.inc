@@ -1,27 +1,28 @@
 defWord "basic-REPL", basic_REPL
-       ;; (* unknown -- unknown *)
-       ;; ><><><>< xx TheReturnStackTop, reset_return_stack_pointer
-       xx TheArgumentStackTop, reset_argument_stack_pointer
-       xx read_word_for_runtime
-       xx execute_word
-       xx _branch, -3
-       ;; must not end with Exit here
+   ;; (* unknown -- unknown *)
+   ;; ><><><>< xx TheReturnStackTop, reset_return_stack_pointer
+   ;; xx TheArgumentStackTop, reset_argument_stack_pointer
+   .read_phrase:
+   xx read_phrase
+   xx compile_phrase, call_phrase
+   xx _branch, (.read_phrase-$)/Cell_width
+   ;; must not end with Exit here
 defWordEnd basic_REPL
 
 defWord "execute-word", execute_word
-       ;; (* string[address, length] -- unknown *)
-       xx dup2, string_denote_integer?, _false?branch, 4
-       xx   string_to_integer__with_error, drop
-       xx   Exit
-       xx dup2, find, dup, _false?branch, 6
-       xx   xxswapx, drop2
-       xx   word_link_to_word_explainer, execute
-       xx   Exit
-       xx drop ;; drop zero
-       xx Message_undefined_word, printString
-       xx printString
-       xx _literal, ASCII_linefeed, writeChar
-       xx Exit
+   ;; (* string[address, length] -- unknown *)
+   xx dup2, string_denote_integer?, _false?branch, 4
+   xx   string_to_integer__with_error, drop
+   xx   Exit
+   xx dup2, find, dup, _false?branch, 6
+   xx   xxswapx, drop2
+   xx   word_link_to_word_explainer, execute
+   xx   Exit
+   xx drop ;; drop zero
+   xx Message_undefined_word, printString
+   xx printString
+   xx _literal, ASCII_linefeed, writeChar
+   xx Exit
 defWordEnd execute_word
 
 defConstString "Message:undefined-word", "   UNDEFINED WORD: ", Message_undefined_word
@@ -165,7 +166,7 @@ defKeyWord "false?branch", false?branch
    xx   Exit
    xx find, word_link_to_word_explainer, execute, append_number_to_here
    xx Exit
-defKeyWordEnd branch
+defKeyWordEnd false?branch
 
 ;; ><><><
 ;; Chinese version
@@ -796,7 +797,7 @@ defCode "not-zero?", not_zero?
 
 
 defWord "one?", one?
-   xx literal, 1, equal?
+   xx _literal, 1, equal?
    xx Exit
 defWordEnd one?
 
@@ -1537,9 +1538,9 @@ defWordEnd find_char_index
 ;;  * 'k' s" 0123456789" find-char-index . (* -1 *) cr
 ;;  *)
 defCode "execute", execute
-  ;; ( word[address of explainer] -- )
-  pop_argument_stack Explainer_pointer
-  jmp qword[Explainer_pointer]
+   ;; ( word[address of explainer] -- )
+   pop_argument_stack Explainer_pointer
+   jmp qword[Explainer_pointer]
 
 
 ;; explain_function_body 会贴贴一个 纸条 到 木条 上
@@ -1650,17 +1651,32 @@ defConst "Constant-string-explainer", explain_constant_string,   _Constant_strin
 
 WordType_HiddenMask = (1 shl 63)
 
-
 defWord "word-link->name-string", word_link_to_name_string
    ;; (* link[address] -- string[address, length] *)
    xx _literal, Cell_width
-   xx _literal, 1, multiple
+   xx _literal, 2, multiple
    xx addition
    xx fetch
    xx dup, _literal, Cell_width, addition
    xx swap, fetch
    xx Exit
 defWordEnd word_link_to_name_string
+
+defWord "word-link->word-explainer", word_link_to_word_explainer
+   ;; (* word[address of link] -- word[address of explainer] *)
+   xx _literal, Cell_width
+   xx _literal, 3, multiple
+   xx addition
+   xx Exit
+defWordEnd word_link_to_word_explainer
+
+defWord "word-link->word-type", word_link_to_word_type
+   ;; (* word[address of link] -- word-type *)
+   xx _literal, Cell_width
+   xx addition, fetch
+   xx Exit
+defWordEnd word_link_to_word_type
+
 
 defWord "help,find", help__find
    ;; (* wordString[address, length], link[address] -- word[address of link] or Zero *)
@@ -1681,121 +1697,111 @@ defWord "find", find
    xx help__find
    xx Exit
 defWordEnd find
-
-
-defWord "word-link->word-explainer", word_link_to_word_explainer
-   ;; (* word[address of link] -- word[address of explainer] or Zero *)
-   xx _literal, Cell_width
-   xx _literal, 3, multiple
-   xx addition
-   xx Exit
-defWordEnd word_link_to_word_explainer
-defWord "read-first-non-blank-char", read_first_non_blank_char
-   ;; (* -- FirstNonBlankChar *)
-   xx read_char, dup
-   xx _literal, ASCII_space
-   xx greater_than?, _false?branch, 2
-   xx   Exit
-   xx drop
-   xx _branch, -10
-defWordEnd read_first_non_blank_char
-
-
-
 hereUnInitializedData
-;; ------------------------------------------
-;; note that, Subsequent calls will overwrite Buffer_for_read_word
-;; this is why there is another function ``read_word_for_runtime''
-Max_word_length = 1024
+;; ------------------------
+Size_of_buffer_for_read_phrase = 1024*1024
 
-Buffer_for_read_word labeling
-        preserve Max_word_length
-
-Buffer_for_read_wordForRuntime labeling
-        preserve Max_word_length
+Buffer_for_read_phrase labeling
+        preserve Size_of_buffer_for_read_phrase
 
 
-defWord "read-word", read_word
-   ;; (*  -- wordString[address, length] *)
-   ;; 1. skips any blanks (spaces, tabs, newlines)
-   ;; 2. calls read_char to read characters into Buffer_for_read_word
-   ;;    until it hits a blank
-   ;; 3. returns the address of Buffer_for_read_word and length on the stack
+;; 1. use "read_word__while_saving_to_string"
+;; 2. 每次 读一个 词 然后看 词界 是否是 回车
+;;    如果是 就做一个 phrase 然后返回
+;;    如果不是 就继续读
+;; 3. only ":" ";", as a pair of bra-ket, are been handled by a counter here
+;;    >< this is not the right thing
+;;    因为 比如说 当出现 "(" 的时候
+;;    后面所跟的字符串 一定要保证 能够被 正确地 "(" 处理
+;;    也就是 read-phrase 说这个函数
+;;    只应该接受 那些 bra-ket 正确匹配了的 以回车结尾的 字符串
+;; 4. 这个 错误以后再弥补
+;;    因为我需要快把基本的东西实现出来
+;;    让解释器 重新跑起来 以方便做测试
+;; 5. add "Exit" and ";" to the end of the string
 
-   xx _literal, Buffer_for_read_word ;; (* leave one of the return values *)
-   xx _literal, 0                    ;; (* leave length counter *)
 
-   xx _literal, Buffer_for_read_word
-   xx read_first_non_blank_char
-   xx over, save_byte, add1
-   xx swap, add1, swap
+;; ><><><><
+;; 这个函数还得改进
+defWord "read-phrase", read_phrase
+   ;; (*  -- string[address, length] *)
+   xx _literal, Buffer_for_read_phrase
+   xx _literal, 0
 
-   .read_char:
-   xx read_char
-   xx dup, _literal, ASCII_space, greater_than?, _false?branch, 9
-   xx   over, save_byte, add1
-   xx   swap, add1, swap
-   xx   _branch, (-($ - .read_char) / Cell_width)
+   xx _literal, 0, push_lambda_stack ;; leave a counter of ":"
 
-   xx drop2
-   xx Exit
-defWordEnd read_word
-
-defWord "read-word-for-runtime", read_word_for_runtime
-   ;; (*  -- wordString[address, length] *)
-   ;; 1. skips any blanks (spaces, tabs, newlines)
-   ;; 2. calls read_char to read characters into Buffer_for_read_word
-   ;;    until it hits a blank
-   ;; 3. returns the address of Buffer_for_read_word and length on the stack
-
-   xx _literal, Buffer_for_read_wordForRuntime ;; (* leave return one of the values *)
-   xx _literal, 0                              ;; (* leave length counter *)
-
-   xx _literal, Buffer_for_read_wordForRuntime
-   xx read_first_non_blank_char
-   xx over, save_byte, add1
-   xx swap, add1, swap
-
-   .read_char:
-   xx read_char
-   xx dup, _literal, ASCII_space, greater_than?, _false?branch, 9
-   xx   over, save_byte, add1
-   xx   swap, add1, swap
-   xx   _branch, (-($ - .read_char) / Cell_width)
-
-   xx drop2
-   xx Exit
-defWordEnd read_word_for_runtime
-defConstString "Bra:comment",  "(*", Bra__comment
-defConstString "Ket:comment", "*)", Ket__comment
-
-defWord "(*", ignore_comment
-   ;; (* -- *)
-   ;; (* ignore a list of comment words from stdin *)
-   xx read_word
-   xx dup2, Bra__comment, equal_string?, _false?branch, 5
-   xx   drop2, ignore_comment, _branch, -9
-   ;; beware of the tail-call-optimization
-   ;; a tail-recursive-call is really a loop
-   xx Ket__comment, equal_string?, _false?branch, -13
+   .read_word__while_saving_to_string:
+   xx read_word__while_saving_to_string
+   ;; (* string[address, length], word[address, length] *)
+   xx xxoverxx, addition, sub1, fetch_byte ;; to see the what char the "word-boundary,end" is
+   xx _literal, ASCII_linefeed, equal?, false?, _false?branch, 4
+   xx   drop2
+   xx   _branch, (.read_word__while_saving_to_string-$)/Cell_width
+   xx dup2, Bra__cosemi, equal_string?, _false?branch, (.dup2-$)/Cell_width
+   xx   drop2
+   xx   pop_lambda_stack, add1, push_lambda_stack
+   xx   _branch, (.read_word__while_saving_to_string-$)/Cell_width
+   .dup2:
+   xx dup2, Ket__cosemi, equal_string?, _false?branch, (.pop_lambda_stack-$)/Cell_width
+   xx   pop_lambda_stack
+   ;;   这里 当 这个计数器 已经是 0 的时候 需要报错
+   ;;   也就是 当 bra-ket 不匹配的时候需要 报错
+   ;;   但是这里并没有 处理这个错误
+   ;;   我先 不保证 这个函数的完备性
+   xx   sub1, push_lambda_stack
+   .pop_lambda_stack:
+   xx pop_lambda_stack
+   xx dup, zero?, _false?branch, (.push_lambda_stack-$)/Cell_width
+   xx   drop
+   xx   drop2   
+   ;;   (* add "Exit" to the end of the string *)
+   xx   _literal, " ", string_append_char
+   xx   _literal, "E", string_append_char
+   xx   _literal, "x", string_append_char
+   xx   _literal, "i", string_append_char
+   xx   _literal, "t", string_append_char
+   xx   _literal, " ", string_append_char
    xx   Exit
-defWordEnd ignore_comment
+   .push_lambda_stack:
+   xx push_lambda_stack
+   xx drop2
+   xx _branch, (.read_word__while_saving_to_string-$)/Cell_width
+defWordEnd read_phrase
+hereUnInitializedData
+;; ------------------------
+Size_of_buffer_of_function_body__for_compile_phrase = 1024*1024
+Size_of_buffer_of_data_section__for_compile_phrase = 1024*1024
 
-;; test:
-;; (* ok (* ok *) ok *) ok
+Buffer_of_function_body__for_compile_phrase labeling
+        preserve Size_of_buffer_of_function_body__for_compile_phrase
+Buffer_of_data_section__for_compile_phrase labeling
+        preserve Size_of_buffer_of_data_section__for_compile_phrase
 
 
-defWord "ignore-comment,in-string", ignore_comment__in_string
-   ;; (* word-string[address, length] -- word-string[address, length] *)
-   ;; (* ignore a list of comment words from stdin *)
-   xx tail_and_head_of_word_string
-   xx dup2, Bra__comment, equal_string?, _false?branch, 5
-   xx   drop2, ignore_comment__in_string, _branch, -9
-   ;; beware of the tail-call-optimization
-   ;; a tail-recursive-call is really a loop
-   xx Ket__comment, equal_string?, _false?branch, -13
-   xx   Exit
-defWordEnd ignore_comment__in_string
+defWord "compile-phrase", compile_phrase
+   ;; (* word-string[address, length] --  *)
+   xx Here, fetch, push_lambda_stack
+   xx Current_data_section, fetch, push_lambda_stack
+   xx   _literal, Buffer_of_function_body__for_compile_phrase, Here, save
+   xx   _literal, Buffer_of_data_section__for_compile_phrase, Current_data_section, save 
+   xx   _Function_body_explainer, append_number_to_here
+   xx   append_word_description_to_here
+   xx pop_lambda_stack, Current_data_section, save
+   xx pop_lambda_stack, Here, save
+   xx Exit
+defWordEnd compile_phrase
+defWord "call-phrase", call_phrase
+   ;; (* -- unknown *)
+   xx _literal, Buffer_of_function_body__for_compile_phrase
+   xx execute
+   xx Exit
+defWordEnd call_phrase
+;; 1. the following functions are for read-phrase
+;; 2. 需要 一个 另一个版本的 read_word
+;;    来 帮助 实现 read-word-string,for-lexicographer
+;; 3. 这是必要的
+;;    因为 否则 用来读字符串的函数就实现不好
+
 ;; (* helper functions *)
 defWord "string-append-char", string_append_char
    ;; (* string[address, length], char -- string[address, length+1] *)
@@ -1856,53 +1862,166 @@ defWord "read-word,while-saving-to-string", read_word__while_saving_to_string
    xx pop_lambda_stack
    xx Exit
 defWordEnd read_word__while_saving_to_string
-hereUnInitializedData
-;; ------------------------------------------
-;; note that, Subsequent calls will overwrite StringBufferOfLexicographer
-Size_Of_buffer_for_lexicographer = 64*1024
+;; one predicate can make two branchs
+;; three predicates can make four branchs
+;; three predicates may only make three branchs
+;; but indeed there must be an invisible branch
 
-Buffer_for_lexicographer labeling
-        preserve Size_Of_buffer_for_lexicographer
+defKeyWord "if", _if
+   ;; (* word-string[address, length] -- word-string[address, length] *)
+   ;; (* Lambda-stack::
+   ;;       -- address after _false?branch *)
+   ;; (* compile::
+   ;;      _false?branch[address of explainer], 0 *)
+   xx _literal, _false?branch, append_number_to_here
+   xx Here, fetch, push_lambda_stack
+   xx _literal, 0, append_number_to_here ;; (* leave a place *)
+   xx Exit
+defKeyWordEnd _if
 
+defKeyWord "else", _else
+   ;; (* word-string[address, length] -- word-string[address, length] *)
+   ;; (* Lambda-stack ::
+   ;;      [address after _false?branch] -- [address after _branch] *)
+   ;; (* compile ::
+   ;;      _branch[address of explainer], 0 *)
+   ;; (* compile to [address after _false?branch] ::
+   ;;      [appropriate offset] *)
+   xx _literal, _branch, append_number_to_here
+   xx pop_lambda_stack
+   xx   Here, fetch, push_lambda_stack
+   xx   _literal, 0, append_number_to_here ;; (* leave a place *)
+   xx Here, fetch, over, subtraction, _literal, Cell_width, moddiv, swap, drop
+   xx swap, save
+   xx Exit
+defKeyWordEnd _else
+
+defKeyWord "then", _then
+   ;; (* word-string[address, length] -- word-string[address, length] *)
+   ;; (* Lambda-stack ::
+   ;;      [address after _false?branch] or [address after _branch] --  *)
+   ;; (* compile to [address after _false?branch] or [address after _branch] ::
+   ;;      [appropriate offset] *)
+   xx pop_lambda_stack
+   xx Here, fetch, over, subtraction, _literal, Cell_width, moddiv, swap, drop
+   xx swap, save
+   xx Exit
+defKeyWordEnd _then
+defConstString "Bra:comment", "(*", Bra__comment
+defConstString "Ket:comment", "*)", Ket__comment
+
+defKeyWord "(*", ignore_comment
+   ;; (* word-string[address, length] -- word-string[address, length] *)
+   xx tail_and_head_of_word_string
+   xx dup2, Bra__comment, equal_string?, _false?branch, 5
+   xx   drop2, ignore_comment, _branch, -9
+   ;; beware of the tail-call-optimization
+   ;; a tail-recursive-call is really a loop
+   xx Ket__comment, equal_string?, _false?branch, -13
+   xx   Exit
+defKeyWordEnd ignore_comment
+defWord "append-number-to-current-data-section", append_number_to_current_data_section
+   ;; (* a 64 bits number -- *)
+   ;; reset "Current_data_section", which points next free memory
+   xx Current_data_section, fetch
+   xx save
+   xx Current_data_section, fetch
+   xx _literal, Cell_width, addition
+   xx Current_data_section, save
+   xx Exit
+defWordEnd append_number_to_current_data_section
+
+;; note that:
+;; a string in stack is string[address, length]
+;; a string in memory is ||  1 : length  ||  n : string  ||  1 : 0  ||
+defWord "append-string-to-current-data-section", append_string_to_current_data_section
+   ;; (* string[address, length] -- *)
+   ;; for update Current_data_section
+   xx dup, push_lambda_stack
+   xx   dup, append_number_to_current_data_section
+   xx   Current_data_section, fetch, swap, copy_byte_string
+   ;; update Current_data_section
+   xx pop_lambda_stack
+   xx Current_data_section, fetch, addition
+   xx _literal, 0, over, save_byte
+   xx add1
+   xx Current_data_section, save
+   xx Exit
+defWordEnd append_string_to_current_data_section
+
+
+
+;; cosemi = colon + semicolon
+defConstString "Bra:cosemi", ":", Bra__cosemi
 defConstString "Ket:cosemi", ";", Ket__cosemi
-defConstString "Ket:fuzhe", "者", Ket__fuzhe
 
-defWord ":", _read_word_string__for_lexicographer
-   ;; (* -- string[address, length] *)
-   xx read_word_string__for_lexicographer
-   xx Exit
-defWordEnd _read_word_string__for_lexicographer
-
-defWord "夫", __read_word_string__for_lexicographer
-   ;; (* -- string[address, length] *)
-   xx read_word_string__for_lexicographer
-   xx Exit
-defWordEnd __read_word_string__for_lexicographer
-
-;; 这里只处理了 ";"
-;; 而 "(*" 被滞后 到 append-word-description-to-here 处理了
-;; 否则的话 想要在字符串中包含 注释就难了
-;; 这样 也许 方便之后 对 doc-string 的实现
-defWord "read-word-string,for-lexicographer", read_word_string__for_lexicographer
-   ;; (* -- string[address, length] *)
-   xx _literal, Buffer_for_lexicographer
-   xx _literal, 0
-   .read_word__while_saving_to_string:
-   xx read_word__while_saving_to_string
-   ;; xx dup2, Bra__comment, equal_string?, _false?branch, (.dup2-$)/Cell_width
-   ;; xx   drop2, ignore_comment
-   ;; xx   _literal, 3, subtraction
-   ;; xx   _branch, (.read_word__while_saving_to_string - $)/Cell_width
-   ;; .dup2:
+;; 1. 为了使得 data section 的处理变得简单
+;;    即 不用去计算 function section 的长度
+;;    而使用 类似 哈佛构架的办法 把数据与函数分开
+;; 2. 利用 Current_data_section 这个变量
+;; 3. 为了处理嵌套的 ":" ";" 而对 ":" 的出现进行计数
+;; 4. do not copy byte by byte
+;;    but use "copy-byte-string"
+defKeyWord ":", colon
+   ;; (* word-string[address, length] -- word-string[address, length] *)
+   ;; (* compile ::
+   ;;      string[address, length] *)
+   ;; (* compile to [data section] ::
+   ;;      string-header and string ended by 0 *)
+   xx dup2
+   xx _literal, 0, push_lambda_stack ;; ":" counter
+   .tail_and_head_of_word_string:
+   xx tail_and_head_of_word_string
+   xx dup2, Bra__cosemi, equal_string?, _false?branch, (.dup2-$)/Cell_width
+   xx   drop2
+   xx   pop_lambda_stack, add1, push_lambda_stack
+   xx   _branch, (.tail_and_head_of_word_string-$)/Cell_width
+   .dup2:
    xx dup2, Ket__cosemi, equal_string?, _false?branch, (.drop2-$)/Cell_width
    xx   drop2
-   xx   _literal, 2, subtraction
-   xx   Exit
+   xx   pop_lambda_stack
+   xx   dup, zero?, _false?branch, (.sub1-$)/Cell_width
+   xx     drop
+   ;;     (* word-string-begin[address, length], word-string-end[address, length] *)
+   xx     dup2, ready
+   ;;       (* calculate the length and copy to [data section] *)
+   xx       drop, swap, drop
+   xx       _literal, 2, subtraction ;; sub the length of "; "
+   xx       over, subtraction
+   xx         Current_data_section, fetch
+   xx         _literal, Cell_width, addition
+   xx         push_lambda_stack      ;; (* address to compile to here *)
+   xx         dup, push_lambda_stack ;; (* length to compile to here *)
+   xx       append_string_to_current_data_section
+   ;;       (* compile the string into function-body *)
+   xx       _literal, _literal, append_number_to_here
+   xx       pop_lambda_stack, append_number_to_here
+   xx       _literal, _literal, append_number_to_here
+   xx       pop_lambda_stack, append_number_to_here
+   xx     get_back
+   xx     Exit
+   .sub1:
+   xx   sub1, push_lambda_stack
+   xx   _branch, (.tail_and_head_of_word_string-$)/Cell_width
    .drop2:
    xx drop2
-   xx _branch, (.read_word__while_saving_to_string - $)/Cell_width
+   xx _branch, (.tail_and_head_of_word_string-$)/Cell_width
    xx Exit
-defWordEnd read_word_string__for_lexicographer
+defKeyWordEnd colon
+
+
+
+
+;; ><><><
+;; Chinese version
+
+defConstString "Bra:fuzhe", "夫", Bra__fuzhe
+defConstString "Ket:fuzhe", "者", Ket__fuzhe
+
+defKeyWord "夫", 夫
+   ;; (* word-string[address, length] -- word-string[address, length] *)
+   xx Exit
+defKeyWordEnd 夫
 defWord "find-word-boundary-address,begin", find_word_boundary_address__begin
    ;; (* [address, length] -- address or -1 *)
    xx dup, zero?, _false?branch, 5
@@ -2043,54 +2162,9 @@ defWord "tail-and-head-of-word-string", tail_and_head_of_word_string
    xx head_of_word_string
    xx Exit
 defWordEnd tail_and_head_of_word_string
-;; one predicate can make two branchs
-;; three predicates can make four branchs
-;; three predicates may only make three branchs
-;; but indeed there must be an invisible branch
-
-defKeyWord "if", _if
-   ;; (* word-string[address, length] -- word-string[address, length] *)
-   ;; (* Lambda-stack::
-   ;;       -- address after _false?branch *)
-   ;; (* compile::
-   ;;      _false?branch[address of explainer], 0 *)
-   xx _literal, _false?branch, append_number_to_here
-   xx Here, fetch, push_lambda_stack
-   xx _literal, 0, append_number_to_here ;; (* leave a place *)
-   xx Exit
-defKeyWordEnd _if
-
-defKeyWord "else", _else
-   ;; (* word-string[address, length] -- word-string[address, length] *)
-   ;; (* Lambda-stack ::
-   ;;      [address after _false?branch] -- [address after _branch] *)
-   ;; (* compile ::
-   ;;      _branch[address of explainer], 0 *)
-   ;; (* compile to [address after _false?branch] ::
-   ;;      [appropriate offset] *)
-   xx _literal, _branch, append_number_to_here
-   xx pop_lambda_stack
-   xx   Here, fetch, push_lambda_stack
-   xx   _literal, 0, append_number_to_here ;; (* leave a place *)
-   xx Here, fetch, over, subtraction, literal, Cell_width, moddiv, swap, drop
-   xx swap, save
-   xx Exit
-defKeyWordEnd _else
-
-defKeyWord "then", _then
-   ;; (* word-string[address, length] -- word-string[address, length] *)
-   ;; (* Lambda-stack ::
-   ;;      [address after _false?branch] or [address after _branch] --  *)
-   ;; (* compile to [address after _false?branch] or [address after _branch] ::
-   ;;      [appropriate offset] *)
-   xx pop_lambda_stack
-   xx Here, fetch, over, subtraction, literal, Cell_width, moddiv, swap, drop
-   xx swap, save
-   xx Exit  
-defKeyWordEnd _then
 defWord "append-number-to-here", append_number_to_here
    ;; (* a 64 bits number -- *)
-   ;; reset ``Here'', which points next free memory
+   ;; reset "Here", which points next free memory
    xx Here, fetch
    xx save
    xx Here, fetch
@@ -2101,7 +2175,7 @@ defWordEnd append_number_to_here
 
 ;; note that:
 ;; a string in stack is string[address, length]
-;; a string in memory is ||  1 : length  ||  n : string  ||
+;; a string in memory is ||  1 : length  ||  n : string  ||  1 : 0  ||
 defWord "append-string-to-here", append_string_to_here
    ;; (* string[address, length] -- *)
    ;; for update Here
@@ -2110,7 +2184,10 @@ defWord "append-string-to-here", append_string_to_here
    xx   Here, fetch, swap, copy_byte_string
    ;; update Here
    xx pop_lambda_stack
-   xx Here, fetch, addition, Here, save
+   xx Here, fetch, addition
+   xx _literal, 0, over, save_byte
+   xx add1
+   xx Here, save
    xx Exit
 defWordEnd append_string_to_here
 
@@ -2150,7 +2227,7 @@ defWordEnd help__append_word_description_to_here__key_word
 
 
 defWord "append-word-description-to-here", append_word_description_to_here
-   ;; (* word-string[address, the number of words] -- *)
+   ;; (* word-string[address, length] -- *)
    xx dup2, string_full_of_blank?, _false?branch, 3
    xx   drop2
    xx   Exit
@@ -2175,8 +2252,8 @@ defWord "create-word-header", create_word_header ;; by string
    xx   append_string_to_here
    xx   Here, fetch, append_number_to_here ;; (* identification *)
    xx   Here, fetch ;; (* leave the word[link] as return-value *)
-   xx   Zero, append_number_to_here ;; (* link *)
-   xx   Zero, append_number_to_here ;; (* type *)
+   xx   _literal, 0, append_number_to_here ;; (* link *)
+   xx   _literal, 0, append_number_to_here ;; (* type *)
    ;; address-of-name-string-header
    xx pop_lambda_stack, append_number_to_here
    xx Exit
@@ -2188,11 +2265,11 @@ defWord "create-word-header-for-function", create_word_header_for_function ;; by
    ;; for address-of-name-string-header
    xx Here, fetch, push_lambda_stack
    xx   append_string_to_here
-   xx   Zero, append_number_to_here ;; (* SizeOfFunctionBody *)
+   xx   _literal, 0, append_number_to_here ;; (* SizeOfFunctionBody *)
    xx   Here, fetch, append_number_to_here ;; (* identification *)
    xx   Here, fetch ;; (* leave the word[link] as return-value *)
-   xx   Zero, append_number_to_here ;; (* link *)
-   xx   Zero, append_number_to_here ;; (* type *)
+   xx   _literal, 0, append_number_to_here ;; (* link *)
+   xx   _literal, 0, append_number_to_here ;; (* type *)
    xx pop_lambda_stack, append_number_to_here ;; address-of-name-string-header
    xx Exit
 defWordEnd create_word_header_for_function
@@ -2361,6 +2438,17 @@ BufferForLoadFile labeling
 
 defConst "Buffer-for-load-file", BufferForLoadFile, TheBufferForLoadFile
 defConst "Size-of-buffer-for-load-file", SizeOfBufferForLoadFile, TheSizeOfBufferForLoadFile
+hereUnInitializedData
+;; ------------------------------------------
+Size_of_data_section = 4*1024*1024
+
+Data_section labeling
+             preserve Size_of_data_section
+
+defConst "Data-section", Data_section, _Data_section
+defConst "Size-of-data-section", Size_of_data_section, _Size_of_data_section
+
+defVar "Current-data-section", Data_section, Current_data_section
 hereUnInitializedData
 ;; ReturnStack
 SizeOfReturnStack = 100*1024*8

@@ -650,9 +650,9 @@ cicada_virtual_machine:
 hereInitializedData
 cicada_begin_thread:
 
-        xx initialize
-        xx basic_REPL
-        ;; xx assemblyDebug
+        ;; xx initialize
+        ;; xx basic_REPL
+        xx assemblyDebug
 defCode "load-core-file", loadCoreFile
    ;; (* -- *)
    mov rsi, InitialFilesToLoad
@@ -1076,7 +1076,15 @@ defCode "exitWithTOS", exitWithTOS
    syscall
 
 defWord "assemblyDebug", assemblyDebug      
-   ;; xx ><><><
+ 
+   .read_phrase:
+   xx read_phrase
+   ;; xx printString
+   ;; xx _branch, (.read_phrase-$)/Cell_width
+   xx compile_phrase, call_phrase
+   xx _branch, (.read_phrase-$)/Cell_width
+
+   xx _literal, 6
    xx exitWithTOS
 defWordEnd assemblyDebug
 TheSizeOfUserDataArea = 64 * 1024 * 1024 ;; unit : byte
