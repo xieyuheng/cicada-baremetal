@@ -1,7 +1,7 @@
 SizeOfKernel = 320 ;; unit :: k
 LocationOfKernel = 32*1024
 MagicNumberOfKernel = 26881h
-;; in fasm, ``dup'' is a reserved word
+;; in fasm, "dup" is a reserved word
 dup equ duplicate
 
 ;; 64-bits
@@ -457,7 +457,7 @@ cicada_virtual_machine:
        mov Grey_pair_stack_pointer, Grey_pair_stack_top
        mov Return_stack_pointer,   Return_stack_top
 
-       ;; initialize the variable ``Here''
+       ;; initialize the variable "Here"
        ;; to point at beginning of User_data_area
        mov Temporary_register, User_data_area
        mov [Here + Cell_width], Temporary_register
@@ -471,21 +471,21 @@ hereInitializedData
 cicada_begin_thread:
        xx initialize
        xx basic_REPL
-defCode "load-core-file", load_core_file
+def_assembly_code "load-core-file", load_core_file
    ;; (* -- *)
    mov rsi, Initial_files_to_load
-   mov rdi, InputBuffer
+   mov rdi, Input_buffer
    mov rcx, Size_of_initial_files_to_load
    rep movsb
-   ;; reset [ReadingBoundary + Cell_width]
-   mov [ReadingBoundary + Cell_width], rdi
+   ;; reset [Reading_boundary + Cell_width]
+   mov [Reading_boundary + Cell_width], rdi
    next
 
 hereInitializedData
 Initial_files_to_load:
    ;; file "../../../core/english-core.cicada"
 Size_of_initial_files_to_load = ($ - Initial_files_to_load) ;; unit :: byte
-defWord "initialize", initialize
+def_verb "initialize", initialize
        ;; (* -- *)
        xx closeInterrupt
 
@@ -502,17 +502,17 @@ defWord "initialize", initialize
        xx openInterrupt
 
        xx Exit
-defWordEnd initialize
-defCode "close-interrupt", closeInterrupt
+def_verb_end initialize
+def_assembly_code "close-interrupt", closeInterrupt
    ;; (* -- *)
    cli
    next
 
-defCode "open-interrupt", openInterrupt
+def_assembly_code "open-interrupt", openInterrupt
    ;; (* -- *)
    sti
    next
-defCode "create-gate", createGate
+def_assembly_code "create-gate", createGate
    ;; (* gate number to configure, address of handler -- *)
    pop_argument_stack rax
    pop_argument_stack rdi
@@ -572,14 +572,14 @@ RearOfScancodeQueue:  dq 0
 align 16
 FrontOfScancodeQueue: dq 1
 
-defWord "create-barekeyboard", createBarekeyboard
+def_verb "create-barekeyboard", createBarekeyboard
    ;; (* -- *)
    ;; create the function to handle keyboard interrupt
    xx _literal, 32+1
    xx _literal, barekeyboard
    xx createGate
    xx Exit
-defWordEnd createBarekeyboard
+def_verb_end createBarekeyboard
 Palette:
 ;; These colors are in RGB format
 ;; Each color byte is actually 6 bits (0x00 - 0x3F)
@@ -601,7 +601,7 @@ db 0x0D, 0x38, 0x38     ;; 14 Bright Teal
 db 0x3F, 0x3F, 0x3F     ;; 15 White
 
 
-defCode "configure-color-palette", configureColorPalette
+def_assembly_code "configure-color-palette", configureColorPalette
        ;; (* -- *)
        xor eax, eax
        mov dx, 0x03C8                  ; DAC Address Write Mode Register
@@ -637,7 +637,7 @@ defCode "configure-color-palette", configureColorPalette
        lodsb
        out dx, al
        next
-defCode "empty?scan-code-queue", empty?ScancodeQueue
+def_assembly_code "empty?scan-code-queue", empty?ScancodeQueue
    ;; (* -- True or False *)
    mov rax, [RearOfScancodeQueue]
    mov rbx, [FrontOfScancodeQueue]
@@ -654,7 +654,7 @@ defCode "empty?scan-code-queue", empty?ScancodeQueue
    push_argument_stack rcx
    next
 
-defCode "in-scan-code-queue", inScancodeQueue
+def_assembly_code "in-scan-code-queue", inScancodeQueue
    ;; (* Scancode -- *)
    pop_argument_stack rax
    mov rcx, [FrontOfScancodeQueue]
@@ -667,7 +667,7 @@ defCode "in-scan-code-queue", inScancodeQueue
    mov [FrontOfScancodeQueue], rcx
    next
 
-defCode "out-scan-code-queue", outScancodeQueue
+def_assembly_code "out-scan-code-queue", outScancodeQueue
    ;; (* -- Scancode *)
    mov rcx, [RearOfScancodeQueue]
    inc rcx
@@ -681,21 +681,21 @@ defCode "out-scan-code-queue", outScancodeQueue
    push_argument_stack rax
    next
 
-defCode "halt", halt
+def_assembly_code "halt", halt
    ;; (* -- *)
    hlt
    next
-defWord "input-key", inputKey
+def_verb "input-key", inputKey
    ;; (* -- Scancode *)
    ;; when ScancodeQueue is empty
-   ;; call``halt'' to wait for more keystroke
+   ;; call"halt" to wait for more keystroke
    ;; note that, when you type fast
-   ;; one ``halt'' maybe breaked by many interrupt events
+   ;; one "halt" maybe breaked by many interrupt events
    xx empty?ScancodeQueue, _false?branch, 4
    xx   halt, _branch, -5
    xx outScancodeQueue
    xx Exit
-defWordEnd inputKey
+def_verb_end inputKey
 ;; 1. handle special Scancode first
 ;;    then call scancodeToASCII
 ;; 2. the first special Scancode to handle
@@ -706,7 +706,7 @@ defWordEnd inputKey
 ;;    to escape it
 ;; 4. little by little
 ;;    handle these special scancode been escaped
-defWord "input-char", inputChar
+def_verb "input-char", inputChar
    ;; (* -- ASCII char *)
    xx inputKey
    xx dup, scancodeIsLeftShift?, _false?branch, 5
@@ -718,10 +718,10 @@ defWord "input-char", inputChar
    xx dup, zero?, _false?branch, 4
    xx   drop, _branch, -25 ;; inputKey
    xx Exit
-defWordEnd inputChar
+def_verb_end inputChar
 
 
-defWord "scan-code-is-left-shift?", scancodeIsLeftShift?
+def_verb "scan-code-is-left-shift?", scancodeIsLeftShift?
    ;; (* scancode -- True or False*)
    xx dup
    xx _literal, 42, equal?, _false?branch, 4
@@ -733,15 +733,15 @@ defWord "scan-code-is-left-shift?", scancodeIsLeftShift?
    xx   Exit
    xx False
    xx Exit
-defWordEnd scancodeIsLeftShift?
+def_verb_end scancodeIsLeftShift?
 
 
 ;; 1. a global variable about left_shift
 ;;    is checked by the folloing function
 ;; 2. whether the scancode is able to convert to ASCII
-;;    is not decided by ``scancodeToASCII''
-;;    but by ``inputChar''
-defCode "scan-code->ASCII", scancodeToASCII
+;;    is not decided by "scancodeToASCII"
+;;    but by "inputChar"
+def_assembly_code "scan-code->ASCII", scancodeToASCII
    ;; (* scancode -- ASCII char or Zero *)
    pop_argument_stack rax
    mov rbx, [StateOfLeftShift + Cell_width]
@@ -758,9 +758,12 @@ defCode "scan-code->ASCII", scancodeToASCII
    next
 
 
-defConst "State-of-left-shift", 0, StateOfLeftShift
+def_noun "State-of-left-shift", StateOfLeftShift
+  xx  0
+def_noun_end StateOfLeftShift
 
-defCode "toggle-left-shift", toggleLeftShift
+
+def_assembly_code "toggle-left-shift", toggleLeftShift
    ;; (* -- *)
    mov rax, [StateOfLeftShift + Cell_width]
    test rax, rax
@@ -847,21 +850,21 @@ db ASCII_space
 ;; --------------------------------------
 ;; test
 
-;; defWord "test_inputChar", test_inputChar
+;; def_verb "test_inputChar", test_inputChar
 ;;    xx inputChar, write_char, _branch, -3
 ;;    xx Exit
-;; defWordEnd test_inputChar
+;; def_verb_end test_inputChar
 ;; 1. this function is like a little editor
 ;;    with a buffer of which the size is max length
 ;; 2. input is echoed here, so output functions are needed
 ;; 3. the concept of cursor is introduced here
 ;; 4. some editing features are implemented
 ;; 5. the most important thing is that
-;;    before a user meets ``max length''
-;;    a ``linefeed'' must be meeted
-;;    and this ``linefeed'' is counted into the length of the string
-;;    that returned by ``inputLine''
-defWord "input-line", inputLine
+;;    before a user meets "max length"
+;;    a "linefeed" must be meeted
+;;    and this "linefeed" is counted into the length of the string
+;;    that returned by "inputLine"
+def_verb "input-line", inputLine
    ;; (* [address, max length] -- string[address, actual length] *)
    xx dup2 ;; leave address and to calculate actual length
    xx _literal, '_', write_char, decrementCursor
@@ -888,13 +891,13 @@ defWord "input-line", inputLine
    xx over, zero?, _false?branch, 4
    ;;   if really meet max length
    ;;   type any key should sent a little warn (but this is not implemented)
-   ;;   even type enter key will NOT ``Exit'' this function
+   ;;   even type enter key will NOT "Exit" this function
    xx   drop
    ;;   (* address, max length, [address, length] *)
    xx   _branch, -36 ;; inputChar
 
    ;; (* address, max length, [address, length], ASCII char *)
-   ;; ``Exit'' only on ``newline''
+   ;; "Exit" only on "newline"
    xx dup, _literal, ASCII_newline
    xx equal?, _false?branch, 17
    xx   _literal, ' ', write_char, decrementCursor
@@ -918,88 +921,102 @@ defWord "input-line", inputLine
    ;; (* address, max length, [address, length] *)
    xx _branch, -72 ;; inputChar
 
-defWordEnd inputLine
+def_verb_end inputLine
 hereUnInitializedData
 ;; ------------------------------------------
 Size_of_input_buffer = 3*1024*1024
 
-InputBuffer labeling
+Input_buffer labeling
         preserve Size_of_input_buffer
 End_of_input_buffer labeling
 
 
-defConst "Size-of-input-buffer",  Size_of_input_buffer,  TheSize_of_input_buffer
-defConst "Input-buffer",          InputBuffer,        TheInputBuffer
-defConst "End-of-input-buffer",   End_of_input_buffer,   TheEnd_of_input_buffer
+def_noun "Size-of-input-buffer",  _Size_of_input_buffer
+  xx   Size_of_input_buffer
+def_noun_end  _Size_of_input_buffer
+
+def_noun "Input-buffer",        _Input_buffer
+  xx           Input_buffer
+def_noun_end        _Input_buffer
+
+def_noun "End-of-input-buffer",   TheEnd_of_input_buffer
+  xx    End_of_input_buffer
+def_noun_end   TheEnd_of_input_buffer
 
 
 ;; 1. two global variables for reading
 ;;    I can easily support `evalString' by change these two variables
-;; 2. note that, there is no char in the address of a ``ReadingBoundary''
-;;    an example of ``ReadingBoundary'' is ``End_of_input_buffer''
-;; 3. when ``CurrentReading'' == ``ReadingBoundary''
-;;    for the function ``read_char''
-;;    we need to reset it to read from ``InputBuffer''
-;;    and call ``inputLine'' to fetch more chars
+;; 2. note that, there is no char in the address of a "Reading_boundary"
+;;    an example of "Reading_boundary" is "End_of_input_buffer"
+;; 3. when "Current_reading" == "Reading_boundary"
+;;    for the function "read_char"
+;;    we need to reset it to read from "Input_buffer"
+;;    and call "inputLine" to fetch more chars
 ;;    and loop back
-defVar "Current-reading",  InputBuffer, CurrentReading
-defVar "Reading-boundary", InputBuffer, ReadingBoundary
+def_noun "Current-reading", Current_reading
+  xx   Input_buffer
+def_noun_end Current_reading
 
-defWord "read-char", read_char
+def_noun "Reading-boundary", Reading_boundary
+  xx  Input_buffer
+def_noun_end Reading_boundary
+
+
+def_verb "read-char", read_char
    ;; (*  -- char *)
-   xx CurrentReading, fetch
-   xx ReadingBoundary, fetch
+   xx Current_reading
+   xx Reading_boundary
    xx less_than?, _false?branch, 8
-   ;;   there is still some chars in the InputBuffer
+   ;;   there is still some chars in the Input_buffer
    ;;   (or any other buffer) to be processed
-   xx   CurrentReading, fetch, fetch_byte
-   xx   _literal, 1, CurrentReading, add_save
+   xx   Current_reading, fetch_byte
+   xx   _literal, 1, _address, Current_reading, add_save
    xx   Exit
-   ;; all chars in InputBuffer
+   ;; all chars in Input_buffer
    ;; (or any other buffer) have been processed
-   xx notReadingFromInputBuffer?, _false?branch, 5
+   xx notReadingFromInput_buffer?, _false?branch, 5
    ;;   add blank at the end
    ;;   otherwise,  when the a string not ending with blank
-   ;;   ``evalString'' will not work correctly
+   ;;   "evalString" will not work correctly
    xx   _literal, ASCII_linefeed
-   xx   toReadFromInputBuffer
+   xx   toReadFromInput_buffer
    xx   Exit
-   ;; when ``CurrentReading'' == ``ReadingBoundary''
-   ;; we need to reset it to read from ``InputBuffer''
-   ;; and call ``inputLine'' to fetch more chars
+   ;; when "Current_reading" == "Reading_boundary"
+   ;; we need to reset it to read from "Input_buffer"
+   ;; and call "inputLine" to fetch more chars
    ;; and loop back
-   xx toReadFromInputBuffer
-   xx TheInputBuffer, TheSize_of_input_buffer
+   xx toReadFromInput_buffer
+   xx _Input_buffer, _Size_of_input_buffer
    xx openInterrupt
    xx inputLine
    xx closeInterrupt
-   ;; set ReadingBoundary ==
-   ;;     InputBuffer + length of string that was inputed
-   xx ReadingBoundary, add_save
+   ;; set Reading_boundary ==
+   ;;     Input_buffer + length of string that was inputed
+   xx _address, Reading_boundary, add_save
    xx drop
    xx _branch, -31
-defWordEnd read_char
+def_verb_end read_char
 
-defWord "not-reading-from-input-buffer?", notReadingFromInputBuffer?
+def_verb "not-reading-from-input-buffer?", notReadingFromInput_buffer?
    ;; (* -- True of False *)
-   xx CurrentReading, fetch
+   xx Current_reading
    xx TheEnd_of_input_buffer, greater_than?, _false?branch, 3
    xx   True
    xx   Exit
-   xx CurrentReading, fetch
-   xx TheInputBuffer, less_than?, _false?branch, 3
+   xx Current_reading
+   xx _Input_buffer, less_than?, _false?branch, 3
    xx   True
    xx   Exit
    xx False
    xx Exit
-defWordEnd notReadingFromInputBuffer?
+def_verb_end notReadingFromInput_buffer?
 
-defWord "to-read-from-input-buffer", toReadFromInputBuffer
+def_verb "to-read-from-input-buffer", toReadFromInput_buffer
    ;; (* -- *)
-   xx TheInputBuffer, CurrentReading, save
-   xx TheInputBuffer, ReadingBoundary, save
+   xx _Input_buffer, _address, Current_reading, save
+   xx _Input_buffer, _address, Reading_boundary, save
    xx Exit
-defWordEnd toReadFromInputBuffer
+def_verb_end toReadFromInput_buffer
 ;; the size of a ScreenBuffer is equal to the size of the screen
 ;; which is 80*25*2
 
@@ -1017,12 +1034,15 @@ Cursor0_InAssembly labeling
 ScreenBuffer0_InAssembly labeling
         preserve SizeOfScreenBuffer
 
-defConst "screen-buffer-0", ScreenBuffer0_InAssembly, ScreenBuffer0
+def_noun "screen-buffer-0", ScreenBuffer0
+  xx  ScreenBuffer0_InAssembly
+def_noun_end ScreenBuffer0
 
-defCode "scroll-screen-buffer", scrollScreenBuffer
+
+def_assembly_code "scroll-screen-buffer", scrollScreenBuffer
    ;; (* screen buffer[address] -- *)
    ;; scrolls a screen Buffer up by one line
-   ;; DefaultBackColorOfChar should be used
+   ;; Default_back_color_of_char should be used
    pop_argument_stack rdi              ; Start of video text memory for row 1
    mov rsi, rdi
    add rsi, 0xA0                   ; Start of video text memory for row 2
@@ -1031,29 +1051,29 @@ defCode "scroll-screen-buffer", scrollScreenBuffer
    mov cx, (80 * 24)
    rep movsw                       ; Copy the Character and Attribute
    ; Clear the last line in video memory
-   mov bl, byte [DefaultBackColorOfChar + Cell_width]
+   mov bl, byte [Default_back_color_of_char + Cell_width]
    shl bl, 4
-   mov ah, byte [DefaultForeColorOfChar + Cell_width]
+   mov ah, byte [Default_fore_color_of_char + Cell_width]
    or ah, bl
    mov al, ' '
    mov cx, 80
    rep stosw                       ; Store word in AX to RDI, RCX times
    next
 
-defCode "clear-screen-buffer", clearScreenBuffer
+def_assembly_code "clear-screen-buffer", clearScreenBuffer
    ;; (* screen buffer[address] -- *)
    pop_argument_stack rdi              ; Address for start of frame buffer
    cld ;; clear the direction flag as we want to increment through memory
-   mov bl, byte [DefaultBackColorOfChar + Cell_width]
+   mov bl, byte [Default_back_color_of_char + Cell_width]
    shl bl, 4
-   mov ah, byte [DefaultForeColorOfChar + Cell_width]
+   mov ah, byte [Default_fore_color_of_char + Cell_width]
    or ah, bl
    mov al, ' '
    xor rcx, rcx
    mov cx, (80 * 25)
    rep stosw                       ; Clear the screen. Store word in AX to RDI, RCX times
    next
-defCode "update-screen", updateScreen
+def_assembly_code "update-screen", updateScreen
    ;; (* screen buffer[address] -- *)
    ;; print a screen buffer to screen
    pop_argument_stack rsi
@@ -1064,62 +1084,74 @@ defCode "update-screen", updateScreen
    next
 
 
-defVar "Current-screen-buffer", ScreenBuffer0_InAssembly, CurrentScreenBuffer
+def_noun "Current-screen-buffer", Current_screen_buffer
+  xx  ScreenBuffer0_InAssembly
+def_noun_end Current_screen_buffer
 
-defWord "scroll-screen", scrollScreen
+
+def_verb "scroll-screen", scrollScreen
    ;; (* -- *)
    ;; scrolls a screen Buffer up by one line
-   ;; DefaultBackColorOfChar should be used
-   xx CurrentScreenBuffer, fetch
+   ;; Default_back_color_of_char should be used
+   xx Current_screen_buffer
    xx dup, scrollScreenBuffer
    xx updateScreen
    xx Exit
-defWordEnd scrollScreen
+def_verb_end scrollScreen
 
-defWord "clear-screen", clearScreen
+def_verb "clear-screen", clearScreen
    ;; (* -- *)
-   xx CurrentScreenBuffer, fetch
+   xx Current_screen_buffer
    xx dup, clearScreenBuffer
    xx updateScreen
    xx Exit
-defWordEnd clearScreen
-defConst "Number-of-columns-of-screen", 80, NumberOfColumnsOfScreen
-defConst "Number-of-rows-of-screen", 25, NumberOfRowsOfScreen
-defConst "Number-of-chars-of-screen", 80*25, NumberOfCharsOfScreen
+def_verb_end clearScreen
+def_noun "Number-of-columns-of-screen", NumberOfColumnsOfScreen
+  xx  80
+def_noun_end NumberOfColumnsOfScreen
 
-defWord "get-current-cursor-address", getCurrentCursorAddress
+def_noun "Number-of-rows-of-screen", NumberOfRowsOfScreen
+  xx  25
+def_noun_end NumberOfRowsOfScreen
+
+def_noun "Number-of-chars-of-screen", NumberOfCharsOfScreen
+  xx  80*25
+def_noun_end NumberOfCharsOfScreen
+
+
+def_verb "get-current-cursor-address", getCurrentCursorAddress
    ;; (* -- CurrentCursor[address] *)
-   xx CurrentScreenBuffer, fetch
+   xx Current_screen_buffer
    xx sub8
    xx Exit
-defWordEnd getCurrentCursorAddress
+def_verb_end getCurrentCursorAddress
 
-defWord "reset-current-cursor", resetCurrentCursor
+def_verb "reset-current-cursor", resetCurrentCursor
    ;; (* -- *)
    xx _literal, 0, getCurrentCursorAddress, save
    xx Exit
-defWordEnd resetCurrentCursor
+def_verb_end resetCurrentCursor
 
 ;; start from 1 to 25
-defWord "get-current-cursor-row", getCurrentCursorRow
+def_verb "get-current-cursor-row", getCurrentCursorRow
    ;; (* -- row *)
    xx getCurrentCursorAddress, fetch
    xx NumberOfColumnsOfScreen, moddiv
    xx swap, drop, add1
    xx Exit
-defWordEnd getCurrentCursorRow
+def_verb_end getCurrentCursorRow
 
 ;; start from 1 to 80
-defWord "get-current-cursor-column", getCurrentCursorColumn
+def_verb "get-current-cursor-column", getCurrentCursorColumn
    ;; (* -- column *)
    xx getCurrentCursorAddress, fetch
    xx NumberOfColumnsOfScreen, moddiv
    xx drop, add1
    xx Exit
-defWordEnd getCurrentCursorColumn
+def_verb_end getCurrentCursorColumn
 
 
-defWord "increment-cursor", incrementCursor
+def_verb "increment-cursor", incrementCursor
    ;; (* -- *)
    xx getCurrentCursorAddress, fetch, add1
    xx NumberOfCharsOfScreen, equal?, _false?branch, 6
@@ -1128,16 +1160,16 @@ defWord "increment-cursor", incrementCursor
    xx   Exit
    xx _literal, 1, getCurrentCursorAddress, add_save
    xx Exit
-defWordEnd incrementCursor
+def_verb_end incrementCursor
 
-defWord "decrement-cursor", decrementCursor
+def_verb "decrement-cursor", decrementCursor
    ;; (* -- *)
    xx getCurrentCursorAddress, fetch
    xx zero?, _false?branch, 2
    xx   Exit
    xx _literal, 1, getCurrentCursorAddress, sub_save
    xx Exit
-defWordEnd decrementCursor
+def_verb_end decrementCursor
 ;; text mode (aka. mode 0) -- the most simple output
 ;; (one can not support UTF-8 in text mode)
 ;; direct memory access to a linear address start at 0xb8000
@@ -1161,26 +1193,74 @@ defWordEnd decrementCursor
 ;;   6 : Brown               6+8 : Yellow
 ;;   7 : Light Gray          7+8 : White
 
-defConst "Black-char",          0    ,     BlackChar
-defConst "Blue-char",           1    ,     BlueChar
-defConst "Green-char",          2    ,     GreenChar
-defConst "Cyan-char",           3    ,     CyanChar
-defConst "Red-char",            4    ,     RedChar
-defConst "Magenta-char",        5    ,     MagentaChar
-defConst "Brown-char",          6    ,     BrownChar
-defConst "Light-gray-char",     7    ,     LightGrayChar
+def_noun "Black-char"    ,     BlackChar
+  xx           0
+def_noun_end         BlackChar
 
-defConst "Dark-gray-char",       0+8  ,     DarkGrayChar
-defConst "Light-blue-char",      1+8  ,     LightBlueChar
-defConst "Light-green-char",     2+8  ,     LightGreenChar
-defConst "Light-cyan-char",      3+8  ,     LightCyanChar
-defConst "Light-redchar",        4+8  ,     LightRedChar
-defConst "Light-magenta-char",   5+8  ,     LightMagentaChar
-defConst "Yellow-char",          6+8  ,     YellowChar
-defConst "White-char",           7+8  ,     WhiteChar
+def_noun "Blue-char"    ,     BlueChar
+  xx            1
+def_noun_end         BlueChar
+
+def_noun "Green-char"    ,     GreenChar
+  xx           2
+def_noun_end         GreenChar
+
+def_noun "Cyan-char"    ,     CyanChar
+  xx            3
+def_noun_end         CyanChar
+
+def_noun "Red-char"    ,     RedChar
+  xx             4
+def_noun_end         RedChar
+
+def_noun "Magenta-char"    ,     MagentaChar
+  xx         5
+def_noun_end         MagentaChar
+
+def_noun "Brown-char"    ,     BrownChar
+  xx           6
+def_noun_end         BrownChar
+
+def_noun "Light-gray-char"    ,     LightGrayChar
+  xx      7
+def_noun_end         LightGrayChar
 
 
-defCode "put-char-with-color", putCharWithColor
+def_noun "Dark-gray-char"  ,     DarkGrayChar
+  xx        0+8
+def_noun_end       DarkGrayChar
+
+def_noun "Light-blue-char"  ,     LightBlueChar
+  xx       1+8
+def_noun_end       LightBlueChar
+
+def_noun "Light-green-char"  ,     LightGreenChar
+  xx      2+8
+def_noun_end       LightGreenChar
+
+def_noun "Light-cyan-char"  ,     LightCyanChar
+  xx       3+8
+def_noun_end       LightCyanChar
+
+def_noun "Light-redchar"  ,     LightRedChar
+  xx         4+8
+def_noun_end       LightRedChar
+
+def_noun "Light-magenta-char"  ,     LightMagentaChar
+  xx    5+8
+def_noun_end       LightMagentaChar
+
+def_noun "Yellow-char"  ,     YellowChar
+  xx           6+8
+def_noun_end       YellowChar
+
+def_noun "White-char"  ,     WhiteChar
+  xx            7+8
+def_noun_end       WhiteChar
+
+
+
+def_assembly_code "put-char-with-color", putCharWithColor
    ;; (* char, back color, fore color -- *)
    ;; put a ASCII char with color to the position of the cursor
    ;; but can not handle ASCII_linefeed as my wish
@@ -1196,7 +1276,7 @@ defCode "put-char-with-color", putCharWithColor
    push rax
 
 
-   mov rdx, [CurrentScreenBuffer + Cell_width]
+   mov rdx, [Current_screen_buffer + Cell_width]
    mov ax, [rdx - 8]
 
    shl ax, 1                       ; multiply by 2
@@ -1225,17 +1305,23 @@ defCode "put-char-with-color", putCharWithColor
 ;;   5 : Magenta             5+8 : Light Magenta
 ;;   6 : Brown               6+8 : Yellow
 ;;   7 : Light Gray          7+8 : White
-defVar "Default-back-color-of-char", 0+8, DefaultBackColorOfChar
-defVar "Default-fore-color-of-char", 7+8, DefaultForeColorOfChar
+def_noun "Default-back-color-of-char", Default_back_color_of_char
+  xx  0+8
+def_noun_end Default_back_color_of_char
 
-defWord "put-char", putChar
+def_noun "Default-fore-color-of-char", Default_fore_color_of_char
+  xx  7+8
+def_noun_end Default_fore_color_of_char
+
+
+def_verb "put-char", putChar
    ;; (* char -- *)
-   xx DefaultBackColorOfChar, fetch
-   xx DefaultForeColorOfChar, fetch
+   xx Default_back_color_of_char
+   xx Default_fore_color_of_char
    xx putCharWithColor
    xx Exit
-defWordEnd putChar
-defWord "print-newline", printNewline
+def_verb_end putChar
+def_verb "print-newline", printNewline
    ;; (* -- *)
    xx getCurrentCursorRow
    xx NumberOfRowsOfScreen, equal?, _false?branch, 7
@@ -1247,8 +1333,8 @@ defWord "print-newline", printNewline
    xx getCurrentCursorColumn, sub1, subtraction
    xx getCurrentCursorAddress, add_save
    xx Exit
-defWordEnd printNewline
-defWord "write-char-with-color", write_char_with_color
+def_verb_end printNewline
+def_verb "write-char-with-color", write_char_with_color
    ;; (* char, back color, fore color --  *)
    xx xoverxx, _literal, ASCII_linefeed
    xx equal?, _false?branch, 5
@@ -1257,10 +1343,10 @@ defWord "write-char-with-color", write_char_with_color
    xx putCharWithColor
    xx incrementCursor
    xx Exit
-defWordEnd write_char_with_color
+def_verb_end write_char_with_color
 
 
-defWord "write-char", write_char
+def_verb "write-char", write_char
    ;; (* char --  *)
    xx dup, _literal, ASCII_linefeed
    xx equal?, _false?branch, 4
@@ -1269,8 +1355,8 @@ defWord "write-char", write_char
    xx putChar
    xx incrementCursor
    xx Exit
-defWordEnd write_char
-defWord "print-string", print_string
+def_verb_end write_char
+def_verb "print-string", print_string
    ;; (* string[address, length] -- *)
    xx dup, zero?, _false?branch, 3
    xx   drop2
@@ -1279,9 +1365,9 @@ defWord "print-string", print_string
    xx dup, fetch_byte, write_char
    xx add1, swap
    xx _branch, -14
-defWordEnd print_string
+def_verb_end print_string
 include "../threaded-code.inc"
-defCode "reboot", reboot
+def_assembly_code "reboot", reboot
        ;; (* -- *)
 .loop:
        in al, 0x64
@@ -1290,7 +1376,7 @@ defCode "reboot", reboot
        mov al, 0xFE
        out 0x64, al                    ; Send the reboot call to the keyboard controller
        jmp .loop
-defWord ".", printLittleNumber
+def_verb ".", printLittleNumber
        xx _literal, '0'
        xx addition, write_char
        xx _literal, 32
@@ -1298,16 +1384,25 @@ defWord ".", printLittleNumber
        xx _literal, 32
        xx write_char
        xx Exit
-defWordEnd printLittleNumber
-defConst "Address-of-VBE-info-block", VBEInfoBlock, Assembly_VBEInfoBlock
+def_verb_end printLittleNumber
+def_noun "Address-of-VBE-info-block", Assembly_VBEInfoBlock
+   xx  VBEInfoBlock
+def_noun_end Assembly_VBEInfoBlock
 hereUnInitializedData
 ;; ------------------------------------------
 User_data_area labeling
 End_of_user_data_area = 1*1024*1024*1024
 
-defConst "User-data-area", User_data_area, _User_data_area
-defConst "End-of-user-data-area", End_of_user_data_area, _End_of_user_data_area
-;; this word helps to initialize FirstWordInDictionary
-defConst "The-latest-word-in-assembly", 0, TheLatestWordInAssembly
+def_noun "User-data-area", _User_data_area
+   xx  User_data_area
+def_noun_end _User_data_area
+
+def_noun "End-of-user-data-area", _End_of_user_data_area
+   xx  End_of_user_data_area
+def_noun_end _End_of_user_data_area
+;; this word helps to initialize First_word_in_dictionary
+def_noun "Latest-word-in-assembly", Latest_word_in_assembly
+   xx  0
+def_noun_end Latest_word_in_assembly
 times (SizeOfKernel * 1024) - ($-$$) - 4 db 0
 dd MagicNumberOfKernel  ;; 4 bytes

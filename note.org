@@ -3,41 +3,43 @@
 #+EMAIL: xyheme@gmail.com
 
 
-1. new way to use variables
-   改常量和变量的使用方式 lambda-calculus 就更方便使用了
-2. 用一个新的语法关键词 来处理常量与变量 这两种名词对语义的过载
-   就像 literal 一样 这是很容易在 函数体中实现的
-   既然已经消除了 解释性语义 那么一切都简单了
-3. 通过 引入 address 这个语法关键词
+1. 通过 引入 address 这个语法关键词
    我就可以统一 define 的使用了
    将 只有 单一的 define 没有别的 东西了
-   1) ><><>< 注意
-      这里要更改跟 GC 有关的代码
-4. 新的 define 还有一个问题是
+   ><><>< 注意 ><><><
+   这里要更改跟 GC 有关的代码
+2. 新的 define 还有一个问题是
    每个名词 可以给出 几个值到 Argument-stack
    是不确定的
    这是可以接受的
    就像是 对函数的注释 一样
    只要给 对名词的定义 相应的注释就行了
    并且 之后 还可以用 设计良好的 文本 编辑器 来解决这个问题
-5. group the functions into groups
+3. 每个 名词 都有固定个数的 Cell
+   define-constant-string 也将没消除了
+   也就是说 在汇编代码中 也需要使用 具有可变长度的 名词
+   也就是说 相关的 macro 应该被重写了
+   我正好可以改一下 macro 的命名
+----------------------------------
+1. the whole english-core.org needs to be rewrited
+2. group the functions into groups
    and write more tests for them
-6. make good use of indentation
+3. make good use of indentation
    1) for string
    2) for wodili 应该 在 wodili 的已有的 解析器 的基础上
       增加一个 好好 利用 indentation 的解析器
       两种解析器各自有各自的用处
    3) 把 利用"支撑树" 来进行相对引用的 性质加到 yaml 中
       就能 形成 我想要的 digrap 的语法
-7. redesign the syntax about chars
+4. redesign the syntax about chars
    to allow :
    1) 不可打印的字符 还有 关于 utf8 的东西
-8. redesign the syntax about strings
+5. redesign the syntax about strings
    to allow :
    1. 格式输入
    2. 当然允许在函数体内使用简单的字符串了
       因为现在一切都是函数体了
-9. 写编译器
+6. 写编译器
    1) 从最简单 的 babystep 开始
    2) 编译 bootloader
    3) 注意要保持设计的灵活性
@@ -161,14 +163,6 @@
       一个公司的目标是盈利
       一个 NPO 就算以别的理想为目标
       在这类组织中 不能形成 可以类比政治选民的人群
-** about semantic
-   1. 在 重写某些基础的部分的时候
-      我发现 两种语义的不一致 带来的问题很大
-      所以
-      纯粹的编译的 与 纯粹的解释的 是设计起来更方便的
-      也许 那样才是 更好的
-      比如 利用 hash-table of symbol 所实现的 scheme 解释器
-      又比如 C 这类过程式语言 的 编译器
 ** the right thing
    1. Simplicity
       the design must be simple,
@@ -213,50 +207,44 @@
 * ==================================================
 * english-core
 ** TODO
-   1. better interface for lambda
-   2. use hash-table to lookup dictionary
+   1. use hash-table to lookup dictionary
       then mutually recursive call
-   3. 用hash-table来find
+   2. 用hash-table来find
       这些不必实现在汇编代码中
       因为 list还是必要的
       因为这样就能保持对字典的灵活控制
       所以 需要写一些函数把
       字典重新加载到 hash-table 中
-   4. need to redesign the way to do test
+   3. need to redesign the way to do test
       should tangle test to separated file
       for i do not have my org-mode now
-   5. wodyli processing
+   4. wodyli processing
       then digrap in cicada
-   6. tab completion in the REPL
+   5. tab completion in the REPL
       (or in text editor)
-   7. let functions in assembly-code
+   6. let functions in assembly-code
       be able to call functions in cicada-style-assembly-code
-   8. 实现对多种实现技术的定制
-   9. 重新思考某些术语和命名方式
-   10. 更改所谓的线程技术
-       以支持汇编扩展
-       然后利用会汇编扩展的良好支持来优化某些代码
-   11. cicada should design it's own abstractions of IO
-       this can help cicada to be portable
-   12. memory allocation
-   13. flow-point number
-   14. >< maybe substitute word to execute in lambda-body
-   15. >< maybe syntax-check
-   16. >< modern pattern-match  HOW ???
-   17. better interface for debuger
-   18. TAIL-CALL-OPTIMIZATION in apply lambda-body
-   19. more protection on allocated memory
+   7. >< 实现对多种实现技术的定制
+   8. >< 重新思考某些术语和命名方式
+   9. cicada should design it's own abstractions of IO
+      this can help cicada to be portable
+      现在 有的只是 read-char 和 write-char 两个基础的东西而已
+      这样太贫乏了
+   10. memory allocation
+   11. flow-point number
+   12. >< maybe substitute word to execute in lambda-body
+   13. >< maybe syntax-check
+   14. >< modern pattern-match  HOW ???
+   15. better interface for debuger
+   16. TAIL-CALL-OPTIMIZATION in apply lambda-body
+   17. more protection on allocated memory
        maybe use paging
-   20. cicada-assembler
-   21. cicada-editor
-   22. APL-like array-processing
-   23. needs better sexp-reader&write
+   18. cicada-assembler
+   19. cicada-editor
+   20. APL-like array-processing
+   21. needs better sexp-reader&write
        design a better way
        to use local-label to from list-with-circuit
-** 关于 lambda-calculus 的语法
-   1. 我发现 在 cicada 中 lambda-calculus 的语法非常背离传统
-      也许我应该嵌入新的 语法解析器来实现 lambda-calculus
-      而不是 继续使用 那个 "几乎不解析任何语法的解释器"
 ** TEN COMMANDMENTS OF CICADA
    1. you can break any commandment when necessary
    2. ``The whole point of Forth was that
@@ -305,6 +293,21 @@
    ------------------
    但是有一些重要的函数比如 write
    还是需要取处理不同类型的量
+** about bra-ket
+   1. 以个 REPL 的性质很像是 bra-ket 中的 一个 bra
+      symbol-REPL 作为 bra
+      所对应的 ket 可以是 bye,symbol-REPL
+   2. 各个 REPL 和 bra 之间
+      必须能够灵活的相互递归调用
+      我没能实现很好的机制来完成这一点
+   3. 并且我现在应该把 REPL 和 bra-ket 的实现方式统一起来
+      我以前并没有意识到它们是完全相同的东西
+      它们之前确实有区别
+      但是我应该把它们的共同点提取出来
+      >< 这种``对共同点的提取''
+      用函数的 factoring 做起来
+      和用 class 的继承做起来 相比
+      感觉有什么不同 ???
 ** IDE
    另外还有 IDE
    通过语法高亮和 mimi-buffer
@@ -323,7 +326,7 @@
       比如string[address, length]
       没有复杂的跟类型有关的前缀
    2. 也就是说"-"是用来把单个的word链接成短语的
-   3. 而在 *basic* 中
+   3. 而在 basic 中
       还用到了","
       它是用来把短语链接成短句的
       比如 ``define-variable,by-string''
@@ -382,33 +385,12 @@
      如果 说数学的方法论是"纯粹客观的" 太过有争议
      那么 说这种方法论相比较与其他的编程范式更加具有客观性
      是没有错的
-** about string processing
-   1. 我可以实现一些适用于用来写
-      string-reader 和 string-writer
-      的基础函数
-      使得用户很容易在 cicada 中实现自己所希望的这类函数
-      string-writer 用于 格式输出 之类的东西
 ** object-oriented
    其实 利用 list-processing 我可以在 cicada 中加入对 object-oriented (class and message-passing) 的支持
    正如 我用 list-processing 来实现 lambda-calculus 一样
    并且我想 object-oriented 这种编程范式也许更适合用来实现 digrap
    但是 问题是 新的语法元素必须被引进
    这也许可以通过写一个不同的 REPL 来实现
-** about bra-ket
-   1. 以个 REPL 的性质很像是 bra-ket 中的 一个 bra
-      symbol-REPL 作为 bra
-      所对应的 ket 可以是 bye,symbol-REPL
-   2. 各个 REPL 和 bra 之间
-      必须能够灵活的相互递归调用
-      我没能实现很好的机制来完成这一点
-   3. 并且我现在应该把 REPL 和 bra-ket 的实现方式统一起来
-      我以前并没有意识到它们是完全相同的东西
-      它们之前确实有区别
-      但是我应该把它们的共同点提取出来
-      >< 这种``对共同点的提取''
-      用函数的 factoring 做起来
-      和用 class 的继承做起来 相比
-      感觉有什么不同 ???
 * ==================================================
 * baremetal
 ** TODO
@@ -459,12 +441,7 @@
       同时也是为了让代码的宏观的逻辑结构更清晰
 * linux
 ** TODO
-   1. 使得 cicada 在编译时期能够使用 共享的子程库
-   2. 写一个 libc 版本的 cicada 试试
-   3. 让 cicada 在编译期 把 ld 作为一个 共享的子程 来使用
-      并学习它的接口
-      这样在解释器里我就能 动态地调用 任何 共享的子程库 中的函数了
-   4. to allow executables to dynamically access external functionality at run time
+   1. to allow executables to dynamically access external functionality at run time
       and thereby reduce their overall memory footprint
       在我的操作系统中 我可以以我的方式来完成上面的这种特性
       我只需要一个 "need" 函数 来声明 某段被解释的代码 所需要的 sub-dictionary

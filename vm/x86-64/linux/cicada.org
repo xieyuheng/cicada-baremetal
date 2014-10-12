@@ -7,7 +7,7 @@
 * preface
 ** linux header
 *** parameters order of syscall
-    #+begin_src fasm :tangle cicada.fasm
+    #+begin_src fasm :tangle cicada.fasm 
     define sys_6_r8  r8
     define sys_5_r9  r9
     define sys_4_r10 r10
@@ -17,7 +17,7 @@
     define sys_n_rax rax
     #+end_src
 *** parameters order of function call
-    #+begin_src fasm :tangle cicada.fasm
+    #+begin_src fasm :tangle cicada.fasm 
     define fun_6_r9  r9
     define fun_5_r8  r8
     define fun_4_rcx rcx
@@ -26,7 +26,7 @@
     define fun_1_rdi rdi
     #+end_src
 *** linux syscall numbers
-    #+begin_src fasm :tangle cicada.fasm
+    #+begin_src fasm :tangle cicada.fasm 
     ;; see /usr/include/asm/unistd_64.h (on archlinux)
 
     define syscall_read                      0
@@ -348,7 +348,7 @@
     define syscall_finit_module              313
     #+end_src
 *** about open & read & write
-    #+begin_src fasm :tangle cicada.fasm
+    #+begin_src fasm :tangle cicada.fasm 
     STDIN  = 0
     STDOUT = 1
     STDERR = 2
@@ -543,7 +543,7 @@
     #+end_src
 ** [one segments version] equ
    #+begin_src fasm
-   ;; in fasm, ``dup'' is a reserved word
+   ;; in fasm, "dup" is a reserved word
    dup equ duplicate
 
    ;; 64-bits
@@ -567,8 +567,8 @@
    hereUnInitializedData  equ ; segment readable writeable
    #+end_src
 ** equ
-   #+begin_src fasm :tangle cicada.fasm
-   ;; in fasm, ``dup'' is a reserved word
+   #+begin_src fasm :tangle cicada.fasm 
+   ;; in fasm, "dup" is a reserved word
    dup equ duplicate
 
    ;; 64-bits
@@ -597,7 +597,7 @@
    hereUnInitializedData  equ alignTo16InMemoryMap
    #+end_src
 ** ASCII
-   #+begin_src fasm :tangle cicada.fasm
+   #+begin_src fasm :tangle cicada.fasm 
    ASCII_backspace = 8
    ASCII_tab       = 9
    ASCII_linefeed  = 10
@@ -608,12 +608,12 @@
    ASCII_delete    = 127
    #+end_src
 ** format header
-   #+begin_src fasm :tangle cicada.fasm
+   #+begin_src fasm :tangle cicada.fasm 
    format elf64 executable 3
    #+end_src
 ** ld
 *** elf
-    #+begin_src fasm :tangle cicada.fasm
+    #+begin_src fasm :tangle cicada.fasm 
     macro Elf32_Sym name,value,size,bind,type,other,shndx
     {
      dd name+0
@@ -755,7 +755,7 @@
     R_X86_64_GOTPC32   = 26
     #+end_src
 *** interpreter & needed & import
-    #+begin_src fasm :tangle cicada.fasm
+    #+begin_src fasm :tangle cicada.fasm 
     macro interpreter [library]
     {
      segment interpreter readable
@@ -826,13 +826,13 @@
     }
     #+end_src
 *** buggy fasm macros
-    #+begin_src fasm :tangle cicada.fasm
+    #+begin_src fasm :tangle cicada.fasm 
     interpreter '/lib64/ld-linux-x86-64.so.2'
     needed 'libl.so'
     import l
     #+end_src
 ** ccall
-   #+begin_src fasm :tangle cicada.fasm
+   #+begin_src fasm :tangle cicada.fasm 
    macro ccall function
    {
       push r15
@@ -847,13 +847,13 @@
    }
    #+end_src
 ** entry
-   #+begin_src fasm :tangle cicada.fasm
+   #+begin_src fasm :tangle cicada.fasm 
    entry cicada_virtual_machine
    segment readable executable writeable
    #+end_src
 * ==================================================
 * include macro
-  #+begin_src fasm :tangle cicada.fasm
+  #+begin_src fasm :tangle cicada.fasm 
   include "../macro.inc"
   #+end_src
 * start cicada virtual machine
@@ -867,8 +867,8 @@
           mov Grey_pair_stack_pointer, Grey_pair_stack_top
           mov Return_stack_pointer,   Return_stack_top
 
-          ;; initialize the variable ``Here''
-          ;; to point at beginning of User_data_area 
+          ;; initialize the variable "Here"
+          ;; to point at beginning of User_data_area
           mov Temporary_register, User_data_area
           mov [Here + Cell_width], Temporary_register
 
@@ -885,15 +885,15 @@
           ;; xx assemblyDebug
   #+end_src
 * load-core-file & Initial-files-to-load
-  #+begin_src fasm :tangle cicada.fasm
-  defCode "load-core-file", load_core_file
+  #+begin_src fasm :tangle cicada.fasm 
+  def_assembly_code "load-core-file", load_core_file
      ;; (* -- *)
      mov rsi, Initial_files_to_load
-     mov rdi, InputBuffer
+     mov rdi, Input_buffer
      mov rcx, Size_of_initial_files_to_load
      rep movsb
-     ;; reset [ReadingBoundary + Cell_width]
-     mov [ReadingBoundary + Cell_width], rdi
+     ;; reset [Reading_boundary + Cell_width]
+     mov [Reading_boundary + Cell_width], rdi
      next
 
   hereInitializedData
@@ -903,18 +903,18 @@
   Size_of_initial_files_to_load = ($ - Initial_files_to_load) ;; unit :: byte
   #+end_src
 * initialize
-  #+begin_src fasm :tangle cicada.fasm
-  defWord "initialize", initialize
+  #+begin_src fasm :tangle cicada.fasm 
+  def_verb "initialize", initialize
          ;; (* -- *)
 
          xx load_core_file
 
          xx Exit
-  defWordEnd initialize
+  def_verb_end initialize
   #+end_src
 * IO
 ** ioctl for terminal
-   #+begin_src fasm :tangle cicada.fasm
+   #+begin_src fasm :tangle cicada.fasm 
    ;; /usr/include/asm-generic/termbits.h
    ;; /usr/include/asm-generic/ioctls.h
 
@@ -950,7 +950,7 @@
    ScreenSize:  rw 1
 
 
-   defCode "set-terminal-to-read-key", setTerminalToReadKey
+   def_assembly_code "set-terminal-to-read-key", setTerminalToReadKey
       ;; (* -- *)
       mov sys_3_rdx, termios_orig ;; termios or WinSize structure ptr
       mov sys_2_rsi, 5401h        ;; TERMIOS_GET, TCGETS
@@ -977,7 +977,7 @@
       next
 
 
-   defCode "set-terminal-back-to-read-line", setTerminalBackToReadLine
+   def_assembly_code "set-terminal-back-to-read-line", setTerminalBackToReadLine
       ;; (* -- *)
       mov sys_3_rdx, termios_orig ;; termios or WinSize structure ptr
       mov sys_2_rsi, 5402h ;; TERMIOS_SET, TCSETS
@@ -987,7 +987,7 @@
       next
 
 
-   defCode "get-screen-size", getScreenSize
+   def_assembly_code "get-screen-size", getScreenSize
       ;; (* -- rows, cols *)
       mov sys_3_rdx, ScreenSize
       ;; [ScreenSize] == for example col=88,row=26 :: 00880026
@@ -1003,35 +1003,50 @@
       next
    #+end_src
 ** read-char
-   #+begin_src fasm :tangle cicada.fasm
+   #+begin_src fasm :tangle cicada.fasm 
    Size_of_input_buffer = 3*1024*1024
 
    hereUnInitializedData
-   InputBuffer labeling
+   Input_buffer labeling
       preserve Size_of_input_buffer
    End_of_input_buffer labeling
 
 
-   defConst "Size-of-input-buffer",  Size_of_input_buffer,  TheSize_of_input_buffer
-   defConst "Input-buffer",          InputBuffer,        TheInputBuffer
-   defConst "End-of-input-buffer",   End_of_input_buffer,   _End_of_input_buffer
+   def_noun "Size-of-input-buffer",  _Size_of_input_buffer
+      xx   Size_of_input_buffer
+   def_noun_end  _Size_of_input_buffer
+
+   def_noun "Input-buffer",        _Input_buffer
+      xx           Input_buffer
+   def_noun_end        _Input_buffer
+
+   def_noun "End-of-input-buffer",   _End_of_input_buffer
+      xx    End_of_input_buffer
+   def_noun_end   _End_of_input_buffer
+
 
    ;; 1. two global variables for reading
    ;;    I can easily support `evalString' by change these two variables
-   ;; 2. note that, there is no char in the address of a ``ReadingBoundary''
-   ;;    an example of ``ReadingBoundary'' is ``End_of_input_buffer''
-   ;; 3. when ``CurrentReading'' == ``ReadingBoundary''
-   ;;    for the function ``read_char''
-   ;;    we need to reset it to read from ``InputBuffer''
-   ;;    and call ``inputLine'' to fetch more chars
+   ;; 2. note that, there is no char in the address of a "Reading_boundary"
+   ;;    an example of "Reading_boundary" is "End_of_input_buffer"
+   ;; 3. when "Current_reading" == "Reading_boundary"
+   ;;    for the function "read_char"
+   ;;    we need to reset it to read from "Input_buffer"
+   ;;    and call "inputLine" to fetch more chars
    ;;    and loop back
-   defVar "Current-reading",  InputBuffer, CurrentReading
-   defVar "Reading-boundary", InputBuffer, ReadingBoundary
+   def_noun "Current-reading", Current_reading
+      xx   Input_buffer
+   def_noun_end Current_reading
 
-   defCode "read-char", read_char
+   def_noun "Reading-boundary", Reading_boundary
+      xx  Input_buffer
+   def_noun_end Reading_boundary
+
+
+   def_assembly_code "read-char", read_char
       ;; read a char from stdin, return it into the ArgumentStack as following
       ;; (*  -- char *)
-      ;; read_char calls the Linux read system call to fill InputBuffer
+      ;; read_char calls the Linux read system call to fill Input_buffer
       ;; The other thing that read_char does is
       ;; if it detects that stdin has closed, it exits the program
       ;; which is why when you hit C-d, the system exits
@@ -1041,27 +1056,27 @@
       next
 
    _read_char:
-      ;; Temporary_register is a helper-register for ``cmp''
-      mov Temporary_register, [CurrentReading + Cell_width]
-      cmp Temporary_register, [ReadingBoundary + Cell_width]
-      ;-- IF: [CurrentReading + Cell_width] < [ReadingBoundary + Cell_width]
-      ;-- WK: there is still some chars in the InputBuffer to be processed
+      ;; Temporary_register is a helper-register for "cmp"
+      mov Temporary_register, [Current_reading + Cell_width]
+      cmp Temporary_register, [Reading_boundary + Cell_width]
+      ;-- IF: [Current_reading + Cell_width] < [Reading_boundary + Cell_width]
+      ;-- WK: there is still some chars in the Input_buffer to be processed
       jl read_char_stillSomeChars
-      ;-- EL: [CurrentReading + Cell_width] >= [ReadingBoundary + Cell_width]
-      ;-- WK: all chars in InputBuffer have been processed
+      ;-- EL: [Current_reading + Cell_width] >= [Reading_boundary + Cell_width]
+      ;-- WK: all chars in Input_buffer have been processed
       mov rax, End_of_input_buffer
       cmp Temporary_register, rax
       jg read_char_addBlankAtTheEnding
-      mov rax, InputBuffer
+      mov rax, Input_buffer
       cmp Temporary_register, rax
       jl read_char_addBlankAtTheEnding
-      jmp read_char_fetchMoreCharsFromStdinToInputBuffer
+      jmp read_char_fetchMoreCharsFromStdinToInput_buffer
    read_char_addBlankAtTheEnding:
       ;; otherwise,  when the a string not ending with blank
       ;; `evalString' will not work correctly
-      mov rax, InputBuffer
-      mov [CurrentReading + Cell_width], rax
-      mov [ReadingBoundary + Cell_width], rax
+      mov rax, Input_buffer
+      mov [Current_reading + Cell_width], rax
+      mov [Reading_boundary + Cell_width], rax
       xor rax, rax
       mov al, 10
       ret
@@ -1069,22 +1084,22 @@
       ;; for the following will just uses the al part of rax
       ;; it is necessary to clear rax
       xor rax, rax
-      ;-- DO: fetch a char from InputBuffer to rax
+      ;-- DO: fetch a char from Input_buffer to rax
       ;-- NT: after _read_char return rax will be push_argument_stack
       mov al, byte[Temporary_register]
-      ;-- DO: increment [CurrentReading + Cell_width]
+      ;-- DO: increment [Current_reading + Cell_width]
       inc Temporary_register
-      mov [CurrentReading + Cell_width], Temporary_register
+      mov [Current_reading + Cell_width], Temporary_register
       ret
    ;; note that, in the following subroutine
-   ;; set [CurrentReading + Cell_width]  == InputBuffer
-   ;; set [ReadingBoundary + Cell_width] == InputBuffer + length of string that was input (NULL not counted)
-   read_char_fetchMoreCharsFromStdinToInputBuffer:
-      ;; read to fetch more input chars from STDIN to InputBuffer
+   ;; set [Current_reading + Cell_width]  == Input_buffer
+   ;; set [Reading_boundary + Cell_width] == Input_buffer + length of string that was input (NULL not counted)
+   read_char_fetchMoreCharsFromStdinToInput_buffer:
+      ;; read to fetch more input chars from STDIN to Input_buffer
       mov sys_3_rdx,     Size_of_input_buffer    ;; max length to be read
-      mov sys_2_rsi,     InputBuffer        ;; buffer address
-      ;; reset [CurrentReading + Cell_width] to InputBuffer
-      mov [CurrentReading + Cell_width], sys_2_rsi
+      mov sys_2_rsi,     Input_buffer        ;; buffer address
+      ;; reset [Current_reading + Cell_width] to Input_buffer
+      mov [Current_reading + Cell_width], sys_2_rsi
       xor sys_1_rdi,     sys_1_rdi          ;; stdin
       mov sys_n_rax,     syscall_read
       syscall
@@ -1098,12 +1113,12 @@
       js read_char_exit
       ;-- EL: rax > 0
       ;-- WK: there are some chars has been fetched by syscall read
-      ;-- DO: set [ReadingBoundary + Cell_width] to the right place
-      ;--     ReadingBoundary = InputBuffer + the count of the number of bytes transferred
-      ;-- NT: sys_2_rsi = InputBuffer
+      ;-- DO: set [Reading_boundary + Cell_width] to the right place
+      ;--     Reading_boundary = Input_buffer + the count of the number of bytes transferred
+      ;-- NT: sys_2_rsi = Input_buffer
       ;--     rax = the count of the number of bytes transferred
       add sys_2_rsi, rax
-      mov [ReadingBoundary + Cell_width], sys_2_rsi
+      mov [Reading_boundary + Cell_width], sys_2_rsi
       ;-- DO: jump back
       jmp _read_char
 
@@ -1115,12 +1130,12 @@
       syscall
    #+end_src
 ** write_char
-   #+begin_src fasm :tangle cicada.fasm
+   #+begin_src fasm :tangle cicada.fasm 
    hereInitializedData
    ScratchUsedByWriteChar:
       rb 1
 
-   defCode "write-char", write_char
+   def_assembly_code "write-char", write_char
       ;; ( char --  ) write a char to stdin
       ;; just calls the Linux write system call
       pop_argument_stack rax
@@ -1139,8 +1154,8 @@
       ret
    #+end_src
 ** print-string
-   #+begin_src fasm :tangle cicada.fasm
-   defWord "print-string", print_string
+   #+begin_src fasm :tangle cicada.fasm 
+   def_verb "print-string", print_string
       ;; (* string[address, length] -- *)
       xx dup, zero?, _false?branch, 3
       xx   drop2
@@ -1149,23 +1164,23 @@
       xx dup, fetch_byte, write_char
       xx add1, swap
       xx _branch, -14
-   defWordEnd print_string
+   def_verb_end print_string
    #+end_src
 ** file
 *** note about error
     1. just use "js" to report a general error
 *** buffer->file,with-error
-    #+begin_src fasm :tangle cicada.fasm
+    #+begin_src fasm :tangle cicada.fasm 
     ;; buffer->file,with-error == string->file,with-error
 
-    defWord "buffer->file,with-error", bufferToFile__with_error
+    def_verb "buffer->file,with-error", bufferToFile__with_error
        ;; (* string[address, length], file-name-string[address, length] -- True or False *)
        xx stringToFile__with_error
        xx Exit
-    defWordEnd bufferToFile__with_error
+    def_verb_end bufferToFile__with_error
 
 
-    defCode "string->file,with-error", stringToFile__with_error
+    def_assembly_code "string->file,with-error", stringToFile__with_error
        ;; (* string[address, length], file-name-string[address, length] -- True or False *)
        pop_argument_stack rcx
        pop_argument_stack rsi
@@ -1230,17 +1245,17 @@
        rb 1024
     #+end_src
 *** file->buffer,with-error
-    #+begin_src fasm :tangle cicada.fasm
+    #+begin_src fasm :tangle cicada.fasm 
     ;; file->buffer,with-error == file->string,with-error
 
-    defWord "file->buffer,with-error", fileToBuffer__with_error
+    def_verb "file->buffer,with-error", fileToBuffer__with_error
        ;; (* file-name-string[address, length], string[address, length] -- True or False *)
        xx fileToString__with_error
        xx Exit
-    defWordEnd fileToBuffer__with_error
+    def_verb_end fileToBuffer__with_error
 
 
-    defCode "file->string,with-error", fileToString__with_error
+    def_assembly_code "file->string,with-error", fileToString__with_error
        ;; (* file-name-string[address, length], string[address, length] -- True or False *)
        pop_argument_stack r8
        pop_argument_stack r9
@@ -1330,19 +1345,19 @@
     #+end_src
 * C functions
 ** l
-   #+begin_src fasm :tangle cicada.fasm
-   defCode "l", _l
+   #+begin_src fasm :tangle cicada.fasm 
+   def_assembly_code "l", _l
       ccall l
       next
    #+end_src
 * include threaded code
-  #+begin_src fasm :tangle cicada.fasm
+  #+begin_src fasm :tangle cicada.fasm 
   include "../threaded-code.inc"
   #+end_src
 * misc
 ** assemblyDebug
-   #+begin_src fasm :tangle cicada.fasm
-   defWord ".", printLittleNumber
+   #+begin_src fasm :tangle cicada.fasm 
+   def_verb ".", printLittleNumber
       xx _literal, '0'
       xx addition, write_char
       xx _literal, 32
@@ -1350,23 +1365,30 @@
       xx _literal, 32
       xx write_char
       xx Exit
-   defWordEnd printLittleNumber
+   def_verb_end printLittleNumber
 
-   defCode "exitWithTOS", exitWithTOS
+   def_assembly_code "exitWithTOS", exitWithTOS
       pop_argument_stack sys_1_rdi
       mov sys_n_rax, syscall_exit
       syscall
 
-   defWord "assemblyDebug", assemblyDebug
-      xx read_phrase
-      xx print_string
-      xx _branch, -3
+
+   def_verb "assemblyDebug", assemblyDebug
+      ;; xx read_phrase
+      ;; xx print_string
+      ;; xx _branch, -3
+
+        .read_phrase:
+        xx read_phrase
+        xx compile_phrase, call_phrase
+        xx _branch, (.read_phrase-$)/Cell_width
+
       xx exitWithTOS
-   defWordEnd assemblyDebug
+   def_verb_end assemblyDebug
    #+end_src
 * ending
 ** User_data_area
-   #+begin_src fasm :tangle cicada.fasm
+   #+begin_src fasm :tangle cicada.fasm 
    Size_of_user_data_area = 64 * 1024 * 1024 ;; unit : byte
 
    hereUnInitializedData
@@ -1374,18 +1396,27 @@
    User_data_area labeling
    End_of_user_data_area = TheLowestMemoryAddress + Size_of_user_data_area
 
-   defConst "User-data-area", User_data_area, _User_data_area
-   defConst "End-of-user-data-area", End_of_user_data_area, _End_of_user_data_area
+   def_noun "User-data-area", _User_data_area
+      xx  User_data_area
+   def_noun_end _User_data_area
+
+   def_noun "End-of-user-data-area", _End_of_user_data_area
+      xx  End_of_user_data_area
+   def_noun_end _End_of_user_data_area
    #+end_src
-** TheLatestWordInAssembly
-   #+begin_src fasm :tangle cicada.fasm
-   ;; this word helps to initialize FirstWordInDictionary
-   defConst "The-latest-word-in-assembly", 0, TheLatestWordInAssembly
+** Latest_word_in_assembly
+   #+begin_src fasm :tangle cicada.fasm 
+   ;; this word helps to initialize First_word_in_dictionary
+   def_noun "Latest-word-in-assembly", Latest_word_in_assembly
+      xx  0
+   def_noun_end Latest_word_in_assembly
    #+end_src
 ** LowestMemoryAddress
-   #+begin_src fasm :tangle cicada.fasm
+   #+begin_src fasm :tangle cicada.fasm 
    segment readable writeable
    TheLowestMemoryAddress:
       rb Size_of_user_data_area
    #+end_src
 * ==================================================
+ 
+ 

@@ -61,7 +61,7 @@ LargeSectors = 0
   dd LargeSectors
   ;; Number of LBA sectors
 DriveNumber: dw 0
-  ;; This is the ``int 13h'' drive number of the drive
+  ;; This is the "int 13h" drive number of the drive
   ;; The value 00h is used for the first floppy drive
   ;; and the value 80h is used for the first harddrive
 DriveSignature = 41

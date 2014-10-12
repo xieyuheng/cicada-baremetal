@@ -52,7 +52,7 @@ at_the_end_of_function_body:
 ;; initial Link to point to NULL
 Link = 0
 
-macro defWord WordString, Word {
+macro def_verb WordString, Word {
 hereInitializedData
 ;;--------------------------------------
 WordStringHeaderOf#Word:
@@ -82,11 +82,11 @@ Word:   xx explain_function_body
 ;;--------------------------------------
         ;; here follows a list of word[explainer]
         }
-macro defWordEnd Word {
+macro def_verb_end Word {
 EndOfFunctionBodyOf#Word:
 }
 
-macro defKeyWord KeyWordString, KeyWord {
+macro def_key_word KeyWordString, KeyWord {
 hereInitializedData
 ;;--------------------------------------
 KeyWordStringHeaderOf#KeyWord:
@@ -116,12 +116,12 @@ KeyWord:   xx explain_function_body
 ;;--------------------------------------
         ;; here follows a list of word[explainer]
         }
-macro defKeyWordEnd KeyWord {
+macro def_key_word_end KeyWord {
 EndOfFunctionBodyOf#KeyWord:
 }
 
 ;; assembly code have no explainer
-macro defCode WordString, Word {
+macro def_assembly_code WordString, Word {
 hereInitializedData
 ;;--------------------------------------
 WordStringHeaderOf#Word:
@@ -150,36 +150,8 @@ AssemblerCodeOf#Word:
         ;; here follows the assembly code
         }
 
-macro defVar WordString, InitialValue, Word {
-hereInitializedData
-;;--------------------------------------
-WordStringHeaderOf#Word:
-        xx (EndOfWordStringOf#Word - WordStringOf#Word)
-;;--------------------------------------
-WordStringOf#Word:
-        db WordString
-EndOfWordStringOf#Word:
-;;--------------------------------------
-IdentificationOf#Word:
-        xx IdentificationOf#Word
-;;--------------------------------------
-LinkOf#Word:
-        xx Link
-        Link = LinkOf#Word
-;;--------------------------------------
-TypeOf#Word:
-        xx 0
-;;--------------------------------------
-AddressOfWordStringHeaderOf#Word:
-        xx WordStringHeaderOf#Word
-;;======================================
-Word:   xx explain_variable
-;;--------------------------------------
-        xx InitialValue
-;;--------------------------------------
-        }
 
-macro defConst WordString, InitialValue, Word {
+macro def_noun WordString, Word {
 hereInitializedData
 ;;--------------------------------------
 WordStringHeaderOf#Word:
@@ -188,6 +160,9 @@ WordStringHeaderOf#Word:
 WordStringOf#Word:
         db WordString
 EndOfWordStringOf#Word:
+;;--------------------------------------
+SizeOfNounBodyOf#Word:
+        xx (EndOfNounBodyOf#Word - Word)/Cell_width - 1
 ;;--------------------------------------
 IdentificationOf#Word:
         xx IdentificationOf#Word
@@ -202,46 +177,31 @@ TypeOf#Word:
 AddressOfWordStringHeaderOf#Word:
         xx WordStringHeaderOf#Word
 ;;======================================
-Word:   xx explain_constant
+Word:   xx explain_noun
 ;;--------------------------------------
-        xx InitialValue
-;;--------------------------------------
+        ;; here follows a list of value
         }
+;; word - (5 * Cell_width)
+macro def_noun_end Word {
+EndOfNounBodyOf#Word:
+}
 
 ;; in stack:
 ;;   string[address, length]
 ;; in memory:
 ;;   ||  1 : length  ||
 ;;   ||  n : string  ||
-macro defConstString WordString, ConstStringValue, Word {
+macro def_noun_string WordString, ConstStringValue, Word {
 hereInitializedData
-;;--------------------------------------
-WordStringHeaderOf#Word:
-        xx (EndOfWordStringOf#Word - WordStringOf#Word)
-;;--------------------------------------
-WordStringOf#Word:
-        db WordString
-EndOfWordStringOf#Word:
-;;--------------------------------------
-IdentificationOf#Word:
-        xx IdentificationOf#Word
-;;--------------------------------------
-LinkOf#Word:
-        xx Link
-        Link = LinkOf#Word
-;;--------------------------------------
-TypeOf#Word:
-        xx 0
-;;--------------------------------------
-AddressOfWordStringHeaderOf#Word:
-        xx WordStringHeaderOf#Word
-;;======================================
-Word:   xx explain_constant_string
-;;--------------------------------------
-        xx (EndOfConstStringValueOf#Word - ConstStringValueOf#Word)
+
+def_noun WordString, Word
+   xx ConstStringValueOf#Word
+   xx (EndOfConstStringValueOf#Word - ConstStringValueOf#Word)
+def_noun_end Word
+
 ;;--------------------------------------
 ConstStringValueOf#Word:
         db ConstStringValue
 EndOfConstStringValueOf#Word:
-;;--------------------------------------
+        db 0
         }

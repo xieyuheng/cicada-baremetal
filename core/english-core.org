@@ -939,8 +939,8 @@
     ; define-function
 
     : print-name-of-explainer (* explainer -- *)
-      dup Function-body-explainer == if
-        literal Function-body-explainer
+      dup Verb-explainer == if
+        literal Verb-explainer
         word,body->id
         word,id->name
         print-string
@@ -1230,7 +1230,7 @@
       create-word-header-for-function
       set-size-of-function-body
       add-new-word-to-dictionary
-      Function-body-explainer append-number-to-here
+      Verb-explainer append-number-to-here 
       append-word-description-to-here
       Exit
     ; _define-function
