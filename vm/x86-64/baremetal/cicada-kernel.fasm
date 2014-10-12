@@ -446,20 +446,20 @@ cicada_virtual_machine:
 
        cld ;; set DF = 0, then rsi and rdi are incremented
 
-       ;; to clear memory range FirstLowestMemoryAddress - UserDataArea
+       ;; to clear memory range FirstLowestMemoryAddress - User_data_area
        mov rdi, FirstLowestMemoryAddress
-       mov rcx, (UserDataArea - FirstLowestMemoryAddress)/8
+       mov rcx, (User_data_area - FirstLowestMemoryAddress)/8
        xor rax, rax
        ;; Store rax to [rdi], rcx - 1, rdi + 8, if rcx > 0 then do it again
        rep stosq
 
-       mov Argument_stack_pointer,   ArgumentStackTop
-       mov Grey_pair_stack_pointer, GreyPairStackTop
-       mov Return_stack_pointer,   ReturnStackTop
+       mov Argument_stack_pointer,   Argument_stack_top
+       mov Grey_pair_stack_pointer, Grey_pair_stack_top
+       mov Return_stack_pointer,   Return_stack_top
 
        ;; initialize the variable ``Here''
-       ;; to point at beginning of UserDataArea
-       mov Temporary_register, UserDataArea
+       ;; to point at beginning of User_data_area
+       mov Temporary_register, User_data_area
        mov [Here + Cell_width], Temporary_register
 
        mov rax, cicada_begin_thread
@@ -471,20 +471,20 @@ hereInitializedData
 cicada_begin_thread:
        xx initialize
        xx basic_REPL
-defCode "load-core-file", loadCoreFile
+defCode "load-core-file", load_core_file
    ;; (* -- *)
-   mov rsi, InitialFilesToLoad
+   mov rsi, Initial_files_to_load
    mov rdi, InputBuffer
-   mov rcx, SizeOfInitialFilesToLoad
+   mov rcx, Size_of_initial_files_to_load
    rep movsb
    ;; reset [ReadingBoundary + Cell_width]
    mov [ReadingBoundary + Cell_width], rdi
    next
 
 hereInitializedData
-InitialFilesToLoad:
+Initial_files_to_load:
    ;; file "../../../core/english-core.cicada"
-SizeOfInitialFilesToLoad = ($ - InitialFilesToLoad) ;; unit :: byte
+Size_of_initial_files_to_load = ($ - Initial_files_to_load) ;; unit :: byte
 defWord "initialize", initialize
        ;; (* -- *)
        xx closeInterrupt
@@ -497,7 +497,7 @@ defWord "initialize", initialize
        xx clearScreen
        xx resetCurrentCursor
 
-       xx loadCoreFile
+       xx load_core_file
 
        xx openInterrupt
 
@@ -848,7 +848,7 @@ db ASCII_space
 ;; test
 
 ;; defWord "test_inputChar", test_inputChar
-;;    xx inputChar, writeChar, _branch, -3
+;;    xx inputChar, write_char, _branch, -3
 ;;    xx Exit
 ;; defWordEnd test_inputChar
 ;; 1. this function is like a little editor
@@ -864,7 +864,7 @@ db ASCII_space
 defWord "input-line", inputLine
    ;; (* [address, max length] -- string[address, actual length] *)
    xx dup2 ;; leave address and to calculate actual length
-   xx _literal, '_', writeChar, decrementCursor
+   xx _literal, '_', write_char, decrementCursor
 
    ;; (* address, max length, [address, length] *)
    xx inputChar
@@ -875,11 +875,11 @@ defWord "input-line", inputLine
    xx   drop
    xx   dup, xoverxxx, equal?, _false?branch, 3
    xx     _branch, -14 ;; inputChar
-   xx   _literal, ' ', writeChar, decrementCursor
+   xx   _literal, ' ', write_char, decrementCursor
    ;;   clear the '_', the cursor, leaved by every writed chars
    xx   decrementCursor
    ;;   write the new cursor
-   xx   _literal, '_', writeChar, decrementCursor
+   xx   _literal, '_', write_char, decrementCursor
    xx   add1, swap
    xx   sub1, swap
    xx   _branch, -29 ;; inputChar
@@ -897,9 +897,9 @@ defWord "input-line", inputLine
    ;; ``Exit'' only on ``newline''
    xx dup, _literal, ASCII_newline
    xx equal?, _false?branch, 17
-   xx   _literal, ' ', writeChar, decrementCursor
+   xx   _literal, ' ', write_char, decrementCursor
    ;;   clear the '_', the cursor, leaved by every writed chars
-   xx   dup, writeChar
+   xx   dup, write_char
    xx   xoverxx, save_byte
    xx   sub1, swap
    xx   add1, swap
@@ -909,8 +909,8 @@ defWord "input-line", inputLine
    xx   Exit
 
    ;; (* address, max length, [address, length], ASCII char *)
-   xx dup, writeChar
-   xx _literal, '_', writeChar, decrementCursor
+   xx dup, write_char
+   xx _literal, '_', write_char, decrementCursor
    ;; leave a '_' after every writed chars as cursor
    xx xoverxx, save_byte
    xx sub1, swap
@@ -921,22 +921,22 @@ defWord "input-line", inputLine
 defWordEnd inputLine
 hereUnInitializedData
 ;; ------------------------------------------
-SizeOfInputBuffer = 3*1024*1024
+Size_of_input_buffer = 3*1024*1024
 
 InputBuffer labeling
-        preserve SizeOfInputBuffer
-EndOfInputBuffer labeling
+        preserve Size_of_input_buffer
+End_of_input_buffer labeling
 
 
-defConst "Size-of-input-buffer",  SizeOfInputBuffer,  TheSizeOfInputBuffer
+defConst "Size-of-input-buffer",  Size_of_input_buffer,  TheSize_of_input_buffer
 defConst "Input-buffer",          InputBuffer,        TheInputBuffer
-defConst "End-of-input-buffer",   EndOfInputBuffer,   TheEndOfInputBuffer
+defConst "End-of-input-buffer",   End_of_input_buffer,   TheEnd_of_input_buffer
 
 
 ;; 1. two global variables for reading
 ;;    I can easily support `evalString' by change these two variables
 ;; 2. note that, there is no char in the address of a ``ReadingBoundary''
-;;    an example of ``ReadingBoundary'' is ``EndOfInputBuffer''
+;;    an example of ``ReadingBoundary'' is ``End_of_input_buffer''
 ;; 3. when ``CurrentReading'' == ``ReadingBoundary''
 ;;    for the function ``read_char''
 ;;    we need to reset it to read from ``InputBuffer''
@@ -969,7 +969,7 @@ defWord "read-char", read_char
    ;; and call ``inputLine'' to fetch more chars
    ;; and loop back
    xx toReadFromInputBuffer
-   xx TheInputBuffer, TheSizeOfInputBuffer
+   xx TheInputBuffer, TheSize_of_input_buffer
    xx openInterrupt
    xx inputLine
    xx closeInterrupt
@@ -983,7 +983,7 @@ defWordEnd read_char
 defWord "not-reading-from-input-buffer?", notReadingFromInputBuffer?
    ;; (* -- True of False *)
    xx CurrentReading, fetch
-   xx TheEndOfInputBuffer, greater_than?, _false?branch, 3
+   xx TheEnd_of_input_buffer, greater_than?, _false?branch, 3
    xx   True
    xx   Exit
    xx CurrentReading, fetch
@@ -1248,7 +1248,7 @@ defWord "print-newline", printNewline
    xx getCurrentCursorAddress, add_save
    xx Exit
 defWordEnd printNewline
-defWord "write-char-with-color", writeCharWithColor
+defWord "write-char-with-color", write_char_with_color
    ;; (* char, back color, fore color --  *)
    xx xoverxx, _literal, ASCII_linefeed
    xx equal?, _false?branch, 5
@@ -1257,10 +1257,10 @@ defWord "write-char-with-color", writeCharWithColor
    xx putCharWithColor
    xx incrementCursor
    xx Exit
-defWordEnd writeCharWithColor
+defWordEnd write_char_with_color
 
 
-defWord "write-char", writeChar
+defWord "write-char", write_char
    ;; (* char --  *)
    xx dup, _literal, ASCII_linefeed
    xx equal?, _false?branch, 4
@@ -1269,17 +1269,17 @@ defWord "write-char", writeChar
    xx putChar
    xx incrementCursor
    xx Exit
-defWordEnd writeChar
-defWord "print-string", printString
+defWordEnd write_char
+defWord "print-string", print_string
    ;; (* string[address, length] -- *)
    xx dup, zero?, _false?branch, 3
    xx   drop2
    xx   Exit
    xx sub1, swap
-   xx dup, fetch_byte, writeChar
+   xx dup, fetch_byte, write_char
    xx add1, swap
    xx _branch, -14
-defWordEnd printString
+defWordEnd print_string
 include "../threaded-code.inc"
 defCode "reboot", reboot
        ;; (* -- *)
@@ -1292,21 +1292,21 @@ defCode "reboot", reboot
        jmp .loop
 defWord ".", printLittleNumber
        xx _literal, '0'
-       xx addition, writeChar
+       xx addition, write_char
        xx _literal, 32
-       xx writeChar
+       xx write_char
        xx _literal, 32
-       xx writeChar
+       xx write_char
        xx Exit
 defWordEnd printLittleNumber
 defConst "Address-of-VBE-info-block", VBEInfoBlock, Assembly_VBEInfoBlock
 hereUnInitializedData
 ;; ------------------------------------------
-UserDataArea labeling
-EndOfUserDataArea = 1*1024*1024*1024
+User_data_area labeling
+End_of_user_data_area = 1*1024*1024*1024
 
-defConst "User-data-area", UserDataArea, TheUserDataArea
-defConst "End-of-user-data-area", EndOfUserDataArea, TheEndOfUserDataArea
+defConst "User-data-area", User_data_area, _User_data_area
+defConst "End-of-user-data-area", End_of_user_data_area, _End_of_user_data_area
 ;; this word helps to initialize FirstWordInDictionary
 defConst "The-latest-word-in-assembly", 0, TheLatestWordInAssembly
 times (SizeOfKernel * 1024) - ($-$$) - 4 db 0

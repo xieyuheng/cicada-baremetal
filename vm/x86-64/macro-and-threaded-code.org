@@ -301,17 +301,15 @@
             }
     #+end_src
 * ==================================================
-* >< basic-REPL 
+* basic-REPL
   #+begin_src fasm :tangle threaded-code.inc
   defWord "basic-REPL", basic_REPL
      ;; (* unknown -- unknown *)
-     ;; ><><><>< xx TheReturnStackTop, reset_return_stack_pointer
-     ;; xx TheArgumentStackTop, reset_argument_stack_pointer
+     ;; ><><>< init srack ???
      .read_phrase:
      xx read_phrase
      xx compile_phrase, call_phrase
      xx _branch, (.read_phrase-$)/Cell_width
-     ;; must not end with Exit here
   defWordEnd basic_REPL
 
   defWord "execute-word", execute_word
@@ -324,14 +322,126 @@
      xx   word_link_to_word_explainer, execute
      xx   Exit
      xx drop ;; drop zero
-     xx Message_undefined_word, printString
-     xx printString
-     xx _literal, ASCII_linefeed, writeChar
+     xx Message_undefined_word, print_string
+     xx print_string
+     xx _literal, ASCII_linefeed, write_char
      xx Exit
   defWordEnd execute_word
 
   defConstString "Message:undefined-word", "   UNDEFINED WORD: ", Message_undefined_word
   #+end_src
+* phrase
+** note
+   1. again not fancy stuff
+      functions about phrase are just for runtime
+      with a buffer been overwrited each time the functions run
+** read-phrase
+   #+begin_src fasm :tangle threaded-code.inc
+   hereUnInitializedData
+   ;; ------------------------
+   Size_of_buffer_for_read_phrase = 1024*1024
+
+   Buffer_for_read_phrase labeling
+           preserve Size_of_buffer_for_read_phrase
+
+
+   ;; 1. use "read_word__while_saving_to_string"
+   ;; 2. 每次 读一个 词 然后看 词界 是否是 回车
+   ;;    如果是 就做一个 phrase 然后返回
+   ;;    如果不是 就继续读
+   ;; 3. only ":" ";", as a pair of bra-ket, are been handled by a counter here
+   ;;    >< this is not the right thing
+   ;;    因为 比如说 当出现 "(" 的时候
+   ;;    后面所跟的字符串 一定要保证 能够被 正确地 "(" 处理
+   ;;    也就是 read-phrase 说这个函数
+   ;;    只应该接受 那些 bra-ket 正确匹配了的 以回车结尾的 字符串
+   ;; 4. 这个 错误以后再弥补
+   ;;    因为我需要快把基本的东西实现出来
+   ;;    让解释器 重新跑起来 以方便做测试
+   ;; 5. add "Exit" to the end of the string
+
+   defWord "read-phrase", read_phrase
+      ;; (*  -- string[address, length] *)
+      xx _literal, Buffer_for_read_phrase
+      xx _literal, 0
+
+      xx _literal, 0, push_lambda_stack ;; leave a counter of ":"
+
+      .read_word__while_saving_to_string:
+      xx read_word__while_saving_to_string
+      ;; (* string[address, length], word[address, length] *)
+
+      xx dup2, Bra__cosemi, equal_string?, _false?branch, (.dup2-$)/Cell_width
+      xx   drop2
+      xx   pop_lambda_stack, add1, push_lambda_stack
+      xx   _branch, (.read_word__while_saving_to_string-$)/Cell_width
+
+      .dup2:
+      xx dup2, Ket__cosemi, equal_string?, _false?branch, (.xxoverxx-$)/Cell_width
+      xx   pop_lambda_stack, sub1, push_lambda_stack
+
+      .xxoverxx:
+      ;; to see the what char the "word-boundary,end" is
+      xx xxoverxx, addition, sub1, fetch_byte
+      xx _literal, ASCII_linefeed, equal?, false?, _false?branch, (.drop2-$)/Cell_width
+      xx   drop2
+      xx   _branch, (.read_word__while_saving_to_string-$)/Cell_width
+
+      .drop2:
+      xx drop2
+
+      xx pop_lambda_stack
+      xx dup, zero?, _false?branch, (.push_lambda_stack-$)/Cell_width
+      xx   drop
+      ;;   (* add "Exit" to the end of the string *)
+      xx   _literal, " ", string_append_char
+      xx   _literal, "E", string_append_char
+      xx   _literal, "x", string_append_char
+      xx   _literal, "i", string_append_char
+      xx   _literal, "t", string_append_char
+      xx   _literal, " ", string_append_char
+      xx   Exit
+
+      .push_lambda_stack:
+      xx push_lambda_stack
+      xx _branch, (.read_word__while_saving_to_string-$)/Cell_width
+   defWordEnd read_phrase
+   #+end_src
+** compile-phrase
+   #+begin_src fasm :tangle threaded-code.inc
+   hereUnInitializedData
+   ;; ------------------------
+   Size_of_buffer_of_function_body__for_compile_phrase = 1024*1024
+   Size_of_buffer_of_data_section__for_compile_phrase = 1024*1024
+
+   Buffer_of_function_body__for_compile_phrase labeling
+           preserve Size_of_buffer_of_function_body__for_compile_phrase
+   Buffer_of_data_section__for_compile_phrase labeling
+           preserve Size_of_buffer_of_data_section__for_compile_phrase
+
+
+   defWord "compile-phrase", compile_phrase
+      ;; (* word-string[address, length] --  *)
+      xx Here, fetch, push_lambda_stack
+      xx Current_data_section, fetch, push_lambda_stack
+      xx   _literal, Buffer_of_function_body__for_compile_phrase, Here, save
+      xx   _literal, Buffer_of_data_section__for_compile_phrase, Current_data_section, save
+      xx   _Function_body_explainer, append_number_to_here
+      xx   append_word_description_to_here
+      xx pop_lambda_stack, Current_data_section, save
+      xx pop_lambda_stack, Here, save
+      xx Exit
+   defWordEnd compile_phrase
+   #+end_src
+** call-phrase
+   #+begin_src fasm :tangle threaded-code.inc
+   defWord "call-phrase", call_phrase
+      ;; (* -- unknown *)
+      xx _literal, Buffer_of_function_body__for_compile_phrase
+      xx execute
+      xx Exit
+   defWordEnd call_phrase
+   #+end_src
 * primitive functions
 ** Var & Const
    #+begin_src fasm :tangle threaded-code.inc
@@ -1459,10 +1569,10 @@
 
    defCode "empty-grey-pair-stack?", empty_grey_pair_stack?
       ;; (* -- True or False *)
-      mov rax, GreyPairStackTop
+      mov rax, Grey_pair_stack_top
       cmp Grey_pair_stack_pointer, rax
       ;; note that:
-      ;; Grey_pair_stack_pointer >= GreyPairStackTop
+      ;; Grey_pair_stack_pointer >= Grey_pair_stack_top
       ;; means stack over flow
       setge al
       movzx rax, al
@@ -1474,21 +1584,21 @@
    ;; 1. not to much stack-processing is needed here
    ;; 2. LambdaStack can be used to save the faked-local-vars
 
-   defVar "Lambda-stack-pointer", LambdaStackTop, LambdaStackPointer
+   defVar "Lambda-stack-pointer", Lambda_stack_top, Lambda_stack_pointer
 
    defWord "push-lambda-stack", push_lambda_stack
       ;; (* ArgumentStack::  value -->
       ;;    LambdaStack::    value *)
-      xx _literal, Cell_width, LambdaStackPointer, sub_save
-      xx LambdaStackPointer, fetch, save
+      xx _literal, Cell_width, Lambda_stack_pointer, sub_save
+      xx Lambda_stack_pointer, fetch, save
       xx Exit
    defWordEnd push_lambda_stack
 
    defWord "pop-lambda-stack", pop_lambda_stack
       ;; (* LambdaStack::    value -->
       ;;    ArgumentStack::  value *)
-      xx LambdaStackPointer, fetch, fetch
-      xx _literal, Cell_width, LambdaStackPointer, add_save
+      xx Lambda_stack_pointer, fetch, fetch
+      xx _literal, Cell_width, Lambda_stack_pointer, add_save
       xx Exit
    defWordEnd pop_lambda_stack
 
@@ -1943,7 +2053,7 @@
       xx Exit
    defWordEnd string_to_integer__with_error
    #+end_src
-* string
+* string misc
 ** read_string_into_buffer
    #+begin_src fasm :tangle threaded-code.inc
    hereUnInitializedData
@@ -2035,34 +2145,196 @@
    defWordEnd find_char_index
 
 
-   ;; (* little test:
+   ;; (* test:
    ;;  * 'k' s" k" find-char-index . (* 0 *) cr
    ;;  * 'k' s" kkk" find-char-index . (* 0 *) cr
    ;;  * 'k' s" skkk" find-char-index . (* 1 *) cr
    ;;  * 'k' s"  kkk" find-char-index . (* 1 *) cr
    ;;  * 'k' s" 0123456789k" find-char-index . (* 10 *) cr
-   ;;  * 'k' s" 0123456789" find-char-index . (* -1 *) cr
+   ;;  * 'k' s" "0123456789 find-char-index . (* -1 *) cr
    ;;  *)
    #+end_src
+** cr
+   #+begin_src fasm :tangle threaded-code.inc
+   defWord "cr", cr
+      ;; (* -- *)
+      xx _literal, ASCII_linefeed, write_char
+      xx Exit
+   defWordEnd cr
+   #+end_src
+* key-word
+** if else then
+   #+begin_src fasm :tangle threaded-code.inc
+   ;; one predicate can make two branchs
+   ;; three predicates can make four branchs
+   ;; three predicates may only make three branchs
+   ;; but indeed there must be an invisible branch
+
+   defKeyWord "if", _if
+      ;; (* word-string[address, length] -- word-string[address, length] *)
+      ;; (* Lambda-stack::
+      ;;       -- address after _false?branch *)
+      ;; (* compile::
+      ;;      _false?branch[address of explainer], 0 *)
+      xx _literal, _false?branch, append_number_to_here
+      xx Here, fetch, push_lambda_stack
+      xx _literal, 0, append_number_to_here ;; (* leave a place *)
+      xx Exit
+   defKeyWordEnd _if
+
+   defKeyWord "else", _else
+      ;; (* word-string[address, length] -- word-string[address, length] *)
+      ;; (* Lambda-stack ::
+      ;;      [address after _false?branch] -- [address after _branch] *)
+      ;; (* compile ::
+      ;;      _branch[address of explainer], 0 *)
+      ;; (* compile to [address after _false?branch] ::
+      ;;      [appropriate offset] *)
+      xx _literal, _branch, append_number_to_here
+      xx pop_lambda_stack
+      xx   Here, fetch, push_lambda_stack
+      xx   _literal, 0, append_number_to_here ;; (* leave a place *)
+      xx Here, fetch, over, subtraction, _literal, Cell_width, moddiv, swap, drop
+      xx swap, save
+      xx Exit
+   defKeyWordEnd _else
+
+   defKeyWord "then", _then
+      ;; (* word-string[address, length] -- word-string[address, length] *)
+      ;; (* Lambda-stack ::
+      ;;      [address after _false?branch] or [address after _branch] --  *)
+      ;; (* compile to [address after _false?branch] or [address after _branch] ::
+      ;;      [appropriate offset] *)
+      xx pop_lambda_stack
+      xx Here, fetch, over, subtraction, _literal, Cell_width, moddiv, swap, drop
+      xx swap, save
+      xx Exit
+   defKeyWordEnd _then
+   #+end_src
+** comment
+   #+begin_src fasm :tangle threaded-code.inc
+   defConstString "Bra:comment", "(*", Bra__comment
+   defConstString "Ket:comment", "*)", Ket__comment
+
+   defKeyWord "(*", ignore_comment
+      ;; (* word-string[address, length] -- word-string[address, length] *)
+      xx tail_and_head_of_word_string
+      xx dup2, Bra__comment, equal_string?, _false?branch, 5
+      xx   drop2, ignore_comment, _branch, -9
+      ;; beware of the tail-call-optimization
+      ;; a tail-recursive-call is really a loop
+      xx Ket__comment, equal_string?, _false?branch, -13
+      xx   Exit
+   defKeyWordEnd ignore_comment
+   #+end_src
+** colon
+   #+begin_src fasm :tangle threaded-code.inc
+   defWord "append-number-to-current-data-section", append_number_to_current_data_section
+      ;; (* a 64 bits number -- *)
+      ;; reset "Current_data_section", which points next free memory
+      xx Current_data_section, fetch
+      xx save
+      xx Current_data_section, fetch
+      xx _literal, Cell_width, addition
+      xx Current_data_section, save
+      xx Exit
+   defWordEnd append_number_to_current_data_section
+
+   ;; note that:
+   ;; a string in stack is string[address, length]
+   ;; a string in memory is ||  1 : length  ||  n : string  ||  1 : 0  ||
+   defWord "append-string-to-current-data-section", append_string_to_current_data_section
+      ;; (* string[address, length] -- *)
+      ;; for update Current_data_section
+      xx dup, push_lambda_stack
+      xx   dup, append_number_to_current_data_section
+      xx   Current_data_section, fetch, swap, copy_byte_string
+      ;; update Current_data_section
+      xx pop_lambda_stack
+      xx Current_data_section, fetch, addition
+      xx _literal, 0, over, save_byte
+      xx add1
+      xx Current_data_section, save
+      xx Exit
+   defWordEnd append_string_to_current_data_section
+
+
+
+   ;; cosemi = colon + semicolon
+   defConstString "Bra:cosemi", ":", Bra__cosemi
+   defConstString "Ket:cosemi", ";", Ket__cosemi
+
+   ;; 1. 为了使得 data section 的处理变得简单
+   ;;    即 不用去计算 function section 的长度
+   ;;    而使用 类似 哈佛构架的办法 把数据与函数分开
+   ;; 2. 利用 Current_data_section 这个变量
+   ;; 3. 为了处理嵌套的 ":" ";" 而对 ":" 的出现进行计数
+   ;; 4. do not copy byte by byte
+   ;;    but use "copy-byte-string"
+   defKeyWord ":", colon
+      ;; (* word-string[address, length] -- word-string[address, length] *)
+      ;; (* compile ::
+      ;;      string[address, length] *)
+      ;; (* compile to [data section] ::
+      ;;      string-header and string ended by 0 *)
+      xx dup2
+      xx _literal, 0, push_lambda_stack ;; ":" counter
+      .tail_and_head_of_word_string:
+      xx tail_and_head_of_word_string
+      xx dup2, Bra__cosemi, equal_string?, _false?branch, (.dup2-$)/Cell_width
+      xx   drop2
+      xx   pop_lambda_stack, add1, push_lambda_stack
+      xx   _branch, (.tail_and_head_of_word_string-$)/Cell_width
+      .dup2:
+      xx dup2, Ket__cosemi, equal_string?, _false?branch, (.drop2-$)/Cell_width
+      xx   drop2
+      xx   pop_lambda_stack
+      xx   dup, zero?, _false?branch, (.sub1-$)/Cell_width
+      xx     drop
+      ;;     (* word-string-begin[address, length], word-string-end[address, length] *)
+      xx     dup2, ready
+      ;;       (* calculate the length and copy to [data section] *)
+      xx       drop, swap, drop
+      xx       _literal, 2, subtraction ;; sub the length of "; "
+      xx       over, subtraction
+      xx         Current_data_section, fetch
+      xx         _literal, Cell_width, addition
+      xx         over, push_lambda_stack  ;; (* length to compile to here *)
+      xx         push_lambda_stack        ;; (* address to compile to here *)
+      xx       append_string_to_current_data_section
+      ;;       (* compile the string into function-body *)
+      ;;       (* address to compile to here *)
+      xx       _literal, _literal, append_number_to_here
+      xx       pop_lambda_stack, append_number_to_here
+      ;;       (* length to compile to here *)
+      xx       _literal, _literal, append_number_to_here
+      xx       pop_lambda_stack, append_number_to_here
+      xx     get_back
+      xx     Exit
+      .sub1:
+      xx   sub1, push_lambda_stack
+      xx   _branch, (.tail_and_head_of_word_string-$)/Cell_width
+      .drop2:
+      xx drop2
+      xx _branch, (.tail_and_head_of_word_string-$)/Cell_width
+      xx Exit
+   defKeyWordEnd colon
+
+
+
+
+   ;; ><><><
+   ;; Chinese version
+
+   defConstString "Bra:fuzhe", "夫", Bra__fuzhe
+   defConstString "Ket:fuzhe", "者", Ket__fuzhe
+
+   defKeyWord "夫", 夫
+      ;; (* word-string[address, length] -- word-string[address, length] *)
+      xx Exit
+   defKeyWordEnd 夫
+   #+end_src
 * the dictionary & the lexicographer
-** note
-   1. there are many lexicographers,
-      they work together to define words into the dictionary
-   2. to create a new word is to use some words to describe the new word,
-      and set an explainer to explain the description of the new word.
-   3. to define a new word,
-      we just need to add the new created word to the dictionary.
-   4. when someone try to find a word in the dictionary,
-      the explainer of that word explains the word for him
-   5. due to the constrain of fasm's syntax,
-      the ``names'' of some words varys between fasm and forth
-      here are some warnings:
-      1) for syntax sugar :
-         defWord ":", read_word_list_for_lexicographer
-         defCode "x|swap|xx", xswapxx
-         defWord ".", printLittleNumber
-      2) for already used label-name :
-         defConst "ReturnStackTop", ReturnStackTop, TheReturnStackTop
 ** explainers & execute & Exit
    #+begin_src fasm :tangle threaded-code.inc
    defCode "execute", execute
@@ -2070,6 +2342,8 @@
       pop_argument_stack Explainer_pointer
       jmp qword[Explainer_pointer]
 
+   ;; when someone try to find a word in the dictionary,
+   ;; the explainer of that word explains the word for him or her
 
    ;; explain_function_body 会贴贴一个 纸条 到 木条 上
 
@@ -2229,119 +2503,6 @@
       xx Exit
    defWordEnd find
    #+end_src
-** phrase
-*** note
-    1. again not fancy stuff
-       functions about phrase are just for runtime       
-       with a buffer been overwrited each time the functions run
-*** read-phrase
-    #+begin_src fasm :tangle threaded-code.inc
-    hereUnInitializedData
-    ;; ------------------------
-    Size_of_buffer_for_read_phrase = 1024*1024
-
-    Buffer_for_read_phrase labeling
-            preserve Size_of_buffer_for_read_phrase
-
-
-    ;; 1. use "read_word__while_saving_to_string"
-    ;; 2. 每次 读一个 词 然后看 词界 是否是 回车
-    ;;    如果是 就做一个 phrase 然后返回
-    ;;    如果不是 就继续读
-    ;; 3. only ":" ";", as a pair of bra-ket, are been handled by a counter here
-    ;;    >< this is not the right thing
-    ;;    因为 比如说 当出现 "(" 的时候
-    ;;    后面所跟的字符串 一定要保证 能够被 正确地 "(" 处理
-    ;;    也就是 read-phrase 说这个函数
-    ;;    只应该接受 那些 bra-ket 正确匹配了的 以回车结尾的 字符串
-    ;; 4. 这个 错误以后再弥补
-    ;;    因为我需要快把基本的东西实现出来
-    ;;    让解释器 重新跑起来 以方便做测试
-    ;; 5. add "Exit" and ";" to the end of the string
-    
-
-    ;; ><><><><
-    ;; 这个函数还得改进
-    defWord "read-phrase", read_phrase
-       ;; (*  -- string[address, length] *)
-       xx _literal, Buffer_for_read_phrase
-       xx _literal, 0
-
-       xx _literal, 0, push_lambda_stack ;; leave a counter of ":"
-
-       .read_word__while_saving_to_string:
-       xx read_word__while_saving_to_string
-       ;; (* string[address, length], word[address, length] *)
-       xx xxoverxx, addition, sub1, fetch_byte ;; to see the what char the "word-boundary,end" is
-       xx _literal, ASCII_linefeed, equal?, false?, _false?branch, 4
-       xx   drop2
-       xx   _branch, (.read_word__while_saving_to_string-$)/Cell_width
-       xx dup2, Bra__cosemi, equal_string?, _false?branch, (.dup2-$)/Cell_width
-       xx   drop2
-       xx   pop_lambda_stack, add1, push_lambda_stack
-       xx   _branch, (.read_word__while_saving_to_string-$)/Cell_width
-       .dup2:
-       xx dup2, Ket__cosemi, equal_string?, _false?branch, (.pop_lambda_stack-$)/Cell_width
-       xx   pop_lambda_stack
-       ;;   这里 当 这个计数器 已经是 0 的时候 需要报错
-       ;;   也就是 当 bra-ket 不匹配的时候需要 报错
-       ;;   但是这里并没有 处理这个错误
-       ;;   我先 不保证 这个函数的完备性
-       xx   sub1, push_lambda_stack
-       .pop_lambda_stack:
-       xx pop_lambda_stack
-       xx dup, zero?, _false?branch, (.push_lambda_stack-$)/Cell_width
-       xx   drop
-       xx   drop2   
-       ;;   (* add "Exit" to the end of the string *)
-       xx   _literal, " ", string_append_char
-       xx   _literal, "E", string_append_char
-       xx   _literal, "x", string_append_char
-       xx   _literal, "i", string_append_char
-       xx   _literal, "t", string_append_char
-       xx   _literal, " ", string_append_char
-       xx   Exit
-       .push_lambda_stack:
-       xx push_lambda_stack
-       xx drop2
-       xx _branch, (.read_word__while_saving_to_string-$)/Cell_width
-    defWordEnd read_phrase
-    #+end_src
-*** compile-phrase
-    #+begin_src fasm :tangle threaded-code.inc
-    hereUnInitializedData
-    ;; ------------------------
-    Size_of_buffer_of_function_body__for_compile_phrase = 1024*1024
-    Size_of_buffer_of_data_section__for_compile_phrase = 1024*1024
-
-    Buffer_of_function_body__for_compile_phrase labeling
-            preserve Size_of_buffer_of_function_body__for_compile_phrase
-    Buffer_of_data_section__for_compile_phrase labeling
-            preserve Size_of_buffer_of_data_section__for_compile_phrase
-
-
-    defWord "compile-phrase", compile_phrase
-       ;; (* word-string[address, length] --  *)
-       xx Here, fetch, push_lambda_stack
-       xx Current_data_section, fetch, push_lambda_stack
-       xx   _literal, Buffer_of_function_body__for_compile_phrase, Here, save
-       xx   _literal, Buffer_of_data_section__for_compile_phrase, Current_data_section, save 
-       xx   _Function_body_explainer, append_number_to_here
-       xx   append_word_description_to_here
-       xx pop_lambda_stack, Current_data_section, save
-       xx pop_lambda_stack, Here, save
-       xx Exit
-    defWordEnd compile_phrase
-    #+end_src
-*** call-phrase
-    #+begin_src fasm :tangle threaded-code.inc
-    defWord "call-phrase", call_phrase
-       ;; (* -- unknown *)
-       xx _literal, Buffer_of_function_body__for_compile_phrase
-       xx execute
-       xx Exit
-    defWordEnd call_phrase
-    #+end_src
 ** about word
 *** note about distinguishing word from input
     1. read-char 给 input 做好了抽象
@@ -2356,7 +2517,7 @@
        结束发现 kkk 这个 word 的时候
        处在结尾的 边界位置的 " " 一定已经从 input 中被取出来了
     3. 这就是 我需要 read-word,while-saving-to-string 的原因
-       即 我要 在某种程度上 改变 "有来无回" 的情况    
+       即 我要 在某种程度上 改变 "有来无回" 的情况
 *** read-word,while-saving-to-string
     #+begin_src fasm :tangle threaded-code.inc
     ;; 1. the following functions are for read-phrase
@@ -2425,176 +2586,6 @@
        xx pop_lambda_stack
        xx Exit
     defWordEnd read_word__while_saving_to_string
-    #+end_src
-** key-word
-*** if else then
-    #+begin_src fasm :tangle threaded-code.inc
-    ;; one predicate can make two branchs
-    ;; three predicates can make four branchs
-    ;; three predicates may only make three branchs
-    ;; but indeed there must be an invisible branch
-
-    defKeyWord "if", _if
-       ;; (* word-string[address, length] -- word-string[address, length] *)
-       ;; (* Lambda-stack::
-       ;;       -- address after _false?branch *)
-       ;; (* compile::
-       ;;      _false?branch[address of explainer], 0 *)
-       xx _literal, _false?branch, append_number_to_here
-       xx Here, fetch, push_lambda_stack
-       xx _literal, 0, append_number_to_here ;; (* leave a place *)
-       xx Exit
-    defKeyWordEnd _if
-
-    defKeyWord "else", _else
-       ;; (* word-string[address, length] -- word-string[address, length] *)
-       ;; (* Lambda-stack ::
-       ;;      [address after _false?branch] -- [address after _branch] *)
-       ;; (* compile ::
-       ;;      _branch[address of explainer], 0 *)
-       ;; (* compile to [address after _false?branch] ::
-       ;;      [appropriate offset] *)
-       xx _literal, _branch, append_number_to_here
-       xx pop_lambda_stack
-       xx   Here, fetch, push_lambda_stack
-       xx   _literal, 0, append_number_to_here ;; (* leave a place *)
-       xx Here, fetch, over, subtraction, _literal, Cell_width, moddiv, swap, drop
-       xx swap, save
-       xx Exit
-    defKeyWordEnd _else
-
-    defKeyWord "then", _then
-       ;; (* word-string[address, length] -- word-string[address, length] *)
-       ;; (* Lambda-stack ::
-       ;;      [address after _false?branch] or [address after _branch] --  *)
-       ;; (* compile to [address after _false?branch] or [address after _branch] ::
-       ;;      [appropriate offset] *)
-       xx pop_lambda_stack
-       xx Here, fetch, over, subtraction, _literal, Cell_width, moddiv, swap, drop
-       xx swap, save
-       xx Exit
-    defKeyWordEnd _then
-    #+end_src
-*** comment
-    #+begin_src fasm :tangle threaded-code.inc
-    defConstString "Bra:comment", "(*", Bra__comment
-    defConstString "Ket:comment", "*)", Ket__comment
-
-    defKeyWord "(*", ignore_comment
-       ;; (* word-string[address, length] -- word-string[address, length] *)
-       xx tail_and_head_of_word_string
-       xx dup2, Bra__comment, equal_string?, _false?branch, 5
-       xx   drop2, ignore_comment, _branch, -9
-       ;; beware of the tail-call-optimization
-       ;; a tail-recursive-call is really a loop
-       xx Ket__comment, equal_string?, _false?branch, -13
-       xx   Exit
-    defKeyWordEnd ignore_comment
-    #+end_src
-*** colon
-    #+begin_src fasm :tangle threaded-code.inc
-    defWord "append-number-to-current-data-section", append_number_to_current_data_section
-       ;; (* a 64 bits number -- *)
-       ;; reset "Current_data_section", which points next free memory
-       xx Current_data_section, fetch
-       xx save
-       xx Current_data_section, fetch
-       xx _literal, Cell_width, addition
-       xx Current_data_section, save
-       xx Exit
-    defWordEnd append_number_to_current_data_section
-
-    ;; note that:
-    ;; a string in stack is string[address, length]
-    ;; a string in memory is ||  1 : length  ||  n : string  ||  1 : 0  ||
-    defWord "append-string-to-current-data-section", append_string_to_current_data_section
-       ;; (* string[address, length] -- *)
-       ;; for update Current_data_section
-       xx dup, push_lambda_stack
-       xx   dup, append_number_to_current_data_section
-       xx   Current_data_section, fetch, swap, copy_byte_string
-       ;; update Current_data_section
-       xx pop_lambda_stack
-       xx Current_data_section, fetch, addition
-       xx _literal, 0, over, save_byte
-       xx add1
-       xx Current_data_section, save
-       xx Exit
-    defWordEnd append_string_to_current_data_section
-
-
-
-    ;; cosemi = colon + semicolon
-    defConstString "Bra:cosemi", ":", Bra__cosemi
-    defConstString "Ket:cosemi", ";", Ket__cosemi
-
-    ;; 1. 为了使得 data section 的处理变得简单
-    ;;    即 不用去计算 function section 的长度
-    ;;    而使用 类似 哈佛构架的办法 把数据与函数分开
-    ;; 2. 利用 Current_data_section 这个变量
-    ;; 3. 为了处理嵌套的 ":" ";" 而对 ":" 的出现进行计数
-    ;; 4. do not copy byte by byte
-    ;;    but use "copy-byte-string"
-    defKeyWord ":", colon
-       ;; (* word-string[address, length] -- word-string[address, length] *)
-       ;; (* compile ::
-       ;;      string[address, length] *)
-       ;; (* compile to [data section] ::
-       ;;      string-header and string ended by 0 *)
-       xx dup2
-       xx _literal, 0, push_lambda_stack ;; ":" counter
-       .tail_and_head_of_word_string:
-       xx tail_and_head_of_word_string
-       xx dup2, Bra__cosemi, equal_string?, _false?branch, (.dup2-$)/Cell_width
-       xx   drop2
-       xx   pop_lambda_stack, add1, push_lambda_stack
-       xx   _branch, (.tail_and_head_of_word_string-$)/Cell_width
-       .dup2:
-       xx dup2, Ket__cosemi, equal_string?, _false?branch, (.drop2-$)/Cell_width
-       xx   drop2
-       xx   pop_lambda_stack
-       xx   dup, zero?, _false?branch, (.sub1-$)/Cell_width
-       xx     drop
-       ;;     (* word-string-begin[address, length], word-string-end[address, length] *)
-       xx     dup2, ready
-       ;;       (* calculate the length and copy to [data section] *)
-       xx       drop, swap, drop
-       xx       _literal, 2, subtraction ;; sub the length of "; "
-       xx       over, subtraction
-       xx         Current_data_section, fetch
-       xx         _literal, Cell_width, addition
-       xx         push_lambda_stack      ;; (* address to compile to here *)
-       xx         dup, push_lambda_stack ;; (* length to compile to here *)
-       xx       append_string_to_current_data_section
-       ;;       (* compile the string into function-body *)
-       xx       _literal, _literal, append_number_to_here
-       xx       pop_lambda_stack, append_number_to_here
-       xx       _literal, _literal, append_number_to_here
-       xx       pop_lambda_stack, append_number_to_here
-       xx     get_back
-       xx     Exit
-       .sub1:
-       xx   sub1, push_lambda_stack
-       xx   _branch, (.tail_and_head_of_word_string-$)/Cell_width
-       .drop2:
-       xx drop2
-       xx _branch, (.tail_and_head_of_word_string-$)/Cell_width
-       xx Exit
-    defKeyWordEnd colon
-
-
-
-
-    ;; ><><><
-    ;; Chinese version
-
-    defConstString "Bra:fuzhe", "夫", Bra__fuzhe
-    defConstString "Ket:fuzhe", "者", Ket__fuzhe
-
-    defKeyWord "夫", 夫
-       ;; (* word-string[address, length] -- word-string[address, length] *)
-       xx Exit
-    defKeyWordEnd 夫
     #+end_src
 ** about word-string
 *** find-word-boundary-address & find-word-boundary-index
@@ -2676,7 +2667,7 @@
 
 
 
-    ;; little test:
+    ;; test:
     ;; :" k" find-word-boundary-index,begin . (* 0 *) cr
     ;; :" kkk" find-word-boundary-index,begin . (* 0 *) cr
     ;; :"  kkk" find-word-boundary-index,begin . (* 1 *) cr
@@ -2910,11 +2901,10 @@
     #+end_src
 * --------------------------------------------------
 * memory allocation
-** PairConstructionsArray
+** Pair-constructions-array
    #+begin_src fasm :tangle threaded-code.inc
    hereUnInitializedData
-   ;; ------------------------------------------
-   ;; PairConstructionsArray
+
    ;;   (unit : byte)
    ;; ========================
    ;;   ||  1 : color     ||
@@ -2926,128 +2916,126 @@
    ;;   ||  8 : value     ||
    ;; ========================
    hereUnInitializedData
-   ClrBytesSize = 1
-   CarBytesSize = 16
-   CdrBytesSize = 16
-   ConsBytesSize = ClrBytesSize + CarBytesSize + CdrBytesSize
-   NumberOfPairConstructions = 100 * 1024
+   Clr_bytes_size = 1
+   Car_bytes_size = 16
+   Cdr_bytes_size = 16
+   Cons_bytes_size = Clr_bytes_size + Car_bytes_size + Cdr_bytes_size
+   Number_of_pair_constructions = 100 * 1024
 
-           preserve ClrBytesSize
-   InFrontOfTheFirstPairConstruction labeling
-           preserve (CarBytesSize + CdrBytesSize)
+           preserve Clr_bytes_size
+   In_front_of_the_first_pair_construction labeling
+           preserve (Car_bytes_size + Cdr_bytes_size)
 
-           preserve ClrBytesSize
-   FirstPairConstruction labeling
-           preserve (CarBytesSize + CdrBytesSize)
+           preserve Clr_bytes_size
+   First_pair_construction labeling
+           preserve (Car_bytes_size + Cdr_bytes_size)
 
            ;; ==========================
-           preserve ((NumberOfPairConstructions - 2) * ConsBytesSize)
+           preserve ((Number_of_pair_constructions - 2) * Cons_bytes_size)
            ;; ==========================
 
-           preserve ClrBytesSize
-   LastPairConstruction labeling
-           preserve (CarBytesSize + CdrBytesSize)
+           preserve Clr_bytes_size
+   Last_pair_construction labeling
+           preserve (Car_bytes_size + Cdr_bytes_size)
 
-   defConst "Clr-bytes-size"  , ClrBytesSize  , TheClrBytesSize
-   defConst "Car-bytes-size"  , CarBytesSize  , TheCarBytesSize
-   defConst "Cdr-bytes-size"  , CdrBytesSize  , TheCdrBytesSize
-   defConst "Cons-bytes-size" , ConsBytesSize , TheConsBytesSize
+   defConst "Clr-bytes-size"  , Clr_bytes_size  , _Clr_bytes_size
+   defConst "Car-bytes-size"  , Car_bytes_size  , _Car_bytes_size
+   defConst "Cdr-bytes-size"  , Cdr_bytes_size  , _Cdr_bytes_size
+   defConst "Cons-bytes-size" , Cons_bytes_size , _Cons_bytes_size
 
-   defConst "Number-of-pair-constructions", NumberOfPairConstructions, TheNumberOfPairConstructions
+   defConst "Number-of-pair-constructions", Number_of_pair_constructions, _Number_of_pair_constructions
 
-   defConst "In-front-of-the-first-pair-construction", InFrontOfTheFirstPairConstruction, TheInFrontOfTheFirstPairConstruction
-   defConst "First-pair-construction", FirstPairConstruction, TheFirstPairConstruction
-   defConst "Last-pair-construction",  LastPairConstruction,  TheLastPairConstruction
+   defConst "In-front-of-the-first-pair-construction", In_front_of_the_first_pair_construction, _In_front_of_the_first_pair_construction
+   defConst "First-pair-construction", First_pair_construction, _First_pair_construction
+   defConst "Last-pair-construction",  Last_pair_construction,  _Last_pair_construction
 
-   defVar "Current-free-pair-construction", FirstPairConstruction, CurrentFreePairConstruction
+   defVar "Current-free-pair-construction", First_pair_construction, Current_free_pair_construction
     #+end_src
-** HashTableForSymbol
+** Hash-Table-For-Symbol
    using linear probing
    so, the load factor must be lower then 0.5
    #+begin_src fasm :tangle threaded-code.inc
    hereUnInitializedData
-   ;; ------------------------------------------
-   ;; HashTableForSymbol
 
-   ;; a SymbolEntry (unit : byte)
+   ;; a Symbol_entry (unit : byte)
    ;; ===========================
-   ;;  ||   8 : SymbolValue   ||
+   ;;  ||   8 : Symbol_value   ||
    ;; ---------------------------
-   ;;  ||   1 : SymbolLength  ||
+   ;;  ||   1 : Symbol_length  ||
    ;; ---------------------------
-   ;;  || 56+ : SymbolString  ||
+   ;;  || 56+ : Symbol_string  ||
    ;; ===========================
 
-   SymbolLengthBytesSize = 1
-   SymbolValueBytesSize  = 8
-   SymbolStringBytesSize = 56+0
-   SymbolMaxLength       = 56
-   SymbolEntryBytesSize = SymbolValueBytesSize + SymbolLengthBytesSize + SymbolStringBytesSize
-   ;; NumberOfSymbolEntrys = 1000003
-   ;; NumberOfSymbolEntrys = 1000033
-   ;; NumberOfSymbolEntrys = 1000333
-   ;; NumberOfSymbolEntrys = 100003
-   NumberOfSymbolEntrys = 100333
-   ;; NumberOfSymbolEntrys = 997
-   ;; NumberOfSymbolEntrys = 499
-   ;; NumberOfSymbolEntrys = 230 ;; for a special test
+   Symbol_length_bytes_size = 1
+   Symbol_value_bytes_size  = 8
+   Symbol_string_bytes_size = 56+0
+   Symbol_max_length       = 56
+   Symbol_entry_bytes_size = Symbol_value_bytes_size + Symbol_length_bytes_size + Symbol_string_bytes_size
+   ;; Number_of_symbol_entrys = 1000003
+   ;; Number_of_symbol_entrys = 1000033
+   ;; Number_of_symbol_entrys = 1000333
+   ;; Number_of_symbol_entrys = 100003
+   Number_of_symbol_entrys = 100333
+   ;; Number_of_symbol_entrys = 997
+   ;; Number_of_symbol_entrys = 499
+   ;; Number_of_symbol_entrys = 230 ;; for a special test
 
-   FirstSymbolEntry labeling
-           preserve SymbolEntryBytesSize
+   First_symbol_entry labeling
+           preserve Symbol_entry_bytes_size
 
            ;; ========================
-           preserve ((NumberOfSymbolEntrys - 2) * SymbolEntryBytesSize)
+           preserve ((Number_of_symbol_entrys - 2) * Symbol_entry_bytes_size)
            ;; ========================
 
-   LastSymbolEntry labeling
-           preserve SymbolEntryBytesSize
+   Last_symbol_entry labeling
+           preserve Symbol_entry_bytes_size
 
-   defConst "Number-of-symbol-entrys",  NumberOfSymbolEntrys,  TheNumberOfSymbolEntrys
-   defConst "Symbol-value-bytes-size",  SymbolValueBytesSize,  TheSymbolValueBytesSize
-   defConst "Symbol-length-bytes-size", SymbolLengthBytesSize, TheSymbolLengthBytesSize
-   defConst "Symbol-string-bytes-size", SymbolStringBytesSize, TheSymbolStringBytesSize
-   defConst "Symbol-max-length",        SymbolMaxLength,       TheSymbolMaxLength
-   defConst "Symbol-entry-bytes-size",  SymbolEntryBytesSize,  TheSymbolEntryBytesSize
+   defConst "Number-of-symbol-entrys",  Number_of_symbol_entrys,  _Number_of_symbol_entrys
+   defConst "Symbol-value-bytes-size",  Symbol_value_bytes_size,  _Symbol_value_bytes_size
+   defConst "Symbol-length-bytes-size", Symbol_length_bytes_size, _Symbol_length_bytes_size
+   defConst "Symbol-string-bytes-size", Symbol_string_bytes_size, _Symbol_string_bytes_size
+   defConst "Symbol-max-length",        Symbol_max_length,        _Symbol_max_length
+   defConst "Symbol-entry-bytes-size",  Symbol_entry_bytes_size,  _Symbol_entry_bytes_size
 
-   defConst "First-symbol-entry", FirstSymbolEntry, TheFirstSymbolEntry
-   defConst "Last-symbol-entry",  LastSymbolEntry,  TheLastSymbolEntry
+   defConst "First-symbol-entry", First_symbol_entry, _First_symbol_entry
+   defConst "Last-symbol-entry",  Last_symbol_entry,  _Last_symbol_entry
    #+end_src
-** two StringHeaps
+** two String_heap s
    #+begin_src fasm :tangle threaded-code.inc
    hereUnInitializedData
-   ;; ------------------------------------------
-   ;; two StringHeaps
-   SizeOfStringHeap = 5*1024*1024
 
-   StringHeap1 labeling
-           preserve SizeOfStringHeap
-   EndOfStringHeap1 labeling
+   Size_of_string_heap = 5*1024*1024
 
-   StringHeap2 labeling
-           preserve SizeOfStringHeap
-   EndOfStringHeap2 labeling
+   String_heap_1 labeling
+           preserve Size_of_string_heap
 
-   defConst "Size-of-string-heap", SizeOfStringHeap, TheSizeOfStringHeap
+   String_heap_2 labeling
+           preserve Size_of_string_heap
 
-   defConst "String-heap-1", StringHeap1, TheStringHeap1
-   defConst "String-heap-2", StringHeap2, TheStringHeap2
+
+   defConst "Size-of-string-heap", Size_of_string_heap, _Size_of_string_heap
+
+   defConst "String-heap-1", String_heap_1, _String_heap_1
+   defConst "String-heap-2", String_heap_2, _String_heap_2
    #+end_src
-** BufferForLoadFile
+** Buffer-for-load-file
    #+begin_src fasm :tangle threaded-code.inc
    hereUnInitializedData
-   ;; ------------------------------------------
-   SizeOfBufferForLoadFile = 4*1024*1024
 
-   BufferForLoadFile labeling
-                preserve SizeOfBufferForLoadFile
+   Size_of_buffer_for_load_file = 4*1024*1024
 
-   defConst "Buffer-for-load-file", BufferForLoadFile, TheBufferForLoadFile
-   defConst "Size-of-buffer-for-load-file", SizeOfBufferForLoadFile, TheSizeOfBufferForLoadFile
+   Buffer_for_load_file labeling
+                preserve Size_of_buffer_for_load_file
+
+   defConst "Size-of-buffer-for-load-file", Size_of_buffer_for_load_file, _Size_of_buffer_for_load_file
+
+   defConst "Buffer-for-load-file", Buffer_for_load_file, _Buffer_for_load_file
+
    #+end_src
 ** Data_section
    #+begin_src fasm :tangle threaded-code.inc
    hereUnInitializedData
-   ;; ------------------------------------------
+
    Size_of_data_section = 4*1024*1024
 
    Data_section labeling
@@ -3069,60 +3057,64 @@
    #+begin_src fasm :tangle threaded-code.inc
    hereUnInitializedData
    ;; ReturnStack
-   SizeOfReturnStack = 100*1024*8
+   Size_of_return_stack = 100*1024*8
 
-   ReturnStackBottom labeling
-           preserve SizeOfReturnStack
-   ReturnStackTop labeling
+   Return_stack_bottom labeling
+           preserve Size_of_return_stack
+   Return_stack_top labeling
            preserve 100*8
+
 
    hereUnInitializedData
    ;; ArgumentStack
-   SizeOfArgumentStack = 100*1024*8
+   Size_of_argument_stack = 100*1024*8
 
-   ArgumentStackBottom labeling
-           preserve SizeOfArgumentStack
-   ArgumentStackTop labeling
+   Argument_stack_bottom labeling
+           preserve Size_of_argument_stack
+   Argument_stack_top labeling
            preserve 100*8
+
 
    hereUnInitializedData
    ;; GreyPairStack
-   SizeOfGreyPairStack = 100*1024*8
+   Size_of_grey_pair_stack = 100*1024*8
 
-   GreyPairStackBottom labeling
-           preserve SizeOfGreyPairStack
-   GreyPairStackTop labeling
+   Grey_pair_stack_bottom labeling
+           preserve Size_of_grey_pair_stack
+   Grey_pair_stack_top labeling
            preserve 100*8
+
 
    hereUnInitializedData
    ;; LambdaStack
-   SizeOfLambdaStack = 100*1024*8
+   Size_of_lambda_stack = 100*1024*8
 
-   LambdaStackBottom labeling
-           preserve SizeOfLambdaStack
-   LambdaStackTop labeling
+   Lambda_stack_bottom labeling
+           preserve Size_of_lambda_stack
+   Lambda_stack_top labeling
            preserve 100*8
+
 
    hereUnInitializedData
    ;; StackForEvalString
-   SizeOfStackForEvalString = 1024*8
+   Size_of_stack_for_eval_string = 1024*8
 
-   StackForEvalStringBottom labeling
-           preserve SizeOfStackForEvalString
-   StackForEvalStringTop labeling
+   Stack_for_eval_string_bottom labeling
+           preserve Size_of_stack_for_eval_string
+   Stack_for_eval_string_top labeling
            preserve 100*8
 
 
-   defConst "Return-stack-top",    ReturnStackTop,    TheReturnStackTop
-   defConst "Return-stack-bottom", ReturnStackBottom, TheReturnStackBottom
+   defConst "Return-stack-top",    Return_stack_top,    _Return_stack_top
+   defConst "Return-stack-bottom", Return_stack_bottom, _Return_stack_bottom
 
-   defConst "Argument-stack-top",    ArgumentStackTop,    TheArgumentStackTop
-   defConst "Argument-stack-bottom", ArgumentStackBottom, TheArgumentStackBottom
+   defConst "Argument-stack-top",    Argument_stack_top,    _Argument_stack_top
+   defConst "Argument-stack-bottom", Argument_stack_bottom, _Argument_stack_bottom
 
-   defConst "Lambda-stack-top", LambdaStackTop, TheLambdaStackTop
-   defConst "Lambda-stack-bottom", LambdaStackBottom, TheLambdaStackBottom
+   defConst "Lambda-stack-top",    Lambda_stack_top,    _Lambda_stack_top
+   defConst "Lambda-stack-bottom", Lambda_stack_bottom, _Lambda_stack_bottom
 
-   defConst "Stack-for-eval-string-bottom", StackForEvalStringBottom, TheStackForEvalStringBottom
-   defConst "Stack-for-eval-string-top", StackForEvalStringTop, TheStackForEvalStringTop
+   defConst "Stack-for-eval-string-top",    Stack_for_eval_string_top,    _Stack_for_eval_string_top
+   defConst "Stack-for-eval-string-bottom", Stack_for_eval_string_bottom, _Stack_for_eval_string_bottom
    #+end_src
 * ==================================================

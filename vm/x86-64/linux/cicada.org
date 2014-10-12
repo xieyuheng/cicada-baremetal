@@ -857,19 +857,19 @@
   include "../macro.inc"
   #+end_src
 * start cicada virtual machine
-  #+begin_src fasm :tangle cicada.fasm
+  #+begin_src fasm :tangle cicada.fasm 
   hereCode
   cicada_virtual_machine:
 
           cld ;; set DF = 0, then rsi and rdi are incremented
 
-          mov Argument_stack_pointer,   ArgumentStackTop
-          mov Grey_pair_stack_pointer, GreyPairStackTop
-          mov Return_stack_pointer,   ReturnStackTop
+          mov Argument_stack_pointer,   Argument_stack_top
+          mov Grey_pair_stack_pointer, Grey_pair_stack_top
+          mov Return_stack_pointer,   Return_stack_top
 
           ;; initialize the variable ``Here''
-          ;; to point at beginning of UserDataArea
-          mov Temporary_register, UserDataArea
+          ;; to point at beginning of User_data_area 
+          mov Temporary_register, User_data_area
           mov [Here + Cell_width], Temporary_register
 
           mov rax, cicada_begin_thread
@@ -881,33 +881,33 @@
   cicada_begin_thread:
 
           ;; xx initialize
-          ;; xx basic_REPL
-          xx assemblyDebug
+          xx basic_REPL
+          ;; xx assemblyDebug
   #+end_src
-* loadCoreFile & InitialFilesToLoad
+* load-core-file & Initial-files-to-load
   #+begin_src fasm :tangle cicada.fasm
-  defCode "load-core-file", loadCoreFile
+  defCode "load-core-file", load_core_file
      ;; (* -- *)
-     mov rsi, InitialFilesToLoad
+     mov rsi, Initial_files_to_load
      mov rdi, InputBuffer
-     mov rcx, SizeOfInitialFilesToLoad
+     mov rcx, Size_of_initial_files_to_load
      rep movsb
      ;; reset [ReadingBoundary + Cell_width]
      mov [ReadingBoundary + Cell_width], rdi
      next
 
   hereInitializedData
-  InitialFilesToLoad:
+  Initial_files_to_load:
      ;; file "../../../core/english-core.cicada"
      ;; file "../../../lib/x86-64/linux/compiler.cicada"
-  SizeOfInitialFilesToLoad = ($ - InitialFilesToLoad) ;; unit :: byte
+  Size_of_initial_files_to_load = ($ - Initial_files_to_load) ;; unit :: byte
   #+end_src
 * initialize
   #+begin_src fasm :tangle cicada.fasm
   defWord "initialize", initialize
          ;; (* -- *)
 
-         xx loadCoreFile
+         xx load_core_file
 
          xx Exit
   defWordEnd initialize
@@ -1004,22 +1004,22 @@
    #+end_src
 ** read-char
    #+begin_src fasm :tangle cicada.fasm
-   SizeOfInputBuffer = 3*1024*1024
+   Size_of_input_buffer = 3*1024*1024
 
    hereUnInitializedData
    InputBuffer labeling
-      preserve SizeOfInputBuffer
-   EndOfInputBuffer labeling
+      preserve Size_of_input_buffer
+   End_of_input_buffer labeling
 
 
-   defConst "Size-of-input-buffer",  SizeOfInputBuffer,  TheSizeOfInputBuffer
+   defConst "Size-of-input-buffer",  Size_of_input_buffer,  TheSize_of_input_buffer
    defConst "Input-buffer",          InputBuffer,        TheInputBuffer
-   defConst "End-of-input-buffer",   EndOfInputBuffer,   TheEndOfInputBuffer
+   defConst "End-of-input-buffer",   End_of_input_buffer,   _End_of_input_buffer
 
    ;; 1. two global variables for reading
    ;;    I can easily support `evalString' by change these two variables
    ;; 2. note that, there is no char in the address of a ``ReadingBoundary''
-   ;;    an example of ``ReadingBoundary'' is ``EndOfInputBuffer''
+   ;;    an example of ``ReadingBoundary'' is ``End_of_input_buffer''
    ;; 3. when ``CurrentReading'' == ``ReadingBoundary''
    ;;    for the function ``read_char''
    ;;    we need to reset it to read from ``InputBuffer''
@@ -1049,7 +1049,7 @@
       jl read_char_stillSomeChars
       ;-- EL: [CurrentReading + Cell_width] >= [ReadingBoundary + Cell_width]
       ;-- WK: all chars in InputBuffer have been processed
-      mov rax, EndOfInputBuffer
+      mov rax, End_of_input_buffer
       cmp Temporary_register, rax
       jg read_char_addBlankAtTheEnding
       mov rax, InputBuffer
@@ -1081,7 +1081,7 @@
    ;; set [ReadingBoundary + Cell_width] == InputBuffer + length of string that was input (NULL not counted)
    read_char_fetchMoreCharsFromStdinToInputBuffer:
       ;; read to fetch more input chars from STDIN to InputBuffer
-      mov sys_3_rdx,     SizeOfInputBuffer    ;; max length to be read
+      mov sys_3_rdx,     Size_of_input_buffer    ;; max length to be read
       mov sys_2_rsi,     InputBuffer        ;; buffer address
       ;; reset [CurrentReading + Cell_width] to InputBuffer
       mov [CurrentReading + Cell_width], sys_2_rsi
@@ -1114,20 +1114,20 @@
       mov sys_n_rax, syscall_exit
       syscall
    #+end_src
-** writeChar
+** write_char
    #+begin_src fasm :tangle cicada.fasm
    hereInitializedData
    ScratchUsedByWriteChar:
       rb 1
 
-   defCode "write-char", writeChar
+   defCode "write-char", write_char
       ;; ( char --  ) write a char to stdin
       ;; just calls the Linux write system call
       pop_argument_stack rax
-      call _writeChar
+      call _write_char
       next
 
-   _writeChar:
+   _write_char:
       mov sys_1_rdi, 1 ;; stdout
       ;; write can not just write the char in al to stdout
       ;; write needs the address of the byte to write
@@ -1138,18 +1138,18 @@
       syscall
       ret
    #+end_src
-** printString
+** print-string
    #+begin_src fasm :tangle cicada.fasm
-   defWord "print-string", printString
+   defWord "print-string", print_string
       ;; (* string[address, length] -- *)
       xx dup, zero?, _false?branch, 3
       xx   drop2
       xx   Exit
       xx sub1, swap
-      xx dup, fetch_byte, writeChar
+      xx dup, fetch_byte, write_char
       xx add1, swap
       xx _branch, -14
-   defWordEnd printString
+   defWordEnd print_string
    #+end_src
 ** file
 *** note about error
@@ -1344,11 +1344,11 @@
    #+begin_src fasm :tangle cicada.fasm
    defWord ".", printLittleNumber
       xx _literal, '0'
-      xx addition, writeChar
+      xx addition, write_char
       xx _literal, 32
-      xx writeChar
+      xx write_char
       xx _literal, 32
-      xx writeChar
+      xx write_char
       xx Exit
    defWordEnd printLittleNumber
 
@@ -1357,31 +1357,25 @@
       mov sys_n_rax, syscall_exit
       syscall
 
-   defWord "assemblyDebug", assemblyDebug      
- 
-      .read_phrase:
+   defWord "assemblyDebug", assemblyDebug
       xx read_phrase
-      ;; xx printString
-      ;; xx _branch, (.read_phrase-$)/Cell_width
-      xx compile_phrase, call_phrase
-      xx _branch, (.read_phrase-$)/Cell_width
-
-      xx _literal, 6
+      xx print_string
+      xx _branch, -3
       xx exitWithTOS
    defWordEnd assemblyDebug
    #+end_src
 * ending
-** UserDataArea
+** User_data_area
    #+begin_src fasm :tangle cicada.fasm
-   TheSizeOfUserDataArea = 64 * 1024 * 1024 ;; unit : byte
+   Size_of_user_data_area = 64 * 1024 * 1024 ;; unit : byte
 
    hereUnInitializedData
    ;; ------------------------------------------
-   UserDataArea labeling
-   EndOfUserDataArea = TheLowestMemoryAddress + TheSizeOfUserDataArea
+   User_data_area labeling
+   End_of_user_data_area = TheLowestMemoryAddress + Size_of_user_data_area
 
-   defConst "User-data-area", UserDataArea, TheUserDataArea
-   defConst "End-of-user-data-area", EndOfUserDataArea, TheEndOfUserDataArea
+   defConst "User-data-area", User_data_area, _User_data_area
+   defConst "End-of-user-data-area", End_of_user_data_area, _End_of_user_data_area
    #+end_src
 ** TheLatestWordInAssembly
    #+begin_src fasm :tangle cicada.fasm
@@ -1392,6 +1386,6 @@
    #+begin_src fasm :tangle cicada.fasm
    segment readable writeable
    TheLowestMemoryAddress:
-      rb TheSizeOfUserDataArea
+      rb Size_of_user_data_area
    #+end_src
 * ==================================================

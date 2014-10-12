@@ -2,240 +2,81 @@
 #+AUTHOR: XIE Yuheng
 #+EMAIL: xyheme@gmail.com
 
-!!! still testing !!!
-1. add data section of function
-   之后才能实现按 ":" 这个语法关键词
-   #+begin_src cicada
-   : kkk
-     1 2 3 . . .
-       : aaa
-         4 5 6 . . .
-         Exit
-       ; define-function
-     aaa
-     Exit
-   ; define-function
 
-   每次调用到 kkk 的时候 都会重新编译一个 aaa 到字典中
-
-   编译的结果是:
-   可以发现 同对 lambda 的处理一样 还是几乎线性的
-
-   _literal 1
-   _literal 2
-   _literal 3
-   . . .
-     _literal address
-     _literal length
-     define-function
-   aaa
-   Exit
-
-   string:
-   aaa
-   4 5 6 . . .
-   Exit
-   ---------
-   #+end_src
-2. 并不必重写 字典编撰者
-   它们还是处理字符串而已
-   这个字符串来自哪里并不重要
-   在解释语义里 ":" 会把 代表函数体的字符串储存在一个 buffer 中
-   而在渐进编译的 解释器中
-   这些字符串 必须被 放到新分配的 静态内存中
-   也就是说 函数体必须有自己的 数据段
-   并且这些数据段是
-   不能被垃圾回收器处理的 纯粹静态分配的 内存
-3. move "if else then" to assembly code
-4. 我更改 解释器的运行方式
-   使得每次在输入表达式的时候
-   机器都统一地用编译语义来处理 表达式
-   我想 很多语言的实现者
-   正是以这种所谓的渐进编译的方法
-   来实现解决这个问题的
-   1) 如何实现呢?
-      每一次的输入需要被当作一段函数来编译
-      内存如何分配? 如何回收?
-      以这种设计为基础 是否能引出有趣的性状
-   2) 问题是在 REPL 中所输入的需要被解释的代码段
-      通常是函数的定义
-      如果要把这些代码段处理成函数
-      那么最少有两个问题需要解决:
-      1. 明显的 Exit 的问题
-      2. 嵌套的函数体必须被处理
-   3) 从这里也可以看出 ocaml 使用 ";;" 来标记表达式的原因
-   4) REPL 的名字也应该变了
-      read compile call loop
-      注意这里紧接着 compile 的 call
-      其实 只要 把 eval 理解为 compile & call
-      那么就能保留 REPL 这个名字
-      而 一般的语法编撰者 只是 编译而已
-   5) 嵌套 在内存的 函数定义
-      必须以 string 的形式储存在 外层的函数的函数体内
-      每次调用的时候 都通过 eval 一个 string 来重新定义一个新的函数
-   6) 嵌套的函数定义并不是没法处理
-      毕竟我已经处理过 嵌套的 lambda-term 了
-      并且这里的嵌套 不用递归
-      即 函数体 被作为字符串 而编译到 数据段内的时候
-      如果 其中 又 包含了函数体
-      那么 不必处理里面的函数体
-      因为 函数体中的函数体是由 字典编撰者 处理的
-   7) 还有一个问题就是
-      我必须形成 有独立意义的
-      可以被编译成函数的代码块 之后
-      才能把这段代码提交给编译器去编译
-      也就是说 在某些 reader 之中的时候
-      代码块 是不会被提交的
-      并不需要 新的 语法来标记 代码块
-   8) 为了 达到 ``不需要 新的 语法来标记 代码块'' 的效果
-      我必须在每次 回车 的时候尝试提交代码
-      这是无所谓的
-      但是 如果有更好的 IO 环境的支持
-      那么我就能把这种东西实现地更好
-      在 linux 这种东西上就 先用回车 提交
-      在 emacs 中 (更好地) 其实 C-j 也是回车 但是不会提交代码
-      所以 emacs 是比 linux 更好的操作系统
-   9) 在每次回车的时候提交代码段 并不是理想的设计
-      尤其是考虑到 要在 在类似 emacs 中的环境下使用 REPL
-      此时被输入的文本是可以被随意修改的
-      而这种修改所带来的解释器行为的改变是不好预测的
-      正确的用户接口
-      应该是:
-      1. 使用另外一个快捷键来作为 编译代码段的信号
-      2. 并且 不允许 修改已经被读入的代码段
-      要实现这些 非常难吗 ???
-      我可以在 emacs 中实现这些吗 ???
-      我可以在 终端中实现这些吗 ???
-      emacs 中当然可以实现这种效果
-      但是我不想写 elisp 代码了
-   10) 关于渐进编译器的用户接口
-       渐进编译器 可以维护一个匿名函数的 数组
-       新定义的函数会替代最老的函数
-       这样就给了引用前面的某个函数的机会
-       还可以提供一些机制 来处理这个 匿名函数 的数组
-   11) 渐进编译是可行的
-       只要在每次 读入 代码段的时候
-       补足一个 Exit 就行了
-       明显的使用 Exit 就会在末尾多一个 Exit
-       多一个并没有关系
-       这样就 让用户可以在解释器中 输入复杂的代码段了
-5. 从 input 读取 string 的工作
-   全部由 渐进编译器 完成
-   这可以被看作一次 factoring
-   渐进编译器 需要做的是
-   1) 不断的读字符串
-      判断什么时候应该停止读取
-   2) 停止读字符串之后
-      就调用 compiler 然后 马上 call 被编译好的函数
-6. let the interpreter works as a compiler
-7. new string syntax
-8. new way to use variables
-9. change naming convention in assembly code
-10. clean up code and note
+1. new way to use variables
+   改常量和变量的使用方式 lambda-calculus 就更方便使用了
+2. 用一个新的语法关键词 来处理常量与变量 这两种名词对语义的过载
+   就像 literal 一样 这是很容易在 函数体中实现的
+   既然已经消除了 解释性语义 那么一切都简单了
+3. 通过 引入 address 这个语法关键词
+   我就可以统一 define 的使用了
+   将 只有 单一的 define 没有别的 东西了
+   1) ><><>< 注意
+      这里要更改跟 GC 有关的代码
+4. 新的 define 还有一个问题是
+   每个名词 可以给出 几个值到 Argument-stack
+   是不确定的
+   这是可以接受的
+   就像是 对函数的注释 一样
+   只要给 对名词的定义 相应的注释就行了
+   并且 之后 还可以用 设计良好的 文本 编辑器 来解决这个问题
+5. group the functions into groups
+   and write more tests for them
+6. make good use of indentation
+   1) for string
+   2) for wodili 应该 在 wodili 的已有的 解析器 的基础上
+      增加一个 好好 利用 indentation 的解析器
+      两种解析器各自有各自的用处
+   3) 把 利用"支撑树" 来进行相对引用的 性质加到 yaml 中
+      就能 形成 我想要的 digrap 的语法
+7. redesign the syntax about chars
+   to allow :
+   1) 不可打印的字符 还有 关于 utf8 的东西
+8. redesign the syntax about strings
+   to allow :
+   1. 格式输入
+   2. 当然允许在函数体内使用简单的字符串了
+      因为现在一切都是函数体了
+9. 写编译器
+   1) 从最简单 的 babystep 开始
+   2) 编译 bootloader
+   3) 注意要保持设计的灵活性
+      或者直接从 文档开始
+      用中文写文档 以加快速度
 * ==================================================
 * TODO
 ** note
-   1. 好好复习一下 forth 的各种 thread 技术
-   2. 用一个新的语法关键词 来处理常量与变量 这两种名词对语义的过载
-      就像 literal 一样 这是很容易在 函数体中实现的
-      既然已经消除了 解释性语义 那么一切都简单了
-   3. 通过 引入 address 这个语法关键词
-      我就可以统一 define 的使用了
-      将 只有 单一的 define 没有别的 东西了
-      1) ><><>< 注意
-         这里要更改跟 GC 有关的代码
-   ----------------------------------
    1. erlang 的 bit syntax 在于让人方便地处理 bit fields
-      我可以利用 erlang 的 bit syntax
-      来重新设计 cicada 中关于字符的语法
-   2. 在更改核心语法 的时候 顺便把 字符串 的语法改了
-      从 yaml 学可读性更强的语法
-      并允许在函数体内使用简单的字符串
-   3. redesign the syntax about chars (to allow ...)
-      and strings (to allow ...)
-   4. 不能统一命名空间 是一件很烦人的事
+      这在于 能 用模式匹配
+   2. 不能统一命名规则 是一件很烦人的事
       也许 在有自己的汇编器之前
-      我应该 用 ocaml 或 pearl 写一个简单的 编译器
-   5. 新的 define 还有一个问题是
-      每个名词 可以给出 几个值到 Argument-stack
-      是不确定的
-      这是可以接受的
-      就像是 对函数的注释 一样
-      只要给 对名词的定义 相应的注释就行了
-      并且 之后 还可以用 设计良好的 文本 编辑器 来解决这个问题
-   6. ><><>< 也许 我现在 就应该 试着实现 对 函数性质 的 询问器
-   7. 我有点不知道应该如何继续下去了
-      下一个着手点是哪里 ?
-      目标是 我需要自己的 编译器
-      我将使用 lambda-calculus 所提供的代入语义 来实现它
-      我需要 让 已有的 lambda-calculus 的语法更方便使用
-      对常量和变量的统一化处理能给这里一些启示吗 ?
-      原则是 减少 标点符号的使用
-      并且 尽量少 制定命名规则
-      所以:
-      1) 先修改 lambda-calculus 语法
-      2) 改常量和变量的使用方式
-      3) 写编译器
-      4) 从最简单 的 babystep 开始
-      5) 编译 bootloader
-      6) 注意要保持设计的灵活性
-         或者直接从 文档开始
-         用中文写文档 以加快速度
-   8. 关于 linux下 图形界面 的 文本编辑器
+      我应该 用 ocaml 写一个简单的 编译器
+   3. ><><>< 也许 我现在 就应该 试着实现 对 函数性质 的 询问器
+   4. 关于 linux下 图形界面 的 文本编辑器
       因为我已经能把 动态链接的库加载到 cicada 中了
       所以是有可能实现的
       需要用 C 把某先函数包装好
       在 cicada 中调用 C 函数的时候需要保护跟栈 有关的寄存器
-   9. 完成编译器后实现 hash-table 的 dictionary
-   10. I simply won't allow myself to do something ad hoc anymore
-       for if you use something ad hoc
-       when you wish to well-design something related to it
-       you have to go back and redesign the ad hoc better
-   11. I have learned something about yaml
-       gonna use the good parts of it to redesign something in cicada
-       if I can disign the syntax of cicada about data structures
-       to let them be used as a "human-readable data serialization format"
-       then I can say that I have designed something good and new
-       1) 但是注意如果 把 类 yaml 的 对 indentation 的解析
-          也加入到 cicada 中那就必须要使用另一个 REPL 了
-       2) 应该 在 wodili 的已有的 解析器 的基础上
-          增加一个 好好 利用 indentation 的解析器
-          两种解析器各自有各自的用处
-       3) 把 利用"支撑树" 来进行相对引用的 性质加到 yaml 中
-          就能 形成 我想要的 digrap 的语法
-       4) 处理 这些语法 的 解析器 原来叫做这些 文档格式 的 API
-   12. it also feels fun
-       to reimplement some UNIX userland functions :)
-   13. 关于io主页文档中的 code listing 需能制定我所喜欢的字体
-   14. 写汇编器是必须的
-       单单写一个 以 fasm 为输出 的编译器
-       是满足不了要求的
-   15. 当在执行一个函数 到一半的时候
-       发现其中的某个函数(或变量)没有被定义
-       我将可以 把用户代入到 一个 REPL 中
-       让用户有机会补全这个定义 然后在从一半的位置重新开始计算
-   16. 比如 当同时考虑 整数 还有 实数 等等 数据类型的时候
-       面向对象的 节省命名空间 的优点 就充分地体现出来了
-       这在于 (也只在于) 这样写出来的 代码
-       更接近于人们日常对数学运算的模糊表达
-   17. 需要好好 分析一下 增加了 Lambda-stack 之后
-       整个系统的数学性质的变化
-       因为 感觉上 太帅了
-       好像 增加了一个维度
-       好像 走出了柏拉图的洞穴一样
-   18. as the "debuger" is defined in cicada code
-       it is hard to do good error handling in assembly code
-       这是因为我没法在出错的时候即使调用 debuger 来报错
-       - 比如 通常的函数类型的错误
-         我应该 及时的 调用 debuger 来报告错误
-         而在不利的条件下 我必须 返回一个出错码
-         来表示函数 所接受的数据类型不对
-   19. do not use the data structure "word-list" anymore
-       just let ":" and ";" read a string to a buffer
-       this will force me to refine the functions about string processing
-   20. really need a better way to do tests
-       and I need to design better test-suit
-   21. 需要 cicada-assembler 的理由:
+   5. 完成编译器后实现 hash-table 的 dictionary
+   6. it also feels fun
+      to reimplement some UNIX userland functions :)
+   7. 比如 当同时考虑 整数 还有 实数 等等 数据类型的时候
+      面向对象的 节省命名空间 的优点 就充分地体现出来了
+      这在于 (也只在于) 这样写出来的 代码
+      更接近于人们日常对数学运算的模糊表达
+   8. 需要好好 分析一下 增加了 Lambda-stack 之后
+      整个系统的数学性质的变化
+      因为 感觉上 太帅了
+      好像 增加了一个维度
+      好像 走出了柏拉图的洞穴一样
+   9. as the "debuger" is defined in cicada code
+      it is hard to do good error handling in assembly code
+      这是因为我没法在出错的时候即使调用 debuger 来报错
+      - 比如 通常的函数类型的错误
+        我应该 及时的 调用 debuger 来报告错误
+        而在不利的条件下 我必须 返回一个出错码
+        来表示函数 所接受的数据类型不对
+   10. 需要 cicada-assembler 的理由:
        1) 统一 命名规则
        2) 让我 能够探索一些关于编译的技术
        3) 有些 小的 CPU 并没有 类似 fasm 的 合适的编译器的
@@ -249,23 +90,23 @@
           但是如果我想保持
           我的 类文学编程 组织代码的风格的话
           也许 创造一些新的东西来支持 我的风格就是必须的了
-   22. 不需要 cicada-assembler 的理由:
+   11. 不需要 cicada-assembler 的理由:
        1) 一个人认为 一个语言需要这种东西
           可能只是因为 当这个语言的编译器能够自己编译自己的时候
           看起来很 cool 而已
        2) 为了 实现 一个 x86-64 的汇编器
           有太多的 关于 CPU 的底层细节需要 被掌握
-   23. 就用户接口的设计而言
+   12. 就用户接口的设计而言
        我可以把那几个 核心的栈 的图示 放在 左边的一个窗口里
        在这之后 我就能设计 debuger 的更好的使用方式
        但是一个问题是 当我的界面不再是一个简单的解释器的时候
        我就不能 直接利用 emacs 了
        也就是必须 要先写自己的 文本编辑器
        之后才能考虑窗口 之类的问题
-   24. 也许 可以从 isforth 那里 学习在 linux 下写文本编辑器的基本工作
-   25. 生成中文字典 交给 Recaler
-   26. 支持 windows 及其环境下的开发
-   27. 支持 Mac 及其环境下的开发
+   13. 也许 可以从 isforth 那里 学习在 linux 下写文本编辑器的基本工作
+   14. 生成中文字典 交给 Recaler
+   15. 支持 windows 及其环境下的开发
+   16. 支持 Mac 及其环境下的开发
 ** about decision
    1. 每当一个设计决策的
       1. 选项一:

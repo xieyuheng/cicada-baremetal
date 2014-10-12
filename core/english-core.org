@@ -4,65 +4,38 @@
 
 
 * ==================================================
+* *test*
+  #+begin_src cicada
+  : factorial (* n -- n! *)
+    dup one? if
+      Exit
+    then
+    dup sub1 factorial * Exit
+  ; define-function
+
+
+  1 factorial .
+  2 factorial .
+  3 factorial .
+  4 factorial .
+  5 factorial .
+  6 factorial .
+  7 factorial .
+  8 factorial .
+  9 factorial .
+  10 factorial .
+  11 factorial .
+  12 factorial .
+  13 factorial .
+  14 factorial .
+  15 factorial .
+  16 factorial .
+  17 factorial .
+  18 factorial .
+  19 factorial .
+  20 factorial .
+  #+end_src
 * basic
-** test
-   #+begin_src cicada
-   : factorial (* n -- n! *)
-     dup one? if
-       Exit
-     then
-     dup sub1 factorial * Exit
-   ; define-function
-
-
-
-   1 factorial .
-   2 factorial .
-   3 factorial .
-   4 factorial .
-   5 factorial .
-   6 factorial .
-   7 factorial .
-   8 factorial .
-   9 factorial .
-   10 factorial .
-   11 factorial .
-   12 factorial .
-   13 factorial .
-   14 factorial .
-   15 factorial .
-   16 factorial .
-   17 factorial .
-   18 factorial .
-   19 factorial .
-   20 factorial .
-
-
-
-   : .12 (* 1 2 -- *)
-     2 == if
-       '2' write-char
-       1 == if
-         '1' write-char
-       else
-         '_' write-char
-       then
-     else
-       '_' write-char
-       1 == if
-         '1' write-char
-       else
-         '_' write-char
-       then
-     then
-     Exit
-   ; define-function
-
-   1 2 .12 cr
-   6 2 .12 cr
-   1 6 .12 cr
-   6 6 .12 cr
-   #+end_src
 ** define-variable & define-constant (new lexicographers)
 *** implementation
     #+begin_src cicada :tangle english-core.cicada
@@ -724,11 +697,6 @@
        Exit
      ; define-function
 
-     : cr (* -- *)
-       'newline' write-char Exit
-     ; define-function
-
-
      : write-space (* -- *)
        'space' write-char Exit
      ; define-function
@@ -780,6 +748,32 @@
      Exit
    ; define-function
    #+end_src
+* *test*
+  #+begin_src cicada
+  : .12 (* 1 2 -- *)
+    2 == if
+      '2' write-char
+      1 == if
+        '1' write-char
+      else
+        '_' write-char
+      then
+    else
+      '_' write-char
+      1 == if
+        '1' write-char
+      else
+        '_' write-char
+      then
+    then
+    Exit
+  ; define-function
+
+  1 2 .12 cr
+  6 2 .12 cr
+  1 6 .12 cr
+  6 6 .12 cr
+  #+end_src
 * debuger
 ** debuger-REPL & trace-function
 *** note
