@@ -1230,7 +1230,7 @@
       create-word-header-for-function
       set-size-of-function-body
       add-new-word-to-dictionary
-      Verb-explainer append-number-to-here 
+      Verb-explainer append-number-to-here
       append-word-description-to-here
       Exit
     ; _define-function

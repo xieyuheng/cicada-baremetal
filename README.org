@@ -39,7 +39,7 @@
   and I will use cicada to do some math experiments,
   to gratify my curiosity about math.
 
-* on which platforms I can use cicada language ?
+* on which platforms ?
   - cicada for linux ::
        =vm/x86-64/linux/=
        only for 64 bits linux.
@@ -78,8 +78,4 @@
 * where to visit this open source project ?
   https://github.com/cicada-language
 
-* how to contact you ?
-  * my name is XIE Yuheng
-  * my email address is =xyheme@gmail.com=
-  * email address of cicada language is =cicada.language@gmail.com=
-  * IRC channel of cicada language is =#cicada-language= at =irc.freenode.net=
+
