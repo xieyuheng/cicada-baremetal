@@ -607,7 +607,7 @@ def_assembly_code "reset-return-stack-pointer", reset_return_stack_pointer
    ;; (* an address in the ReturnStack -- *)
    pop_argument_stack Return_stack_pointer
    next
-;; in my implementation 
+;; in my implementation
 ;; the following two class classic Forth words
 ;; should be used carefully
 
@@ -671,7 +671,7 @@ def_verb "pop-lambda-stack", pop_lambda_stack
    xx _literal, Cell_width, _address, Lambda_stack_pointer, add_save
    xx Exit
 def_verb_end pop_lambda_stack
-;; 如果 ready 只是和 get-back 成对使用的话 
+;; 如果 ready 只是和 get-back 成对使用的话
 ;; 就没必要添加两个 swap 了
 ;; but we need more than that
 
@@ -716,7 +716,7 @@ def_verb_end argument_stack_shift_to_lambda_stack
 ;;    xx _literal, 3
 ;;    xx argument_stack_shift_to_lambda_stack
 ;;    xx pop_lambda_stack, print_little_number ; 3
-;;    xx pop_lambda_stack, print_little_number ; 7 
+;;    xx pop_lambda_stack, print_little_number ; 7
 ;;    xx pop_lambda_stack, print_little_number ; 8
 ;;    xx pop_lambda_stack, print_little_number ; 9
 ;;    xx Exit
@@ -988,7 +988,7 @@ def_assembly_code "shift-right-preserve-sign", shift_right_preserve_sign
 
 ;; this word should not be found
 ;; the interface of this word is the next word "literal"
-def_assembly_code "", _literal
+def_assembly_code "_literal", _literal
    ;; (* -- number *)
    ;; 1. if NOT at the end of the function body
    ;;    (* Return-stack::
@@ -1023,7 +1023,7 @@ def_key_word_end literal
 
 ;; the following handles _branch to "Exit"
 ;; >< alth branch to "Exit" should never be used
-def_assembly_code "", _branch
+def_assembly_code "_branch", _branch
    ;; 1. if NOT at the end of the function body
    ;;    (* Return-stack::
    ;;         address -- address + offset * Cell_width *)
@@ -1060,7 +1060,7 @@ def_key_word_end branch
 
 
 ;; the following handles _false?branch to "Exit"
-def_assembly_code "", _false?branch
+def_assembly_code "_false?branch", _false?branch
    ;; (* True of False -- *)
    ;; 0. if NOT _branch
    ;;    (* Return-stack::
@@ -1221,7 +1221,7 @@ def_verb_end append_number_to_current_data_section
 
 ;; note that:
 ;; a string in stack is string[address, length]
-;; a string in memory is ||  1 : length  ||  n : string  ||  1 : 0  ||
+;; a string in memory is ||  1 cell : length  ||  n byte : string  ||  1 byte : 0  ||
 def_verb "append-string-to-current-data-section", append_string_to_current_data_section
    ;; (* string[address, length] -- *)
    ;; for update Current_data_section
@@ -1909,41 +1909,6 @@ def_verb "cr", cr
    xx _literal, ASCII_linefeed, write_char
    xx Exit
 def_verb_end cr
-def_verb "eval-string", eval_string
-   ;; (* string[address, length] -- *)
-   xx compile_string, call_compiled_string
-   xx Exit
-def_verb_end eval_string
-hereUnInitializedData
-;; ------------------------
-Size_of_buffer_of_function_body__for_compile_string = 1024*1024
-Size_of_buffer_of_data_section__for_compile_string = 1024*1024
-
-Buffer_of_function_body__for_compile_string labeling
-        preserve Size_of_buffer_of_function_body__for_compile_string
-Buffer_of_data_section__for_compile_string labeling
-        preserve Size_of_buffer_of_data_section__for_compile_string
-
-
-def_verb "compile-string", compile_string
-   ;; (* word-string[address, length] --  *)
-   xx Here, push_lambda_stack
-   xx Current_data_section, push_lambda_stack
-   xx   _literal, Buffer_of_function_body__for_compile_string, _address, Here, save
-   xx   _literal, Buffer_of_data_section__for_compile_string, _address, Current_data_section, save
-   xx   _Verb_explainer, append_number_to_here
-   xx   append_word_description_to_here
-   xx   The_Exit, append_number_to_here
-   xx pop_lambda_stack, _address, Current_data_section, save
-   xx pop_lambda_stack, _address, Here, save
-   xx Exit
-def_verb_end compile_string
-def_verb "call-compiled-string", call_compiled_string
-   ;; (* -- unknown *)
-   xx _literal, Buffer_of_function_body__for_compile_string
-   xx execute
-   xx Exit
-def_verb_end call_compiled_string
 def_assembly_code "execute", execute
    ;; ( word[address of explainer] -- )
    pop_argument_stack Explainer_pointer
@@ -1988,7 +1953,7 @@ at_the_end_of_function_body:
    jmp qword[Explainer_pointer]
 
 empty_function_body:
-   next      
+   next
 
 
 hereCode
@@ -2017,7 +1982,7 @@ def_noun "Exit", Exit
    xx Exit
 def_noun_end Exit
 
-;; we need the following 
+;; we need the following
 ;; for this word is so special
 def_noun "The-Exit", The_Exit
    xx Exit
@@ -2035,7 +2000,7 @@ def_noun "已矣", 已矣
 def_noun_end 已矣
 
 ;; ><><>< that is the Chinese version of "The-Exit"
- 
+
 def_noun "Verb-explainer", _Verb_explainer
    xx explain_verb
 def_noun_end _Verb_explainer
@@ -2351,6 +2316,14 @@ def_verb "word,link->type", word__link_to_type
    xx Exit
 def_verb_end word__link_to_type
 
+def_verb "word,link->address-of-type", word__link_to_address_of_type
+   ;; (* word.link[address] -- word.type[value] *)
+   xx _literal, Cell_width
+   xx _literal, 1, multiple
+   xx addition
+   xx Exit
+def_verb_end word__link_to_address_of_type
+
 def_verb "word,link->explainer", word__link_to_explainer
    ;; (* word.link[address] -- word.explainer[address] *)
    xx _literal, Cell_width
@@ -2366,6 +2339,18 @@ def_verb "word,link->description", word__link_to_description
    xx addition
    xx Exit
 def_verb_end word__link_to_description
+;; a string denotes key-word or not
+;; is not depended on the morphology of the string
+def_verb "string-denote-key-word?", string_denote_key_word?
+   ;; (* string[address, length] -- True or False *)
+   xx find, word_link_to_word_type
+   xx _literal, 111b, bitwise_and
+   xx _literal, 1, equal?, _false?branch, 3
+   xx   True
+   xx   Exit
+   xx False
+   xx Exit
+def_verb_end string_denote_key_word?
 def_verb "append-number-to-here", append_number_to_here
    ;; (* a 64 bits number -- *)
    ;; reset "Here", which points next free memory
@@ -2394,18 +2379,6 @@ def_verb "append-string-to-here", append_string_to_here
    xx _address, Here, save
    xx Exit
 def_verb_end append_string_to_here
-
-
-def_verb "string-denote-key-word?", string_denote_key_word?
-   ;; (* string[address, length] -- True or False *)
-   xx find, word_link_to_word_type
-   xx _literal, 111b, bitwise_and
-   xx _literal, 1, equal?, _false?branch, 3
-   xx   True
-   xx   Exit
-   xx False
-   xx Exit
-def_verb_end string_denote_key_word?
 
 
 def_verb "help:append-word-description-to-here,number", help__append_word_description_to_here__number
@@ -2482,7 +2455,6 @@ def_verb "set-size-of-word", set_size_of_word
    xx dup, word__link_to_description
    xx Here, swap, subtraction
    xx _literal, Cell_width, division
-   ;xx sub1
    xx swap, word__link_to_address_of_size
    xx save
    xx Exit
@@ -2505,6 +2477,51 @@ def_verb "define-function", define_function
    xx define_verb
    xx Exit
 def_verb_end define_function
+def_verb "eval-string,for-define", eval_string__for_define
+   ;; (* string[address, length] -- *)
+   xx compile_string__for_define, call_compiled_string__for_define
+   xx Exit
+def_verb_end eval_string__for_define
+hereUnInitializedData
+;; ------------------------
+Size_of_buffer_of_function_body__for_compile_string__for_define = 1024*1024
+Size_of_buffer_of_data_section__for_compile_string__for_define = 1024*1024
+
+Buffer_of_function_body__for_compile_string__for_define labeling
+        preserve Size_of_buffer_of_function_body__for_compile_string__for_define
+Buffer_of_data_section__for_compile_string__for_define labeling
+        preserve Size_of_buffer_of_data_section__for_compile_string__for_define
+
+def_noun "Current-data-section,for-compile-string,for-define", Current_data_section__for_compile_string__for_define
+   xx Buffer_of_data_section__for_compile_string__for_define
+def_noun_end Current_data_section__for_compile_string__for_define
+
+
+def_verb "compile-string,for-define", compile_string__for_define
+   ;; (* word-string[address, length] --  *)
+   xx Here, push_lambda_stack
+   xx Current_data_section, push_lambda_stack
+
+   xx   _literal, Buffer_of_function_body__for_compile_string__for_define
+   xx   _address, Here, save
+
+   xx   Current_data_section__for_compile_string__for_define
+   xx   _address, Current_data_section, save
+
+   xx   _Verb_explainer, append_number_to_here
+   xx   append_word_description_to_here
+   xx   The_Exit, append_number_to_here
+
+   xx pop_lambda_stack, _address, Current_data_section, save
+   xx pop_lambda_stack, _address, Here, save
+   xx Exit
+def_verb_end compile_string__for_define
+def_verb "call-compiled-string,for-define", call_compiled_string__for_define
+   ;; (* -- unknown *)
+   xx _literal, Buffer_of_function_body__for_compile_string__for_define
+   xx execute
+   xx Exit
+def_verb_end call_compiled_string__for_define
 def_noun "Mark:append-word-description-to-here,for-noun", Mark__append_word_description_to_here__for_noun
    xx 0
 def_noun_end Mark__append_word_description_to_here__for_noun
@@ -2516,7 +2533,7 @@ def_verb "append-word-description-to-here,for-noun", append_word_description_to_
    xx   _address, Mark__append_word_description_to_here__for_noun, save
    xx pop_lambda_stack, pop_lambda_stack
 
-   xx eval_string
+   xx eval_string__for_define
 
    ;; note that, when push stack grows to lower address
    xx fetch_argument_stack_pointer

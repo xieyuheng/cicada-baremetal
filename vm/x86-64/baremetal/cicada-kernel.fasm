@@ -459,8 +459,8 @@ cicada_virtual_machine:
 
        ;; initialize the variable "Here"
        ;; to point at beginning of User_data_area
-       mov Temporary_register, User_data_area
-       mov [Here + Cell_width], Temporary_register
+       mov r8, User_data_area
+       mov [Here + Cell_width], r8
 
        mov rax, cicada_begin_thread
        push_return_stack rax
@@ -483,7 +483,7 @@ def_assembly_code "load-core-file", load_core_file
 
 hereInitializedData
 Initial_files_to_load:
-   ;; file "../../../core/english-core.cicada"
+   file "../../../core/english-core.cicada"
 Size_of_initial_files_to_load = ($ - Initial_files_to_load) ;; unit :: byte
 def_verb "initialize", initialize
        ;; (* -- *)

@@ -639,8 +639,8 @@ cicada_virtual_machine:
 
         ;; initialize the variable "Here"
         ;; to point at beginning of User_data_area
-        mov Temporary_register, User_data_area
-        mov [Here + Cell_width], Temporary_register
+        mov r8, User_data_area
+        mov [Here + Cell_width], r8
 
         mov rax, cicada_begin_thread
         push_return_stack rax
@@ -650,7 +650,7 @@ cicada_virtual_machine:
 hereInitializedData
 cicada_begin_thread:
 
-        ;; xx initialize
+        xx initialize
         xx basic_REPL
         ;; xx assemblyDebug
 def_assembly_code "load-core-file", load_core_file
@@ -665,7 +665,7 @@ def_assembly_code "load-core-file", load_core_file
 
 hereInitializedData
 Initial_files_to_load:
-   ;; file "../../../core/english-core.cicada"
+   file "../../../core/english-core.cicada"
    ;; file "../../../lib/x86-64/linux/compiler.cicada"
 Size_of_initial_files_to_load = ($ - Initial_files_to_load) ;; unit :: byte
 def_verb "initialize", initialize
@@ -813,19 +813,19 @@ def_assembly_code "read-char", read_char
    next
 
 _read_char:
-   ;; Temporary_register is a helper-register for "cmp"
-   mov Temporary_register, [Current_reading + Cell_width]
-   cmp Temporary_register, [Reading_boundary + Cell_width]
+   ;; r8 is a helper-register for "cmp"
+   mov r8, [Current_reading + Cell_width]
+   cmp r8, [Reading_boundary + Cell_width]
    ;-- IF: [Current_reading + Cell_width] < [Reading_boundary + Cell_width]
    ;-- WK: there is still some chars in the Input_buffer to be processed
    jl read_char_stillSomeChars
    ;-- EL: [Current_reading + Cell_width] >= [Reading_boundary + Cell_width]
    ;-- WK: all chars in Input_buffer have been processed
    mov rax, End_of_input_buffer
-   cmp Temporary_register, rax
+   cmp r8, rax
    jg read_char_addBlankAtTheEnding
    mov rax, Input_buffer
-   cmp Temporary_register, rax
+   cmp r8, rax
    jl read_char_addBlankAtTheEnding
    jmp read_char_fetchMoreCharsFromStdinToInput_buffer
 read_char_addBlankAtTheEnding:
@@ -843,10 +843,10 @@ read_char_stillSomeChars:
    xor rax, rax
    ;-- DO: fetch a char from Input_buffer to rax
    ;-- NT: after _read_char return rax will be push_argument_stack
-   mov al, byte[Temporary_register]
+   mov al, byte[r8]
    ;-- DO: increment [Current_reading + Cell_width]
-   inc Temporary_register
-   mov [Current_reading + Cell_width], Temporary_register
+   inc r8
+   mov [Current_reading + Cell_width], r8
    ret
 ;; note that, in the following subroutine
 ;; set [Current_reading + Cell_width]  == Input_buffer

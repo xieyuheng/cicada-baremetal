@@ -1,14 +1,21 @@
+;; 1. when "push", a stack-pointer moves to lower address
+;; 2. under the a stack-pointer,
+;;    there always stores the value of the-top-of-the-stack
+
+
 ;; if you want to extend cicada in assembly,
-;; the following four registers must not be used
+;; the following registers must not be used
+
 ;; =================================
 define Return_stack_pointer    r15
 define Argument_stack_pointer  r14
 define Grey_pair_stack_pointer r13
 ;; =================================
 
-define Explainer_pointer     rax
-define Temporary_register    r11
-define Temporary_register2   r10
+;; the following is just for the clarity of semantic
+;; for when ever you jump to a explainer
+;; this "rax" will be used as an argument of the explainer
+define Explainer_pointer rax
 
 
 macro push_return_stack Register {

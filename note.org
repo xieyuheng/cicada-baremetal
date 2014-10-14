@@ -5,34 +5,26 @@
 
 * ==================================================
 * TODO
-1. the whole english-core.org needs to be rewrited
-2. ><><>< 注意 ><><><
-   对于新的 define 要更改 GC
-   整个 GC 都应该被重写了吗 ???
-3. make good use of indentation
-   1) for string
-   2) for wodili 应该 在 wodili 的已有的 解析器 的基础上
-      增加一个 好好 利用 indentation 的解析器
-      两种解析器各自有各自的用处
-   3) 把 利用"支撑树" 来进行相对引用的 性质加到 yaml 中
-      就能 形成 我想要的 digrap 的语法
-4. redesign the syntax about chars
-   to allow :
-   1) 不可打印的字符 还有 关于 utf8 的东西
-5. redesign the syntax about strings
-   to allow :
-   1. 格式输入
-   2. 当然允许在函数体内使用简单的字符串了
-      因为现在一切都是函数体了
-6. 写编译器
-   1) 从最简单 的 babystep 开始
-   2) 编译 bootloader
-   3) 注意要保持设计的灵活性
-      或者直接从 文档开始
-      用中文写文档 以加快速度
-* ==================================================
-* note
-** ><
+** now
+   1. the whole english-core.org needs to be rewrited
+   2. redesign the syntax about strings
+      to allow more
+   3. ><><>< 注意 ><><><
+      对于新的 define 要更改 GC
+      整个 GC 都应该被重写了吗 ???
+   4. make good use of indentation
+      1) for wodili 应该 在 wodili 的已有的 解析器 的基础上
+         增加一个 好好 利用 indentation 的解析器
+         两种解析器各自有各自的用处
+      2) 把 利用"支撑树" 来进行相对引用的 性质加到 yaml 中
+         就能 形成 我想要的 digrap 的语法
+   5. 写编译器
+      1) 从最简单 的 babystep 开始
+      2) 编译 bootloader
+      3) 注意要保持设计的灵活性
+         或者直接从 文档开始
+         用中文写文档 以加快速度
+** main
    1. erlang 的 bit syntax 在于让人方便地处理 bit fields
       这在于 能 用模式匹配
    2. 不能统一命名规则 是一件很烦人的事
@@ -94,6 +86,73 @@
    14. 生成中文字典 交给 Recaler
    15. 支持 windows 及其环境下的开发
    16. 支持 Mac 及其环境下的开发
+** english-core
+   1. use hash-table to lookup dictionary
+      then mutually recursive call
+   2. 用hash-table来find
+      这些不必实现在汇编代码中
+      因为 list还是必要的
+      因为这样就能保持对字典的灵活控制
+      所以 需要写一些函数把
+      字典重新加载到 hash-table 中
+   3. need to redesign the way to do test
+      should tangle test to separated file
+      for i do not have my org-mode now
+   4. wodyli processing
+      then digrap in cicada
+   5. tab completion in the REPL
+      (or in text editor)
+   6. let functions in assembly-code
+      be able to call functions in cicada-style-assembly-code
+   7. >< 实现对多种实现技术的定制
+   8. >< 重新思考某些术语和命名方式
+   9. cicada should design it's own abstractions of IO
+      this can help cicada to be portable
+      现在 有的只是 read-char 和 write-char 两个基础的东西而已
+      这样太贫乏了
+   10. memory allocation
+   11. flow-point number
+   12. >< maybe substitute word to execute in lambda-body
+   13. >< maybe syntax-check
+   14. >< modern pattern-match  HOW ???
+   15. better interface for debuger
+   16. TAIL-CALL-OPTIMIZATION in apply lambda-body
+   17. more protection on allocated memory
+       maybe use paging
+   18. cicada-assembler
+   19. cicada-editor
+   20. APL-like array-processing
+   21. needs better sexp-reader&write
+       design a better way
+       to use local-label to from list-with-circuit
+** baremetal
+   1. 作为一个使用纯粹释性语言
+      我应该 重新 思考 对 公共的 函数库的使用方式
+   2. in lmode, how to set up the "attributes-and-type" field in an entry of IDT ?
+   3. SMP support
+      作为一个以栈为基础的语言
+      我应该重新思考 利用 多核 的方式
+   4. learn more from baremetal-OS
+   5. convert the code about storage & BMFS from old-asm to forth-like-asm
+      to examine the bug of "readsectors"
+   6. fix "bye"
+   7. design game-like UI in text mode
+   8. rewrite cicada to make it standard and portable
+      (this will always be TODO)
+** linux
+   1. to allow executables to dynamically access external functionality at run time
+      and thereby reduce their overall memory footprint
+      在我的操作系统中 我可以以我的方式来完成上面的这种特性
+      我只需要一个 "need" 函数 来声明 某段被解释的代码 所需要的 sub-dictionary
+      我还需要一些 处理 sub-dictionary 的函数
+      sub-dictionary 的性质 是 :
+      - 它可以有很多个
+      - 并且它所占用的 内存可以被回收的
+      - 内存的回收 可以用 类似字符串的 垃圾回收器 来完成
+      - 当全面地使用 hash 来实现 dictionary 时
+        内存的回收 也可以用 类似链表的 垃圾回收器 来完成
+* ==================================================
+* note
 ** about decision
    1. 每当一个设计决策的
       1. 选项一:
@@ -219,45 +278,6 @@
    3.
 * ==================================================
 * english-core
-** TODO
-   1. use hash-table to lookup dictionary
-      then mutually recursive call
-   2. 用hash-table来find
-      这些不必实现在汇编代码中
-      因为 list还是必要的
-      因为这样就能保持对字典的灵活控制
-      所以 需要写一些函数把
-      字典重新加载到 hash-table 中
-   3. need to redesign the way to do test
-      should tangle test to separated file
-      for i do not have my org-mode now
-   4. wodyli processing
-      then digrap in cicada
-   5. tab completion in the REPL
-      (or in text editor)
-   6. let functions in assembly-code
-      be able to call functions in cicada-style-assembly-code
-   7. >< 实现对多种实现技术的定制
-   8. >< 重新思考某些术语和命名方式
-   9. cicada should design it's own abstractions of IO
-      this can help cicada to be portable
-      现在 有的只是 read-char 和 write-char 两个基础的东西而已
-      这样太贫乏了
-   10. memory allocation
-   11. flow-point number
-   12. >< maybe substitute word to execute in lambda-body
-   13. >< maybe syntax-check
-   14. >< modern pattern-match  HOW ???
-   15. better interface for debuger
-   16. TAIL-CALL-OPTIMIZATION in apply lambda-body
-   17. more protection on allocated memory
-       maybe use paging
-   18. cicada-assembler
-   19. cicada-editor
-   20. APL-like array-processing
-   21. needs better sexp-reader&write
-       design a better way
-       to use local-label to from list-with-circuit
 ** TEN COMMANDMENTS OF CICADA
    1. you can break any commandment when necessary
    2. ``The whole point of Forth was that
@@ -406,20 +426,6 @@
    这也许可以通过写一个不同的 REPL 来实现
 * ==================================================
 * baremetal
-** TODO
-   1. 作为一个使用纯粹释性语言
-      我应该 重新 思考 对 公共的 函数库的使用方式
-   2. in lmode, how to set up the "attributes-and-type" field in an entry of IDT ?
-   3. SMP support
-      作为一个以栈为基础的语言
-      我应该重新思考 利用 多核 的方式
-   4. learn more from baremetal-OS
-   5. convert the code about storage & BMFS from old-asm to forth-like-asm
-      to examine the bug of "readsectors"
-   6. fix "bye"
-   7. design game-like UI in text mode
-   8. rewrite cicada to make it standard and portable
-      (this will always be TODO)
 ** TEN COMMANDMENTS OF ASSEMBLY
    1. you can break any commandment when necessary
    2. when you want to use a ``Const'' or a ``Var'' in assembly
@@ -453,18 +459,6 @@
       当然
       同时也是为了让代码的宏观的逻辑结构更清晰
 * linux
-** TODO
-   1. to allow executables to dynamically access external functionality at run time
-      and thereby reduce their overall memory footprint
-      在我的操作系统中 我可以以我的方式来完成上面的这种特性
-      我只需要一个 "need" 函数 来声明 某段被解释的代码 所需要的 sub-dictionary
-      我还需要一些 处理 sub-dictionary 的函数
-      sub-dictionary 的性质 是 :
-      - 它可以有很多个
-      - 并且它所占用的 内存可以被回收的
-      - 内存的回收 可以用 类似字符串的 垃圾回收器 来完成
-      - 当全面地使用 hash 来实现 dictionary 时
-        内存的回收 也可以用 类似链表的 垃圾回收器 来完成
 ** note
    1. 在写一个文本编辑器之前
       我不得不以linux为自己的工作环境

@@ -1,6 +1,67 @@
-#+TITLE: old code in cicada 
+#+TITLE: old code in cicada
 #+AUTHOR: XIE Yuheng
 #+EMAIL: xyheme@gmail.com
 
 
+** ><>< string & define-constant-string (new lexicographer)
+*** implementation
+    #+begin_src cicada
+    : :" (* -- string[address of Basic-string-buffer, length] *)
+      read-string-into-buffer
+      Exit
+    ; define-verb
 
+    : ." (* -- string[address of Basic-string-buffer, length] *)
+      read-string-into-buffer print-string
+      Exit
+    ; define-verb
+
+    : define-constant-string,by-string
+      (* initial-string[address, length],
+         string[address, length], the number of words] -- *)
+      create-word-header
+      Constant-string-explainer append-number-to-here
+      xx|swap|x (* leave wordHeader *)
+      append-string-to-here (* initial-string *)
+      add-new-word-to-dictionary
+      Exit
+    ; define-verb
+
+    : define-constant-string (* by word-string *)
+      (* string[address, length],
+         word-string[address, the number of words] -- *)
+      head-of-word-string
+      define-constant-string,by-string
+      Exit
+    ; define-verb
+    #+end_src
+*** test
+    #+begin_src cicada
+    :" xxx"
+    : k ; define-constant-string
+    k print-string (* xxx *)
+    #+end_src
+** ><>< predicates
+   #+begin_src cicada
+   : special-key-word? (* word[explainer] -- True or False *)
+     dup literal literal           == if drop True Exit then
+     dup literal branch            == if drop True Exit then
+     dup literal false?branch      == if drop True Exit then
+     drop False
+     Exit
+   ; define-verb
+   #+end_src
+** print-string,null-terminated
+   #+begin_src cicada
+   : print-string,null-terminated
+     (* null-terminated-string[address] -- *)
+     dup fetch-byte zero? if
+       drop
+       Exit
+     then
+     dup fetch-byte write-char
+     add1
+     print-string,null-terminated
+     Exit
+   ; define-verb
+   #+end_src

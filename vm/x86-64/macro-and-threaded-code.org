@@ -5,23 +5,26 @@
 
 * ==================================================
 * macro
-** note about stacks
-   1. when "push", a stack-pointer moves to lower address
-   2. under the a stack-pointer,
-      there always stores the value of the-top-of-the-stack
 ** registers & push & pop
    #+begin_src fasm :tangle macro.inc
+   ;; 1. when "push", a stack-pointer moves to lower address
+   ;; 2. under the a stack-pointer,
+   ;;    there always stores the value of the-top-of-the-stack
+
+
    ;; if you want to extend cicada in assembly,
-   ;; the following four registers must not be used
+   ;; the following registers must not be used
+
    ;; =================================
    define Return_stack_pointer    r15
    define Argument_stack_pointer  r14
    define Grey_pair_stack_pointer r13
    ;; =================================
 
-   define Explainer_pointer     rax
-   define Temporary_register    r11
-   define Temporary_register2   r10
+   ;; the following is just for the clarity of semantic
+   ;; for when ever you jump to a explainer
+   ;; this "rax" will be used as an argument of the explainer
+   define Explainer_pointer rax
 
 
    macro push_return_stack Register {
@@ -597,7 +600,7 @@
       next
    #+end_src
 ** >< note about stack
-   1. maybe design key-word  
+   1. maybe design key-word
       to add better support to other stack
       not only Argument-stack
 ** Argument-stack
@@ -913,7 +916,7 @@
     #+end_src
 *** push & pop
     #+begin_src fasm :tangle threaded-code.inc
-    ;; in my implementation 
+    ;; in my implementation
     ;; the following two class classic Forth words
     ;; should be used carefully
 
@@ -997,7 +1000,7 @@
     #+end_src
 *** ready & get-back
     #+begin_src fasm :tangle threaded-code.inc
-    ;; 如果 ready 只是和 get-back 成对使用的话 
+    ;; 如果 ready 只是和 get-back 成对使用的话
     ;; 就没必要添加两个 swap 了
     ;; but we need more than that
 
@@ -1045,12 +1048,12 @@
     ;;    xx _literal, 3
     ;;    xx argument_stack_shift_to_lambda_stack
     ;;    xx pop_lambda_stack, print_little_number ; 3
-    ;;    xx pop_lambda_stack, print_little_number ; 7 
+    ;;    xx pop_lambda_stack, print_little_number ; 7
     ;;    xx pop_lambda_stack, print_little_number ; 8
     ;;    xx pop_lambda_stack, print_little_number ; 9
     ;;    xx Exit
     ;; def_verb_end t
-    #+end_src    
+    #+end_src
 ** >< string
    #+begin_src fasm :tangle threaded-code.inc
    ;; return false when length == 0
@@ -1422,63 +1425,13 @@
       next
    #+end_src
 * key-word
-** note
-   1. 可以发现有两类语法关键词
-      1) 一类是 if else then comment colon
-         它们类似与 scheme 中对语法的扩展
-      2) 一类是 literal branch false?branch address
-         它们虽然也以其后的 string 为参数
-         但是行为方式却有明显的不同
-         它们 以指定的方式 把后面的 string 处理好
-         并编译到函数体当中的同时
-         还会 在这之前 编译一个
-         定义在汇编中的函数的地址
-         这个汇编中的函数以特定的方式解释 函数体中 在其后的值
-         这些函数通常定义在汇编中的原因是
-         它们需要改变 Return-stack 的栈顶的值
-      3) 第一类语法关键词 是真正意义上的语法关键词
-         而 第二类语法关键词 存在的原因
-         是去 改变 虚拟机对函数体内部的值的单一的解释方式
-   2. 当我想要实现 对 比如说 字符 字符串 各个进位置的数字 的编译 的时候
-      有两种办法 (以 各个进位置的数字 为例):
-      1) 写 一个 string->integer,with-error
-         也就是一个解析字符串 并 给出所表示的整数的函数
-      2) 设计各种 前缀
-         也就是说把 原本需要被一个大函数解析的 前缀 从 string 中分离出来
-         然后 把这些前缀实现为 第二类语法关键词
-         此时就需要加空格了
-   3. 对比 一下 两种实现方式
-      就会发现非常有趣的结果
-      1) 首先不能说那种方式更灵活
-         因为它们分别受 空格 的限制
-         只不过 空格 限制它们的方式不同
-      2) 但是 第二种方式 具有更好的可维护性
-         因为它把一个大函数 拆开成了很多小函数
-      3) 我可以
-         把第一种 处理方式 命名为 符号性的处理方式
-         此时你要设计符号的形态
-         把第一种 处理方式 命名为 前缀性的处理方式
-         此时你要选择合适的前缀
-      4) 在 cicada 中
-         已经使用 符号性的处理方式 string->integer,with-error
-         已经使用 前缀性的处理方式 的是 literal branch false?branch
-      5) 我认为 前缀性的处理方式 更好
-         因为 它用更明显的视觉形态 降低了 代码的阅读者的 "认知上的负担"
-         - 前提是有语法高亮
-         并且 很适合中文 因为中文中原本就没有很多不表意
-         而 单表 句之结构的 标点符号
-         在我的中文代码中 表 句之结构的 标点符号 就只有空格而已
-         其实也类似于标点符号 因为它们也有 表明句之结构的功能
-         只不过它们 使用了 比异于文字的 标点符号 更 让人亲近的 文字本身而已
-      6) 仔细地 盯着 屏幕上的 英文 与 汉字 看了一会儿
-         我发现 西方的拼写字母 跟汉字相比 简直 太丑陋了
 ** literal branch false?branch
    #+begin_src fasm :tangle threaded-code.inc
    ;; with chinese support
 
    ;; this word should not be found
    ;; the interface of this word is the next word "literal"
-   def_assembly_code "", _literal
+   def_assembly_code "_literal", _literal
       ;; (* -- number *)
       ;; 1. if NOT at the end of the function body
       ;;    (* Return-stack::
@@ -1513,7 +1466,7 @@
 
    ;; the following handles _branch to "Exit"
    ;; >< alth branch to "Exit" should never be used
-   def_assembly_code "", _branch
+   def_assembly_code "_branch", _branch
       ;; 1. if NOT at the end of the function body
       ;;    (* Return-stack::
       ;;         address -- address + offset * Cell_width *)
@@ -1550,7 +1503,7 @@
 
 
    ;; the following handles _false?branch to "Exit"
-   def_assembly_code "", _false?branch
+   def_assembly_code "_false?branch", _false?branch
       ;; (* True of False -- *)
       ;; 0. if NOT _branch
       ;;    (* Return-stack::
@@ -1724,7 +1677,7 @@
 
    ;; note that:
    ;; a string in stack is string[address, length]
-   ;; a string in memory is ||  1 : length  ||  n : string  ||  1 : 0  ||
+   ;; a string in memory is ||  1 cell : length  ||  n byte : string  ||  1 byte : 0  ||
    def_verb "append-string-to-current-data-section", append_string_to_current_data_section
       ;; (* string[address, length] -- *)
       ;; for update Current_data_section
@@ -1858,7 +1811,6 @@
       xx Fasm_buffer_out
    def_noun_end Current_fasm_buffer_out
 
-   ;; ><><>< create-word-header-for-verb
 
    ;; just to find the next ";" to count the length of the word-string for define-verb
    def_verb "help:cicada->fasm,compile,colon", help__cicada_to_fasm__compile__colon
@@ -1973,6 +1925,16 @@
       with a buffer been overwrited each time the functions run
       nested calling is not allowed
    2. nested calling needs GC about string
+   3. 没有 GC 根本就很难把东西 实现正确
+      比如在这里
+      如果 把 字符出 的 存储空间 分配在 Buffer_for_read_phrase 中的话
+      那么 两个 phrase 中给出的两个字符串 就有可能 相互 覆盖
+   4. ><><>< BUG
+      可见必须有 GC 才能把这里处理好
+      但是我不能把 GC 写在汇编中
+      所以 这些问题 等我写出编译器之后再解决
+      现在所接受的 错误假设是
+      "当一个 phrase 结束时, 就假设其中的数据全部都无法被引用了"
 ** read-phrase
    #+begin_src fasm :tangle threaded-code.inc
    hereUnInitializedData
@@ -2614,55 +2576,6 @@
       xx Exit
    def_verb_end cr
    #+end_src
-* eval == compile and call
-** note
-   1. with a buffer been overwrited each time the functions run
-      nested calling is not allowed
-   2. nested calling needs GC about string
-** eval-string
-   #+begin_src fasm :tangle threaded-code.inc
-   def_verb "eval-string", eval_string
-      ;; (* string[address, length] -- *)
-      xx compile_string, call_compiled_string
-      xx Exit
-   def_verb_end eval_string
-   #+end_src
-** compile-string
-   #+begin_src fasm :tangle threaded-code.inc
-   hereUnInitializedData
-   ;; ------------------------
-   Size_of_buffer_of_function_body__for_compile_string = 1024*1024
-   Size_of_buffer_of_data_section__for_compile_string = 1024*1024
-
-   Buffer_of_function_body__for_compile_string labeling
-           preserve Size_of_buffer_of_function_body__for_compile_string
-   Buffer_of_data_section__for_compile_string labeling
-           preserve Size_of_buffer_of_data_section__for_compile_string
-
-
-   def_verb "compile-string", compile_string
-      ;; (* word-string[address, length] --  *)
-      xx Here, push_lambda_stack
-      xx Current_data_section, push_lambda_stack
-      xx   _literal, Buffer_of_function_body__for_compile_string, _address, Here, save
-      xx   _literal, Buffer_of_data_section__for_compile_string, _address, Current_data_section, save
-      xx   _Verb_explainer, append_number_to_here
-      xx   append_word_description_to_here
-      xx   The_Exit, append_number_to_here
-      xx pop_lambda_stack, _address, Current_data_section, save
-      xx pop_lambda_stack, _address, Here, save
-      xx Exit
-   def_verb_end compile_string
-   #+end_src
-** call-compiled-string
-   #+begin_src fasm :tangle threaded-code.inc
-   def_verb "call-compiled-string", call_compiled_string
-      ;; (* -- unknown *)
-      xx _literal, Buffer_of_function_body__for_compile_string
-      xx execute
-      xx Exit
-   def_verb_end call_compiled_string
-   #+end_src
 * dictionary & lexicographer
 ** explainers & execute & Exit
    #+begin_src fasm :tangle threaded-code.inc
@@ -2710,7 +2623,7 @@
       jmp qword[Explainer_pointer]
 
    empty_function_body:
-      next      
+      next
 
 
    hereCode
@@ -2739,7 +2652,7 @@
       xx Exit
    def_noun_end Exit
 
-   ;; we need the following 
+   ;; we need the following
    ;; for this word is so special
    def_noun "The-Exit", The_Exit
       xx Exit
@@ -2751,13 +2664,13 @@
    ;;    xx equal?, print_little_number
    ;;    xx Exit
    ;; def_verb_end t
-   
+
    def_noun "已矣", 已矣
       xx 已矣
    def_noun_end 已矣
 
    ;; ><><>< that is the Chinese version of "The-Exit"
- 
+
    def_noun "Verb-explainer", _Verb_explainer
       xx explain_verb
    def_noun_end _Verb_explainer
@@ -3106,6 +3019,14 @@
       xx Exit
    def_verb_end word__link_to_type
 
+   def_verb "word,link->address-of-type", word__link_to_address_of_type
+      ;; (* word.link[address] -- word.type[address] *)
+      xx _literal, Cell_width
+      xx _literal, 1, multiple
+      xx addition
+      xx Exit
+   def_verb_end word__link_to_address_of_type
+
    def_verb "word,link->explainer", word__link_to_explainer
       ;; (* word.link[address] -- word.explainer[address] *)
       xx _literal, Cell_width
@@ -3122,7 +3043,7 @@
       xx Exit
    def_verb_end word__link_to_description
    #+end_src
-** lexicographer
+** define-verb
 *** note
     1. to create a new word
        is to use some words to describe the new word
@@ -3135,6 +3056,21 @@
        唯一不 使得这种特性变得不理想的情形是:
        你在重新定义一个词的时候 需要调用旧的词本身
        这种情况非常少 并且出现的时候也很容易解决
+*** string_denote_key_word?
+    #+begin_src fasm :tangle threaded-code.inc
+    ;; a string denotes key-word or not
+    ;; is not depended on the morphology of the string
+    def_verb "string-denote-key-word?", string_denote_key_word?
+       ;; (* string[address, length] -- True or False *)
+       xx find, word_link_to_word_type
+       xx _literal, 111b, bitwise_and
+       xx _literal, 1, equal?, _false?branch, 3
+       xx   True
+       xx   Exit
+       xx False
+       xx Exit
+    def_verb_end string_denote_key_word?
+    #+end_src
 *** append-word-description-to-here
     #+begin_src fasm :tangle threaded-code.inc
     def_verb "append-number-to-here", append_number_to_here
@@ -3165,18 +3101,6 @@
        xx _address, Here, save
        xx Exit
     def_verb_end append_string_to_here
-
-
-    def_verb "string-denote-key-word?", string_denote_key_word?
-       ;; (* string[address, length] -- True or False *)
-       xx find, word_link_to_word_type
-       xx _literal, 111b, bitwise_and
-       xx _literal, 1, equal?, _false?branch, 3
-       xx   True
-       xx   Exit
-       xx False
-       xx Exit
-    def_verb_end string_denote_key_word?
 
 
     def_verb "help:append-word-description-to-here,number", help__append_word_description_to_here__number
@@ -3221,7 +3145,7 @@
        xx   Exit
     def_verb_end append_word_description_to_here
     #+end_src
-*** helper functions for define-verb
+*** helper functions
     #+begin_src fasm :tangle threaded-code.inc
     def_verb "create-word-header", create_word_header
        ;; (* string[address, length] -- word[address of link] *)
@@ -3261,7 +3185,7 @@
        xx Exit
     def_verb_end set_size_of_word
     #+end_src
-*** define-verb
+*** implementation
     #+begin_src fasm :tangle threaded-code.inc
     def_verb "define-verb", define_verb
        ;; (* words-string[address, length] -- *)
@@ -3282,7 +3206,69 @@
        xx Exit
     def_verb_end define_function
     #+end_src
-*** helper functions for define
+** eval-string,for-define
+*** note
+    1. eval == compile and call
+    2. here the Buffer_of_data_section will NOT be overwrited
+       while Buffer_of_function_body will be overwrited
+    3. nested calling is not allowed
+       nested calling needs GC about string
+*** implementation
+    #+begin_src fasm :tangle threaded-code.inc
+    def_verb "eval-string,for-define", eval_string__for_define
+       ;; (* string[address, length] -- *)
+       xx compile_string__for_define, call_compiled_string__for_define
+       xx Exit
+    def_verb_end eval_string__for_define
+    #+end_src
+*** compile-string
+    #+begin_src fasm :tangle threaded-code.inc
+    hereUnInitializedData
+    ;; ------------------------
+    Size_of_buffer_of_function_body__for_compile_string__for_define = 1024*1024
+    Size_of_buffer_of_data_section__for_compile_string__for_define = 1024*1024
+
+    Buffer_of_function_body__for_compile_string__for_define labeling
+            preserve Size_of_buffer_of_function_body__for_compile_string__for_define
+    Buffer_of_data_section__for_compile_string__for_define labeling
+            preserve Size_of_buffer_of_data_section__for_compile_string__for_define
+
+    def_noun "Current-data-section,for-compile-string,for-define", Current_data_section__for_compile_string__for_define
+       xx Buffer_of_data_section__for_compile_string__for_define
+    def_noun_end Current_data_section__for_compile_string__for_define
+
+
+    def_verb "compile-string,for-define", compile_string__for_define
+       ;; (* word-string[address, length] --  *)
+       xx Here, push_lambda_stack
+       xx Current_data_section, push_lambda_stack
+
+       xx   _literal, Buffer_of_function_body__for_compile_string__for_define
+       xx   _address, Here, save
+
+       xx   Current_data_section__for_compile_string__for_define
+       xx   _address, Current_data_section, save
+
+       xx   _Verb_explainer, append_number_to_here
+       xx   append_word_description_to_here
+       xx   The_Exit, append_number_to_here
+
+       xx pop_lambda_stack, _address, Current_data_section, save
+       xx pop_lambda_stack, _address, Here, save
+       xx Exit
+    def_verb_end compile_string__for_define
+    #+end_src
+*** call-compiled-string
+    #+begin_src fasm :tangle threaded-code.inc
+    def_verb "call-compiled-string,for-define", call_compiled_string__for_define
+       ;; (* -- unknown *)
+       xx _literal, Buffer_of_function_body__for_compile_string__for_define
+       xx execute
+       xx Exit
+    def_verb_end call_compiled_string__for_define
+    #+end_src
+** define
+*** helper functions
     #+begin_src fasm :tangle threaded-code.inc
     def_noun "Mark:append-word-description-to-here,for-noun", Mark__append_word_description_to_here__for_noun
        xx 0
@@ -3295,7 +3281,7 @@
        xx   _address, Mark__append_word_description_to_here__for_noun, save
        xx pop_lambda_stack, pop_lambda_stack
 
-       xx eval_string
+       xx eval_string__for_define
 
        ;; note that, when push stack grows to lower address
        xx fetch_argument_stack_pointer
@@ -3317,7 +3303,7 @@
        xx _branch, (.dup-$)/Cell_width
     def_verb_end append_word_description_to_here__for_noun
     #+end_src
-*** define
+*** implementation
     #+begin_src fasm :tangle threaded-code.inc
     def_verb "define", _define
        ;; (* words-string[address, length] -- *)
