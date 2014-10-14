@@ -1,0 +1,79 @@
+#+AUTHOR:    XIE Yuheng
+#+EMAIL:     xyheme@gmail.com
+
+
+* what is cicada ?
+  cicada is a very simple programming language,
+  it is a stack-based and functional language,
+  the design of cicada is influenced by scheme and forth and joy.
+
+* what is the purpose cicada project ?
+  the purpose of the cicada project is
+  - to provide support
+  - about programming language and *math*
+  - to *programmable devices*
+  - for *the creative spirit* in everyone's mind ^_^
+
+  ------------------------
+
+  by "programmable devices",
+  I intend to capture the most general concept.
+  devices better be programmable,
+  for they are stupid and can do less if we do not program them,
+  and in my point of view,
+  the more creative smart people program them,
+  the better the world will be ^_^.
+  cicada suits this generalized purpose,
+  for it is very easy to port cicada to any CPU,
+  and the IDE of cicada will be a simple yet powerful text-editor,
+  which will be used as an uniform programming platform across different hardwares.
+
+  by "the creative spirit",
+  I mean that cicada is very easy to be
+  entirely understanded by anyone who has that curiosity,
+  even my 14 years old little brother.
+  and then one can use cicada to program his/her "programmable devices".
+
+  I added "math" above,
+  simply for I love math ^_^,
+  and I will use cicada to do some math experiments,
+  to gratify my curiosity about math.
+
+* on which platforms ?
+  - cicada for linux ::
+       =vm/x86-64/linux/=
+       only for 64 bits linux.
+       when the development environments of cicada operating systems have not been written,
+       GNU/linux operating system will be used as the main development environment.
+  - cicada for windows ::
+       =vm/x86-64/windows/=
+       only for 64 bits windows.
+       which is developed under linux with the help of [[https://www.winehq.org/][wine]],
+       and tested under my friends' windows operating system.
+  - operating system for x86_64 ::
+       =vm/x86-64/baremetal=
+       single user operating system.
+       dynamic type support, users can define their own types.
+       memory management was done by an incremental garbage collector.
+       all code shared a single address space.
+  - operating system for ARM ::
+       /will be coming soon./
+       which will be running on raspberry pi.
+
+* how to install and run ?
+  please type =make help= or just =make=
+  or read the Makefile.
+
+  for examples :
+  1. after type =make linux=,
+     you should go to =vm/x86-64/linux/= to find the executable ELF file =cicada=.
+  2. after type =make x86-64-kernel=,
+     you should go to =vm/x86-64/baremetal/= to find the binary image file =cicada-image.bin=.
+     and back to the main directory, you can type =make qemu-x86-64-kernel= to test it.
+
+* where can I find more documentations ?
+  please visit
+  http://cicada-language.github.io
+
+* where to visit this open source project ?
+  https://github.com/cicada-language

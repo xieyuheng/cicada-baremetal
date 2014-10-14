@@ -11,12 +11,13 @@
       Exit
     then
     dup sub1 factorial * Exit
-  ; define-function
+  ; define-verb
 
 
   1 factorial .
   2 factorial .
   3 factorial .
+
   4 factorial .
   5 factorial .
   6 factorial .
@@ -36,83 +37,6 @@
   20 factorial .
   #+end_src
 * basic
-** define-variable & define-constant (new lexicographers)
-*** implementation
-    #+begin_src cicada :tangle english-core.cicada
-    : define-variable,by-string
-      (* initial-value, String[address, length] -- *)
-      create-word-header
-      Variable-explainer append-number-to-here
-      swap (* leave wordHeader *)
-      append-number-to-here (* the initial-value of Var *)
-      add-new-word-to-dictionary
-      Exit
-    ; define-function
-
-    : define-variable (* by word-string *)
-      (* initial-value, word-string[address, the number of words] -- *)
-      head-of-word-string
-      define-variable,by-string
-      Exit
-    ; define-function
-
-    : define-constant,by-string
-      (* initial-value, word-string[address, the number of words] -- *)
-      create-word-header
-      Constant-explainer append-number-to-here
-      swap (* leave wordHeader *)
-      append-number-to-here (* the initial-value of Const *)
-      add-new-word-to-dictionary
-      Exit
-    ; define-function
-
-    : define-constant (* by word-string *)
-      (* initial-value, word-string[address, the number of words] -- *)
-      head-of-word-string
-      define-constant,by-string
-      Exit
-    ; define-function
-    #+end_src
-*** test
-    #+begin_src cicada
-    0 : Yi ; define-variable
-
-    Yi fetch . (* 0 *) cr
-    1 Yi save
-    Yi fetch . (* 1 *) cr
-
-    7 : Qi ; define-constant
-    Qi . (* 7 *) cr
-
-    : QiJiaYi (* -- *)
-      Qi Yi fetch + .
-      Exit
-    ; define-function
-    QiJiaYi (* 8 *) cr
-    #+end_src
-** fixnum
-*** implementation
-    #+begin_src cicada :tangle english-core.cicada
-    : /mod (* a, b -- quotient, a mod b *)
-      mod/ swap
-      Exit
-    ; define-function
-
-    : / (* a, b -- quotient *)
-      /mod drop
-      Exit
-    ; define-function
-
-    : mod (* a, b -- a mod b *)
-      mod/ drop
-      Exit
-    ; define-function
-    #+end_src
-*** test
-    #+begin_src cicada
-    10 3 / . (* 3 *)
-    10 3 mod . (* 1 *)
-    #+end_src
 ** ASCII chars
    #+begin_src cicada :tangle english-core.cicada
    9   : 'tab'      ; define-constant
@@ -230,12 +154,12 @@
     : :" (* -- string[address of Basic-string-buffer, length] *)
       read-string-into-buffer
       Exit
-    ; define-function
+    ; define-verb
 
     : ." (* -- string[address of Basic-string-buffer, length] *)
       read-string-into-buffer print-string
       Exit
-    ; define-function
+    ; define-verb
 
     : define-constant-string,by-string
       (* initial-string[address, length],
@@ -246,7 +170,7 @@
       append-string-to-here (* initial-string *)
       add-new-word-to-dictionary
       Exit
-    ; define-function
+    ; define-verb
 
     : define-constant-string (* by word-string *)
       (* string[address, length],
@@ -254,7 +178,7 @@
       head-of-word-string
       define-constant-string,by-string
       Exit
-    ; define-function
+    ; define-verb
     #+end_src
 *** test
     #+begin_src cicada
@@ -262,7 +186,7 @@
     : k ; define-constant-string
     k print-string (* xxx *)
     #+end_src
-** predicates
+** ><>< predicates
    #+begin_src cicada :tangle english-core.cicada
    : special-key-word? (* word[explainer] -- True or False *)
      dup literal literal           == if drop True Exit then
@@ -270,470 +194,8 @@
      dup literal false?branch      == if drop True Exit then
      drop False
      Exit
-   ; define-function
+   ; define-verb
    #+end_src
-** writers of number
-*** note
-    1. it is great if want a reader can read
-       is identical to what a writer would write
-       and what a writer write
-       could be read by reader without any changes
-       I will try to achieve this
-    2. due to the lack of the ``semantic of substitution''
-       to achieve the following functions
-       I have to copy lots of code
-       instead of just using lambda-abstraction
-*** implementation
-**** write-dec-number
-     #+begin_src cicada :tangle english-core.cicada
-     : write-dec-number-char (* byte -- *)
-       '0' + write-char
-       Exit
-     ; define-function
-
-     : help:write-dec-number,push-chars
-       (* ... , number of small DecNumbers, fixnum --
-          ... , number of small DecNumbers *)
-       10 mod/
-       dup zero? if
-         drop swap add1 Exit
-       then
-       xx|swap|x xx|swap|x add1 swap
-       help:write-dec-number,push-chars
-       Exit
-     ; define-function
-
-     : help:write-dec-number,write-chars
-       (* ... , number of small DecNumbers -- *)
-       dup zero? if drop Exit
-       then
-       sub1 swap write-dec-number-char
-       help:write-dec-number,write-chars
-       Exit
-     ; define-function
-
-
-     : write-dec-number,unsign (* fixnum -- *)
-       0 swap
-       help:write-dec-number,push-chars
-       help:write-dec-number,write-chars
-       Exit
-     ; define-function
-
-     : write-dec-number,sign (* fixnum -- *)
-       dup 0 < if
-         '-' write-char
-         negate
-       then
-       write-dec-number,unsign
-       Exit
-     ; define-function
-
-     : write-dec-number
-       write-dec-number,sign
-       Exit
-     ; define-function
-     #+end_src
-**** write-bin-number
-     #+begin_src cicada :tangle english-core.cicada
-     : write-bin-number-char (* byte -- *)
-       '0' + write-char
-       Exit
-     ; define-function
-
-     : help:write-bin-number,push-chars
-       (* ... , number of small BinNumbers, fixnum --
-          ... , number of small BinNumbers *)
-       2 mod/
-       dup zero? if
-         drop swap add1 Exit
-       then
-       xx|swap|x xx|swap|x add1 swap
-       help:write-bin-number,push-chars
-       Exit
-     ; define-function
-
-     : help:write-bin-number,write-chars
-       (* ... , number of small BinNumbers -- *)
-       dup zero? if drop Exit
-       then
-       sub1 swap write-bin-number-char
-       help:write-bin-number,write-chars
-       Exit
-     ; define-function
-
-     : write-bin-number,unsign (* fixnum -- *)
-       0 swap
-       help:write-bin-number,push-chars
-       help:write-bin-number,write-chars
-       Exit
-     ; define-function
-
-     : write-bin-number,sign (* fixnum -- *)
-       dup 0 < if
-         '-' write-char
-         negate
-       then
-       write-bin-number,unsign
-       Exit
-     ; define-function
-
-     : write-bin-number
-       write-bin-number,sign
-       Exit
-     ; define-function
-     #+end_src
-**** write-oct-number
-     #+begin_src cicada :tangle english-core.cicada
-     : write-oct-number-char (* byte -- *)
-       '0' + write-char
-       Exit
-     ; define-function
-
-     : help:write-oct-number,push-chars
-       (* ... , number of small OctNumbers, fixnum --
-          ... , number of small OctNumbers *)
-       8 mod/
-       dup zero? if
-         drop swap add1 Exit
-       then
-       xx|swap|x xx|swap|x add1 swap
-       help:write-oct-number,push-chars
-       Exit
-     ; define-function
-
-     : help:write-oct-number,write-chars
-       (* ... , number of small OctNumbers -- *)
-       dup zero? if drop Exit
-       then
-       sub1 swap write-oct-number-char
-       help:write-oct-number,write-chars
-       Exit
-     ; define-function
-
-     : write-oct-number,unsign (* fixnum -- *)
-       0 swap
-       help:write-oct-number,push-chars
-       help:write-oct-number,write-chars
-       Exit
-     ; define-function
-
-     : write-oct-number,sign (* fixnum -- *)
-       dup 0 < if
-         '-' write-char
-         negate
-       then
-       write-oct-number,unsign
-       Exit
-     ; define-function
-
-     : write-oct-number
-       write-oct-number,sign
-       Exit
-     ; define-function
-     #+end_src
-**** write-hex-number
-     #+begin_src cicada :tangle english-core.cicada
-     : write-hex-number-char (* byte -- *)
-       dup 10 < if
-         '0' + write-char Exit
-       then
-       10 -
-       'a' + write-char
-       Exit
-     ; define-function
-
-     : write-hex-number-char,capital (* byte -- *)
-       dup 10 < if
-         '0' + write-char Exit
-       then
-       10 -
-       'A' + write-char
-       Exit
-     ; define-function
-
-     : help:write-hex-number,push-chars
-       (* ... , number of small HexNumbers, fixnum --
-          ... , number of small HexNumbers *)
-       16 mod/
-       dup zero? if
-         drop swap add1 Exit
-       then
-       xx|swap|x xx|swap|x add1 swap
-       help:write-hex-number,push-chars
-       Exit
-     ; define-function
-
-     : help:write-hex-number,write-chars
-       (* ... , number of small HexNumbers -- *)
-       dup zero? if drop Exit
-       then
-       sub1 swap write-hex-number-char
-       help:write-hex-number,write-chars
-       Exit
-     ; define-function
-
-     : help:write-hex-number,write-chars,capital
-       (* ... , number of small HexNumbers -- *)
-       dup zero? if drop Exit
-       then
-       sub1 swap write-hex-number-char,capital
-       help:write-hex-number,write-chars,capital
-       Exit
-     ; define-function
-
-     : write-hex-number,unsign (* fixnum -- *)
-       0 swap
-       help:write-hex-number,push-chars
-       help:write-hex-number,write-chars
-       Exit
-     ; define-function
-
-     : write-hex-number,capital (* fixnum -- *)
-       0 swap
-       help:write-hex-number,push-chars
-       help:write-hex-number,write-chars,capital
-       Exit
-     ; define-function
-
-     : write-hex-number,sign (* fixnum -- *)
-       dup 0 < if
-         '-' write-char
-         negate
-       then
-       write-hex-number,unsign
-       Exit
-     ; define-function
-
-     : write-hex-number,sign,capital (* fixnum -- *)
-       dup 0 < if
-         '-' write-char
-         negate
-       then
-       write-hex-number,capital
-       Exit
-     ; define-function
-
-     : write-hex-number
-       write-hex-number,sign
-       Exit
-     ; define-function
-     #+end_src
-**** write-aph-number
-     #+begin_src cicada :tangle english-core.cicada
-     : write-aph-number-char (* byte -- *)
-       dup 10 < if
-         '0' + write-char Exit
-       then
-       10 -
-       'a' + write-char
-       Exit
-     ; define-function
-
-     : write-aph-number-char,capital (* byte -- *)
-       dup 10 < if
-         '0' + write-char Exit
-       then
-       10 -
-       'A' + write-char
-       Exit
-     ; define-function
-
-     : help:write-aph-number,push-chars
-       (* ... , number of small AphNumbers, fixnum --
-          ... , number of small AphNumbers *)
-       36 mod/
-       dup zero? if
-         drop swap add1 Exit
-       then
-       xx|swap|x xx|swap|x add1 swap
-       help:write-aph-number,push-chars
-       Exit
-     ; define-function
-
-     : help:write-aph-number,write-chars
-       (* ... , number of small AphNumbers -- *)
-       dup zero? if drop Exit
-       then
-       sub1 swap write-aph-number-char
-       help:write-aph-number,write-chars
-       Exit
-     ; define-function
-
-     : help:write-aph-number,write-chars,capital
-       (* ... , number of small AphNumbers -- *)
-       dup zero? if drop Exit
-       then
-       sub1 swap write-aph-number-char,capital
-       help:write-aph-number,write-chars,capital
-       Exit
-     ; define-function
-
-     : write-aph-number,unsign (* fixnum -- *)
-       0 swap
-       help:write-aph-number,push-chars
-       help:write-aph-number,write-chars
-       Exit
-     ; define-function
-
-     : write-aph-number,capital (* fixnum -- *)
-       0 swap
-       help:write-aph-number,push-chars
-       help:write-aph-number,write-chars,capital
-       Exit
-     ; define-function
-
-     : write-aph-number,sign (* fixnum -- *)
-       dup 0 < if
-         '-' write-char
-         negate
-       then
-       write-aph-number,unsign
-       Exit
-     ; define-function
-
-     : write-aph-number,sign,capital (* fixnum -- *)
-       dup 0 < if
-         '-' write-char
-         negate
-       then
-       write-aph-number,capital
-       Exit
-     ; define-function
-
-     : write-aph-number
-       write-aph-number,sign
-       Exit
-     ; define-function
-     #+end_src
-**** usage
-     #+begin_src cicada :tangle english-core.cicada
-     : .unsign (* fixnum -- *)
-       write-dec-number
-       'space' write-char
-       Exit
-     ; define-function
-
-     : .sign (* fixnum -- *)
-       write-dec-number,sign
-       'space' write-char
-       Exit
-     ; define-function
-
-
-     : . .sign Exit ; define-function
-
-
-     : .bin (* fixnum -- *)
-       write-bin-number
-       'space' write-char
-       Exit
-     ; define-function
-
-     : .bin,sign (* fixnum -- *)
-       write-bin-number,sign
-       'space' write-char
-       Exit
-     ; define-function
-
-     : .oct (* fixnum -- *)
-       write-oct-number
-       'space' write-char
-       Exit
-     ; define-function
-
-     : .oct,sign (* fixnum -- *)
-       write-oct-number,sign
-       'space' write-char
-       Exit
-     ; define-function
-
-     : .hex (* fixnum -- *)
-       write-hex-number
-       'space' write-char
-       Exit
-     ; define-function
-
-     : .hex,sign (* fixnum -- *)
-       write-hex-number,sign
-       'space' write-char
-       Exit
-     ; define-function
-
-     : .hex,capital (* fixnum -- *)
-       write-hex-number,capital
-       'space' write-char
-       Exit
-     ; define-function
-
-     : .hex,sign,capital (* fixnum -- *)
-       write-hex-number,sign,capital
-       'space' write-char
-       Exit
-     ; define-function
-
-
-     : .aph (* fixnum -- *)
-       write-aph-number
-       'space' write-char
-       Exit
-     ; define-function
-
-     : .aph,sign (* fixnum -- *)
-       write-aph-number,sign
-       'space' write-char
-       Exit
-     ; define-function
-
-     : .aph,capital (* fixnum -- *)
-       write-aph-number,capital
-       'space' write-char
-       Exit
-     ; define-function
-
-     : .aph,sign,capital (* fixnum -- *)
-       write-aph-number,sign,capital
-       'space' write-char
-       Exit
-     ; define-function
-
-     : write-space (* -- *)
-       'space' write-char Exit
-     ; define-function
-
-     : write-some-space (* n -- *)
-       dup zero? if
-         drop Exit
-       then
-       sub1
-       write-space
-       write-some-space
-       Exit
-     ; define-function
-     #+end_src
-*** test
-    #+begin_src cicada
-    123 321 123321 . . .
-    -123 321 -123321 . . .
-    -123 321 -123321 .sign .sign .sign
-    -123 321 -123321 .unsign .unsign .unsign
-
-    123 321 123321 .bin .bin .bin
-    -123 321 -123321 .bin,sign .bin,sign .bin,sign
-
-    123 321 123321 .oct .oct .oct
-    -123 321 -123321 .oct,sign .oct,sign .oct,sign
-
-    123 321 123321 .hex .hex .hex
-    123 321 123321 .hex,capital .hex,capital .hex,capital
-    -123 321 -123321 .hex,sign .hex,sign .hex,sign
-    -123 321 -123321 .hex,sign,capital .hex,sign,capital .hex,sign,capital
-
-    123 321 123321 .aph .aph .aph
-    123 321 123321 .aph,capital .aph,capital .aph,capital
-    -123 321 -123321 .aph,sign .aph,sign .aph,sign
-    -123 321 -123321 .aph,sign,capital .aph,sign,capital .aph,sign,capital
-    #+end_src
 ** print-string,null-terminated
    #+begin_src cicada :tangle english-core.cicada
    : print-string,null-terminated
@@ -746,7 +208,469 @@
      add1
      print-string,null-terminated
      Exit
-   ; define-function
+   ; define-verb
+   #+end_src
+* writers of number
+** note
+   1. it is great if want a reader can read
+      is identical to what a writer would write
+      and what a writer write
+      could be read by reader without any changes
+      I will try to achieve this
+   2. due to the lack of the ``semantic of substitution''
+      to achieve the following functions
+      I have to copy lots of code
+      instead of just using lambda-abstraction
+** implementation
+*** write-dec-number
+    #+begin_src cicada :tangle english-core.cicada
+    : write-dec-number-char (* byte -- *)
+      '0' + write-char
+      Exit
+    ; define-verb
+
+    : help:write-dec-number,push-chars
+      (* ... , number of small DecNumbers, fixnum --
+         ... , number of small DecNumbers *)
+      10 moddiv
+      dup zero? if
+        drop swap add1 Exit
+      then
+      xx|swap|x xx|swap|x add1 swap
+      help:write-dec-number,push-chars
+      Exit
+    ; define-verb
+
+    : help:write-dec-number,write-chars
+      (* ... , number of small DecNumbers -- *)
+      dup zero? if drop Exit
+      then
+      sub1 swap write-dec-number-char
+      help:write-dec-number,write-chars
+      Exit
+    ; define-verb
+
+
+    : write-dec-number,unsign (* fixnum -- *)
+      0 swap
+      help:write-dec-number,push-chars
+      help:write-dec-number,write-chars
+      Exit
+    ; define-verb
+
+    : write-dec-number,sign (* fixnum -- *)
+      dup 0 < if
+        '-' write-char
+        negate
+      then
+      write-dec-number,unsign
+      Exit
+    ; define-verb
+
+    : write-dec-number
+      write-dec-number,sign
+      Exit
+    ; define-verb
+    #+end_src
+*** write-bin-number
+    #+begin_src cicada :tangle english-core.cicada
+    : write-bin-number-char (* byte -- *)
+      '0' + write-char
+      Exit
+    ; define-verb
+
+    : help:write-bin-number,push-chars
+      (* ... , number of small BinNumbers, fixnum --
+         ... , number of small BinNumbers *)
+      2 moddiv
+      dup zero? if
+        drop swap add1 Exit
+      then
+      xx|swap|x xx|swap|x add1 swap
+      help:write-bin-number,push-chars
+      Exit
+    ; define-verb
+
+    : help:write-bin-number,write-chars
+      (* ... , number of small BinNumbers -- *)
+      dup zero? if drop Exit
+      then
+      sub1 swap write-bin-number-char
+      help:write-bin-number,write-chars
+      Exit
+    ; define-verb
+
+    : write-bin-number,unsign (* fixnum -- *)
+      0 swap
+      help:write-bin-number,push-chars
+      help:write-bin-number,write-chars
+      Exit
+    ; define-verb
+
+    : write-bin-number,sign (* fixnum -- *)
+      dup 0 < if
+        '-' write-char
+        negate
+      then
+      write-bin-number,unsign
+      Exit
+    ; define-verb
+
+    : write-bin-number
+      write-bin-number,sign
+      Exit
+    ; define-verb
+    #+end_src
+*** write-oct-number
+    #+begin_src cicada :tangle english-core.cicada
+    : write-oct-number-char (* byte -- *)
+      '0' + write-char
+      Exit
+    ; define-verb
+
+    : help:write-oct-number,push-chars
+      (* ... , number of small OctNumbers, fixnum --
+         ... , number of small OctNumbers *)
+      8 moddiv
+      dup zero? if
+        drop swap add1 Exit
+      then
+      xx|swap|x xx|swap|x add1 swap
+      help:write-oct-number,push-chars
+      Exit
+    ; define-verb
+
+    : help:write-oct-number,write-chars
+      (* ... , number of small OctNumbers -- *)
+      dup zero? if drop Exit
+      then
+      sub1 swap write-oct-number-char
+      help:write-oct-number,write-chars
+      Exit
+    ; define-verb
+
+    : write-oct-number,unsign (* fixnum -- *)
+      0 swap
+      help:write-oct-number,push-chars
+      help:write-oct-number,write-chars
+      Exit
+    ; define-verb
+
+    : write-oct-number,sign (* fixnum -- *)
+      dup 0 < if
+        '-' write-char
+        negate
+      then
+      write-oct-number,unsign
+      Exit
+    ; define-verb
+
+    : write-oct-number
+      write-oct-number,sign
+      Exit
+    ; define-verb
+    #+end_src
+*** write-hex-number
+    #+begin_src cicada :tangle english-core.cicada
+    : write-hex-number-char (* byte -- *)
+      dup 10 < if
+        '0' + write-char Exit
+      then
+      10 -
+      'a' + write-char
+      Exit
+    ; define-verb
+
+    : write-hex-number-char,capital (* byte -- *)
+      dup 10 < if
+        '0' + write-char Exit
+      then
+      10 -
+      'A' + write-char
+      Exit
+    ; define-verb
+
+    : help:write-hex-number,push-chars
+      (* ... , number of small HexNumbers, fixnum --
+         ... , number of small HexNumbers *)
+      16 moddiv
+      dup zero? if
+        drop swap add1 Exit
+      then
+      xx|swap|x xx|swap|x add1 swap
+      help:write-hex-number,push-chars
+      Exit
+    ; define-verb
+
+    : help:write-hex-number,write-chars
+      (* ... , number of small HexNumbers -- *)
+      dup zero? if drop Exit
+      then
+      sub1 swap write-hex-number-char
+      help:write-hex-number,write-chars
+      Exit
+    ; define-verb
+
+    : help:write-hex-number,write-chars,capital
+      (* ... , number of small HexNumbers -- *)
+      dup zero? if drop Exit
+      then
+      sub1 swap write-hex-number-char,capital
+      help:write-hex-number,write-chars,capital
+      Exit
+    ; define-verb
+
+    : write-hex-number,unsign (* fixnum -- *)
+      0 swap
+      help:write-hex-number,push-chars
+      help:write-hex-number,write-chars
+      Exit
+    ; define-verb
+
+    : write-hex-number,capital (* fixnum -- *)
+      0 swap
+      help:write-hex-number,push-chars
+      help:write-hex-number,write-chars,capital
+      Exit
+    ; define-verb
+
+    : write-hex-number,sign (* fixnum -- *)
+      dup 0 < if
+        '-' write-char
+        negate
+      then
+      write-hex-number,unsign
+      Exit
+    ; define-verb
+
+    : write-hex-number,sign,capital (* fixnum -- *)
+      dup 0 < if
+        '-' write-char
+        negate
+      then
+      write-hex-number,capital
+      Exit
+    ; define-verb
+
+    : write-hex-number
+      write-hex-number,sign
+      Exit
+    ; define-verb
+    #+end_src
+*** write-aph-number
+    #+begin_src cicada :tangle english-core.cicada
+    : write-aph-number-char (* byte -- *)
+      dup 10 < if
+        '0' + write-char Exit
+      then
+      10 -
+      'a' + write-char
+      Exit
+    ; define-verb
+
+    : write-aph-number-char,capital (* byte -- *)
+      dup 10 < if
+        '0' + write-char Exit
+      then
+      10 -
+      'A' + write-char
+      Exit
+    ; define-verb
+
+    : help:write-aph-number,push-chars
+      (* ... , number of small AphNumbers, fixnum --
+         ... , number of small AphNumbers *)
+      36 moddiv
+      dup zero? if
+        drop swap add1 Exit
+      then
+      xx|swap|x xx|swap|x add1 swap
+      help:write-aph-number,push-chars
+      Exit
+    ; define-verb
+
+    : help:write-aph-number,write-chars
+      (* ... , number of small AphNumbers -- *)
+      dup zero? if drop Exit
+      then
+      sub1 swap write-aph-number-char
+      help:write-aph-number,write-chars
+      Exit
+    ; define-verb
+
+    : help:write-aph-number,write-chars,capital
+      (* ... , number of small AphNumbers -- *)
+      dup zero? if drop Exit
+      then
+      sub1 swap write-aph-number-char,capital
+      help:write-aph-number,write-chars,capital
+      Exit
+    ; define-verb
+
+    : write-aph-number,unsign (* fixnum -- *)
+      0 swap
+      help:write-aph-number,push-chars
+      help:write-aph-number,write-chars
+      Exit
+    ; define-verb
+
+    : write-aph-number,capital (* fixnum -- *)
+      0 swap
+      help:write-aph-number,push-chars
+      help:write-aph-number,write-chars,capital
+      Exit
+    ; define-verb
+
+    : write-aph-number,sign (* fixnum -- *)
+      dup 0 < if
+        '-' write-char
+        negate
+      then
+      write-aph-number,unsign
+      Exit
+    ; define-verb
+
+    : write-aph-number,sign,capital (* fixnum -- *)
+      dup 0 < if
+        '-' write-char
+        negate
+      then
+      write-aph-number,capital
+      Exit
+    ; define-verb
+
+    : write-aph-number
+      write-aph-number,sign
+      Exit
+    ; define-verb
+    #+end_src
+*** usage
+    #+begin_src cicada :tangle english-core.cicada
+    : .unsign (* fixnum -- *)
+      write-dec-number
+      'space' write-char
+      Exit
+    ; define-verb
+
+    : .sign (* fixnum -- *)
+      write-dec-number,sign
+      'space' write-char
+      Exit
+    ; define-verb
+
+
+    : . .sign Exit ; define-verb
+
+
+    : .bin (* fixnum -- *)
+      write-bin-number
+      'space' write-char
+      Exit
+    ; define-verb
+
+    : .bin,sign (* fixnum -- *)
+      write-bin-number,sign
+      'space' write-char
+      Exit
+    ; define-verb
+
+    : .oct (* fixnum -- *)
+      write-oct-number
+      'space' write-char
+      Exit
+    ; define-verb
+
+    : .oct,sign (* fixnum -- *)
+      write-oct-number,sign
+      'space' write-char
+      Exit
+    ; define-verb
+
+    : .hex (* fixnum -- *)
+      write-hex-number
+      'space' write-char
+      Exit
+    ; define-verb
+
+    : .hex,sign (* fixnum -- *)
+      write-hex-number,sign
+      'space' write-char
+      Exit
+    ; define-verb
+
+    : .hex,capital (* fixnum -- *)
+      write-hex-number,capital
+      'space' write-char
+      Exit
+    ; define-verb
+
+    : .hex,sign,capital (* fixnum -- *)
+      write-hex-number,sign,capital
+      'space' write-char
+      Exit
+    ; define-verb
+
+
+    : .aph (* fixnum -- *)
+      write-aph-number
+      'space' write-char
+      Exit
+    ; define-verb
+
+    : .aph,sign (* fixnum -- *)
+      write-aph-number,sign
+      'space' write-char
+      Exit
+    ; define-verb
+
+    : .aph,capital (* fixnum -- *)
+      write-aph-number,capital
+      'space' write-char
+      Exit
+    ; define-verb
+
+    : .aph,sign,capital (* fixnum -- *)
+      write-aph-number,sign,capital
+      'space' write-char
+      Exit
+    ; define-verb
+
+    : write-space (* -- *)
+      'space' write-char Exit
+    ; define-verb
+
+    : write-some-space (* n -- *)
+      dup zero? if
+        drop Exit
+      then
+      sub1
+      write-space
+      write-some-space
+      Exit
+    ; define-verb
+    #+end_src
+** test
+   #+begin_src cicada
+   123 321 123321 . . .
+   -123 321 -123321 . . .
+   -123 321 -123321 .sign .sign .sign
+   -123 321 -123321 .unsign .unsign .unsign
+
+   123 321 123321 .bin .bin .bin
+   -123 321 -123321 .bin,sign .bin,sign .bin,sign
+
+   123 321 123321 .oct .oct .oct
+   -123 321 -123321 .oct,sign .oct,sign .oct,sign
+
+   123 321 123321 .hex .hex .hex
+   123 321 123321 .hex,capital .hex,capital .hex,capital
+   -123 321 -123321 .hex,sign .hex,sign .hex,sign
+   -123 321 -123321 .hex,sign,capital .hex,sign,capital .hex,sign,capital
+
+   123 321 123321 .aph .aph .aph
+   123 321 123321 .aph,capital .aph,capital .aph,capital
+   -123 321 -123321 .aph,sign .aph,sign .aph,sign
+   -123 321 -123321 .aph,sign,capital .aph,sign,capital .aph,sign,capital
    #+end_src
 * *test*
   #+begin_src cicada
@@ -767,7 +691,7 @@
       then
     then
     Exit
-  ; define-function
+  ; define-verb
 
   1 2 .12 cr
   6 2 .12 cr
@@ -790,13 +714,13 @@
       Cell-width /
       sub1 (* for we are in this function call *)
       Exit
-    ; define-function
+    ; define-verb
 
     : count-argument-stack (* -- the length of ArgumentStack *)
       Argument-stack-top fetch-argument-stack-pointer -
       Cell-width /
       Exit
-    ; define-function
+    ; define-verb
 
 
     0 : Return-stack-position   ; define-variable
@@ -808,14 +732,14 @@
       Return-stack-position fetch +
       fetch
       Exit
-    ; define-function
+    ; define-verb
 
     : debuger,fetch-from-argument-stack (* n -- *)
       sub1 Cell-width *
       Argument-stack-position fetch +
       fetch
       Exit
-    ; define-function
+    ; define-verb
 
 
     :" bye"
@@ -827,7 +751,7 @@
         string->integer,with-error drop
         Exit
       then
-      dup2 find dup not-zero? if
+      dup2 find dup zero? false? if
         xx|swap|x drop2
         word-link->word-explainer execute
         Exit
@@ -836,7 +760,7 @@
       Message:undefined-word print-string
       print-string cr
       Exit
-    ; define-function
+    ; define-verb
 
     : debuger-REPL (* unknown -- unknown *)
       read-word-for-runtime
@@ -848,7 +772,7 @@
       execute-word
       debuger-REPL
       Exit
-    ; define-function
+    ; define-verb
 
     :" debuger said: ``Welcome! Hope you find what's wrong.''"
     : Message:debuger,welcome ; define-constant-string
@@ -875,14 +799,14 @@
       debuger-REPL
       Message:debuger,goodbye print-string cr
       Exit
-    ; define-function
+    ; define-verb
 
     (* ><><>< bug ><><>< *)
     (* ``1 fetch'' will cause core dump *)
     : identification-of-word? (* an address in a word -- *)
       dup fetch ==
       Exit
-    ; define-function
+    ; define-verb
 
     (* ||  1 : name-string-header-which-contains-the-length-of-name-string  ||
      * || m(bytes) : name-string  ||
@@ -904,7 +828,7 @@
       Cell-width -
       word,body->id
       Exit
-    ; define-function
+    ; define-verb
 
     : word,id->name
       (* word[identification] -- string[address, length] *)
@@ -913,21 +837,21 @@
       add8 swap
       fetch
       Exit
-    ; define-function
+    ; define-verb
 
     : word,id->explainer
       (* word[identification] -- explainer *)
       Cell-width 4 * +
       fetch
       Exit
-    ; define-function
+    ; define-verb
 
     : word,id->body-size
       (* word[identification] -- body-size *)
       Cell-width -
       fetch
       Exit
-    ; define-function
+    ; define-verb
 
     : word,id->body-list
       (* word[identification] -- body-list[address, length] *)
@@ -936,7 +860,7 @@
       swap
       word,id->body-size
       Exit
-    ; define-function
+    ; define-verb
 
     : print-name-of-explainer (* explainer -- *)
       dup Verb-explainer == if
@@ -969,7 +893,7 @@
       then
       drop
       Exit
-    ; define-function
+    ; define-verb
 
     : print-function-body-list (* body-list[address, length] -- *)
       dup zero? if
@@ -981,7 +905,7 @@
       Cell-width + swap
       print-function-body-list
       Exit
-    ; define-function
+    ; define-verb
 
     :"  -->  "
     : Message:_-->__ ; define-constant-string
@@ -1014,7 +938,7 @@
       Cell-width + swap
       with-pointer,print-function-body-list
       Exit
-    ; define-function
+    ; define-verb
 
 
     :" trace-function said: ``Ya! Let's trace a function!''"
@@ -1053,7 +977,7 @@
         word,id->body-list with-pointer,print-function-body-list
       Message:trace-function,goodbye print-string cr
       Exit
-    ; define-function
+    ; define-verb
     #+end_src
 *** simple trace
     #+begin_src cicada :tangle english-core.cicada
@@ -1061,7 +985,7 @@
       debuger,fetch-from-return-stack
       trace-function
       Exit
-    ; define-function
+    ; define-verb
     #+end_src
 *** test
     #+begin_src cicada
@@ -1073,7 +997,7 @@
        666 .
        .
        Exit
-    ; define-function
+    ; define-verb
 
     10 1 xxx
       1 debuger,fetch-from-return-stack  trace-function
@@ -1088,7 +1012,7 @@
           Exit
         then
         dup sub1 factorial * Exit
-    ; define-function
+    ; define-verb
 
     10 factorial
       1 debuger,fetch-from-return-stack
@@ -1112,7 +1036,7 @@
         debuger
         write-some-space
         Exit
-    ; define-function
+    ; define-verb
 
     100 write-some-space
       1 debuger,fetch-from-return-stack
@@ -1142,14 +1066,14 @@
       tail-and-head-of-word-string print-string cr
       print-word-list
       Exit
-    ; define-function
+    ; define-verb
 
 
     :" an error occurs!
     append-word-description-to-here said:
        ``I am a tail-recursive-function.
          My function-type is (* word-string[address, the number of words] -- *)
-         `define-function' and `define-function' call me.
+         `define-verb' and `define-verb' call me.
          The following word is undefined.
          I will print the rest of the Word-list and call debuger.''
        --> "
@@ -1202,7 +1126,7 @@
         append-word-description-to-here
         Exit
       then
-      dup2 find dup not-zero? if
+      dup2 find dup zero? false? if
         word-link->word-explainer append-number-to-here
         drop2 (* drop the string[address, length], which is for debuger *)
         append-word-description-to-here
@@ -1217,23 +1141,23 @@
       print-word-list
       debuger
       Exit
-    ; define-function
+    ; define-verb
 
-    : _define-function
-      define-function
+    : _define-verb
+      define-verb
       Exit
-    ; define-function
+    ; define-verb
 
-    : define-function
+    : define-verb
       (* word-string[address, the number of words] -- *)
       tail-and-head-of-word-string
-      create-word-header-for-function
-      set-size-of-function-body
+      create-word-header
+      set-size-of-word
       add-new-word-to-dictionary
       Verb-explainer append-number-to-here
       append-word-description-to-here
       Exit
-    ; _define-function
+    ; _define-verb
     #+end_src
 * hash
 ** note
@@ -1292,7 +1216,7 @@
      Symbol-entry-bytes-size *
      First-symbol-entry +
      Exit
-   ; define-function
+   ; define-verb
 
    : index-hashback->string
      (* index -- string[address, length] *)
@@ -1300,7 +1224,7 @@
      dup add1 swap
      fetch-byte
      Exit
-   ; define-function
+   ; define-verb
 
 
    : help:string-hash->index,sum-up
@@ -1313,7 +1237,7 @@
      x|swap|xxx  +  xx|swap|x
      help:string-hash->index,sum-up
      Exit
-   ; define-function
+   ; define-verb
 
    : help:string-hash->index,find-old-or-creat-new
      (* string[address, length], index -- index *)
@@ -1346,13 +1270,13 @@
      add1
      help:string-hash->index,find-old-or-creat-new
      Exit
-   ; define-function
+   ; define-verb
 
    : help:string-hash->index,sum-up->index
      (* sum-up -- index *)
      Number-of-symbol-entrys mod
      Exit
-   ; define-function
+   ; define-verb
 
    : string-hash->index
      (* string[address, length] -- index *)
@@ -1366,7 +1290,7 @@
        help:string-hash->index,sum-up->index
      help:string-hash->index,find-old-or-creat-new
      Exit
-   ; define-function
+   ; define-verb
    #+end_src
 ** test
    #+begin_src cicada
@@ -1481,7 +1405,7 @@
       3) I use compoundWordByCamelCase
          when the word is about non-typed value.
          examples:
-         print-string print-type-tag define-function
+         print-string print-type-tag define-verb
       4) I use compound-word-with-dashes
          when the word is about typed value.
          examples:
@@ -1541,7 +1465,7 @@
        xx|swap|x
      define-constant
      Exit
-   ; define-function
+   ; define-verb
 
    : define-pair-like-data-type
      (* word-string[address, the number of words] -- *)
@@ -1553,7 +1477,7 @@
        xx|swap|x
      define-constant
      Exit
-   ; define-function
+   ; define-verb
 
 
    (* every word can be used as a name of a data type
@@ -1571,12 +1495,12 @@
    : <fixnum-like>? (* type -- True or False *)
        index->address fetch 1 ==
        Exit
-   ; define-function
+   ; define-verb
 
 
    0 : Null ; define-constant
 
-   : null Null <null> Exit ; define-function
+   : null Null <null> Exit ; define-verb
 
    : null? (* [value, type] -- True or False *)
      <null> == if
@@ -1586,13 +1510,13 @@
        False Exit
      then
      drop False Exit
-   ; define-function
+   ; define-verb
 
 
 
 
-   : True-Bool  True  <bool> Exit ; define-function
-   : False-Bool False <bool> Exit ; define-function
+   : True-Bool  True  <bool> Exit ; define-verb
+   : False-Bool False <bool> Exit ; define-verb
 
 
 
@@ -1610,12 +1534,12 @@
    : <pair-like>? (* type -- True or False *)
        index->address fetch 2 ==
        Exit
-   ; define-function
+   ; define-verb
 
    : <not-pair-like>? (* type -- True or False *)
        index->address fetch 2 =/=
        Exit
-   ; define-function
+   ; define-verb
 
 
    : <dali-like>? (* type -- True or False *)
@@ -1626,7 +1550,7 @@
        drop True Exit
      then
      drop False Exit
-   ; define-function
+   ; define-verb
 
 
    : <not-dali-like>? (* type -- True or False *)
@@ -1637,7 +1561,7 @@
        drop False Exit
      then
      drop True Exit
-   ; define-function
+   ; define-verb
 
 
 
@@ -1663,7 +1587,7 @@
      Message:print-type-tag,error print-string
      write-dec-number cr
      debuger Exit
-   ; define-function
+   ; define-verb
 
 
    : eq? (* [value, type], [value, type] -- True or False *)
@@ -1674,7 +1598,7 @@
        drop2 False Exit
      then
      drop2 True Exit
-   ; define-function
+   ; define-verb
    #+end_src
 ** dictionary operations
 *** >< note
@@ -1701,22 +1625,22 @@
 
     : last-word-in-dictionary? (* word[address of link] -- True or False *)
         zero? Exit
-    ; define-function
+    ; define-verb
 
     : next-word-in-dictionary
       (* word[address of link] -- next-word[address of link] *)
         fetch Exit
-    ; define-function
+    ; define-verb
 
     : fetch-word-type (* word[address of link] -- WordType *)
         add8 fetch
         Exit
-    ; define-function
+    ; define-verb
 
     : save-word-type (* word[address of link], WordType -- *)
         swap add8 save
         Exit
-    ; define-function
+    ; define-verb
 
 
     0 : Offset-for-hidden-word          ; define-constant
@@ -1725,7 +1649,7 @@
     : dynamic-variable-word? (* word[address of link] -- True or False *)
         fetch-word-type Offset-for-dynamic-variable-word fetch-bit one?
         Exit
-    ; define-function
+    ; define-verb
     #+end_src
 *** test
     #+begin_src cicada
@@ -1734,7 +1658,7 @@
         (* dup last-word-in-dictionary? . *)
         next-word-in-dictionary
       Exit
-    ; define-function
+    ; define-verb
 
     first-word-in-dictionary fetch
 
@@ -1779,7 +1703,7 @@
      *   4 copy-byte-string
      *   swap drop
      *   Exit
-     * ; define-function
+     * ; define-verb
      *
      * : save-four-bytes (\* value, address -- *\)
      *   swap fetch-argument-stack-pointer
@@ -1787,7 +1711,7 @@
      *   4 copy-byte-string
      *   drop2
      *   Exit
-     * ; define-function
+     * ; define-verb
      *)
 
 
@@ -1795,7 +1719,7 @@
     : get-length-of-string (* string[address] -- length *)
       sub4 fetch-four-bytes
       Exit
-    ; define-function
+    ; define-verb
 
     : string-in?string-heap,from (* string[address] -- True or False *)
       Pointer:String-heap,from fetch
@@ -1804,7 +1728,7 @@
       xx|swap|x  >=
       bitwise-and
       Exit
-    ; define-function
+    ; define-verb
 
     : string-in?string-heap,to (* string[address] -- True or False *)
       Pointer:string-heap,to fetch
@@ -1813,7 +1737,7 @@
       xx|swap|x  >=
       bitwise-and
       Exit
-    ; define-function
+    ; define-verb
 
     : with-length,copy-byte-string
       (* source address, destination address, length -- *)
@@ -1821,7 +1745,7 @@
       swap add4 swap
       copy-byte-string
       Exit
-    ; define-function
+    ; define-verb
 
     : try,copy-substring,from->to
       (* [address, <substring>] -- [address, <substring>] *)
@@ -1844,7 +1768,7 @@
       get-length-of-string add4
       Current-free-string-address,to add-save
       Exit
-    ; define-function
+    ; define-verb
 
     (* test: *)
     (*
@@ -1869,7 +1793,7 @@
       try,copy-substring,from->to
       x|over|xxx save2 (* this line is as set-car! *)
       Exit
-    ; define-function
+    ; define-verb
 
     : try,copy-substring,from->to,for-cdr
       (* [address, <pair-like>] -- [address, <pair-like>] *)
@@ -1881,7 +1805,7 @@
       try,copy-substring,from->to
       x|over|xxx Car-bytes-size + save2 (* this line is as set-cdr! *)
       Exit
-    ; define-function
+    ; define-verb
 
 
     (*
@@ -1931,7 +1855,7 @@
       dup '"' == if
         drop 0
       then Exit
-    ; define-function
+    ; define-verb
 
     : help:read-string,loop (* begin-address -- end-address *)
       read-non-string-ending-char
@@ -1942,7 +1866,7 @@
       add1
       help:read-string,loop
       Exit
-    ; define-function
+    ; define-verb
 
     : read-string (* -- string[address, length] *)
       Current-free-string-address,from fetch add4
@@ -1955,11 +1879,11 @@
       x|over|xx (* return: address *)
       sub4 save-four-bytes
       Exit
-    ; define-function
+    ; define-verb
 
     : s" (* -- string[address, length] *)
       read-string Exit
-    ; define-function
+    ; define-verb
 
     (* test: *)
     (* s" 123 xxx aaa !!! @@@ ###" print-string *)
@@ -2023,7 +1947,7 @@
       then
       drop (* drop the type-tag *)
       sub1 fetch-byte Exit
-    ; define-function
+    ; define-verb
 
 
     :" car said:
@@ -2040,7 +1964,7 @@
       then
       drop (* drop the type-tag *)
       fetch2 Exit
-    ; define-function
+    ; define-verb
 
 
     :" cdr said:
@@ -2057,7 +1981,7 @@
       then
       drop (* drop the type-tag *)
       Car-bytes-size + fetch2 Exit
-    ; define-function
+    ; define-verb
     #+end_src
 *** color & set-clr!
     two colors is enough
@@ -2073,9 +1997,9 @@
     0 : Mutative-color-offset-for-finding  ; define-variable
     1 : Mutative-color-offset-for-marking  ; define-variable
     2 : Mutative-color-offset-for-cleaning ; define-variable
-    : Color-offset-for-finding  Mutative-color-offset-for-finding  fetch Exit ; define-function
-    : Color-offset-for-marking  Mutative-color-offset-for-marking  fetch Exit ; define-function
-    : Color-offset-for-cleaning Mutative-color-offset-for-cleaning fetch Exit ; define-function
+    : Color-offset-for-finding  Mutative-color-offset-for-finding  fetch Exit ; define-verb
+    : Color-offset-for-marking  Mutative-color-offset-for-marking  fetch Exit ; define-verb
+    : Color-offset-for-cleaning Mutative-color-offset-for-cleaning fetch Exit ; define-verb
 
     :" set-clr! said:
        ``My function-type is (* [address, <pair-like>], color-byte -- [address, <pair-like>] *)
@@ -2092,21 +2016,21 @@
       then
       drop (* drop the type-tag *)
       x|over|xx sub1 save-byte Exit
-    ; define-function
+    ; define-verb
     #+end_src
 *** marking
     #+begin_src cicada :tangle english-core.cicada
     : white-color-for-marking? (* color-byte -- True or False *)
       Color-offset-for-marking fetch-bit White == Exit
-    ; define-function
+    ; define-verb
 
     : black-color-for-marking? (* color-byte -- True or False *)
       Color-offset-for-marking fetch-bit Black == Exit
-    ; define-function
+    ; define-verb
 
     : black-<pair>? (* [address, <pair-like>] -- True or False *)
       clr black-color-for-marking? Exit
-    ; define-function
+    ; define-verb
 
 
     (* the following function is the only function who push-grey-pair-stack
@@ -2135,7 +2059,7 @@
         Exit
       then
       drop (* drop the color-byte *) Exit
-    ; define-function
+    ; define-verb
 
 
     : one,try,grey->black (* -- *)
@@ -2151,7 +2075,7 @@
           try,white->grey
         then drop2
       Exit
-    ; define-function
+    ; define-verb
 
 
     (* the following is a help-function of all,grey->black
@@ -2167,7 +2091,7 @@
           try,white->grey
         then drop2
       Exit
-    ; define-function
+    ; define-verb
 
     : all,grey->black (* -- *)
       empty-grey-pair-stack? if
@@ -2175,7 +2099,7 @@
       then
       one,grey->black
       all,grey->black Exit
-    ; define-function
+    ; define-verb
     #+end_src
 *** set!, set-car!, set-cdr!
     in cicada, to make the gc to be incremental
@@ -2190,7 +2114,7 @@
       then
       x|over|xx save2
       Exit
-    ; define-function
+    ; define-verb
 
 
     : help:set-car!&set-cdr!,for-black-<pair>
@@ -2200,7 +2124,7 @@
         try,white->grey
       then
       Exit
-    ; define-function
+    ; define-verb
 
 
     :" set-car! said:
@@ -2224,7 +2148,7 @@
       then
       x|over|xxx save2
       Exit
-    ; define-function
+    ; define-verb
 
 
     :" set-cdr! said:
@@ -2248,7 +2172,7 @@
       then
       x|over|xxx Car-bytes-size + save2
       Exit
-    ; define-function
+    ; define-verb
 
 
     (* ------------------------------------------------- *)
@@ -2275,7 +2199,7 @@
       then
       x|over|xxx save2
       Exit
-    ; define-function
+    ; define-verb
 
 
     :" [cons,cdr]! said:
@@ -2299,7 +2223,7 @@
       then
       x|over|xxx Car-bytes-size + save2
       Exit
-    ; define-function
+    ; define-verb
 
 
     (* ------------------------------------------------- *)
@@ -2327,7 +2251,7 @@
       xx|tuck|xx
       drop save2
       Exit
-    ; define-function
+    ; define-verb
 
 
     :" [cdr,cons]! said:
@@ -2352,7 +2276,7 @@
       xx|tuck|xx
       drop Car-bytes-size + save2
       Exit
-    ; define-function
+    ; define-verb
     #+end_src
 *** marking & define
     define and set! are the interface of dynamic-typed-value
@@ -2387,7 +2311,7 @@
       swap
       append-number-to-here (* address-of-name-string-header *)
       Exit
-    ; define-function
+    ; define-verb
 
     : define,by-string
       (* [value, type], string[address, length] -- *)
@@ -2400,14 +2324,14 @@
       append-number-to-here append-number-to-here
       add-new-word-to-dictionary
       Exit
-    ; define-function
+    ; define-verb
 
     : define
       (* [value, type], word-string[address, the number of words] -- *)
       head-of-word-string
       define,by-string
       Exit
-    ; define-function
+    ; define-verb
     #+end_src
 *** finding & cons : constructor of <pair>
     #+begin_src cicada :tangle english-core.cicada
@@ -2420,12 +2344,12 @@
       set-clr!
       drop
       Exit
-    ; define-function
+    ; define-verb
 
     : white-color-for-finding? (* color-byte -- True or False *)
       Color-offset-for-finding fetch-bit White ==
       Exit
-    ; define-function
+    ; define-verb
 
     : find-next-free-pair-construction
       (* pair[address] -- 0 or NextFreePairConstruction[address] *)
@@ -2440,7 +2364,7 @@
       then
       find-next-free-pair-construction
       Exit
-    ; define-function
+    ; define-verb
 
 
 
@@ -2459,7 +2383,7 @@
       Mutative-color-offset-for-finding  save
       Mutative-color-offset-for-cleaning save
       Exit
-    ; define-function
+    ; define-verb
 
 
     : dynamic-variable-word-for-<pair-like>?
@@ -2471,7 +2395,7 @@
       Exit
       then
       drop False Exit
-    ; define-function
+    ; define-verb
 
     : help:push-all-root-node-into-grey-pair-stack
       (* word[address of link] -- *)
@@ -2485,13 +2409,13 @@
       next-word-in-dictionary
       help:push-all-root-node-into-grey-pair-stack
       Exit
-    ; define-function
+    ; define-verb
 
     : push-all-root-node-into-grey-pair-stack (* -- *)
         first-word-in-dictionary fetch
         help:push-all-root-node-into-grey-pair-stack
         Exit
-    ; define-function
+    ; define-verb
 
 
 
@@ -2514,7 +2438,7 @@
         then
         First-pair-construction - Cons-bytes-size mod zero?
         Exit
-    ; define-function
+    ; define-verb
 
 
 
@@ -2531,13 +2455,13 @@
         Cell-width +
         help:all-pairs-in-argument-stack,try,white->grey
         Exit
-    ; define-function
+    ; define-verb
 
     : all-pairs-in-argument-stack,try,white->grey (* -- *)
         fetch-argument-stack-pointer
         help:all-pairs-in-argument-stack,try,white->grey
         Exit
-    ; define-function
+    ; define-verb
 
 
     : help:all-pairs-in-lambda-stack,try,white->grey
@@ -2553,13 +2477,13 @@
       Cell-width +
       help:all-pairs-in-lambda-stack,try,white->grey
       Exit
-    ; define-function
+    ; define-verb
 
     : all-pairs-in-lambda-stack,try,white->grey (* -- *)
       Lambda-stack-pointer fetch
       help:all-pairs-in-lambda-stack,try,white->grey
       Exit
-    ; define-function
+    ; define-verb
 
 
 
@@ -2569,7 +2493,7 @@
       Pointer:string-heap,to         fetch Pointer:String-heap,from         save
       Current-free-string-address,to fetch Pointer:string-heap,to           save
       Exit
-    ; define-function
+    ; define-verb
 
 
     :"  :gc: "
@@ -2581,7 +2505,7 @@
     : cons (* -- [address, <pair>] *)
         Current-free-pair-construction fetch <pair> (* leave the return <value> *)
         Current-free-pair-construction fetch find-next-free-pair-construction
-        dup not-zero? (* 0 denotes fail to find *) if
+        dup zero? false? (* 0 denotes fail to find *) if
           Current-free-pair-construction save
           Exit
         then drop (* drop the 0, which denotes fail to find, need gc *)
@@ -2590,7 +2514,7 @@
         reset-color-offsets resetVariablesAboutString (* note the timing to reset *)
         push-all-root-node-into-grey-pair-stack
         In-front-of-the-first-pair-construction find-next-free-pair-construction
-        dup not-zero? if
+        dup zero? false? if
           Current-free-pair-construction save
           Message:gc print-string
           Exit
@@ -2600,7 +2524,7 @@
         Message:cons,memory-is-used-up print-string cr
         debuger
         Exit
-    ; define-function
+    ; define-verb
     #+end_src
 *** substring & string : constructor of <substring> & <string>
     #+begin_src cicada :tangle english-core.cicada
@@ -2610,11 +2534,11 @@
       set-car!
       null set-cdr!
       Exit
-    ; define-function
+    ; define-verb
 
     : ::" (* -- [address, <string>] *)
       read-string Exit
-    ; define-function
+    ; define-verb
 
 
     :" write-string said:
@@ -2633,7 +2557,7 @@
       car drop (* drop <substring> *)
       dup get-length-of-string print-string
       Exit
-    ; define-function
+    ; define-verb
 
     : substring (* length -- address *)
       (* allocate a substring of the given length *)
@@ -2641,7 +2565,7 @@
       dup Current-free-string-address,from fetch save-four-bytes
       4 + Current-free-string-address,from add-save
       Exit
-    ; define-function
+    ; define-verb
 
     : string (* length -- [address, <string>] *)
       (* allocate a string of the given length *)
@@ -2651,14 +2575,14 @@
       [cdr,cons]!
       [car,cons]!
       Exit
-    ; define-function
+    ; define-verb
     #+end_src
 *** about test
     #+begin_src cicada :tangle english-core.cicada
     (* for test *)
     : print-type-of-it (* type -- *)
       print-type-tag ':' write-char write-space Exit
-    ; define-function
+    ; define-verb
 
     (* test: gc *)
     : ask-for-lots-of-cons (* n -- *)
@@ -2671,7 +2595,7 @@
         drop2
         ask-for-lots-of-cons
         Exit
-    ; define-function
+    ; define-verb
 
     : ask-for-lots-of-cons,leave-them-on-the-argument-stack (* n -- *)
         dup zero? if drop Exit
@@ -2683,12 +2607,12 @@
         x|swap|xx
         ask-for-lots-of-cons,leave-them-on-the-argument-stack
         Exit
-    ; define-function
+    ; define-verb
     #+end_src
 ** test
    #+begin_src cicada
-   : {* cons Exit ; define-function
-   : *} xx|swap|xxxx [cdr,cons]! [car,cons]! Exit ; define-function
+   : {* cons Exit ; define-verb
+   : *} xx|swap|xxxx [cdr,cons]! [car,cons]! Exit ; define-verb
 
 
    (* test: define *)
@@ -2813,7 +2737,7 @@
        drop2
        ask-for-lots-of-cons
        Exit
-   ; define-function
+   ; define-verb
 
 
    Number-of-pair-constructions ask-for-lots-of-cons
@@ -3041,7 +2965,7 @@
       Message:write,type-error print-string
       dup print-type-tag cr
       debuger Exit
-    ; define-function
+    ; define-verb
     #+end_src
 ** read-list & write-list
 *** note
@@ -3089,7 +3013,7 @@
         drop2 True Exit
       then
       drop2 False Exit
-    ; define-function
+    ; define-verb
 
     (* then we need mutually recursive call *)
     : execute-word,for-list-reader
@@ -3108,7 +3032,7 @@
       then
       string-hash->index <symbol>
       Exit
-    ; define-function
+    ; define-verb
     #+end_src
 *** list-escape-REPL
     #+begin_src cicada :tangle english-core.cicada
@@ -3127,7 +3051,7 @@
         drop2
         Exit
       then
-      dup2 find dup not-zero? if
+      dup2 find dup zero? false? if
         xx|swap|x drop2
         word-link->word-explainer execute
         list-escape-REPL
@@ -3138,9 +3062,9 @@
       print-string cr
       list-escape-REPL
       Exit
-    ; define-function
+    ; define-verb
 
-    : (esc list-escape-REPL Exit ; define-function
+    : (esc list-escape-REPL Exit ; define-verb
     #+end_src
 *** read-list
     #+begin_src cicada :tangle english-core.cicada
@@ -3161,9 +3085,9 @@
         xx|swap|xx  set-car!
         read-list   set-cdr!
       Exit
-    ; define-function
+    ; define-verb
 
-    : { read-list Exit ; define-function
+    : { read-list Exit ; define-verb
     #+end_src
 *** write-list
     #+begin_src cicada :tangle english-core.cicada
@@ -3180,7 +3104,7 @@
       Mid:dot print-string write-space
       write
       Exit
-    ; define-function
+    ; define-verb
 
 
     :" write-list said:
@@ -3200,7 +3124,7 @@
       help:write-list
       Ket:flower print-string write-space
       Exit
-    ; define-function
+    ; define-verb
     #+end_src
 *** test
     #+begin_src cicada
@@ -3256,7 +3180,7 @@
         null set-cdr!
       set-car!
       Exit
-    ; define-function
+    ; define-verb
 
 
     :" set-car-to-{cdr}! said:
@@ -3279,7 +3203,7 @@
         null set-cdr!
       set-cdr!
       Exit
-    ; define-function
+    ; define-verb
 
 
 
@@ -3306,7 +3230,7 @@
         xx|swap|xx set-cdr!
       set-car!
       Exit
-    ; define-function
+    ; define-verb
 
 
     :" set-car-to-{cdr.x}! said:
@@ -3332,7 +3256,7 @@
         xx|swap|xx set-cdr!
       set-cdr!
       Exit
-    ; define-function
+    ; define-verb
 
 
     :" set-car-to-{x.car}! said:
@@ -3357,7 +3281,7 @@
         xx|swap|xx set-car!
       set-car!
       Exit
-    ; define-function
+    ; define-verb
 
 
     :" set-car-to-{x.cdr}! said:
@@ -3382,7 +3306,7 @@
         xx|swap|xx set-car!
       set-cdr!
       Exit
-    ; define-function
+    ; define-verb
     #+end_src
 ** dali processing
 *** <- & ->
@@ -3401,7 +3325,7 @@
         debuger Exit
       then
       cdr car Exit
-    ; define-function
+    ; define-verb
 
 
     :" -> said:
@@ -3418,7 +3342,7 @@
         debuger Exit
       then
       cdr cdr Exit
-    ; define-function
+    ; define-verb
     #+end_src
 *** list->dali
     #+begin_src cicada :tangle english-core.cicada
@@ -3445,7 +3369,7 @@
       xx|swap|xx
       help:list->dali
       Exit
-    ; define-function
+    ; define-verb
 
 
     :" list->*dali* said:
@@ -3468,7 +3392,7 @@
       null
       help:list->dali
       Exit
-    ; define-function
+    ; define-verb
 
 
     :" list->dali* said:
@@ -3489,7 +3413,7 @@
       null
       help:list->dali
       Exit
-    ; define-function
+    ; define-verb
 
 
     :" list->*dali said:
@@ -3512,7 +3436,7 @@
       help:list->dali
       drop2
       Exit
-    ; define-function
+    ; define-verb
     #+end_src
 *** *dali? & dali*?
     #+begin_src cicada :tangle english-core.cicada
@@ -3521,14 +3445,14 @@
         True Exit
       then
       False Exit
-    ; define-function
+    ; define-verb
 
     : dali*? (* [address, <dali>] -- True or False *)
       -> null? if
         True Exit
       then
       False Exit
-    ; define-function
+    ; define-verb
     #+end_src
 *** nested-list->dali
     #+begin_src cicada :tangle english-core.cicada
@@ -3556,7 +3480,7 @@
       xx|swap|xx
       help:nested-list->dali
       Exit
-    ; define-function
+    ; define-verb
 
 
     :" nested-list->*dali said:
@@ -3579,7 +3503,7 @@
       help:nested-list->dali
       drop2
       Exit
-    ; define-function
+    ; define-verb
     #+end_src
 *** dali->tail & head<-dali
     #+begin_src cicada :tangle english-core.cicada
@@ -3603,7 +3527,7 @@
       then
       ->  dali->tail
       Exit
-    ; define-function
+    ; define-verb
 
 
     :" head<-dali said:
@@ -3626,7 +3550,7 @@
       then
       <-  head<-dali
       Exit
-    ; define-function
+    ; define-verb
     #+end_src
 *** [value,dali]-associate & [value,dali]-member?
     #+begin_src cicada :tangle english-core.cicada
@@ -3673,7 +3597,7 @@
       then
       ->  help:[value,dali]-associate
       Exit
-    ; define-function
+    ; define-verb
 
     : [value,dali]-associate
       (* [value, type], head[address, <dali-like>] --
@@ -3685,7 +3609,7 @@
       then
       help:[value,dali]-associate
       Exit
-    ; define-function
+    ; define-verb
 
 
 
@@ -3700,7 +3624,7 @@
       then
       ->  [value,dali]-member?
       Exit
-    ; define-function
+    ; define-verb
     #+end_src
 *** ^_^
     the following function is very important
@@ -3753,7 +3677,7 @@
       cdr xx|over|xx set-car! drop2
       cdr xx|over|xx set-cdr! drop2
       Exit
-    ; define-function
+    ; define-verb
     #+end_src
 *** test
     #+begin_src cicada
@@ -3917,16 +3841,16 @@
       ^_^
       help:read-*dali
       Exit
-    ; define-function
+    ; define-verb
 
 
     : read-*dali (* -- head[address, <dali>] *)
       null
       help:read-*dali
       Exit
-    ; define-function
+    ; define-verb
 
-    : [ read-*dali Exit ; define-function
+    : [ read-*dali Exit ; define-verb
     #+end_src
 *** write-*dali
     #+begin_src cicada :tangle english-core.cicada
@@ -3938,7 +3862,7 @@
       dup2
         car write
       -> help:write-*dali Exit
-    ; define-function
+    ; define-verb
 
 
     :" write-*dali said:
@@ -3958,7 +3882,7 @@
       help:write-*dali
       Ket:square print-string write-space
       Exit
-    ; define-function
+    ; define-verb
     #+end_src
 *** test
     #+begin_src cicada
@@ -4049,7 +3973,7 @@
       ready
       help:stack-LIAF->list
       Exit
-    ; define-function
+    ; define-verb
 
     : stack-LIAF->list
       (* ..., number -- [address, <list>] *)
@@ -4062,7 +3986,7 @@
       ready
         help:stack-LIAF->list
       get-back Exit
-    ; define-function
+    ; define-verb
 
 
     : help:stack-FIAF->list
@@ -4078,7 +4002,7 @@
       get-back [cons,cdr]! ready
       help:stack-FIAF->list
       Exit
-    ; define-function
+    ; define-verb
 
     : stack-FIAF->list
       (* ..., number -- [address, <list>] *)
@@ -4090,7 +4014,7 @@
         help:stack-FIAF->list
       get-back
       Exit
-    ; define-function
+    ; define-verb
     #+end_src
 *** stack->dali
     #+begin_src cicada :tangle english-core.cicada
@@ -4115,7 +4039,7 @@
       ready
       help:stack-LIAF->dali
       Exit
-    ; define-function
+    ; define-verb
 
     : stack-LIAF->dali
       (* ..., number -- [address, <dali>] *)
@@ -4126,7 +4050,7 @@
       ready
       help:stack-LIAF->dali
       Exit
-    ; define-function
+    ; define-verb
 
 
     : help:stack-FIAF->dali
@@ -4148,7 +4072,7 @@
       ready
       help:stack-FIAF->dali
       Exit
-    ; define-function
+    ; define-verb
 
     : stack-FIAF->dali
       (* ..., number -- [address, <dali>] *)
@@ -4163,7 +4087,7 @@
       ready
       help:stack-FIAF->dali
       Exit
-    ; define-function
+    ; define-verb
     #+end_src
 *** list->stack
     #+begin_src cicada :tangle english-core.cicada
@@ -4203,7 +4127,7 @@
       (* leave the value of the [value, <not-pair-like>] *)
       help:stack<-FIAF-list
       Exit
-    ; define-function
+    ; define-verb
 
     : stack<-FIAF-list
       (* [address, <list>] -- ... *)
@@ -4215,7 +4139,7 @@
       ready
       help:stack<-FIAF-list
       Exit
-    ; define-function
+    ; define-verb
     #+end_src
 *** test
     #+begin_src cicada
@@ -4274,7 +4198,7 @@
       dup  128 < if    drop False Exit
       then
       drop True Exit
-    ; define-function
+    ; define-verb
     #+end_src
 *** Bound-variable
     #+begin_src cicada :tangle english-core.cicada
@@ -4300,7 +4224,7 @@
         then
       then
       Exit
-    ; define-function
+    ; define-verb
 
     :" an error occurs!
     symbol-denote-bound-variable,one? said:
@@ -4320,7 +4244,7 @@
       index-hashback->string
       string-denote-bound-variable,one?
       Exit
-    ; define-function
+    ; define-verb
 
 
 
@@ -4334,7 +4258,7 @@
       then
       string-denote-bound-variable,one? Exit
       Exit
-    ; define-function
+    ; define-verb
 
     :" an error occurs!
     symbol-denote-bound-variable,two? said:
@@ -4354,7 +4278,7 @@
       index-hashback->string
       string-denote-bound-variable,two?
       Exit
-    ; define-function
+    ; define-verb
 
 
 
@@ -4369,7 +4293,7 @@
       then
       string-denote-bound-variable,two? Exit
       Exit
-    ; define-function
+    ; define-verb
 
     :" an error occurs!
     symbol-denote-bound-variable,three? said:
@@ -4389,7 +4313,7 @@
       index-hashback->string
       string-denote-bound-variable,three?
       Exit
-    ; define-function
+    ; define-verb
 
 
 
@@ -4403,7 +4327,7 @@
       then
       string-denote-bound-variable,three? Exit
       Exit
-    ; define-function
+    ; define-verb
 
     :" an error occurs!
     symbol-denote-bound-variable,four? said:
@@ -4423,7 +4347,7 @@
       index-hashback->string
       string-denote-bound-variable,four?
       Exit
-    ; define-function
+    ; define-verb
 
 
 
@@ -4443,7 +4367,7 @@
         drop2 True Exit
       then
       drop2 False Exit
-    ; define-function
+    ; define-verb
 
     :" an error occurs!
     symbol-denote-bound-variable? said:
@@ -4463,7 +4387,7 @@
       index-hashback->string
       string-denote-bound-variable?
       Exit
-    ; define-function
+    ; define-verb
     #+end_src
 *** wodi
     #+begin_src cicada :tangle english-core.cicada
@@ -4488,7 +4412,7 @@
         drop2 False Exit
       then
       drop2 True Exit
-    ; define-function
+    ; define-verb
 
     :" an error occurs!
     symbol-denote-wodi? said:
@@ -4508,7 +4432,7 @@
       index-hashback->string
       string-denote-wodi?
       Exit
-    ; define-function
+    ; define-verb
     #+end_src
 *** LambdaArgument
     #+begin_src cicada :tangle english-core.cicada
@@ -4522,7 +4446,7 @@
         drop2 False Exit
       then
       string-denote-bound-variable,one? Exit
-    ; define-function
+    ; define-verb
 
     :" an error occurs!
     symbol-denote-lambda-argument,one? said:
@@ -4542,7 +4466,7 @@
       index-hashback->string
       string-denote-lambda-argument,one?
       Exit
-    ; define-function
+    ; define-verb
 
 
 
@@ -4556,7 +4480,7 @@
         drop2 False Exit
       then
       string-denote-bound-variable,two? Exit
-    ; define-function
+    ; define-verb
 
     :" an error occurs!
     symbol-denote-lambda-argument,two? said:
@@ -4576,7 +4500,7 @@
       index-hashback->string
       string-denote-lambda-argument,two?
       Exit
-    ; define-function
+    ; define-verb
 
 
 
@@ -4591,7 +4515,7 @@
         drop2 False Exit
       then
       string-denote-bound-variable,three? Exit
-    ; define-function
+    ; define-verb
 
     :" an error occurs!
     symbol-denote-lambda-argument,three? said:
@@ -4611,7 +4535,7 @@
       index-hashback->string
       string-denote-lambda-argument,three?
       Exit
-    ; define-function
+    ; define-verb
 
 
 
@@ -4626,7 +4550,7 @@
         drop2 False Exit
       then
       string-denote-bound-variable,four? Exit
-    ; define-function
+    ; define-verb
 
     :" an error occurs!
     symbol-denote-lambda-argument,four? said:
@@ -4646,7 +4570,7 @@
       index-hashback->string
       string-denote-lambda-argument,four?
       Exit
-    ; define-function
+    ; define-verb
 
 
 
@@ -4665,7 +4589,7 @@
         drop2 True Exit
       then
       drop2 False Exit
-    ; define-function
+    ; define-verb
 
     :" an error occurs!
     symbol-denote-lambda-argument? said:
@@ -4685,7 +4609,7 @@
       index-hashback->string
       string-denote-lambda-argument?
       Exit
-    ; define-function
+    ; define-verb
     #+end_src
 *** test
     #+begin_src cicada
@@ -4812,7 +4736,7 @@
           help:with-word,read-wodi-or-bound-variable
         set-cdr!
       Exit
-    ; define-function
+    ; define-verb
 
 
     : with-word,read-wodi-or-bound-variable
@@ -4830,7 +4754,7 @@
       (* return the next ``wodi'' word
          it must be handled in help:read-wodili *)
       Exit
-    ; define-function
+    ; define-verb
 
 
 
@@ -4881,7 +4805,7 @@
       xx|swap|xx
       help:read-wodili
       Exit
-    ; define-function
+    ; define-verb
 
 
 
@@ -4894,9 +4818,9 @@
       then
       help:read-wodili
       Exit
-    ; define-function
+    ; define-verb
 
-    : ( read-wodili Exit ; define-function
+    : ( read-wodili Exit ; define-verb
     #+end_src
 *** write-wodi & write-wodili
     #+begin_src cicada :tangle english-core.cicada
@@ -4920,7 +4844,7 @@
         car write
       cdr help:write-list
       Exit
-    ; define-function
+    ; define-verb
 
 
 
@@ -4932,7 +4856,7 @@
       dup2
         car write
       -> help:write-wodili Exit
-    ; define-function
+    ; define-verb
 
 
     :" write-wodili said:
@@ -4953,7 +4877,7 @@
       help:write-wodili
       Ket:round print-string write-space
       Exit
-    ; define-function
+    ; define-verb
     #+end_src
 *** test
     #+begin_src cicada
@@ -4994,7 +4918,7 @@
         drop True Exit
       then
       drop False Exit
-    ; define-function
+    ; define-verb
 
     (* ><><>< the following comment should be rewritten *)
     (* redefine execute-word to handle the following symbols
@@ -5073,7 +4997,7 @@
           xx|swap|xx set-cdr!
         Exit
       then
-      dup2 find dup not-zero? if
+      dup2 find dup zero? false? if
         xx|swap|x drop2
         word-link->word-explainer execute Exit
       then
@@ -5081,7 +5005,7 @@
       Message:undefined-word print-string
       print-string (* print the word *) cr
       Exit
-    ; define-function
+    ; define-verb
 
     (* if wished
      *   one needs to use help:symbol-REPL to do the recursive
@@ -5094,7 +5018,7 @@
       execute-word
       symbol-REPL
       Exit
-    ; define-function
+    ; define-verb
     #+end_src
 *** test
     #+begin_src cicada
@@ -5174,7 +5098,7 @@
         核心的一对概念就是
         "撰" 与 "释"
         目前你已经看到了 两种 对这一对概念的具体化
-        1) define-function & execute-word
+        1) define-verb & execute-word
         2) lambda & apply
         更一般地
         当再次需要 通过具体化这一对概念
@@ -5240,7 +5164,7 @@
       then
       ->  bound-variable-wodili?
       Exit
-    ; define-function
+    ; define-verb
 
 
     (*
@@ -5273,7 +5197,7 @@
             drop True Exit
       then
       drop2 False Exit
-    ; define-function
+    ; define-verb
 
     (*
      * test:
@@ -5327,7 +5251,7 @@
         (* so the order of bound-variable-wodili will be preserved *)
       ready
       ->  help:bound-variable-wodili-subtraction Exit
-    ; define-function
+    ; define-verb
 
 
     (* the following function will creat a new wodili, maybe ``null'' *)
@@ -5348,7 +5272,7 @@
       (* LambdaStack::  [Null, <null>] *)
       help:bound-variable-wodili-subtraction
       Exit
-    ; define-function
+    ; define-verb
 
 
     (*
@@ -5475,7 +5399,7 @@
       (* here is general symbol *)
       drop2
       <-  help:lambda,set-bound-variables Exit
-    ; define-function
+    ; define-verb
 
 
     : help:lambda,set-function-body
@@ -5520,7 +5444,7 @@
         [cdr,cons]!  [car,cons]!
       [cons,car]!
       <-  help:lambda,set-function-body Exit
-    ; define-function
+    ; define-verb
 
 
 
@@ -5532,7 +5456,7 @@
         xx|swap|xx set-cdr!
         xx|swap|xx set-car!
       Exit
-    ; define-function
+    ; define-verb
 
 
 
@@ -5601,9 +5525,9 @@
       (* [address, <wodili>], [address, <dali>] *)
       help:lambda,make-lambda-function
       Exit
-    ; define-function
+    ; define-verb
 
-    : λ lambda Exit ; define-function
+    : λ lambda Exit ; define-verb
     #+end_src
 *** test
     #+begin_src cicada
@@ -5710,7 +5634,7 @@
       [cons,cdr]!
       lambda-body-stack save2
       Exit
-    ; define-function
+    ; define-verb
 
     : drop,lambda-body-stack
       (* -- *)
@@ -5718,7 +5642,7 @@
       cdr
       lambda-body-stack save2
       Exit
-    ; define-function
+    ; define-verb
     #+end_src
 *** help:apply,eval-lambda-body
     #+begin_src cicada :tangle english-core.cicada
@@ -5752,7 +5676,7 @@
       [cons,car]! drop2
       car
       Exit
-    ; define-function
+    ; define-verb
 
 
     :" help:apply,eval-lambda-body said:
@@ -5824,7 +5748,7 @@
          leave the value and the type in the stack *)
       help:apply,eval-lambda-body
       Exit
-    ; define-function
+    ; define-verb
     #+end_src
 *** apply
     #+begin_src cicada :tangle english-core.cicada
@@ -5859,7 +5783,7 @@
       [cons,cdr]!  drop2
       help-to-rec,help:apply,set-variables
       Exit
-    ; define-function
+    ; define-verb
 
 
     : help:apply,set-variables
@@ -5867,7 +5791,7 @@
       ready
         help-to-rec,help:apply,set-variables
       get-back drop2 Exit
-    ; define-function
+    ; define-verb
 
 
 
@@ -5898,7 +5822,7 @@
       print-type-tag cr
       drop (* drop the the value been getted back *)
       debuger Exit
-    ; define-function
+    ; define-verb
     #+end_src
 *** syntax sugar
     #+begin_src cicada :tangle english-core.cicada
@@ -5909,7 +5833,7 @@
          ---------------------------
          unknow *)
       ready apply Exit
-    ; define-function
+    ; define-verb
     #+end_src
 *** test
     #+begin_src cicada
@@ -6108,7 +6032,7 @@
     [ ::x ]
     ( ::x 3 4 ) λ
     : Var,I ; define
-    : I Var,I fetch2 Exit ; define-function
+    : I Var,I fetch2 Exit ; define-verb
 
     1 2 I @
     . . . . (* 4 3 2 1 *) cr
@@ -6126,7 +6050,7 @@
     [ ::x ]
     ( ::x 3 4 ) λ
     : I ; define
-    : I I fetch2 Exit ; define-function
+    : I I fetch2 Exit ; define-verb
 
     1 2 I @
     . . . . (* 4 3 2 1 *) cr
@@ -6146,7 +6070,7 @@
       ( ::F ) λ ]
     ( ::T ) λ
     : Var,T ; define
-    : T Var,T fetch2 Exit ; define-function
+    : T Var,T fetch2 Exit ; define-verb
 
     [ 1 2 3 . . . ] ( ) λ <::T
     T @ ready
@@ -6167,7 +6091,7 @@
       ( ::F ) λ ]
     ( ::T ) λ
     : Var,F ; define
-    : F Var,F fetch2 Exit ; define-function
+    : F Var,F fetch2 Exit ; define-verb
 
     [ 1 2 3 . . . ] null λ <::T
     F @ ready
@@ -6182,14 +6106,14 @@
       true? if
         T Exit
       then F Exit
-    ; define-function
+    ; define-verb
 
     [ [ ::true <::T :if make-lambda-bool @ ready
         ::false <::F apply ]
       ( :if ) λ ]
     ( ::true ::false ) λ
     : Var,IF ; define
-    : IF Var,IF fetch2 Exit ; define-function
+    : IF Var,IF fetch2 Exit ; define-verb
 
     True <:if
     [ 1 2 3 . . . ] null λ <::true
@@ -6238,7 +6162,7 @@
       [ [ ::x <::x ::x @ ] null λ <::rec ::y @ ]  ( ::x ) λ @ ]
     ( ::y ) λ
     : Var,Y ; define
-    : Y Var,Y fetch2 Exit ; define-function
+    : Y Var,Y fetch2 Exit ; define-verb
 
 
     [ [ [ 1 ] null λ <::true
@@ -6248,7 +6172,7 @@
       ( :n ) λ ]
     ( ::rec ) λ  <::y  Y @
     : Var,factorial ; define
-    : factorial Var,factorial fetch2 Exit ; define-function
+    : factorial Var,factorial fetch2 Exit ; define-verb
 
     1 <:n factorial @ .
     2 <:n factorial @ .
@@ -6320,21 +6244,21 @@
 
 
     : Var,I ; define
-    : I Var,I fetch2 Exit ; define-function
+    : I Var,I fetch2 Exit ; define-verb
 
 
     : defineLambda,byString
       (* [value, type], string[address, length] -- *)
 
       Exit
-    ; define-function
+    ; define-verb
 
     : defineLambda,byString
       (* [value, type], wordlist[address, number of words] -- *)
       head-of-word-string
       defineLambda,byString
       Exit
-    ; define-function
+    ; define-verb
     #+end_src
 * >< editor
 ** x & k
@@ -6445,7 +6369,7 @@
      then
      find-char-address
      Exit
-   ; define-function
+   ; define-verb
 
    : find-char-index
      (* char, [address, length] -- index or -1 *)
@@ -6458,7 +6382,7 @@
      then
      swap -
      Exit
-   ; define-function
+   ; define-verb
 
 
    (* little test:
@@ -6531,7 +6455,7 @@
      ready
      help:string->line-dali
      Exit
-   ; define-function
+   ; define-verb
 
    : string->line-dali
      (* [address, length] -- head[address, <dali>] *)
@@ -6541,7 +6465,7 @@
      null ready
      help:string->line-dali
      Exit
-   ; define-function
+   ; define-verb
    #+end_src
 ** test: string->line-dali
    #+begin_src cicada
@@ -6600,7 +6524,7 @@
    : LineBuffer (*  -- buffer[address] *)
      Var,LineBuffer fetch
      Exit
-   ; define-function
+   ; define-verb
 
 
    0 : Var,Tmp,LineBuffer ; define-variable
@@ -6611,7 +6535,7 @@
    : Tmp,LineBuffer (*  -- buffer[address] *)
      Var,Tmp,LineBuffer fetch
      Exit
-   ; define-function
+   ; define-verb
 
 
    : copyStringToBuffer
@@ -6624,7 +6548,7 @@
      pop-lambda-stack
      swap
      Exit
-   ; define-function
+   ; define-verb
 
    : copyStringToLine
      (* string[address, length], buffer[address] --
@@ -6634,7 +6558,7 @@
      0 <fixnum>
      [cons,car]!
      Exit
-   ; define-function
+   ; define-verb
 
 
    : line,move-cursor-right
@@ -6643,7 +6567,7 @@
      xx|over|x car drop (* drop <fixnum> *)
      +  <fixnum> [cons,car]!
      Exit
-   ; define-function
+   ; define-verb
 
    : line,move-cursor-left
      (* buffer[address, length], cursors[address, <list>], number --
@@ -6651,14 +6575,14 @@
      xx|over|x car drop (* drop <fixnum> *)
      -  <fixnum> [cons,car]!
      Exit
-   ; define-function
+   ; define-verb
 
    : line,move-cursor-to-col
      (* buffer[address, length], cursors[address, <list>], index --
         buffer[address, length], cursors[address, <list>] *)
      <fixnum> [cons,car]!
      Exit
-   ; define-function
+   ; define-verb
 
 
    (* ><><><
@@ -6689,7 +6613,7 @@
      x|tuck|xx car drop (* <fixnum> *)
      + <fixnum> [cons,car]!
      Exit
-   ; define-function
+   ; define-verb
 
    (*
     * test:
@@ -6722,7 +6646,7 @@
      get-back dup2 car drop (* <fixnum> *)
      add1 <fixnum> [cons,car]!
      Exit
-   ; define-function
+   ; define-verb
 
 
    (*
@@ -6752,13 +6676,13 @@
      xx|swap|x
 
      Exit
-   ; define-function
+   ; define-verb
 
    : line,kill-line (* erase-half-line-to-end *)
      (* buffer[address, length], cursors[address, <list>] --
         buffer[address, length], cursors[address, <list>] *)
      Exit
-   ; define-function
+   ; define-verb
 
 
 
@@ -6768,16 +6692,16 @@
 
    (*
     * : text,move-cursor-up (\* number -- *\)
-    * ; define-function
+    * ; define-verb
     *
     * : text,move-cursor-down (\* number -- *\)
-    * ; define-function
+    * ; define-verb
     *
     * : text,move-cursor-down-&-to-the-begin-of-line (\* number -- *\)
-    * ; define-function
+    * ; define-verb
     *
     * : text,move-cursor-up-&-to-the-begin-of-line (\* number -- *\)
-    * ; define-function
+    * ; define-verb
     *)
 
 
@@ -6785,10 +6709,10 @@
 
    (*
     * : text,move-cursor-to-row (\* row-index -- *\)
-    * ; define-function
+    * ; define-verb
     *
     * : text,move-cursor-to-row-&-col (\* row-index, col-index -- *\)
-    * ; define-function
+    * ; define-verb
     *)
 
 
@@ -6801,20 +6725,20 @@
 
    (*
     * : delete-lines (\* number -- *\)
-    * ; define-function
+    * ; define-verb
     *)
 
 
 
    (*
     * : erase-half-screen-to-end (\* -- *\)
-    * ; define-function
+    * ; define-verb
     *
     * : erase-half-screen-to-start (\* -- *\)
-    * ; define-function
+    * ; define-verb
     *
     * : erase-screen (\* -- *\)
-    * ; define-function
+    * ; define-verb
     *)
    #+end_src
 ** >< tryREDL
@@ -6833,7 +6757,7 @@
      Var-string,for-update-display
      fetch2 print-string cr
      Exit
-   ; define-function
+   ; define-verb
 
 
    :" kkk
@@ -6841,7 +6765,7 @@
      setTerminalToReadKey
      help:tryREDL
      Exit
-   ; define-function
+   ; define-verb
    "
    : String-for,kkk ; define-constant-string
 
@@ -6852,7 +6776,7 @@
      Var-string,for-update-display
      save2
      Exit
-   ; define-function
+   ; define-verb
 
    :" aaa
 
@@ -6867,7 +6791,7 @@
      (* L *)
      help:tryREDL
      Exit
-   ; define-function
+   ; define-verb
    "
    : String-for,aaa
    ; define-constant-string
@@ -6879,7 +6803,7 @@
      Var-string,for-update-display
      save2
      Exit
-   ; define-function
+   ; define-verb
 
 
 
@@ -6893,7 +6817,7 @@
        drop Symbol-index:aaa <symbol> Exit
      then
      Exit
-   ; define-function
+   ; define-verb
 
 
    :" executeSymbol said:
@@ -6913,7 +6837,7 @@
      index-hashback->string
      execute-word
      Exit
-   ; define-function
+   ; define-verb
 
 
 
@@ -6928,15 +6852,15 @@
      (* L *)
      help:tryREDL
      Exit
-   ; define-function
+   ; define-verb
 
    : tryREDL (*  --  *)
      setTerminalToReadKey
      help:tryREDL
      Exit
-   ; define-function
+   ; define-verb
 
-   : t tryREDL Exit ; define-function
+   : t tryREDL Exit ; define-verb
    #+end_src
 * misc
 ** >< memory allocation
@@ -6960,16 +6884,16 @@
 
 
     : defineStack (*  -- *)
-    ; define-function
+    ; define-verb
 
     : defineHeap (*  -- *)
-    ; define-function
+    ; define-verb
 
     : defineArray (*  -- *)
-    ; define-function
+    ; define-verb
 
     : defineBuffer (*  -- *)
-    ; define-function
+    ; define-verb
     #+end_src
 ** --------------------------------------
 ** ok
@@ -6982,7 +6906,7 @@
      Message:yes print-string
      write-space
      Exit
-   ; define-function
+   ; define-verb
    #+end_src
 ** --------------------------------------
 ** welcome
@@ -6992,7 +6916,7 @@
    : welcome (* -- *)
      Message:welcome print-string cr
      Exit
-   ; define-function
+   ; define-verb
 
    cr
 

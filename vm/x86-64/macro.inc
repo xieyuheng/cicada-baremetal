@@ -78,7 +78,7 @@ TypeOf#Word:
 AddressOfWordStringHeaderOf#Word:
         xx WordStringHeaderOf#Word
 ;;======================================
-Word:   xx explain_function_body
+Word:   xx explain_verb
 ;;--------------------------------------
         ;; here follows a list of word[explainer]
         }
@@ -112,7 +112,7 @@ TypeOf#KeyWord:
 AddressOfKeyWordStringHeaderOf#KeyWord:
         xx KeyWordStringHeaderOf#KeyWord
 ;;======================================
-KeyWord:   xx explain_function_body
+KeyWord:   xx explain_verb
 ;;--------------------------------------
         ;; here follows a list of word[explainer]
         }
@@ -181,7 +181,7 @@ Word:   xx explain_noun
 ;;--------------------------------------
         ;; here follows a list of value
         }
-;; word - (5 * Cell_width)
+
 macro def_noun_end Word {
 EndOfNounBodyOf#Word:
 }
@@ -191,7 +191,7 @@ EndOfNounBodyOf#Word:
 ;; in memory:
 ;;   ||  1 : length  ||
 ;;   ||  n : string  ||
-macro def_noun_string WordString, ConstStringValue, Word {
+macro def_string WordString, ConstStringValue, Word {
 hereInitializedData
 
 def_noun WordString, Word

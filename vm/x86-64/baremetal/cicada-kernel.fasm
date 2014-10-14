@@ -1376,7 +1376,7 @@ def_assembly_code "reboot", reboot
        mov al, 0xFE
        out 0x64, al                    ; Send the reboot call to the keyboard controller
        jmp .loop
-def_verb ".", printLittleNumber
+def_verb ".", print_little_number
        xx _literal, '0'
        xx addition, write_char
        xx _literal, 32
@@ -1384,7 +1384,7 @@ def_verb ".", printLittleNumber
        xx _literal, 32
        xx write_char
        xx Exit
-def_verb_end printLittleNumber
+def_verb_end print_little_number
 def_noun "Address-of-VBE-info-block", Assembly_VBEInfoBlock
    xx  VBEInfoBlock
 def_noun_end Assembly_VBEInfoBlock

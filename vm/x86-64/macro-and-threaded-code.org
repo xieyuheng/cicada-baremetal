@@ -9,7 +9,7 @@
    1. when "push", a stack-pointer moves to lower address
    2. under the a stack-pointer,
       there always stores the value of the-top-of-the-stack
-** registers & pop & push
+** registers & push & pop
    #+begin_src fasm :tangle macro.inc
    ;; if you want to extend cicada in assembly,
    ;; the following four registers must not be used
@@ -76,9 +76,9 @@
        it will works just well
     7. "next" will "pop_return_stack"
        1) on the other hand,
-          explain_function_body is the only explainer
+          explain_verb is the only explainer
           who "push_return_stack"
-       2) so, it is these two functions, "next" and "explain_function_body"
+       2) so, it is these two functions, "next" and "explain_verb"
           which handle the nested function calls
 *** implementation
     #+begin_src fasm :tangle macro.inc
@@ -132,7 +132,7 @@
     AddressOfWordStringHeaderOf#Word:
             xx WordStringHeaderOf#Word
     ;;======================================
-    Word:   xx explain_function_body
+    Word:   xx explain_verb
     ;;--------------------------------------
             ;; here follows a list of word[explainer]
             }
@@ -166,7 +166,7 @@
     AddressOfKeyWordStringHeaderOf#KeyWord:
             xx KeyWordStringHeaderOf#KeyWord
     ;;======================================
-    KeyWord:   xx explain_function_body
+    KeyWord:   xx explain_verb
     ;;--------------------------------------
             ;; here follows a list of word[explainer]
             }
@@ -235,7 +235,7 @@
     ;;--------------------------------------
             ;; here follows a list of value
             }
-    ;; word - (5 * Cell_width)
+
     macro def_noun_end Word {
     EndOfNounBodyOf#Word:
     }
@@ -245,7 +245,7 @@
     ;; in memory:
     ;;   ||  1 : length  ||
     ;;   ||  n : string  ||
-    macro def_noun_string WordString, ConstStringValue, Word {
+    macro def_string WordString, ConstStringValue, Word {
     hereInitializedData
 
     def_noun WordString, Word
@@ -261,149 +261,8 @@
             }
     #+end_src
 * ==================================================
-* basic-REPL
-  #+begin_src fasm :tangle threaded-code.inc
-  def_verb "basic-REPL", basic_REPL
-     ;; (* unknown -- unknown *)
-     ;; ><><>< init srack ???
-     .read_phrase:
-     xx read_phrase
-     xx compile_phrase, call_phrase
-     xx _branch, (.read_phrase-$)/Cell_width
-  def_verb_end basic_REPL
-
-  def_verb "execute-word", execute_word
-     ;; (* string[address, length] -- unknown *)
-     xx dup2, string_denote_integer?, _false?branch, 4
-     xx   string_to_integer__with_error, drop
-     xx   Exit
-     xx dup2, find, dup, _false?branch, 6
-     xx   xxswapx, drop2
-     xx   word_link_to_word_explainer, execute
-     xx   Exit
-     xx drop ;; drop zero
-     xx Message_undefined_word, print_string
-     xx print_string
-     xx _literal, ASCII_linefeed, write_char
-     xx Exit
-  def_verb_end execute_word
-
-  def_noun_string "Message:undefined-word", "   UNDEFINED WORD: ", Message_undefined_word
-  #+end_src
-* phrase
-** note
-   1. again not fancy stuff
-      functions about phrase are just for runtime
-      with a buffer been overwrited each time the functions run
-** read-phrase
-   #+begin_src fasm :tangle threaded-code.inc
-   hereUnInitializedData
-   ;; ------------------------
-   Size_of_buffer_for_read_phrase = 1024*1024
-
-   Buffer_for_read_phrase labeling
-           preserve Size_of_buffer_for_read_phrase
-
-
-   ;; 1. use "read_word__while_saving_to_string"
-   ;; 2. 每次 读一个 词 然后看 词界 是否是 回车
-   ;;    如果是 就做一个 phrase 然后返回
-   ;;    如果不是 就继续读
-   ;; 3. only ":" ";", as a pair of bra-ket, are been handled by a counter here
-   ;;    >< this is not the right thing
-   ;;    因为 比如说 当出现 "(" 的时候
-   ;;    后面所跟的字符串 一定要保证 能够被 正确地 "(" 处理
-   ;;    也就是 read-phrase 说这个函数
-   ;;    只应该接受 那些 bra-ket 正确匹配了的 以回车结尾的 字符串
-   ;; 4. 这个 错误以后再弥补
-   ;;    因为我需要快把基本的东西实现出来
-   ;;    让解释器 重新跑起来 以方便做测试
-   ;; 5. add "Exit" to the end of the string
-
-   def_verb "read-phrase", read_phrase
-      ;; (*  -- string[address, length] *)
-      xx _literal, Buffer_for_read_phrase
-      xx _literal, 0
-
-      xx _literal, 0, push_lambda_stack ;; leave a counter of ":"
-
-      .read_word__while_saving_to_string:
-      xx read_word__while_saving_to_string
-      ;; (* string[address, length], word[address, length] *)
-
-      xx dup2, Bra__cosemi, equal_string?, _false?branch, (.dup2-$)/Cell_width
-      xx   drop2
-      xx   pop_lambda_stack, add1, push_lambda_stack
-      xx   _branch, (.read_word__while_saving_to_string-$)/Cell_width
-
-      .dup2:
-      xx dup2, Ket__cosemi, equal_string?, _false?branch, (.xxoverxx-$)/Cell_width
-      xx   pop_lambda_stack, sub1, push_lambda_stack
-
-      .xxoverxx:
-      ;; to see the what char the "word-boundary,end" is
-      xx xxoverxx, addition, sub1, fetch_byte
-      xx _literal, ASCII_linefeed, equal?, false?, _false?branch, (.drop2-$)/Cell_width
-      xx   drop2
-      xx   _branch, (.read_word__while_saving_to_string-$)/Cell_width
-
-      .drop2:
-      xx drop2
-
-      xx pop_lambda_stack
-      xx dup, zero?, _false?branch, (.push_lambda_stack-$)/Cell_width
-      xx   drop
-      ;;   (* add "Exit" to the end of the string *)
-      xx   _literal, " ", string_append_char
-      xx   _literal, "E", string_append_char
-      xx   _literal, "x", string_append_char
-      xx   _literal, "i", string_append_char
-      xx   _literal, "t", string_append_char
-      xx   _literal, " ", string_append_char
-      xx   Exit
-
-      .push_lambda_stack:
-      xx push_lambda_stack
-      xx _branch, (.read_word__while_saving_to_string-$)/Cell_width
-   def_verb_end read_phrase
-   #+end_src
-** compile-phrase
-   #+begin_src fasm :tangle threaded-code.inc
-   hereUnInitializedData
-   ;; ------------------------
-   Size_of_buffer_of_function_body__for_compile_phrase = 1024*1024
-   Size_of_buffer_of_data_section__for_compile_phrase = 1024*1024
-
-   Buffer_of_function_body__for_compile_phrase labeling
-           preserve Size_of_buffer_of_function_body__for_compile_phrase
-   Buffer_of_data_section__for_compile_phrase labeling
-           preserve Size_of_buffer_of_data_section__for_compile_phrase
-
-
-   def_verb "compile-phrase", compile_phrase
-      ;; (* word-string[address, length] --  *)
-      xx Here, push_lambda_stack
-      xx Current_data_section, push_lambda_stack
-      xx   _literal, Buffer_of_function_body__for_compile_phrase, _address, Here, save
-      xx   _literal, Buffer_of_data_section__for_compile_phrase, _address, Current_data_section, save
-      xx   _Verb_explainer, append_number_to_here
-      xx   append_word_description_to_here
-      xx pop_lambda_stack, _address, Current_data_section, save
-      xx pop_lambda_stack, _address, Here, save
-      xx Exit
-   def_verb_end compile_phrase
-   #+end_src
-** call-phrase
-   #+begin_src fasm :tangle threaded-code.inc
-   def_verb "call-phrase", call_phrase
-      ;; (* -- unknown *)
-      xx _literal, Buffer_of_function_body__for_compile_phrase
-      xx execute
-      xx Exit
-   def_verb_end call_phrase
-   #+end_src
-* primitive functions
-** Var & Const
+* noun
+** important nouns
    #+begin_src fasm :tangle threaded-code.inc
    def_noun "Here", Here
       xx   0
@@ -422,8 +281,9 @@
    def_noun "Cell-width", _Cell_width
       xx Cell_width
    def_noun_end _Cell_width
-
-
+   #+end_src
+** true and false
+   #+begin_src fasm :tangle threaded-code.inc
    def_noun "False", False
       xx 0
    def_noun_end False
@@ -432,7 +292,341 @@
       xx 1
    def_noun_end True
    #+end_src
-** stack processing
+* verb
+** fixnum
+   #+begin_src fasm :tangle threaded-code.inc
+   def_assembly_code "add1", add1
+      ;; (* n -- n+1 *)
+      inc qword[Argument_stack_pointer]
+      next
+
+   def_assembly_code "add2", add2
+      ;; (* n -- n+1 *)
+      add qword[Argument_stack_pointer], 2
+      next
+
+   def_assembly_code "add3", add3
+      ;; (* n -- n+1 *)
+      add qword[Argument_stack_pointer], 3
+      next
+
+   def_assembly_code "add4", add4
+      ;; (* n -- n+4 *)
+      add qword[Argument_stack_pointer], 4
+      next
+
+   def_assembly_code "add8", add8
+      ;; (* n -- n+8 *)
+      add qword[Argument_stack_pointer], 8
+      next
+
+
+   def_assembly_code "sub1", sub1
+      ;; (* n -- n-1 *)
+      dec qword[Argument_stack_pointer]
+      next
+
+   def_assembly_code "sub2", sub2
+      ;; (* n -- n-1 *)
+      sub qword[Argument_stack_pointer], 2
+      next
+
+   def_assembly_code "sub3", sub3
+      ;; (* n -- n-1 *)
+      sub qword[Argument_stack_pointer], 3
+      next
+
+   def_assembly_code "sub4", sub4
+      ;; (* n -- n-4 *)
+      sub qword[Argument_stack_pointer], 4
+      next
+
+   def_assembly_code "sub8", sub8
+      ;; (* n -- n-8 *)
+      sub qword[Argument_stack_pointer], 8
+      next
+
+
+   def_assembly_code "add", addition
+      ;; (* a b -- a+b *)
+      pop_argument_stack rax
+      add qword[Argument_stack_pointer], rax
+      next
+
+   def_verb "+", _add
+      xx addition
+      xx Exit
+   def_verb_end _add
+
+
+   def_assembly_code "sub", subtraction
+      ;; (* a b -- a-b *)
+      pop_argument_stack rax
+      sub qword[Argument_stack_pointer], rax
+      next
+
+   def_verb "-", _sub
+      xx subtraction
+      xx Exit
+   def_verb_end _sub
+
+
+   def_assembly_code "mul", multiple
+      ;; (* a b -- a*b *)
+      pop_argument_stack  rbx ;; 2ed arg
+      pop_argument_stack  rax ;; 1st arg
+      imul rbx, rax
+      ;; imul will ignore overflow
+      ;; when there are two registers as arg
+      ;; imul will save the result into the first register
+      push_argument_stack rbx
+      next
+
+   def_verb "*", _mul
+      xx multiple
+      xx Exit
+   def_verb_end _mul
+
+
+
+   def_assembly_code "moddiv", moddiv
+      ;; (* a, b -- a mod b, quotient *)
+      ;; (* dividend, divisor -- remainder, quotient *)
+      ;; the arg of idiv is divisor
+      ;; the lower half of dividend is taken from rax
+      ;; the upper half of dividend is taken from rdx
+      xor  rdx, rdx   ;; high-part of dividend is not used
+      pop_argument_stack  rbx ;; 2ed arg
+      pop_argument_stack  rax ;; 1st arg
+      idiv rbx
+      ;; the remainder is stored in rdx
+      ;; the quotient  is stored in rax
+      push_argument_stack rdx ;; remainder
+      push_argument_stack rax ;; quotient
+      next
+
+
+   def_verb "divmod", divmod
+      ;; (* a, b -- quotient, a mod b *)
+      xx moddiv, swap
+      xx Exit
+   def_verb_end divmod
+
+
+   def_verb "div", division
+      ;; (* a, b -- quotient *)
+      xx divmod, drop
+      xx Exit
+   def_verb_end division
+
+   def_verb "/", _div
+      ;; (* a, b -- quotient *)
+      xx division
+      xx Exit
+   def_verb_end _div
+
+
+   def_verb "mod", module
+      ;; (* a, b -- a mod b *)
+      xx moddiv, drop
+      xx Exit
+   def_verb_end module
+
+
+   def_verb "negate", negate
+      ;; (* n --  -n *)
+      xx _literal, 0
+      xx swap, subtraction
+      xx Exit
+   def_verb_end negate
+
+   def_verb "help:power", help_power
+      ;; (* a, m, n -- a^n *)
+      xx dup, zero?, _false?branch, 5
+      xx   drop, swap, drop
+      xx   Exit
+      xx sub1
+      xx swap
+      xx   xoverxx, multiple
+      xx swap
+      xx help_power
+      xx Exit
+   def_verb_end help_power
+
+   def_verb "power", power
+      ;; n must be naturl number for now
+      ;; (* a, n -- a^n *)
+      xx _literal, 1
+      xx swap
+      xx help_power
+      xx Exit
+   def_verb_end power
+   #+end_src
+** memory
+   #+begin_src fasm :tangle threaded-code.inc
+   ;; "save" and "fetch" default to a Cell_width (== 8 bytes)
+   ;; the rule of "fetch2" and so on are:
+   ;;   in memory:
+   ;;     ||  1 : value-1  ||
+   ;;     ||  1 : value-2  ||
+   ;;     ||  1 : value-3  ||
+   ;;     ...
+   ;;   on stack:
+   ;;     [ ... , value-3, value-2, value-1]
+   ;; of course we have:
+   ;;   fetch2 : memory=copy=>stack
+   ;;   save2  : stack->memory
+
+   def_assembly_code "save", save
+      ;; ( value, address -- )
+      pop_argument_stack rbx
+      pop_argument_stack rax
+      mov qword[rbx], rax
+      next
+
+   def_assembly_code "save2", save2
+      ;; ( value-2, value-1, address -- )
+      pop_argument_stack rbx
+      pop_argument_stack rax
+      mov qword[rbx], rax
+      pop_argument_stack rax
+      mov qword[rbx + Cell_width], rax
+      next
+
+
+
+   def_assembly_code "fetch", fetch
+      ;; ( address -- value )
+      pop_argument_stack  rbx
+      mov rax, qword[rbx]
+      push_argument_stack rax
+      next
+
+   def_assembly_code "fetch2", fetch2
+      ;; ( address -- value-1, value-2 )
+      pop_argument_stack  rbx
+      mov rax, qword[rbx + Cell_width]
+      push_argument_stack rax
+      mov rax, qword[rbx]
+      push_argument_stack rax
+      next
+
+
+
+   def_assembly_code "add-save", add_save
+      ;; ( number to add, address -- )
+      pop_argument_stack rbx
+      pop_argument_stack rax
+      add qword[rbx], rax
+      next
+
+   def_assembly_code "sub-save", sub_save
+      ;; ( number to add, address -- )
+      pop_argument_stack rbx
+      pop_argument_stack rax
+      sub qword[rbx], rax
+      next
+
+
+   def_assembly_code "save-byte", save_byte
+      ;; ( value, address -- )
+      pop_argument_stack rbx
+      pop_argument_stack rax
+      mov byte[rbx], al
+      next
+
+   def_assembly_code "save-two-bytes", save_two_bytes
+      ;; ( value, address -- )
+      pop_argument_stack rbx
+      pop_argument_stack rax
+      mov word [rbx], ax
+      next
+
+   def_assembly_code "save-four-bytes", save_four_bytes
+      ;; ( value, address -- )
+      pop_argument_stack rbx
+      pop_argument_stack rax
+      mov dword [rbx], eax
+      next
+
+
+   def_assembly_code "fetch-byte", fetch_byte
+      ;; ( address -- value )
+      pop_argument_stack rbx
+      xor rax, rax
+      mov al, byte[rbx]
+      push_argument_stack rax
+      next
+
+   def_assembly_code "fetch-two-bytes", fetch_two_bytes
+      ;; ( address -- value )
+      pop_argument_stack rbx
+      xor rax, rax
+      mov ax, word[rbx]
+      push_argument_stack rax
+      next
+
+   def_assembly_code "fetch-four-bytes", fetch_four_bytes
+      ;; ( address -- value )
+      pop_argument_stack rbx
+      xor rax, rax
+      mov eax, dword[rbx]
+      push_argument_stack rax
+      next
+
+
+
+
+   def_assembly_code "copy-byte", copy_byte
+      ;; ( source address, destination address --
+      ;;   source address + 1, destination address + 1 )
+      mov rbx, [Argument_stack_pointer + Cell_width] ;; source address
+      mov al,  byte[rbx]                        ;; get a char from source address
+      pop_argument_stack rdi                        ;; destination address
+      stosb                                     ;; copy to destination
+      push_argument_stack rdi                       ;; destination address is incremented by stosb
+      inc qword[Argument_stack_pointer + Cell_width] ;; increment source address
+      next
+
+   def_assembly_code "copy-byte-string", copy_byte_string
+      ;; ( source address, destination address, length -- )
+      pop_argument_stack rcx
+      pop_argument_stack rdi
+      pop_argument_stack rsi
+      rep movsb
+      next
+   #+end_src
+** >< note about stack
+   1. maybe design key-word  
+      to add better support to other stack
+      not only Argument-stack
+** Argument-stack
+*** pointer
+    #+begin_src fasm :tangle threaded-code.inc
+    ;; to know why the following funny thing happens,
+    ;; see the definition of the macro "push_argument_stack",
+
+    ;;  macro push_argument_stack Register {
+    ;;         sub Argument_stack_pointer, Cell_width
+    ;;         mov [Argument_stack_pointer], Register
+    ;;         }
+
+    def_assembly_code "make-self-reference-value,in-argument-stack", make_self_reference_value__in_argument_stack
+       ;; ( -- address )
+       push_argument_stack Argument_stack_pointer
+       next
+
+    def_verb "fetch-argument-stack-pointer", fetch_argument_stack_pointer
+       xx make_self_reference_value__in_argument_stack
+       xx _literal, Cell_width, addition
+       xx Exit
+    def_verb_end fetch_argument_stack_pointer
+
+    def_assembly_code "reset-argument-stack-pointer", reset_argument_stack_pointer
+       ;; ( address -- )
+       pop_argument_stack Argument_stack_pointer
+       next
+    #+end_src
 *** drop & dup
     #+begin_src fasm :tangle threaded-code.inc
     def_assembly_code "drop", drop
@@ -704,264 +898,159 @@
        push_argument_stack rcx
        next
     #+end_src
-** >< fixnum
-   #+begin_src fasm :tangle threaded-code.inc
-   def_assembly_code "add1", add1
-      ;; (* n -- n+1 *)
-      inc qword[Argument_stack_pointer]
-      next
+** Return-stack
+*** pointer
+    #+begin_src fasm :tangle threaded-code.inc
+    def_assembly_code "fetch-return-stack-pointer", fetch_return_stack_pointer
+       ;; (* -- an address in the ReturnStack *)
+       push_argument_stack Return_stack_pointer
+       next
 
-   def_assembly_code "add2", add2
-      ;; (* n -- n+1 *)
-      add qword[Argument_stack_pointer], 2
-      next
+    def_assembly_code "reset-return-stack-pointer", reset_return_stack_pointer
+       ;; (* an address in the ReturnStack -- *)
+       pop_argument_stack Return_stack_pointer
+       next
+    #+end_src
+*** push & pop
+    #+begin_src fasm :tangle threaded-code.inc
+    ;; in my implementation 
+    ;; the following two class classic Forth words
+    ;; should be used carefully
 
-   def_assembly_code "add3", add3
-      ;; (* n -- n+1 *)
-      add qword[Argument_stack_pointer], 3
-      next
+    def_assembly_code "push-return-stack", _push_return_stack
+       ;; (* address --> ReturnStack: address *)
+       pop_argument_stack  rax
+       push_return_stack rax
+       next
 
-   def_assembly_code "add4", add4
-      ;; (* n -- n+4 *)
-      add qword[Argument_stack_pointer], 4
-      next
+    def_assembly_code "pop-return-stack", _pop_return_stack
+       ;; (* ReturnStack: address --> address *)
+       pop_return_stack  rax
+       push_argument_stack rax
+       next
+    #+end_src
+*** drop
+    #+begin_src fasm :tangle threaded-code.inc
+    def_assembly_code "drop-return-stack", drop_return_stack
+       ;; (* -- *)
+       add Return_stack_pointer, Cell_width
+       next
+    #+end_src
+** Grey-pair-stack
+*** pointer
+    #+begin_src fasm :tangle threaded-code.inc
+    def_assembly_code "empty-grey-pair-stack?", empty_grey_pair_stack?
+       ;; (* -- True or False *)
+       mov rax, Grey_pair_stack_top
+       cmp Grey_pair_stack_pointer, rax
+       ;; note that:
+       ;; Grey_pair_stack_pointer >= Grey_pair_stack_top
+       ;; means stack over flow
+       setge al
+       movzx rax, al
+       push_argument_stack rax
+       next
+    #+end_src
+*** push & pop
+    #+begin_src fasm :tangle threaded-code.inc
+    def_assembly_code "push-grey-pair-stack", push_grey_pair_stack
+       ;; (* pair[address] --> GreyPairStack: pair[address] *)
+       pop_argument_stack rax
+       lea Grey_pair_stack_pointer, [Grey_pair_stack_pointer - Cell_width]
+       mov [Grey_pair_stack_pointer], rax
+       next
 
-   def_assembly_code "add8", add8
-      ;; (* n -- n+8 *)
-      add qword[Argument_stack_pointer], 8
-      next
+    def_assembly_code "pop-grey-pair-stack", pop_grey_pair_stack
+       ;; (* GreyPairStack: pair[address] --> pair[address] *)
+       mov rax, [Grey_pair_stack_pointer]
+       lea Grey_pair_stack_pointer, [Grey_pair_stack_pointer + Cell_width]
+       push_argument_stack rax
+       next
+    #+end_src
+** Lambda-stack
+*** pointer
+    #+begin_src fasm :tangle threaded-code.inc
+    ;; 1. not to much stack-processing is needed here
+    ;; 2. LambdaStack can be used to save the faked-local-vars
 
+    def_noun "Lambda-stack-pointer", Lambda_stack_pointer
+       xx  Lambda_stack_top
+    def_noun_end Lambda_stack_pointer
+    #+end_src
+*** push & pop
+    #+begin_src fasm :tangle threaded-code.inc
+    def_verb "push-lambda-stack", push_lambda_stack
+       ;; (* ArgumentStack::  value -->
+       ;;    LambdaStack::    value *)
+       xx _literal, Cell_width, _address, Lambda_stack_pointer, sub_save
+       xx Lambda_stack_pointer, save
+       xx Exit
+    def_verb_end push_lambda_stack
 
-   def_assembly_code "sub1", sub1
-      ;; (* n -- n-1 *)
-      dec qword[Argument_stack_pointer]
-      next
+    def_verb "pop-lambda-stack", pop_lambda_stack
+       ;; (* LambdaStack::    value -->
+       ;;    ArgumentStack::  value *)
+       xx Lambda_stack_pointer, fetch
+       xx _literal, Cell_width, _address, Lambda_stack_pointer, add_save
+       xx Exit
+    def_verb_end pop_lambda_stack
+    #+end_src
+*** ready & get-back
+    #+begin_src fasm :tangle threaded-code.inc
+    ;; 如果 ready 只是和 get-back 成对使用的话 
+    ;; 就没必要添加两个 swap 了
+    ;; but we need more than that
 
-   def_assembly_code "sub2", sub2
-      ;; (* n -- n-1 *)
-      sub qword[Argument_stack_pointer], 2
-      next
+    def_verb "ready", ready
+       ;; (* ArgumentStack::  value-a, value-b -->
+       ;;    LambdaStack::    value-a, value-b *)
+       ;; (* beware of the order of the two values *)
+       xx swap, push_lambda_stack, push_lambda_stack
+       xx Exit
+    def_verb_end ready
 
-   def_assembly_code "sub3", sub3
-      ;; (* n -- n-1 *)
-      sub qword[Argument_stack_pointer], 3
-      next
+    def_verb "get-back", get_back
+       ;; (* beware of the order of the two values *)
+       ;; (* LambdaStack::    value-a, value-b -->
+       ;;    ArgumentStack::  value-a, value-b *)
+       xx pop_lambda_stack, pop_lambda_stack, swap
+       xx Exit
+    def_verb_end get_back
+    #+end_src
+*** shift
+    #+begin_src fasm :tangle threaded-code.inc
+    def_verb "argument-stack-shift-to-lambda-stack", argument_stack_shift_to_lambda_stack
+       ;; (* value-n, ..., value-1, n -- *)
+       ;; (* Lambda-stack ::
+       ;; (* value-1, ..., value-n, n -- *)
+       xx _literal, 0, push_lambda_stack
+       .dup:
+       xx dup, zero?, _false?branch, (.sub1-$)/Cell_width
+       xx   drop
+       xx   Exit
+       .sub1:
+       xx sub1
+       xx swap
+       xx pop_lambda_stack, add1
+       xx swap
+       xx push_lambda_stack
+       xx push_lambda_stack
+       xx _branch, (.dup-$)/Cell_width
+    def_verb_end argument_stack_shift_to_lambda_stack
 
-   def_assembly_code "sub4", sub4
-      ;; (* n -- n-4 *)
-      sub qword[Argument_stack_pointer], 4
-      next
-
-   def_assembly_code "sub8", sub8
-      ;; (* n -- n-8 *)
-      sub qword[Argument_stack_pointer], 8
-      next
-
-
-   def_assembly_code "+", addition
-      ;; (* a b -- a+b *)
-      pop_argument_stack rax
-      add qword[Argument_stack_pointer], rax
-      next
-
-   def_assembly_code "-", subtraction
-      ;; (* a b -- a-b *)
-      pop_argument_stack rax
-      sub qword[Argument_stack_pointer], rax
-      next
-
-   def_assembly_code "*", multiple
-      ;; (* a b -- a*b *)
-      pop_argument_stack  rbx ;; 2ed arg
-      pop_argument_stack  rax ;; 1st arg
-      imul rbx, rax
-      ;; imul will ignore overflow
-      ;; when there are two registers as arg
-      ;; imul will save the result into the first register
-      push_argument_stack rbx
-      next
-
-   def_assembly_code "mod/", moddiv
-      ;; (* a, b -- a mod b, quotient *)
-      ;; (* dividend, divisor -- remainder, quotient *)
-      ;; the arg of idiv is divisor
-      ;; the lower half of dividend is taken from rax
-      ;; the upper half of dividend is taken from rdx
-      xor  rdx, rdx   ;; high-part of dividend is not used
-      pop_argument_stack  rbx ;; 2ed arg
-      pop_argument_stack  rax ;; 1st arg
-      idiv rbx
-      ;; the remainder is stored in rdx
-      ;; the quotient  is stored in rax
-      push_argument_stack rdx ;; remainder
-      push_argument_stack rax ;; quotient
-      next
-   #+end_src
-** math
-   #+begin_src fasm :tangle threaded-code.inc
-   def_verb "negate", negate
-      ;; (* n --  -n *)
-      xx _literal, 0
-      xx swap, subtraction
-      xx Exit
-   def_verb_end negate
-
-   def_verb "help:power", help_power
-      ;; (* a, m, n -- a^n *)
-      xx dup, zero?, _false?branch, 5
-      xx   drop, swap, drop
-      xx   Exit
-      xx sub1
-      xx swap
-      xx   xoverxx, multiple
-      xx swap
-      xx help_power
-      xx Exit
-   def_verb_end help_power
-
-   def_verb "power", power
-      ;; n must be naturl number for now
-      ;; (* a, n -- a^n *)
-      xx _literal, 1
-      xx swap
-      xx help_power
-      xx Exit
-   def_verb_end power
-   #+end_src
-** memory
-   #+begin_src fasm :tangle threaded-code.inc
-   ;; "save" and "fetch" default to a Cell_width (== 8 bytes)
-   ;; the rule of "fetch2" and so on are:
-   ;;   in memory:
-   ;;     ||  1 : value-1  ||
-   ;;     ||  1 : value-2  ||
-   ;;     ||  1 : value-3  ||
-   ;;     ...
-   ;;   on stack:
-   ;;     [ ... , value-3, value-2, value-1]
-   ;; of course we have:
-   ;;   fetch2 : memory=copy=>stack
-   ;;   save2  : stack->memory
-
-   def_assembly_code "save", save
-      ;; ( value, address -- )
-      pop_argument_stack rbx
-      pop_argument_stack rax
-      mov qword[rbx], rax
-      next
-
-   def_assembly_code "save2", save2
-      ;; ( value-2, value-1, address -- )
-      pop_argument_stack rbx
-      pop_argument_stack rax
-      mov qword[rbx], rax
-      pop_argument_stack rax
-      mov qword[rbx + Cell_width], rax
-      next
-
-
-
-   def_assembly_code "fetch", fetch
-      ;; ( address -- value )
-      pop_argument_stack  rbx
-      mov rax, qword[rbx]
-      push_argument_stack rax
-      next
-
-   def_assembly_code "fetch2", fetch2
-      ;; ( address -- value-1, value-2 )
-      pop_argument_stack  rbx
-      mov rax, qword[rbx + Cell_width]
-      push_argument_stack rax
-      mov rax, qword[rbx]
-      push_argument_stack rax
-      next
-
-
-
-   def_assembly_code "add-save", add_save
-      ;; ( number to add, address -- )
-      pop_argument_stack rbx
-      pop_argument_stack rax
-      add qword[rbx], rax
-      next
-
-   def_assembly_code "sub-save", sub_save
-      ;; ( number to add, address -- )
-      pop_argument_stack rbx
-      pop_argument_stack rax
-      sub qword[rbx], rax
-      next
-
-
-   def_assembly_code "save-byte", save_byte
-      ;; ( value, address -- )
-      pop_argument_stack rbx
-      pop_argument_stack rax
-      mov byte[rbx], al
-      next
-
-   def_assembly_code "save-two-bytes", save_two_bytes
-      ;; ( value, address -- )
-      pop_argument_stack rbx
-      pop_argument_stack rax
-      mov word [rbx], ax
-      next
-
-   def_assembly_code "save-four-bytes", save_four_bytes
-      ;; ( value, address -- )
-      pop_argument_stack rbx
-      pop_argument_stack rax
-      mov dword [rbx], eax
-      next
-
-
-   def_assembly_code "fetch-byte", fetch_byte
-      ;; ( address -- value )
-      pop_argument_stack rbx
-      xor rax, rax
-      mov al, byte[rbx]
-      push_argument_stack rax
-      next
-
-   def_assembly_code "fetch-two-bytes", fetch_two_bytes
-      ;; ( address -- value )
-      pop_argument_stack rbx
-      xor rax, rax
-      mov ax, word[rbx]
-      push_argument_stack rax
-      next
-
-   def_assembly_code "fetch-four-bytes", fetch_four_bytes
-      ;; ( address -- value )
-      pop_argument_stack rbx
-      xor rax, rax
-      mov eax, dword[rbx]
-      push_argument_stack rax
-      next
-
-
-
-
-   def_assembly_code "copy-byte", copy_byte
-      ;; ( source address, destination address --
-      ;;   source address + 1, destination address + 1 )
-      mov rbx, [Argument_stack_pointer + Cell_width] ;; source address
-      mov al,  byte[rbx]                        ;; get a char from source address
-      pop_argument_stack rdi                        ;; destination address
-      stosb                                     ;; copy to destination
-      push_argument_stack rdi                       ;; destination address is incremented by stosb
-      inc qword[Argument_stack_pointer + Cell_width] ;; increment source address
-      next
-
-   def_assembly_code "copy-byte-string", copy_byte_string
-      ;; ( source address, destination address, length -- )
-      pop_argument_stack rcx
-      pop_argument_stack rdi
-      pop_argument_stack rsi
-      rep movsb
-      next
-   #+end_src
+    ;; def_verb "t", t
+    ;;    xx _literal, 7
+    ;;    xx _literal, 8
+    ;;    xx _literal, 9
+    ;;    xx _literal, 3
+    ;;    xx argument_stack_shift_to_lambda_stack
+    ;;    xx pop_lambda_stack, print_little_number ; 3
+    ;;    xx pop_lambda_stack, print_little_number ; 7 
+    ;;    xx pop_lambda_stack, print_little_number ; 8
+    ;;    xx pop_lambda_stack, print_little_number ; 9
+    ;;    xx Exit
+    ;; def_verb_end t
+    #+end_src    
 ** >< string
    #+begin_src fasm :tangle threaded-code.inc
    ;; return false when length == 0
@@ -1015,114 +1104,109 @@
    def_verb_end tail_and_head_of_string
    #+end_src
 ** predicates
-   1. 0 as False
-      1 as True
-   2. there can not be bool-type in low-level forth-like-language
-   3. "notFalse?" is NOT "true?"
-   4. "false?" is "zero?"
-      "true?" is "one?"
-   #+begin_src fasm :tangle threaded-code.inc
-   def_assembly_code "==", equal?
-      pop_argument_stack rbx
-      pop_argument_stack rax
-      cmp   rbx, rax
-      sete  al
-      movzx rax, al
-      push_argument_stack rax
-      next
+*** about true and false
+    #+begin_src fasm :tangle threaded-code.inc
+    def_verb "true?", true?
+       xx one?
+       xx Exit
+    def_verb_end true?
 
-   def_assembly_code "=/=", not_equal?
-      pop_argument_stack rbx
-      pop_argument_stack rax
-      cmp   rbx, rax
-      setne al
-      movzx rax, al
-      push_argument_stack rax
-      next
+    def_verb "false?", false?
+       xx zero?
+       xx Exit
+    def_verb_end false?
+    #+end_src
+*** about fixnum
+    1. 0 as False
+       1 as True
+    2. there can not be bool-type in low-level forth-like-language
+    3. "notFalse?" is NOT "true?"
+    4. "false?" is "zero?"
+       "true?" is "one?"
+    #+begin_src fasm :tangle threaded-code.inc
+    def_assembly_code "==", equal?
+       pop_argument_stack rbx
+       pop_argument_stack rax
+       cmp   rbx, rax
+       sete  al
+       movzx rax, al
+       push_argument_stack rax
+       next
 
-   def_assembly_code "<", less_than?
-      pop_argument_stack rbx
-      pop_argument_stack rax
-      cmp   rax, rbx
-      setl  al
-      movzx rax, al
-      push_argument_stack rax
-      next
+    def_assembly_code "=/=", not_equal?
+       pop_argument_stack rbx
+       pop_argument_stack rax
+       cmp   rbx, rax
+       setne al
+       movzx rax, al
+       push_argument_stack rax
+       next
 
-   def_assembly_code ">", greater_than?
-      pop_argument_stack   rbx
-      pop_argument_stack   rax
-      cmp   rax, rbx
-      setg  al
-      movzx rax, al
-      push_argument_stack  rax
-      next
+    def_assembly_code "<", less_than?
+       pop_argument_stack rbx
+       pop_argument_stack rax
+       cmp   rax, rbx
+       setl  al
+       movzx rax, al
+       push_argument_stack rax
+       next
 
-   def_assembly_code "<=", less_or_equal?
-      pop_argument_stack rbx
-      pop_argument_stack rax
-      cmp   rax, rbx
-      setle al
-      movzx rax, al
-      push_argument_stack rax
-      next
+    def_assembly_code ">", greater_than?
+       pop_argument_stack   rbx
+       pop_argument_stack   rax
+       cmp   rax, rbx
+       setg  al
+       movzx rax, al
+       push_argument_stack  rax
+       next
 
-   def_assembly_code ">=", greater_or_equal?
-      pop_argument_stack rbx
-      pop_argument_stack rax
-      cmp   rax, rbx
-      setge al
-      movzx rax, al
-      push_argument_stack rax
-      next
+    def_assembly_code "<=", less_or_equal?
+       pop_argument_stack rbx
+       pop_argument_stack rax
+       cmp   rax, rbx
+       setle al
+       movzx rax, al
+       push_argument_stack rax
+       next
 
-   def_assembly_code "zero?", zero?
-      pop_argument_stack rax
-      test  rax,rax
-      setz  al
-      movzx rax, al
-      push_argument_stack rax
-      next
-
-   def_assembly_code "not-zero?", not_zero?
-      pop_argument_stack rax
-      test  rax,rax
-      setnz al
-      movzx rax, al
-      push_argument_stack rax
-      next
+    def_assembly_code ">=", greater_or_equal?
+       pop_argument_stack rbx
+       pop_argument_stack rax
+       cmp   rax, rbx
+       setge al
+       movzx rax, al
+       push_argument_stack rax
+       next
 
 
-   def_verb "one?", one?
-      xx _literal, 1, equal?
-      xx Exit
-   def_verb_end one?
+    def_assembly_code "zero?", zero?
+       pop_argument_stack rax
+       test  rax,rax
+       setz  al
+       movzx rax, al
+       push_argument_stack rax
+       next
 
-   def_verb "true?", true?
-      xx one?
-      xx Exit
-   def_verb_end true?
-
-   def_verb "false?", false?
-      xx zero?
-      xx Exit
-   def_verb_end false?
-   #+end_src
-** predicates about char
-   #+begin_src fasm :tangle threaded-code.inc
-   def_verb "char-denote-number?", char_denote_number?
-      ;; (* char -- True or False *)
-      xx dup
-      xx _literal, '0', less_than?, _false?branch, 4
-      xx   drop, False
-      xx   Exit
-      xx _literal, '9', greater_than?, _false?branch, 3
-      xx   False
-      xx   Exit
-      xx True
-      xx Exit
-   def_verb_end char_denote_number?
-   #+end_src
+    def_verb "one?", one?
+       xx _literal, 1, equal?
+       xx Exit
+    def_verb_end one?
+    #+end_src
+*** about char
+    #+begin_src fasm :tangle threaded-code.inc
+    def_verb "char-denote-number?", char_denote_number?
+       ;; (* char -- True or False *)
+       xx dup
+       xx _literal, '0', less_than?, _false?branch, 4
+       xx   drop, False
+       xx   Exit
+       xx _literal, '9', greater_than?, _false?branch, 3
+       xx   False
+       xx   Exit
+       xx True
+       xx Exit
+    def_verb_end char_denote_number?
+    #+end_src
 ** bitwise operations
    1. "bitwise_and" and "bitwise_or" handle 64 bits value
    2. x y bitwise_and
@@ -1337,129 +1421,668 @@
       ror qword[Argument_stack_pointer], cl
       next
    #+end_src
-** about Return-stack
+* key-word
+** note
+   1. 可以发现有两类语法关键词
+      1) 一类是 if else then comment colon
+         它们类似与 scheme 中对语法的扩展
+      2) 一类是 literal branch false?branch address
+         它们虽然也以其后的 string 为参数
+         但是行为方式却有明显的不同
+         它们 以指定的方式 把后面的 string 处理好
+         并编译到函数体当中的同时
+         还会 在这之前 编译一个
+         定义在汇编中的函数的地址
+         这个汇编中的函数以特定的方式解释 函数体中 在其后的值
+         这些函数通常定义在汇编中的原因是
+         它们需要改变 Return-stack 的栈顶的值
+      3) 第一类语法关键词 是真正意义上的语法关键词
+         而 第二类语法关键词 存在的原因
+         是去 改变 虚拟机对函数体内部的值的单一的解释方式
+   2. 当我想要实现 对 比如说 字符 字符串 各个进位置的数字 的编译 的时候
+      有两种办法 (以 各个进位置的数字 为例):
+      1) 写 一个 string->integer,with-error
+         也就是一个解析字符串 并 给出所表示的整数的函数
+      2) 设计各种 前缀
+         也就是说把 原本需要被一个大函数解析的 前缀 从 string 中分离出来
+         然后 把这些前缀实现为 第二类语法关键词
+         此时就需要加空格了
+   3. 对比 一下 两种实现方式
+      就会发现非常有趣的结果
+      1) 首先不能说那种方式更灵活
+         因为它们分别受 空格 的限制
+         只不过 空格 限制它们的方式不同
+      2) 但是 第二种方式 具有更好的可维护性
+         因为它把一个大函数 拆开成了很多小函数
+      3) 我可以
+         把第一种 处理方式 命名为 符号性的处理方式
+         此时你要设计符号的形态
+         把第一种 处理方式 命名为 前缀性的处理方式
+         此时你要选择合适的前缀
+      4) 在 cicada 中
+         已经使用 符号性的处理方式 string->integer,with-error
+         已经使用 前缀性的处理方式 的是 literal branch false?branch
+      5) 我认为 前缀性的处理方式 更好
+         因为 它用更明显的视觉形态 降低了 代码的阅读者的 "认知上的负担"
+         - 前提是有语法高亮
+         并且 很适合中文 因为中文中原本就没有很多不表意
+         而 单表 句之结构的 标点符号
+         在我的中文代码中 表 句之结构的 标点符号 就只有空格而已
+         其实也类似于标点符号 因为它们也有 表明句之结构的功能
+         只不过它们 使用了 比异于文字的 标点符号 更 让人亲近的 文字本身而已
+      6) 仔细地 盯着 屏幕上的 英文 与 汉字 看了一会儿
+         我发现 西方的拼写字母 跟汉字相比 简直 太丑陋了
+** literal branch false?branch
    #+begin_src fasm :tangle threaded-code.inc
-   def_assembly_code "push-return-stack", _push_return_stack
-      ;; (* address --> ReturnStack: address *)
-      pop_argument_stack  rax
-      push_return_stack rax
-      next
+   ;; with chinese support
 
-   def_assembly_code "pop-return-stack", _pop_return_stack
-      ;; (* ReturnStack: address --> address *)
-      pop_return_stack  rax
+   ;; this word should not be found
+   ;; the interface of this word is the next word "literal"
+   def_assembly_code "", _literal
+      ;; (* -- number *)
+      ;; 1. if NOT at the end of the function body
+      ;;    (* Return-stack::
+      ;;         address -- address + Cell_width *)
+      ;; 2. if at the end of the function body
+      ;;    (* Return-stack::
+      ;;         address -- *)
+      pop_return_stack rbx
+      mov  rax, [rbx]
       push_argument_stack rax
+      add  rbx, Cell_width
+      cmp dword[rbx], Exit
+      je _literal__meet_end
+      cmp dword[rbx], 已矣
+      je _literal__meet_end
+      push_return_stack rbx
+   _literal__meet_end:
       next
 
-   ;; up to now
-   ;; the above two class classic forth words
-   ;; have not been used by cicada yet
+   ;; no error handling for string_full_of_blank
+   def_key_word "literal", literal
+      ;; (* word-string[address, length] -- word-string[address, length] *)
+      ;; (* compile::
+      ;;      _literal[address of explainer], number *)
+      xx _literal, _literal, append_number_to_here
+      xx tail_and_head_of_word_string
+      ;; need error handling when not found
+      xx find, word_link_to_word_explainer, append_number_to_here
+      xx Exit
+   def_key_word_end literal
 
 
-   def_assembly_code "fetch-return-stack-pointer", fetch_return_stack_pointer
-      ;; (* -- an address in the ReturnStack *)
-      push_argument_stack Return_stack_pointer
+   ;; the following handles _branch to "Exit"
+   ;; >< alth branch to "Exit" should never be used
+   def_assembly_code "", _branch
+      ;; 1. if NOT at the end of the function body
+      ;;    (* Return-stack::
+      ;;         address -- address + offset * Cell_width *)
+      ;; 2. if at the end of the function body
+      ;;    (* Return-stack::
+      ;;         address -- *)
+      ;; and "next"
+      ;; (could be optimize by not using "next")
+      pop_return_stack rbx
+      mov  rax, [rbx]
+      imul rax, Cell_width
+      add  rbx, rax
+      cmp dword[rbx], Exit
+      je _branch__meet_end
+      cmp dword[rbx], 已矣
+      je _branch__meet_end
+      push_return_stack rbx
+   _branch__meet_end:
       next
 
-   def_assembly_code "reset-return-stack-pointer", reset_return_stack_pointer
-      ;; (* an address in the ReturnStack -- *)
-      pop_argument_stack Return_stack_pointer
-      next
+   ;; no error handling for string_full_of_blank
+   def_key_word "branch", branch
+      ;; (* word-string[address, length] -- word-string[address, length] *)
+      ;; (* compile::
+      ;;      _literal[address of explainer], number *)
+      xx _literal, _branch, append_number_to_here
+      xx tail_and_head_of_word_string
+      xx dup2, string_denote_integer?, _false?branch, 5
+      xx   string_to_integer__with_error, drop, append_number_to_here
+      xx   Exit
+      ;; need error handling when branch followed by a non integer
+      xx Exit
+   def_key_word_end branch
 
-   def_assembly_code "drop-return-stack", drop_return_stack
-      ;; (* -- *)
-      add Return_stack_pointer, Cell_width
-      next
-   #+end_src
-** about Argument-stack
-   #+begin_src fasm :tangle threaded-code.inc
-   ;; to know why the following funny thing happens,
-   ;; see the definition of the macro "push_argument_stack",
-   def_assembly_code "make-self-reference-value", make_self_reference_value
-      ;; ( -- address )
-      push_argument_stack Argument_stack_pointer
-      next
 
-   def_verb "fetch-argument-stack-pointer", fetch_argument_stack_pointer
-      xx make_self_reference_value, add8, Exit
-   def_verb_end fetch_argument_stack_pointer
-
-   def_assembly_code "reset-argument-stack-pointer", reset_argument_stack_pointer
-      ;; ( address -- )
-      pop_argument_stack Argument_stack_pointer
-      next
-   #+end_src
-** about Grey-pair-stack
-   #+begin_src fasm :tangle threaded-code.inc
-   def_assembly_code "push-grey-pair-stack", push_grey_pair_stack
-      ;; (* pair[address] --> GreyPairStack: pair[address] *)
+   ;; the following handles _false?branch to "Exit"
+   def_assembly_code "", _false?branch
+      ;; (* True of False -- *)
+      ;; 0. if NOT _branch
+      ;;    (* Return-stack::
+      ;;         address -- address + Cell_width *)
+      ;; 1. if NOT at the end of the function body
+      ;;    (* Return-stack::
+      ;;         address -- address + offset * Cell_width *)
+      ;; 2. if at the end of the function body
+      ;;    (* Return-stack::
+      ;;         address -- *)
+      ;; and "next"
+      ;; (could be optimize by not using "next")
       pop_argument_stack rax
-      lea Grey_pair_stack_pointer, [Grey_pair_stack_pointer - Cell_width]
-      mov [Grey_pair_stack_pointer], rax
+      test rax, rax
+      jnz _false?branch__not_to_branch
+
+      pop_return_stack rbx
+      mov  rax, [rbx]
+      imul rax, Cell_width
+      add  rbx, rax
+      cmp dword[rbx], Exit
+      je _false?branch__meet_end
+      cmp dword[rbx], 已矣
+      je _false?branch__meet_end
+      push_return_stack rbx
+   _false?branch__meet_end:
       next
 
-   def_assembly_code "pop-grey-pair-stack", pop_grey_pair_stack
-      ;; (* GreyPairStack: pair[address] --> pair[address] *)
-      mov rax, [Grey_pair_stack_pointer]
-      lea Grey_pair_stack_pointer, [Grey_pair_stack_pointer + Cell_width]
-      push_argument_stack rax
+   _false?branch__not_to_branch:
+      pop_return_stack rbx
+      add rbx, Cell_width
+      cmp dword[rbx], Exit
+      je _false?branch__not_to_branch__meet_end
+      cmp dword[rbx], 已矣
+      je _false?branch__not_to_branch__meet_end
+      push_return_stack rbx
+   _false?branch__not_to_branch__meet_end:
       next
 
-   def_assembly_code "empty-grey-pair-stack?", empty_grey_pair_stack?
-      ;; (* -- True or False *)
-      mov rax, Grey_pair_stack_top
-      cmp Grey_pair_stack_pointer, rax
-      ;; note that:
-      ;; Grey_pair_stack_pointer >= Grey_pair_stack_top
-      ;; means stack over flow
-      setge al
-      movzx rax, al
-      push_argument_stack rax
-      next
+   ;; no error handling for string_full_of_blank
+   def_key_word "false?branch", false?branch
+      ;; (* word-string[address, length] -- word-string[address, length] *)
+      ;; (* compile::
+      ;;      _literal[address of explainer], number *)
+      xx _literal, _false?branch, append_number_to_here
+      xx tail_and_head_of_word_string
+      xx dup2, string_denote_integer?, _false?branch, 5
+      xx   string_to_integer__with_error, drop, append_number_to_here
+      xx   Exit
+      ;; need error handling when branch followed by a non integer
+      xx Exit
+   def_key_word_end false?branch
+
+   ;; ><><><
+   ;; Chinese version
+   ;; 即 转 假则转
    #+end_src
-** about Lambda-stack
+** address
    #+begin_src fasm :tangle threaded-code.inc
-   ;; 1. not to much stack-processing is needed here
-   ;; 2. LambdaStack can be used to save the faked-local-vars
+   def_assembly_code "", _address
+      ;; (* -- address *)
+      ;; 1. if NOT at the end of the function body
+      ;;    (* Return-stack::
+      ;;         address -- address + Cell_width *)
+      ;; 2. if at the end of the function body
+      ;;    (* Return-stack::
+      ;;         address -- *)
+      pop_return_stack rbx
+      mov  rax, [rbx]
+      add  rax, Cell_width
+      push_argument_stack rax
+      add  rbx, Cell_width
+      cmp dword[rbx], Exit
+      je _address__meet_end
+      cmp dword[rbx], 已矣
+      je _literal__meet_end
+      push_return_stack rbx
+   _address__meet_end:
+      next
 
-   def_noun "Lambda-stack-pointer", Lambda_stack_pointer
-      xx  Lambda_stack_top
-   def_noun_end Lambda_stack_pointer
 
-
-   def_verb "push-lambda-stack", push_lambda_stack
-      ;; (* ArgumentStack::  value -->
-      ;;    LambdaStack::    value *)
-      xx _literal, Cell_width, _address, Lambda_stack_pointer, sub_save
-      xx Lambda_stack_pointer, save
+   ;; no error handling for string_full_of_blank
+   def_key_word "address", address
+      ;; (* word-string[address, length] -- word-string[address, length] *)
+      ;; (* compile::
+      ;;      _literal[address of explainer], number *)
+      xx _literal, _address, append_number_to_here
+      xx tail_and_head_of_word_string
+      ;; need error handling when not found
+      xx find, word_link_to_word_explainer, append_number_to_here
       xx Exit
-   def_verb_end push_lambda_stack
-
-   def_verb "pop-lambda-stack", pop_lambda_stack
-      ;; (* LambdaStack::    value -->
-      ;;    ArgumentStack::  value *)
-      xx Lambda_stack_pointer, fetch
-      xx _literal, Cell_width, _address, Lambda_stack_pointer, add_save
-      xx Exit
-   def_verb_end pop_lambda_stack
-
-   def_verb "ready", ready
-      ;; (* ArgumentStack::  value-a, value-b -->
-      ;;    LambdaStack::    value-a, value-b *)
-      ;; (* beware of the order of the two values *)
-      xx swap, push_lambda_stack, push_lambda_stack
-      xx Exit
-   def_verb_end ready
-
-   def_verb "get-back", get_back
-      ;; (* beware of the order of the two values *)
-      ;; (* LambdaStack::    value-a, value-b -->
-      ;;    ArgumentStack::  value-a, value-b *)
-      xx pop_lambda_stack, pop_lambda_stack, swap
-      xx Exit
-   def_verb_end get_back
+   def_key_word_end address
    #+end_src
-* number
+** ----------------------------------
+** if else then
+   #+begin_src fasm :tangle threaded-code.inc
+   ;; one predicate can make two branchs
+   ;; three predicates can make four branchs
+   ;; three predicates may only make three branchs
+   ;; but indeed there must be an invisible branch
+
+   def_key_word "if", _if
+      ;; (* word-string[address, length] -- word-string[address, length] *)
+      ;; (* Lambda-stack::
+      ;;       -- address after _false?branch *)
+      ;; (* compile::
+      ;;      _false?branch[address of explainer], 0 *)
+      xx _literal, _false?branch, append_number_to_here
+      xx Here, push_lambda_stack
+      xx _literal, 0, append_number_to_here ;; (* leave a place *)
+      xx Exit
+   def_key_word_end _if
+
+   def_key_word "else", _else
+      ;; (* word-string[address, length] -- word-string[address, length] *)
+      ;; (* Lambda-stack ::
+      ;;      [address after _false?branch] -- [address after _branch] *)
+      ;; (* compile ::
+      ;;      _branch[address of explainer], 0 *)
+      ;; (* compile to [address after _false?branch] ::
+      ;;      [appropriate offset] *)
+      xx _literal, _branch, append_number_to_here
+      xx pop_lambda_stack
+      xx   Here, push_lambda_stack
+      xx   _literal, 0, append_number_to_here ;; (* leave a place *)
+      xx Here, over, subtraction, _literal, Cell_width, moddiv, swap, drop
+      xx swap, save
+      xx Exit
+   def_key_word_end _else
+
+   def_key_word "then", _then
+      ;; (* word-string[address, length] -- word-string[address, length] *)
+      ;; (* Lambda-stack ::
+      ;;      [address after _false?branch] or [address after _branch] --  *)
+      ;; (* compile to [address after _false?branch] or [address after _branch] ::
+      ;;      [appropriate offset] *)
+      xx pop_lambda_stack
+      xx Here, over, subtraction, _literal, Cell_width, moddiv, swap, drop
+      xx swap, save
+      xx Exit
+   def_key_word_end _then
+   #+end_src
+** comment
+   #+begin_src fasm :tangle threaded-code.inc
+   def_string "Bra:comment", "(*", Bra__comment
+   def_string "Ket:comment", "*)", Ket__comment
+
+   def_key_word "(*", ignore_comment
+      ;; (* word-string[address, length] -- word-string[address, length] *)
+      xx tail_and_head_of_word_string
+      xx dup2, Bra__comment, equal_string?, _false?branch, 5
+      xx   drop2, ignore_comment, _branch, -9
+      ;; beware of the tail-call-optimization
+      ;; a tail-recursive-call is really a loop
+      xx Ket__comment, equal_string?, _false?branch, -13
+      xx   Exit
+   def_key_word_end ignore_comment
+   #+end_src
+** colon
+   #+begin_src fasm :tangle threaded-code.inc
+   def_verb "append-number-to-current-data-section", append_number_to_current_data_section
+      ;; (* a 64 bits number -- *)
+      ;; reset "Current_data_section", which points next free memory
+      xx Current_data_section
+      xx save
+      xx Current_data_section
+      xx _literal, Cell_width, addition
+      xx _address, Current_data_section, save
+      xx Exit
+   def_verb_end append_number_to_current_data_section
+
+   ;; note that:
+   ;; a string in stack is string[address, length]
+   ;; a string in memory is ||  1 : length  ||  n : string  ||  1 : 0  ||
+   def_verb "append-string-to-current-data-section", append_string_to_current_data_section
+      ;; (* string[address, length] -- *)
+      ;; for update Current_data_section
+      xx dup, push_lambda_stack
+      xx   dup, append_number_to_current_data_section
+      xx   Current_data_section, swap, copy_byte_string
+      ;; update Current_data_section
+      xx pop_lambda_stack
+      xx Current_data_section, addition
+      xx _literal, 0, over, save_byte
+      xx add1
+      xx _address, Current_data_section, save
+      xx Exit
+   def_verb_end append_string_to_current_data_section
+
+
+
+   ;; cosemi = colon + semicolon
+   def_string "Bra:cosemi", ":", Bra__cosemi
+   def_string "Ket:cosemi", ";", Ket__cosemi
+
+   ;; 1. 为了使得 data section 的处理变得简单
+   ;;    即 不用去计算 function section 的长度
+   ;;    而使用 类似 哈佛构架的办法 把数据与函数分开
+   ;; 2. 利用 Current_data_section 这个变量
+   ;; 3. 为了处理嵌套的 ":" ";" 而对 ":" 的出现进行计数
+   ;; 4. do not copy byte by byte
+   ;;    but use "copy-byte-string"
+   def_key_word ":", colon
+      ;; (* word-string[address, length] -- word-string[address, length] *)
+      ;; (* compile ::
+      ;;      string[address, length] *)
+      ;; (* compile to [data section] ::
+      ;;      string-header and string ended by 0 *)
+      xx dup2
+      xx _literal, 0, push_lambda_stack ;; ":" counter
+      .tail_and_head_of_word_string:
+      xx tail_and_head_of_word_string
+      xx dup2, Bra__cosemi, equal_string?, _false?branch, (.dup2-$)/Cell_width
+      xx   drop2
+      xx   pop_lambda_stack, add1, push_lambda_stack
+      xx   _branch, (.tail_and_head_of_word_string-$)/Cell_width
+      .dup2:
+      xx dup2, Ket__cosemi, equal_string?, _false?branch, (.drop2-$)/Cell_width
+      xx   drop2
+      xx   pop_lambda_stack
+      xx   dup, zero?, _false?branch, (.sub1-$)/Cell_width
+      xx     drop
+      ;;     (* word-string-begin[address, length], word-string-end[address, length] *)
+      xx     dup2, ready
+      ;;       (* calculate the length and copy to [data section] *)
+      xx       drop, swap, drop
+      xx       _literal, 2, subtraction ;; sub the length of "; "
+      xx       over, subtraction
+      xx         Current_data_section
+      xx         _literal, Cell_width, addition
+      xx         over, push_lambda_stack  ;; (* length to compile to here *)
+      xx         push_lambda_stack        ;; (* address to compile to here *)
+      xx       append_string_to_current_data_section
+      ;;       (* compile the string into function-body *)
+      ;;       (* address to compile to here *)
+      xx       _literal, _literal, append_number_to_here
+      xx       pop_lambda_stack, append_number_to_here
+      ;;       (* length to compile to here *)
+      xx       _literal, _literal, append_number_to_here
+      xx       pop_lambda_stack, append_number_to_here
+      xx     get_back
+      xx     Exit
+      .sub1:
+      xx   sub1, push_lambda_stack
+      xx   _branch, (.tail_and_head_of_word_string-$)/Cell_width
+      .drop2:
+      xx drop2
+      xx _branch, (.tail_and_head_of_word_string-$)/Cell_width
+      xx Exit
+   def_key_word_end colon
+
+
+
+   ;; ><><><
+   ;; Chinese version
+
+   def_string "Bra:fuzhe", "夫", Bra__fuzhe
+   def_string "Ket:fuzhe", "者", Ket__fuzhe
+
+   def_key_word "夫", 夫
+      ;; (* word-string[address, length] -- word-string[address, length] *)
+      xx Exit
+   def_key_word_end 夫
+   #+end_src
+* --------------------------------------------------
+* >< cicada->fasm
+** note
+   1. 其实目前 cicada->fasm 将 只能在 linux 中使用
+   2. 我必须能在 当前的 runtime 本身中 调用这个函数
+      但是 在还没有 定义字符串的函数的前提下
+      为了简单起见
+      这个 本来因该被实现为一个 以字符串为参数的函数
+      在这里被实现为 一个 特殊的语法关键词
+      它 读它之后的 文件名 load 到 Fasm_buffer_in
+      然后把它 编译到 Fasm_buffer_out
+      然后 更换后缀名 把它 写出 到对定的文件
+      - 注意现在 已经是纯粹的编译语义了
+   3. cicada->fasm
+      1) 首先这个函数必须实现在汇编中
+      2) 输出的 fasm 代码将没有可读性
+      3) 需要
+         1. 把文件 load 到 一个 buffer 中
+         2. 这个文件将被 作为
+         3. 每个词 将被转换为 一行 fasm
+            需要有对命名规则的转换
+         4. 不允许 ": ... ;" "define-verb" "define-noun" 等等
+            之外的东西出现
+** implementation
+   #+begin_src fasm
+   hereUnInitializedData
+
+   Size_of_fasm_buffer = 4 * 1024 * 1024
+
+   Fasm_buffer_in labeling
+        preserve Size_of_fasm_buffer
+   Fasm_buffer_out labeling
+        preserve Size_of_fasm_buffer
+
+   ;; note that nothing like Data_section is needed here
+   def_noun "Current-fasm-buffer-in", Current_fasm_buffer_in
+      xx Fasm_buffer_in
+   def_noun_end Current_fasm_buffer_in
+
+   def_noun "Current-fasm-buffer-out", Current_fasm_buffer_out
+      xx Fasm_buffer_out
+   def_noun_end Current_fasm_buffer_out
+
+   ;; ><><>< create-word-header-for-verb
+
+   ;; just to find the next ";" to count the length of the word-string for define-verb
+   def_verb "help:cicada->fasm,compile,colon", help__cicada_to_fasm__compile__colon
+      ;; (* word-string[address, length] -- word-string[address, length] *)
+      xx
+      xx Exit
+   def_verb_end help__cicada_to_fasm__compile__colon
+
+
+   def_verb "help:cicada->fasm,compile,comment", help__cicada_to_fasm__compile__comment
+      ;; (* word-string[address, length] -- word-string[address, length] *)
+      xx ignore_comment
+      xx Exit
+   def_verb_end help__cicada_to_fasm__compile__comment
+
+   def_verb "help:cicada->fasm,compile,define-verb", help__cicada_to_fasm__compile__define_verb
+      ;; (* word-string[address, length] -- *)
+      xx
+      xx Exit
+   def_verb_end help__cicada_to_fasm__compile__define_verb
+
+   def_verb "help:cicada->fasm,compile,define", help__cicada_to_fasm__compile__define
+      ;; (* word-string[address, length] -- *)
+      xx
+      xx Exit
+   def_verb_end help__cicada_to_fasm__compile__define
+
+   ;; only handles the following words:
+   ;; ":"  "(*"  "define-verb"  "define-noun"
+   def_verb "help:cicada->fasm,compile", help__cicada_to_fasm__compile
+      ;; (* [Fasm_buffer_in as address, length] -- *)
+      xx tail_and_head_of_word_string
+      xx dup2,
+      xx Exit
+   def_verb_end help__cicada_to_fasm__compile
+
+
+   def_verb "help:cicada->fasm,change-file-name", help__cicada_to_fasm__change_file_name
+      ;; (* file-name[address, length] -- file-name[address, length] *)
+      xx ><><><
+      xx Exit
+   def_verb_end help__cicada_to_fasm__change_file_name
+
+
+   def_key_word "cicada->fasm", cicada_to_fasm
+      ;; (* word-string[address, length] -- word-string[address, length] *)
+      ;; note that error handling is wrong here
+      ;; for right error handling needs to "Exit" more than one level of function-body
+      ;; but ...
+      xx tail_and_head_of_word_string
+      xx dup2, ready
+
+      ;; (* load file *)
+      xx _literal, Fasm_buffer_in
+      xx _literal, Size_of_fasm_buffer
+      xx file_to_buffer__with_error
+      xx dup, _literal, 0, less_than?, _false?branch, 5
+      xx   Message__cicada_to_fasm__error, print_string, cr
+      xx   Exit
+      xx _address, Current_fasm_buffer_in, add_save
+
+      ;; (* compile buffer *)
+      xx help__cicada_to_fasm__compile
+
+      ;; (* wirte to file *)
+      xx _literal, Fasm_buffer_out
+      xx dup, Current_fasm_buffer_out, swap, subtraction
+      xx get_back, help__cicada_to_fasm__change_file_name
+      xx buffer_to_file__with_error
+      xx dup, _literal, 0, less_than?, _false?branch, 5
+      xx   Message__cicada_to_fasm__error, print_string, cr
+      xx   Exit
+      xx drop
+      xx Exit
+   def_key_word_end cicada_to_fasm
+
+   def_string "Message:cicada->fasm,error", "ERROR: cicada->fasm", Message__cicada_to_fasm__error
+   #+end_src
+* --------------------------------------------------
+* basic-REPL
+  #+begin_src fasm :tangle threaded-code.inc
+  def_verb "basic-REPL", basic_REPL
+     ;; (* unknown -- unknown *)
+     ;; ><><>< init srack ???
+     .read_phrase:
+     xx read_phrase
+     xx eval_phrase
+     xx _branch, (.read_phrase-$)/Cell_width
+  def_verb_end basic_REPL
+
+  def_verb "execute-word", execute_word
+     ;; (* string[address, length] -- unknown *)
+     xx dup2, string_denote_integer?, _false?branch, 4
+     xx   string_to_integer__with_error, drop
+     xx   Exit
+     xx dup2, find, dup, _false?branch, 6
+     xx   xxswapx, drop2
+     xx   word_link_to_word_explainer, execute
+     xx   Exit
+     xx drop ;; drop zero
+     xx Message_undefined_word, print_string
+     xx print_string
+     xx _literal, ASCII_linefeed, write_char
+     xx Exit
+  def_verb_end execute_word
+
+  def_string "Message:undefined-word", "   UNDEFINED WORD: ", Message_undefined_word
+  #+end_src
+* phrase
+** note
+   1. functions about phrase are just for runtime
+      with a buffer been overwrited each time the functions run
+      nested calling is not allowed
+   2. nested calling needs GC about string
+** read-phrase
+   #+begin_src fasm :tangle threaded-code.inc
+   hereUnInitializedData
+   ;; ------------------------
+   Size_of_buffer_for_read_phrase = 1024*1024
+
+   Buffer_for_read_phrase labeling
+           preserve Size_of_buffer_for_read_phrase
+
+
+   ;; 1. use "read_word__while_saving_to_string"
+   ;; 2. 每次 读一个 词 然后看 词界 是否是 回车
+   ;;    如果是 就做一个 phrase 然后返回
+   ;;    如果不是 就继续读
+   ;; 3. only ":" ";", as a pair of bra-ket, are been handled by a counter here
+   ;;    >< this is not the right thing
+   ;;    因为 比如说 当出现 "(" 的时候
+   ;;    后面所跟的字符串 一定要保证 能够被 正确地 "(" 处理
+   ;;    也就是 read-phrase 说这个函数
+   ;;    只应该接受 那些 bra-ket 正确匹配了的 以回车结尾的 字符串
+   ;; 4. 这个 错误以后再弥补
+   ;;    因为我需要快把基本的东西实现出来
+   ;;    让解释器 重新跑起来 以方便做测试
+   ;; 5. add "Exit" to the end of the string
+
+   def_verb "read-phrase", read_phrase
+      ;; (*  -- string[address, length] *)
+      xx _literal, Buffer_for_read_phrase
+      xx _literal, 0
+
+      xx _literal, 0, push_lambda_stack ;; leave a counter of ":"
+
+      .read_word__while_saving_to_string:
+      xx read_word__while_saving_to_string
+      ;; (* string[address, length], word[address, length] *)
+
+      xx dup2, Bra__cosemi, equal_string?, _false?branch, (.dup2-$)/Cell_width
+      xx   drop2
+      xx   pop_lambda_stack, add1, push_lambda_stack
+      xx   _branch, (.read_word__while_saving_to_string-$)/Cell_width
+
+      .dup2:
+      xx dup2, Ket__cosemi, equal_string?, _false?branch, (.xxoverxx-$)/Cell_width
+      xx   pop_lambda_stack, sub1, push_lambda_stack
+
+      .xxoverxx:
+      ;; to see the what char the "word-boundary,end" is
+      xx xxoverxx, addition, sub1, fetch_byte
+      xx _literal, ASCII_linefeed, equal?, false?, _false?branch, (.drop2-$)/Cell_width
+      xx   drop2
+      xx   _branch, (.read_word__while_saving_to_string-$)/Cell_width
+
+      .drop2:
+      xx drop2
+
+      xx pop_lambda_stack
+      xx dup, zero?, _false?branch, (.push_lambda_stack-$)/Cell_width
+      xx   drop
+      xx   Exit
+
+      .push_lambda_stack:
+      xx push_lambda_stack
+      xx _branch, (.read_word__while_saving_to_string-$)/Cell_width
+   def_verb_end read_phrase
+   #+end_src
+** eval-phrase
+   #+begin_src fasm :tangle threaded-code.inc
+   def_verb "eval-phrase", eval_phrase
+      ;; (* word-string[address, length] -- unknown *)
+      xx compile_phrase, call_compiled_phrase
+      xx Exit
+   def_verb_end eval_phrase
+   #+end_src
+** compile-phrase
+   #+begin_src fasm :tangle threaded-code.inc
+   hereUnInitializedData
+   ;; ------------------------
+   Size_of_buffer_of_function_body__for_compile_phrase = 1024*1024
+   Size_of_buffer_of_data_section__for_compile_phrase = 1024*1024
+
+   Buffer_of_function_body__for_compile_phrase labeling
+           preserve Size_of_buffer_of_function_body__for_compile_phrase
+   Buffer_of_data_section__for_compile_phrase labeling
+           preserve Size_of_buffer_of_data_section__for_compile_phrase
+
+
+   def_verb "compile-phrase", compile_phrase
+      ;; (* word-string[address, length] --  *)
+      xx Here, push_lambda_stack
+      xx Current_data_section, push_lambda_stack
+      xx   _literal, Buffer_of_function_body__for_compile_phrase, _address, Here, save
+      xx   _literal, Buffer_of_data_section__for_compile_phrase, _address, Current_data_section, save
+      xx   _Verb_explainer, append_number_to_here
+      xx   append_word_description_to_here
+      xx   The_Exit, append_number_to_here
+      xx pop_lambda_stack, _address, Current_data_section, save
+      xx pop_lambda_stack, _address, Here, save
+      xx Exit
+   def_verb_end compile_phrase
+   #+end_src
+** call-compiled-phrase
+   #+begin_src fasm :tangle threaded-code.inc
+   def_verb "call-compiled-phrase", call_compiled_phrase
+      ;; (* -- unknown *)
+      xx _literal, Buffer_of_function_body__for_compile_phrase
+      xx execute
+      xx Exit
+   def_verb_end call_compiled_phrase
+   #+end_src
+* number reader
 ** note
    1. 现在 的 number 就只是 "integer" 而已
       更多的跟数学有关的东西将在 cicada 中设计新的语法来实现
@@ -1960,20 +2583,6 @@
       xx Exit
    def_verb_end find_char_address
 
-   ;; : find-char-index
-   ;;   (* char, [address, length] -- index or -1 *)
-   ;;   (* index start from Zero *)
-   ;;   over
-   ;;   xxx|swap|x
-   ;;   find-char-address
-   ;;   dup 0 < if
-   ;;     swap drop
-   ;;     Exit
-   ;;   then
-   ;;   swap -
-   ;;   Exit
-   ;; ; define-function
-
    def_verb "find-char-index", find_char_index
       ;; (* char, [address, length] -- index or -1 *)
       ;; (* index start from Zero *)
@@ -2005,401 +2614,56 @@
       xx Exit
    def_verb_end cr
    #+end_src
-* key-word
+* eval == compile and call
 ** note
-   1. 可以发现有两类语法关键词
-      1) 一类是 if else then comment colon
-         它们类似与 scheme 中对语法的扩展
-      2) 一类是 literal branch false?branch address
-         它们虽然也以其后的 string 为参数
-         但是行为方式却有明显的不同
-         它们 以指定的方式 把后面的 string 处理好
-         并编译到函数体当中的同时
-         还会 在这之前 编译一个
-         定义在汇编中的函数的地址
-         这个汇编中的函数以特定的方式解释 函数体中 在其后的值
-         这些函数通常定义在汇编中的原因是
-         它们需要改变 Return-stack 的栈顶的值
-      3) 第一类语法关键词 是真正意义上的语法关键词
-         而 第二类语法关键词 存在的原因
-         是去 改变 虚拟机对函数体内部的值的单一的解释方式
-   2. 当我想要实现 对 比如说 字符 字符串 各个进位置的数字 的编译 的时候
-      有两种办法 (以 各个进位置的数字 为例):
-      1) 写 一个 string->integer,with-error
-         也就是一个解析字符串 并 给出所表示的整数的函数
-      2) 设计各种 前缀
-         也就是说把 原本需要被一个大函数解析的 前缀 从 string 中分离出来
-         然后 把这些前缀实现为 第二类语法关键词
-         此时就需要加空格了
-   3. 对比 一下 两种实现方式
-      就会发现非常有趣的结果
-      1) 首先不能说那种方式更灵活
-         因为它们分别受 空格 的限制
-         只不过 空格 限制它们的方式不同
-      2) 但是 第二种方式 具有更好的可维护性
-         因为它把一个大函数 拆开成了很多小函数
-      3) 我可以
-         把第一种 处理方式 命名为 符号性的处理方式
-         此时你要设计符号的形态
-         把第一种 处理方式 命名为 前缀性的处理方式
-         此时你要选择合适的前缀
-      4) 在 cicada 中
-         已经使用 符号性的处理方式 string->integer,with-error
-         已经使用 前缀性的处理方式 的是 literal branch false?branch
-      5) 我认为 前缀性的处理方式 更好
-         因为 它用更明显的视觉形态 降低了 代码的阅读者的 "认知上的负担"
-         - 前提是有语法高亮
-         并且 很适合中文 因为中文中原本就没有很多不表意
-         而 单表 句之结构的 标点符号
-         在我的中文代码中 表 句之结构的 标点符号 就只有空格而已
-         其实也类似于标点符号 因为它们也有 表明句之结构的功能
-         只不过它们 使用了 比异于文字的 标点符号 更 让人亲近的 文字本身而已
-      6) 仔细地 盯着 屏幕上的 英文 与 汉字 看了一会儿
-         我发现 西方的拼写字母 跟汉字相比 简直 太丑陋了
-** literal branch false?branch
+   1. with a buffer been overwrited each time the functions run
+      nested calling is not allowed
+   2. nested calling needs GC about string
+** eval-string
    #+begin_src fasm :tangle threaded-code.inc
-   ;; with chinese support
-
-   ;; this word should not be found
-   ;; the interface of this word is the next word "literal"
-   def_assembly_code "", _literal
-      ;; (* -- number *)
-      ;; 1. if NOT at the end of the function body
-      ;;    (* Return-stack::
-      ;;         address -- address + Cell_width *)
-      ;; 2. if at the end of the function body
-      ;;    (* Return-stack::
-      ;;         address -- *)
-      pop_return_stack rbx
-      mov  rax, [rbx]
-      push_argument_stack rax
-      add  rbx, Cell_width
-      cmp dword[rbx], Exit
-      je _literal__meet_end
-      cmp dword[rbx], 已矣
-      je _literal__meet_end
-      push_return_stack rbx
-   _literal__meet_end:
-      next
-
-   ;; no error handling for string_full_of_blank
-   def_key_word "literal", literal
-      ;; (* word-string[address, length] -- word-string[address, length] *)
-      ;; (* compile::
-      ;;      _literal[address of explainer], number *)
-      xx _literal, _literal, append_number_to_here
-      xx tail_and_head_of_word_string
-      ;; need error handling when not found
-      xx find, word_link_to_word_explainer, append_number_to_here
-      xx Exit
-   def_key_word_end literal
-
-
-   ;; the following handles _branch to "Exit"
-   ;; >< alth branch to "Exit" should never be used
-   def_assembly_code "", _branch
-      ;; 1. if NOT at the end of the function body
-      ;;    (* Return-stack::
-      ;;         address -- address + offset * Cell_width *)
-      ;; 2. if at the end of the function body
-      ;;    (* Return-stack::
-      ;;         address -- *)
-      ;; and "next"
-      ;; (could be optimize by not using "next")
-      pop_return_stack rbx
-      mov  rax, [rbx]
-      imul rax, Cell_width
-      add  rbx, rax
-      cmp dword[rbx], Exit
-      je _branch__meet_end
-      cmp dword[rbx], 已矣
-      je _branch__meet_end
-      push_return_stack rbx
-   _branch__meet_end:
-      next
-
-   ;; no error handling for string_full_of_blank
-   def_key_word "branch", branch
-      ;; (* word-string[address, length] -- word-string[address, length] *)
-      ;; (* compile::
-      ;;      _literal[address of explainer], number *)
-      xx _literal, _branch, append_number_to_here
-      xx tail_and_head_of_word_string
-      xx dup2, string_denote_integer?, _false?branch, 5
-      xx   string_to_integer__with_error, drop, append_number_to_here
-      xx   Exit
-      ;; need error handling when branch followed by a non integer
-      xx Exit
-   def_key_word_end branch
-
-
-   ;; the following handles _false?branch to "Exit"
-   def_assembly_code "", _false?branch
-      ;; (* True of False -- *)
-      ;; 0. if NOT _branch
-      ;;    (* Return-stack::
-      ;;         address -- address + Cell_width *)
-      ;; 1. if NOT at the end of the function body
-      ;;    (* Return-stack::
-      ;;         address -- address + offset * Cell_width *)
-      ;; 2. if at the end of the function body
-      ;;    (* Return-stack::
-      ;;         address -- *)
-      ;; and "next"
-      ;; (could be optimize by not using "next")
-      pop_argument_stack rax
-      test rax, rax
-      jnz _false?branch__not_to_branch
-
-      pop_return_stack rbx
-      mov  rax, [rbx]
-      imul rax, Cell_width
-      add  rbx, rax
-      cmp dword[rbx], Exit
-      je _false?branch__meet_end
-      cmp dword[rbx], 已矣
-      je _false?branch__meet_end
-      push_return_stack rbx
-   _false?branch__meet_end:
-      next
-
-   _false?branch__not_to_branch:
-      pop_return_stack rbx
-      add rbx, Cell_width
-      cmp dword[rbx], Exit
-      je _false?branch__not_to_branch__meet_end
-      cmp dword[rbx], 已矣
-      je _false?branch__not_to_branch__meet_end
-      push_return_stack rbx
-   _false?branch__not_to_branch__meet_end:
-      next
-
-   ;; no error handling for string_full_of_blank
-   def_key_word "false?branch", false?branch
-      ;; (* word-string[address, length] -- word-string[address, length] *)
-      ;; (* compile::
-      ;;      _literal[address of explainer], number *)
-      xx _literal, _false?branch, append_number_to_here
-      xx tail_and_head_of_word_string
-      xx dup2, string_denote_integer?, _false?branch, 5
-      xx   string_to_integer__with_error, drop, append_number_to_here
-      xx   Exit
-      ;; need error handling when branch followed by a non integer
-      xx Exit
-   def_key_word_end false?branch
-
-   ;; ><><><
-   ;; Chinese version
-   ;; 即 转 假则转
-   #+end_src
-** address
-   #+begin_src fasm :tangle threaded-code.inc
-   def_assembly_code "", _address
-      ;; (* -- address *)
-      ;; 1. if NOT at the end of the function body
-      ;;    (* Return-stack::
-      ;;         address -- address + Cell_width *)
-      ;; 2. if at the end of the function body
-      ;;    (* Return-stack::
-      ;;         address -- *)
-      pop_return_stack rbx
-      mov  rax, [rbx]
-      add  rax, Cell_width
-      push_argument_stack rax
-      add  rbx, Cell_width
-      cmp dword[rbx], Exit
-      je _address__meet_end
-      cmp dword[rbx], 已矣
-      je _literal__meet_end
-      push_return_stack rbx
-   _address__meet_end:
-      next
-
-
-   ;; no error handling for string_full_of_blank
-   def_key_word "address", address
-      ;; (* word-string[address, length] -- word-string[address, length] *)
-      ;; (* compile::
-      ;;      _literal[address of explainer], number *)
-      xx _literal, _address, append_number_to_here
-      xx tail_and_head_of_word_string
-      ;; need error handling when not found
-      xx find, word_link_to_word_explainer, append_number_to_here
-      xx Exit
-   def_key_word_end address
-   #+end_src
-** ----------------------------------
-** if else then
-   #+begin_src fasm :tangle threaded-code.inc
-   ;; one predicate can make two branchs
-   ;; three predicates can make four branchs
-   ;; three predicates may only make three branchs
-   ;; but indeed there must be an invisible branch
-
-   def_key_word "if", _if
-      ;; (* word-string[address, length] -- word-string[address, length] *)
-      ;; (* Lambda-stack::
-      ;;       -- address after _false?branch *)
-      ;; (* compile::
-      ;;      _false?branch[address of explainer], 0 *)
-      xx _literal, _false?branch, append_number_to_here
-      xx Here, push_lambda_stack
-      xx _literal, 0, append_number_to_here ;; (* leave a place *)
-      xx Exit
-   def_key_word_end _if
-
-   def_key_word "else", _else
-      ;; (* word-string[address, length] -- word-string[address, length] *)
-      ;; (* Lambda-stack ::
-      ;;      [address after _false?branch] -- [address after _branch] *)
-      ;; (* compile ::
-      ;;      _branch[address of explainer], 0 *)
-      ;; (* compile to [address after _false?branch] ::
-      ;;      [appropriate offset] *)
-      xx _literal, _branch, append_number_to_here
-      xx pop_lambda_stack
-      xx   Here, push_lambda_stack
-      xx   _literal, 0, append_number_to_here ;; (* leave a place *)
-      xx Here, over, subtraction, _literal, Cell_width, moddiv, swap, drop
-      xx swap, save
-      xx Exit
-   def_key_word_end _else
-
-   def_key_word "then", _then
-      ;; (* word-string[address, length] -- word-string[address, length] *)
-      ;; (* Lambda-stack ::
-      ;;      [address after _false?branch] or [address after _branch] --  *)
-      ;; (* compile to [address after _false?branch] or [address after _branch] ::
-      ;;      [appropriate offset] *)
-      xx pop_lambda_stack
-      xx Here, over, subtraction, _literal, Cell_width, moddiv, swap, drop
-      xx swap, save
-      xx Exit
-   def_key_word_end _then
-   #+end_src
-** comment
-   #+begin_src fasm :tangle threaded-code.inc
-   def_noun_string "Bra:comment", "(*", Bra__comment
-   def_noun_string "Ket:comment", "*)", Ket__comment
-
-   def_key_word "(*", ignore_comment
-      ;; (* word-string[address, length] -- word-string[address, length] *)
-      xx tail_and_head_of_word_string
-      xx dup2, Bra__comment, equal_string?, _false?branch, 5
-      xx   drop2, ignore_comment, _branch, -9
-      ;; beware of the tail-call-optimization
-      ;; a tail-recursive-call is really a loop
-      xx Ket__comment, equal_string?, _false?branch, -13
-      xx   Exit
-   def_key_word_end ignore_comment
-   #+end_src
-** colon
-   #+begin_src fasm :tangle threaded-code.inc
-   def_verb "append-number-to-current-data-section", append_number_to_current_data_section
-      ;; (* a 64 bits number -- *)
-      ;; reset "Current_data_section", which points next free memory
-      xx Current_data_section
-      xx save
-      xx Current_data_section
-      xx _literal, Cell_width, addition
-      xx _address, Current_data_section, save
-      xx Exit
-   def_verb_end append_number_to_current_data_section
-
-   ;; note that:
-   ;; a string in stack is string[address, length]
-   ;; a string in memory is ||  1 : length  ||  n : string  ||  1 : 0  ||
-   def_verb "append-string-to-current-data-section", append_string_to_current_data_section
+   def_verb "eval-string", eval_string
       ;; (* string[address, length] -- *)
-      ;; for update Current_data_section
-      xx dup, push_lambda_stack
-      xx   dup, append_number_to_current_data_section
-      xx   Current_data_section, swap, copy_byte_string
-      ;; update Current_data_section
-      xx pop_lambda_stack
-      xx Current_data_section, addition
-      xx _literal, 0, over, save_byte
-      xx add1
-      xx _address, Current_data_section, save
+      xx compile_string, call_compiled_string
       xx Exit
-   def_verb_end append_string_to_current_data_section
-
-
-
-   ;; cosemi = colon + semicolon
-   def_noun_string "Bra:cosemi", ":", Bra__cosemi
-   def_noun_string "Ket:cosemi", ";", Ket__cosemi
-
-   ;; 1. 为了使得 data section 的处理变得简单
-   ;;    即 不用去计算 function section 的长度
-   ;;    而使用 类似 哈佛构架的办法 把数据与函数分开
-   ;; 2. 利用 Current_data_section 这个变量
-   ;; 3. 为了处理嵌套的 ":" ";" 而对 ":" 的出现进行计数
-   ;; 4. do not copy byte by byte
-   ;;    but use "copy-byte-string"
-   def_key_word ":", colon
-      ;; (* word-string[address, length] -- word-string[address, length] *)
-      ;; (* compile ::
-      ;;      string[address, length] *)
-      ;; (* compile to [data section] ::
-      ;;      string-header and string ended by 0 *)
-      xx dup2
-      xx _literal, 0, push_lambda_stack ;; ":" counter
-      .tail_and_head_of_word_string:
-      xx tail_and_head_of_word_string
-      xx dup2, Bra__cosemi, equal_string?, _false?branch, (.dup2-$)/Cell_width
-      xx   drop2
-      xx   pop_lambda_stack, add1, push_lambda_stack
-      xx   _branch, (.tail_and_head_of_word_string-$)/Cell_width
-      .dup2:
-      xx dup2, Ket__cosemi, equal_string?, _false?branch, (.drop2-$)/Cell_width
-      xx   drop2
-      xx   pop_lambda_stack
-      xx   dup, zero?, _false?branch, (.sub1-$)/Cell_width
-      xx     drop
-      ;;     (* word-string-begin[address, length], word-string-end[address, length] *)
-      xx     dup2, ready
-      ;;       (* calculate the length and copy to [data section] *)
-      xx       drop, swap, drop
-      xx       _literal, 2, subtraction ;; sub the length of "; "
-      xx       over, subtraction
-      xx         Current_data_section
-      xx         _literal, Cell_width, addition
-      xx         over, push_lambda_stack  ;; (* length to compile to here *)
-      xx         push_lambda_stack        ;; (* address to compile to here *)
-      xx       append_string_to_current_data_section
-      ;;       (* compile the string into function-body *)
-      ;;       (* address to compile to here *)
-      xx       _literal, _literal, append_number_to_here
-      xx       pop_lambda_stack, append_number_to_here
-      ;;       (* length to compile to here *)
-      xx       _literal, _literal, append_number_to_here
-      xx       pop_lambda_stack, append_number_to_here
-      xx     get_back
-      xx     Exit
-      .sub1:
-      xx   sub1, push_lambda_stack
-      xx   _branch, (.tail_and_head_of_word_string-$)/Cell_width
-      .drop2:
-      xx drop2
-      xx _branch, (.tail_and_head_of_word_string-$)/Cell_width
-      xx Exit
-   def_key_word_end colon
-
-
-
-   ;; ><><><
-   ;; Chinese version
-
-   def_noun_string "Bra:fuzhe", "夫", Bra__fuzhe
-   def_noun_string "Ket:fuzhe", "者", Ket__fuzhe
-
-   def_key_word "夫", 夫
-      ;; (* word-string[address, length] -- word-string[address, length] *)
-      xx Exit
-   def_key_word_end 夫
+   def_verb_end eval_string
    #+end_src
-* the dictionary & the lexicographer
+** compile-string
+   #+begin_src fasm :tangle threaded-code.inc
+   hereUnInitializedData
+   ;; ------------------------
+   Size_of_buffer_of_function_body__for_compile_string = 1024*1024
+   Size_of_buffer_of_data_section__for_compile_string = 1024*1024
+
+   Buffer_of_function_body__for_compile_string labeling
+           preserve Size_of_buffer_of_function_body__for_compile_string
+   Buffer_of_data_section__for_compile_string labeling
+           preserve Size_of_buffer_of_data_section__for_compile_string
+
+
+   def_verb "compile-string", compile_string
+      ;; (* word-string[address, length] --  *)
+      xx Here, push_lambda_stack
+      xx Current_data_section, push_lambda_stack
+      xx   _literal, Buffer_of_function_body__for_compile_string, _address, Here, save
+      xx   _literal, Buffer_of_data_section__for_compile_string, _address, Current_data_section, save
+      xx   _Verb_explainer, append_number_to_here
+      xx   append_word_description_to_here
+      xx   The_Exit, append_number_to_here
+      xx pop_lambda_stack, _address, Current_data_section, save
+      xx pop_lambda_stack, _address, Here, save
+      xx Exit
+   def_verb_end compile_string
+   #+end_src
+** call-compiled-string
+   #+begin_src fasm :tangle threaded-code.inc
+   def_verb "call-compiled-string", call_compiled_string
+      ;; (* -- unknown *)
+      xx _literal, Buffer_of_function_body__for_compile_string
+      xx execute
+      xx Exit
+   def_verb_end call_compiled_string
+   #+end_src
+* dictionary & lexicographer
 ** explainers & execute & Exit
    #+begin_src fasm :tangle threaded-code.inc
    def_assembly_code "execute", execute
@@ -2410,13 +2674,12 @@
    ;; when someone try to find a word in the dictionary,
    ;; the explainer of that word explains the word for him or her
 
-   ;; explain_function_body 会贴贴一个 纸条 到 木条 上
+   ;; explain_verb 会贴贴一个 纸条 到 木条 上
 
-   ;; the version handles empty function-body
    hereCode
-   explain_function_body:
+   explain_verb:
       ;;  Explainer_pointer  == address
-      ;; [Explainer_pointer] == explain_function_body
+      ;; [Explainer_pointer] == explain_verb
       ;; 1. if NOT at the end of the function body
       ;;    (* Return-stack::
       ;;          -- [address of explainer] + Cell_width *)
@@ -2425,32 +2688,29 @@
       ;;          -- *)
       ;; and jump to the explainer of the [address of explainer]
       mov rbx, Explainer_pointer
+
       add rbx, Cell_width
+      ;; to handle empty function-body
+      cmp dword[rbx], Exit
+      je empty_function_body
+      cmp dword[rbx], 已矣
+      je empty_function_body
+
       mov Explainer_pointer, [rbx]
       add rbx, Cell_width
+      ;; to handle function-body of size 1
       cmp dword[rbx], Exit
       je at_the_end_of_function_body
       cmp dword[rbx], 已矣
       je at_the_end_of_function_body
+
       push_return_stack rbx
+
    at_the_end_of_function_body:
       jmp qword[Explainer_pointer]
 
-   ;; ;; the version does NOT handle empty function-body
-   ;; hereCode
-   ;; explain_function_body:
-   ;;    ;;  Explainer_pointer  == address
-   ;;    ;; [Explainer_pointer] == explain_function_body
-   ;;    ;; must NOT at the end of the function body
-   ;;    ;; (* Return-stack::
-   ;;    ;;       -- [address of explainer] + Cell_width *)
-   ;;    ;; and jump to the explainer of the [address of explainer]
-   ;;    mov rbx, Explainer_pointer
-   ;;    add rbx, Cell_width
-   ;;    mov Explainer_pointer, [rbx]
-   ;;    add rbx, Cell_width
-   ;;    push_return_stack rbx
-   ;;    jmp qword[Explainer_pointer]
+   empty_function_body:
+      next      
 
 
    hereCode
@@ -2474,17 +2734,32 @@
    ;; the following Exit helps tail-call-optimization
    ;; it just let you decide where is the end of FunctionBody
    ;; in a FunctionBody, the "Exit" as a word will never be called
+
    def_noun "Exit", Exit
       xx Exit
    def_noun_end Exit
 
+   ;; we need the following 
+   ;; for this word is so special
+   def_noun "The-Exit", The_Exit
+      xx Exit
+   def_noun_end The_Exit
+
+   ;; def_verb "t", t
+   ;;    xx The_Exit
+   ;;    xx The_Exit
+   ;;    xx equal?, print_little_number
+   ;;    xx Exit
+   ;; def_verb_end t
+   
    def_noun "已矣", 已矣
       xx 已矣
    def_noun_end 已矣
 
-
+   ;; ><><>< that is the Chinese version of "The-Exit"
+ 
    def_noun "Verb-explainer", _Verb_explainer
-      xx explain_function_body
+      xx explain_verb
    def_noun_end _Verb_explainer
 
    def_noun "Noun-explainer", _Noun_explainer
@@ -2564,7 +2839,7 @@
       xx Exit
    def_verb_end find
    #+end_src
-** about word
+** word as string
 *** note about distinguishing word from input
     1. read-char 给 input 做好了抽象
        使得 从 input 中读字符
@@ -2648,7 +2923,7 @@
        xx Exit
     def_verb_end read_word__while_saving_to_string
     #+end_src
-** about word-string
+** word-string
 *** find-word-boundary-address & find-word-boundary-index
     #+begin_src fasm :tangle threaded-code.inc
     def_verb "find-word-boundary-address,begin", find_word_boundary_address__begin
@@ -2797,7 +3072,69 @@
        xx Exit
     def_verb_end tail_and_head_of_word_string
     #+end_src
-** the basic lexicographer
+** word as datastructure
+   #+begin_src fasm :tangle threaded-code.inc
+   def_verb "word,link->size", word__link_to_size
+      ;; (* word.link[address] -- word.size[value] *)
+      xx _literal, Cell_width
+      xx _literal, -2, multiple
+      xx addition, fetch
+      xx Exit
+   def_verb_end word__link_to_size
+
+   def_verb "word,link->address-of-size", word__link_to_address_of_size
+      ;; (* word.link[address] -- word.address-of-size[address] *)
+      xx _literal, Cell_width
+      xx _literal, -2, multiple
+      xx addition
+      xx Exit
+   def_verb_end word__link_to_address_of_size
+
+   def_verb "word,link->id", word__link_to_id
+      ;; (* word.link[address] -- word.id[address also as value] *)
+      xx _literal, Cell_width
+      xx _literal, -1, multiple
+      xx addition
+      xx Exit
+   def_verb_end word__link_to_id
+
+   def_verb "word,link->type", word__link_to_type
+      ;; (* word.link[address] -- word.type[value] *)
+      xx _literal, Cell_width
+      xx _literal, 1, multiple
+      xx addition, fetch
+      xx Exit
+   def_verb_end word__link_to_type
+
+   def_verb "word,link->explainer", word__link_to_explainer
+      ;; (* word.link[address] -- word.explainer[address] *)
+      xx _literal, Cell_width
+      xx _literal, 3, multiple
+      xx addition
+      xx Exit
+   def_verb_end word__link_to_explainer
+
+   def_verb "word,link->description", word__link_to_description
+      ;; (* word.link[address] -- word.description[address] *)
+      xx _literal, Cell_width
+      xx _literal, 4, multiple
+      xx addition
+      xx Exit
+   def_verb_end word__link_to_description
+   #+end_src
+** lexicographer
+*** note
+    1. to create a new word
+       is to use some words to describe the new word
+       and let an explainer to explain the description of the new word
+    2. to define a new word
+       is to add the new created word to the dictionary
+    3. 当在函数定义内引用自身的时候
+       总会形成递归调用
+       如果字典中已经 有要定义的函数了 也不会去找它
+       唯一不 使得这种特性变得不理想的情形是:
+       你在重新定义一个词的时候 需要调用旧的词本身
+       这种情况非常少 并且出现的时候也很容易解决
 *** append-word-description-to-here
     #+begin_src fasm :tangle threaded-code.inc
     def_verb "append-number-to-here", append_number_to_here
@@ -2884,27 +3221,11 @@
        xx   Exit
     def_verb_end append_word_description_to_here
     #+end_src
-*** define-function
+*** helper functions for define-verb
     #+begin_src fasm :tangle threaded-code.inc
-    def_verb "create-word-header", create_word_header ;; by string
+    def_verb "create-word-header", create_word_header
        ;; (* string[address, length] -- word[address of link] *)
-       ;; for address-of-name-string-header
-       xx Here, push_lambda_stack
-       xx   append_string_to_here
-       xx   Here, append_number_to_here ;; (* identification *)
-       xx   Here ;; (* leave the word[link] as return-value *)
-       xx   _literal, 0, append_number_to_here ;; (* link *)
-       xx   _literal, 0, append_number_to_here ;; (* type *)
-       ;; address-of-name-string-header
-       xx pop_lambda_stack, append_number_to_here
-       xx Exit
-    def_verb_end create_word_header
-
-    def_verb "create-word-header-for-function", create_word_header_for_function ;; by string
-       ;; (* SizeOfFunctionBody *) is new
-       ;; (* string[address, length] -- word[address of link] *)
-       ;; for address-of-name-string-header
-       xx Here, push_lambda_stack
+       xx Here, push_lambda_stack ;; for address-of-name-string-header
        xx   append_string_to_here
        xx   _literal, 0, append_number_to_here ;; (* SizeOfFunctionBody *)
        xx   Here, append_number_to_here ;; (* identification *)
@@ -2913,7 +3234,7 @@
        xx   _literal, 0, append_number_to_here ;; (* type *)
        xx pop_lambda_stack, append_number_to_here ;; address-of-name-string-header
        xx Exit
-    def_verb_end create_word_header_for_function
+    def_verb_end create_word_header
 
     def_verb "add-new-word-to-dictionary", add_new_word_to_dictionary
        ;; reset First_word_in_dictionary to point to the newly defined word
@@ -2926,39 +3247,90 @@
        xx Exit
     def_verb_end add_new_word_to_dictionary
 
-    def_verb "set-size-of-function-body", set_size_of_function_body
-       ;; (* words-string[address, the number of words], word[address of link] --
-       ;;    words-string[address, the number of words], word[address of link] *)
-       xx dup
-       xx _literal, Cell_width, subtraction
-       xx _literal, Cell_width, subtraction
-       xx xoverxx
-       xx swap
+    ;; the following function
+    ;; must be called at the end of word definition
+    ;; i.e. after "append_word_description_to_here"
+    ;; for it uses "Here" as an implicit argument
+    def_verb "set-size-of-word", set_size_of_word
+       ;; (* word[address of link] -- *)
+       xx dup, word__link_to_description
+       xx Here, swap, subtraction
+       xx _literal, Cell_width, division
+       xx swap, word__link_to_address_of_size
        xx save
        xx Exit
-    def_verb_end set_size_of_function_body
-
-    ;; 当在函数定义内引用自身的时候
-    ;; 总会形成递归调用
-    ;; 如果字典中已经 有要定义的函数了 也不会去找它
-    ;; 唯一不 使得这种特性变得不理想的情形是:
-    ;; 你在重新定义一个词的时候 需要调用旧的词本身
-    ;; 这种情况非常少 并且出现的时候也很容易解决
-    def_verb "define-function", define_function
-       ;; (* words-string[address, the number of words] -- *)
-       ;;  to create a new word
-       ;;  is to use some words to describe the new word,
-       ;;  and let an explainer to explain the description of the new word.
-       ;;  to define a new word
-       ;;  is to add the new created word to the dictionary.
+    def_verb_end set_size_of_word
+    #+end_src
+*** define-verb
+    #+begin_src fasm :tangle threaded-code.inc
+    def_verb "define-verb", define_verb
+       ;; (* words-string[address, length] -- *)
        xx tail_and_head_of_word_string
-       xx create_word_header_for_function
-       xx set_size_of_function_body
-       xx add_new_word_to_dictionary
-       xx _Verb_explainer, append_number_to_here
-       xx append_word_description_to_here
+       xx create_word_header
+       xx dup, push_lambda_stack
+       xx   add_new_word_to_dictionary
+       xx   _Verb_explainer, append_number_to_here
+       xx   append_word_description_to_here
+       xx pop_lambda_stack
+       xx set_size_of_word
+       xx Exit
+    def_verb_end define_verb
+
+    def_verb "define-function", define_function
+       ;; (* words-string[address, length] -- *)
+       xx define_verb
        xx Exit
     def_verb_end define_function
+    #+end_src
+*** helper functions for define
+    #+begin_src fasm :tangle threaded-code.inc
+    def_noun "Mark:append-word-description-to-here,for-noun", Mark__append_word_description_to_here__for_noun
+       xx 0
+    def_noun_end Mark__append_word_description_to_here__for_noun
+
+    def_verb "append-word-description-to-here,for-noun", append_word_description_to_here__for_noun
+       ;; (* word-string[address, length] -- *)
+       xx push_lambda_stack, push_lambda_stack
+       xx   fetch_argument_stack_pointer
+       xx   _address, Mark__append_word_description_to_here__for_noun, save
+       xx pop_lambda_stack, pop_lambda_stack
+
+       xx eval_string
+
+       ;; note that, when push stack grows to lower address
+       xx fetch_argument_stack_pointer
+       xx Mark__append_word_description_to_here__for_noun
+       xx swap, subtraction
+       xx _literal, Cell_width, division
+       ;; need error handling on negate number
+
+       ;; (* ..., value, counter *)
+       xx argument_stack_shift_to_lambda_stack
+       xx pop_lambda_stack
+       .dup:
+       xx dup, zero?, _false?branch, (.sub1-$)/Cell_width
+       xx   drop
+       xx   Exit
+       .sub1:
+       xx sub1
+       xx pop_lambda_stack, append_number_to_here
+       xx _branch, (.dup-$)/Cell_width
+    def_verb_end append_word_description_to_here__for_noun
+    #+end_src
+*** define
+    #+begin_src fasm :tangle threaded-code.inc
+    def_verb "define", _define
+       ;; (* words-string[address, length] -- *)
+       xx tail_and_head_of_word_string
+       xx create_word_header
+       xx dup, push_lambda_stack
+       xx   add_new_word_to_dictionary
+       xx   _Noun_explainer, append_number_to_here
+       xx   append_word_description_to_here__for_noun
+       xx pop_lambda_stack
+       xx set_size_of_word
+       xx Exit
+    def_verb_end _define
     #+end_src
 * --------------------------------------------------
 * memory allocation

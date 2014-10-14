@@ -3,57 +3,12 @@
 #+EMAIL: xyheme@gmail.com
 
 
-1. 在 尝试以 统一的方式 处理 define 时遇到了困难
-   即 当 define 看到 <pair-like> 的量时
-   就应该 执行 try,white->grey
-   而我不可能把 所依赖的所有的函数都转移到 汇编代码中
-   这个问题 有两个解法:
-   1) 用别的语言写一个 cicada 代码 到 汇编代码的编译器
-      - 优点是 :: 整个代码都可以互相调用了
-      - 缺点是 :: 要处理命名规则
-                  还有 其他的 可能存在的 跟汇编代码中 symbol 的冲突
-   2) 在 cicada 的 runtime 即 basic-REPL 中实现 编译语义的性质
-      即等待 未定义的 变量和函数
-      这样 "define" 在 cicada 代码中的位置就无所谓了
-      - 优点是 :: 没有对其他语言的依赖
-                  并且这个性状是早晚都要实现的
-      - 缺点是 :: 并不是全部的代码都可以相互调用
-2. 我选择第二个解法
-3. 在解释器的开始 我必须有 define-function 能够使用
-   并且 首先需要定义的函数就是 define
-4. 为了在 runtime 中形成编译语义
-   我必须把 对类型系统的处理 还有 hash-table 都转移到 汇编代码当中
-   这样在 用 cicada 代码 来实现的就只是
-   gc 还有 list-processing 还有 lambda-calculus 了
-5. 把越来越多的函数转移到 汇编代码中让我感觉很不好
-   但是 现在的 runtime 更加复杂了
-   而 在有 能编译自身 的编译器出现之前
-   我必须把 runtime 所需要的函数都放到 汇编代码中
-   其实 没什么好犹豫的
-----------------------------------
-1. 通过 引入 address 这个语法关键词
-   我就可以统一 define 的使用了
-   将 只有 单一的 define 没有别的 东西了
-2. ><><>< 注意 ><><><
-   这里要更改跟 GC 有关的代码
-   整个 GC 都应该被重写了吗 ???
-3. move "define" to assembly code
-4. 新的 define 还有一个问题是
-   每个名词 可以给出 几个值到 Argument-stack
-   是不确定的
-   这是可以接受的
-   就像是 对函数的注释 一样
-   只要给 对名词的定义 相应的注释就行了
-   并且 之后 还可以用 设计良好的 文本 编辑器 来解决这个问题
-5. 每个 名词 都有固定个数的 Cell
-   define-constant-string 也将没消除了
-   也就是说 在汇编代码中 也需要使用 具有可变长度的 名词
-   也就是说 相关的 macro 应该被重写了
-   我正好可以改一下 macro 的命名
-----------------------------------
+* ==================================================
+* TODO
 1. the whole english-core.org needs to be rewrited
-2. group the functions into groups
-   and write more tests for them
+2. ><><>< 注意 ><><><
+   对于新的 define 要更改 GC
+   整个 GC 都应该被重写了吗 ???
 3. make good use of indentation
    1) for string
    2) for wodili 应该 在 wodili 的已有的 解析器 的基础上
@@ -76,8 +31,8 @@
       或者直接从 文档开始
       用中文写文档 以加快速度
 * ==================================================
-* TODO
-** note
+* note
+** ><
    1. erlang 的 bit syntax 在于让人方便地处理 bit fields
       这在于 能 用模式匹配
    2. 不能统一命名规则 是一件很烦人的事
@@ -215,6 +170,34 @@
       Consistency is as important as correctness.
       这是因为 一致性 就表明了设计本身的优良
       从长远的角度看来 一致性 是最有价值的
+** about function-group
+   1. group the functions into groups
+      and write more tests for them
+   2. I need to use "group" as an unit
+      to manage the dependences between functions
+      我需要 以 group 为单位 来 管理 functions 之间的依赖关系
+   3. only need three new words
+      1) group
+      2) need (mutual need is allowed)
+      3) primitive
+      其实只需要用
+      1) 用 group 这个 语法关键词 来声明 word-group
+      2) 用 need 这个语法关键词 来声明 依赖关系
+         need 允许 循环声明
+      3) 用 primitive 这个语法关键词 来声明 不依赖任何其他 group 的 group
+   4. for now
+      I just use an format to document the relations between groups
+      I will implement functions to
+      目前 先设计一种
+      能够 在将来被处理的
+      用文档来注释 这种依赖关系的 格式
+   5. 核心部分的 函数不必 被声明
+      只有那些 明显地形成了 一个模块化的 group 才用声明
+      否则就 太罗嗦了
+      但是这里并没有 明确的界限
+      哪些 才是 核心的不用被声明的 东西
+      那些 是 需要被声明的 ??
+      都没没用 明确的界限 并且随时可能变动的
 ** 关于 错误处理
    1. 有两种 错误处理机制在 cicada 中被使用了)
       1 一种是 在出错的时候当场 调用 debuger

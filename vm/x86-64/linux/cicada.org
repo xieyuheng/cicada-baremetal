@@ -7,7 +7,7 @@
 * preface
 ** linux header
 *** parameters order of syscall
-    #+begin_src fasm :tangle cicada.fasm 
+    #+begin_src fasm :tangle cicada.fasm
     define sys_6_r8  r8
     define sys_5_r9  r9
     define sys_4_r10 r10
@@ -17,7 +17,7 @@
     define sys_n_rax rax
     #+end_src
 *** parameters order of function call
-    #+begin_src fasm :tangle cicada.fasm 
+    #+begin_src fasm :tangle cicada.fasm
     define fun_6_r9  r9
     define fun_5_r8  r8
     define fun_4_rcx rcx
@@ -26,7 +26,7 @@
     define fun_1_rdi rdi
     #+end_src
 *** linux syscall numbers
-    #+begin_src fasm :tangle cicada.fasm 
+    #+begin_src fasm :tangle cicada.fasm
     ;; see /usr/include/asm/unistd_64.h (on archlinux)
 
     define syscall_read                      0
@@ -348,7 +348,7 @@
     define syscall_finit_module              313
     #+end_src
 *** about open & read & write
-    #+begin_src fasm :tangle cicada.fasm 
+    #+begin_src fasm :tangle cicada.fasm
     STDIN  = 0
     STDOUT = 1
     STDERR = 2
@@ -567,7 +567,7 @@
    hereUnInitializedData  equ ; segment readable writeable
    #+end_src
 ** equ
-   #+begin_src fasm :tangle cicada.fasm 
+   #+begin_src fasm :tangle cicada.fasm
    ;; in fasm, "dup" is a reserved word
    dup equ duplicate
 
@@ -597,7 +597,7 @@
    hereUnInitializedData  equ alignTo16InMemoryMap
    #+end_src
 ** ASCII
-   #+begin_src fasm :tangle cicada.fasm 
+   #+begin_src fasm :tangle cicada.fasm
    ASCII_backspace = 8
    ASCII_tab       = 9
    ASCII_linefeed  = 10
@@ -608,12 +608,12 @@
    ASCII_delete    = 127
    #+end_src
 ** format header
-   #+begin_src fasm :tangle cicada.fasm 
+   #+begin_src fasm :tangle cicada.fasm
    format elf64 executable 3
    #+end_src
 ** ld
 *** elf
-    #+begin_src fasm :tangle cicada.fasm 
+    #+begin_src fasm :tangle cicada.fasm
     macro Elf32_Sym name,value,size,bind,type,other,shndx
     {
      dd name+0
@@ -755,7 +755,7 @@
     R_X86_64_GOTPC32   = 26
     #+end_src
 *** interpreter & needed & import
-    #+begin_src fasm :tangle cicada.fasm 
+    #+begin_src fasm :tangle cicada.fasm
     macro interpreter [library]
     {
      segment interpreter readable
@@ -826,13 +826,13 @@
     }
     #+end_src
 *** buggy fasm macros
-    #+begin_src fasm :tangle cicada.fasm 
+    #+begin_src fasm :tangle cicada.fasm
     interpreter '/lib64/ld-linux-x86-64.so.2'
     needed 'libl.so'
     import l
     #+end_src
 ** ccall
-   #+begin_src fasm :tangle cicada.fasm 
+   #+begin_src fasm :tangle cicada.fasm
    macro ccall function
    {
       push r15
@@ -847,17 +847,17 @@
    }
    #+end_src
 ** entry
-   #+begin_src fasm :tangle cicada.fasm 
+   #+begin_src fasm :tangle cicada.fasm
    entry cicada_virtual_machine
    segment readable executable writeable
    #+end_src
 * ==================================================
 * include macro
-  #+begin_src fasm :tangle cicada.fasm 
+  #+begin_src fasm :tangle cicada.fasm
   include "../macro.inc"
   #+end_src
 * start cicada virtual machine
-  #+begin_src fasm :tangle cicada.fasm 
+  #+begin_src fasm :tangle cicada.fasm
   hereCode
   cicada_virtual_machine:
 
@@ -885,7 +885,7 @@
           ;; xx assemblyDebug
   #+end_src
 * load-core-file & Initial-files-to-load
-  #+begin_src fasm :tangle cicada.fasm 
+  #+begin_src fasm :tangle cicada.fasm
   def_assembly_code "load-core-file", load_core_file
      ;; (* -- *)
      mov rsi, Initial_files_to_load
@@ -903,7 +903,7 @@
   Size_of_initial_files_to_load = ($ - Initial_files_to_load) ;; unit :: byte
   #+end_src
 * initialize
-  #+begin_src fasm :tangle cicada.fasm 
+  #+begin_src fasm :tangle cicada.fasm
   def_verb "initialize", initialize
          ;; (* -- *)
 
@@ -914,7 +914,7 @@
   #+end_src
 * IO
 ** ioctl for terminal
-   #+begin_src fasm :tangle cicada.fasm 
+   #+begin_src fasm :tangle cicada.fasm
    ;; /usr/include/asm-generic/termbits.h
    ;; /usr/include/asm-generic/ioctls.h
 
@@ -1003,7 +1003,7 @@
       next
    #+end_src
 ** read-char
-   #+begin_src fasm :tangle cicada.fasm 
+   #+begin_src fasm :tangle cicada.fasm
    Size_of_input_buffer = 3*1024*1024
 
    hereUnInitializedData
@@ -1130,7 +1130,7 @@
       syscall
    #+end_src
 ** write_char
-   #+begin_src fasm :tangle cicada.fasm 
+   #+begin_src fasm :tangle cicada.fasm
    hereInitializedData
    ScratchUsedByWriteChar:
       rb 1
@@ -1154,7 +1154,7 @@
       ret
    #+end_src
 ** print-string
-   #+begin_src fasm :tangle cicada.fasm 
+   #+begin_src fasm :tangle cicada.fasm
    def_verb "print-string", print_string
       ;; (* string[address, length] -- *)
       xx dup, zero?, _false?branch, 3
@@ -1170,29 +1170,30 @@
 *** note about error
     1. just use "js" to report a general error
 *** buffer->file,with-error
-    #+begin_src fasm :tangle cicada.fasm 
+    #+begin_src fasm :tangle cicada.fasm
     ;; buffer->file,with-error == string->file,with-error
 
-    def_verb "buffer->file,with-error", bufferToFile__with_error
-       ;; (* string[address, length], file-name-string[address, length] -- True or False *)
-       xx stringToFile__with_error
+    def_verb "buffer->file,with-error", buffer_to_file__with_error
+       ;; (* string[address, length], file-name-string[address, length] --
+       ;;    [number of char] or [negate number on error] *)
+       xx string_to_file__with_error
        xx Exit
-    def_verb_end bufferToFile__with_error
+    def_verb_end buffer_to_file__with_error
 
-
-    def_assembly_code "string->file,with-error", stringToFile__with_error
-       ;; (* string[address, length], file-name-string[address, length] -- True or False *)
+    ;;
+    def_assembly_code "string->file,with-error", string_to_file__with_error
+       ;; (* string[address, length], file-name-string[address, length] --
+       ;;    [number of char] or [negate number on error] *)
        pop_argument_stack rcx
        pop_argument_stack rsi
        pop_argument_stack r8
        pop_argument_stack r9
-       call _stringToFile__with_error
-       push_argument_stack rax
+       call _string_to_file__with_error
        next
 
-    _stringToFile__with_error:
+    _string_to_file__with_error:
        ;; copy file-name as a null-terminal string
-       mov rdi, NameBufferOfStringToFile__with_error
+       mov rdi, NameBufferOfString_to_file__with_error
        rep movsb
        xor rax, rax
        mov byte [rdi], al
@@ -1201,71 +1202,73 @@
        ;; 当文件路径不存在的时候不会创造路径 而出错
        mov     sys_3_rdx, 110100100b   ;; 文件的权限 644 改为别的值的时候会出问题
        mov     sys_2_rsi, open_readAndWrite or open_creat or open_rewrite
-       mov     sys_1_rdi, NameBufferOfStringToFile__with_error
+       mov     sys_1_rdi, NameBufferOfString_to_file__with_error
        mov     sys_n_rax, syscall_open
        syscall
 
-       mov     qword [FileHandleOfStringToFile__with_error], rax
+       mov     qword [FileHandleOfString_to_file__with_error], rax
 
        or      rax, rax
-       js      _stringToFile_meetError
+       js      _string_to_file_meetError
 
        ;; string->file
        mov     sys_3_rdx, r8
        mov     sys_2_rsi, r9
-       mov     sys_1_rdi, qword [FileHandleOfStringToFile__with_error]
+       mov     sys_1_rdi, qword [FileHandleOfString_to_file__with_error]
        mov     sys_n_rax, syscall_write
        syscall
 
        or      rax, rax
-       js      _stringToFile_meetError
+       js      _string_to_file_meetError
+
+       mov     r10, rax
 
        ;; 关闭文件
-       mov     sys_1_rdi, qword [FileHandleOfStringToFile__with_error]
+       mov     sys_1_rdi, qword [FileHandleOfString_to_file__with_error]
        mov     sys_n_rax, syscall_close
        syscall
 
        or      rax, rax
-       js      _stringToFile_meetError
+       js      _string_to_file_meetError
 
-       xor rax, rax
-       inc rax
-
-       ret
-
-    _stringToFile_meetError:
-       xor rax, rax
+       pop_argument_stack r10
 
        ret
 
+    _string_to_file_meetError:
+       push_argument_stack rax
 
-    FileHandleOfStringToFile__with_error:
+       ret
+
+
+    FileHandleOfString_to_file__with_error:
        dq 0
-    NameBufferOfStringToFile__with_error:
+    NameBufferOfString_to_file__with_error:
        rb 1024
     #+end_src
 *** file->buffer,with-error
-    #+begin_src fasm :tangle cicada.fasm 
+    #+begin_src fasm :tangle cicada.fasm
     ;; file->buffer,with-error == file->string,with-error
 
-    def_verb "file->buffer,with-error", fileToBuffer__with_error
-       ;; (* file-name-string[address, length], string[address, length] -- True or False *)
-       xx fileToString__with_error
+    def_verb "file->buffer,with-error", file_to_buffer__with_error
+       ;; (* file-name-string[address, length], string[address, length] --
+       ;;    [number of char] or [negate number on error] *)
+       xx file_to_string__with_error
        xx Exit
-    def_verb_end fileToBuffer__with_error
+    def_verb_end file_to_buffer__with_error
 
 
-    def_assembly_code "file->string,with-error", fileToString__with_error
-       ;; (* file-name-string[address, length], string[address, length] -- True or False *)
+    def_assembly_code "file->string,with-error", file_to_string__with_error
+       ;; (* file-name-string[address, length], string[address, length] --
+       ;;    [number of char] or [negate number on error] *)
        pop_argument_stack r8
        pop_argument_stack r9
        pop_argument_stack rcx
        pop_argument_stack rsi
-       call _fileToString__with_error
-       push_argument_stack rax
+       call _file_to_string__with_error
        next
 
-    _fileToString__with_error:
+    _file_to_string__with_error:
        ;; copy file-name as a null-terminal string
        mov rdi, NameBufferOfFileToString__with_error
        rep movsb
@@ -1281,7 +1284,7 @@
        mov     qword [FileHandleOfFileToString__with_error], rax
 
        or      rax, rax
-       js      _fileToString_meetError
+       js      _file_to_string_meetError
 
        ;; lseek is for to make reposition read/write file offset
        ;; seek_set       the offset is set to offset bytes
@@ -1294,7 +1297,7 @@
        syscall
 
        or      rax, rax
-       js      _fileToString_meetError
+       js      _file_to_string_meetError
 
        ;; file->string
        mov     sys_3_rdx, r8
@@ -1304,7 +1307,9 @@
        syscall
 
        or      rax, rax
-       js      _fileToString_meetError
+       js      _file_to_string_meetError
+
+       mov     r10, rax
 
        ;; 关闭文件
        mov     sys_1_rdi, qword [FileHandleOfFileToString__with_error]
@@ -1312,15 +1317,14 @@
        syscall
 
        or      rax, rax
-       js      _fileToString_meetError
+       js      _file_to_string_meetError
 
-       xor rax, rax
-       inc rax
+       push_argument_stack r10
 
        ret
 
-    _fileToString_meetError:
-       xor rax, rax
+    _file_to_string_meetError:
+       push_argument_stack rax
 
        ret
 
@@ -1330,34 +1334,21 @@
     NameBufferOfFileToString__with_error:
        rb 1024
     #+end_src
-*** >< eval-file
-    #+begin_src fasm
-    ;    : eval-file
-    ;      (* file-name-string[address, length] --
-    ;         buffer[address, length been readed] *)
-    ;      Buffer-for-load-file
-    ;      Size-of-buffer-for-load-file
-    ;      file->buffer
-    ;      eval-string
-    ;      Exit
-    ;    ; define-function
-
-    #+end_src
 * C functions
 ** l
-   #+begin_src fasm :tangle cicada.fasm 
+   #+begin_src fasm :tangle cicada.fasm
    def_assembly_code "l", _l
       ccall l
       next
    #+end_src
 * include threaded code
-  #+begin_src fasm :tangle cicada.fasm 
+  #+begin_src fasm :tangle cicada.fasm
   include "../threaded-code.inc"
   #+end_src
 * misc
 ** assemblyDebug
-   #+begin_src fasm :tangle cicada.fasm 
-   def_verb ".", printLittleNumber
+   #+begin_src fasm :tangle cicada.fasm
+   def_verb ".", print_little_number
       xx _literal, '0'
       xx addition, write_char
       xx _literal, 32
@@ -1365,7 +1356,7 @@
       xx _literal, 32
       xx write_char
       xx Exit
-   def_verb_end printLittleNumber
+   def_verb_end print_little_number
 
    def_assembly_code "exitWithTOS", exitWithTOS
       pop_argument_stack sys_1_rdi
@@ -1380,7 +1371,7 @@
 
         .read_phrase:
         xx read_phrase
-        xx compile_phrase, call_phrase
+        xx eval_phrase
         xx _branch, (.read_phrase-$)/Cell_width
 
       xx exitWithTOS
@@ -1388,7 +1379,7 @@
    #+end_src
 * ending
 ** User_data_area
-   #+begin_src fasm :tangle cicada.fasm 
+   #+begin_src fasm :tangle cicada.fasm
    Size_of_user_data_area = 64 * 1024 * 1024 ;; unit : byte
 
    hereUnInitializedData
@@ -1405,18 +1396,16 @@
    def_noun_end _End_of_user_data_area
    #+end_src
 ** Latest_word_in_assembly
-   #+begin_src fasm :tangle cicada.fasm 
+   #+begin_src fasm :tangle cicada.fasm
    ;; this word helps to initialize First_word_in_dictionary
    def_noun "Latest-word-in-assembly", Latest_word_in_assembly
       xx  0
    def_noun_end Latest_word_in_assembly
    #+end_src
 ** LowestMemoryAddress
-   #+begin_src fasm :tangle cicada.fasm 
+   #+begin_src fasm :tangle cicada.fasm
    segment readable writeable
    TheLowestMemoryAddress:
       rb Size_of_user_data_area
    #+end_src
 * ==================================================
- 
- 

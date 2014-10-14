@@ -2401,7 +2401,7 @@
    #+end_src
 ** assemblyDebug
    #+begin_src fasm :tangle cicada-kernel.fasm
-   def_verb ".", printLittleNumber
+   def_verb ".", print_little_number
           xx _literal, '0'
           xx addition, write_char
           xx _literal, 32
@@ -2409,7 +2409,7 @@
           xx _literal, 32
           xx write_char
           xx Exit
-   def_verb_end printLittleNumber
+   def_verb_end print_little_number
    #+end_src
 ** VESA VBE
    #+begin_src fasm :tangle cicada-kernel.fasm
