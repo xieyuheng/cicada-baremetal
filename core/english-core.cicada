@@ -12,12 +12,15 @@
   1 swap save-byte
   Exit
 ; define-verb
+ok
 (* need UTF-8 support in the following function *)
+(* 即 通过改变 string->char 这个函数 就能扩展 所能够处理的 char *)
 : string->char
   (* string[address, length] -- char *)
   drop fetch-byte
   Exit
 ; define-verb
+ok
 
 : char
   (* word-string[address, length] -- word-string[address, length] *)
@@ -28,3 +31,51 @@
   string->char append-number-to-here
   Exit
 ; define-key-word
+ok
+(* for single line string only *)
+
+: help,:"
+  (* word-string[address, length] -- word-string[address, length] *)
+  (* compile ::
+       string[address, length] *)
+  (* compile to [data section] ::
+       string-header and string ended by 0 *)
+  tail-and-head-of-string
+  dup char " == if
+    drop
+    (* compile address to here *)
+    literal _literal append-number-to-here
+      pop-lambda-stack dup push-lambda-stack
+    append-number-to-here
+    (* compile length to here *)
+    literal _literal append-number-to-here
+    Current-data-section
+      pop-lambda-stack dup push-lambda-stack
+    sub dup
+    append-number-to-here
+    (* set the string header *)
+    pop-lambda-stack
+    Cell-width
+    sub save
+    (* add a tailling 0 *)
+    0 append-byte-to-current-data-section
+    Exit
+  then
+  append-byte-to-current-data-section
+  help,:"
+  Exit
+; define-verb
+ok
+
+: :"
+  (* word-string[address, length] -- word-string[address, length] *)
+  (* compile ::
+       string[address, length] *)
+  (* compile to [data section] ::
+       string-header and string ended by 0 *)
+  Cell-width address Current-data-section add-save (* for string header *)
+  Current-data-section push-lambda-stack (* for compile to here *)
+  help,:"
+  Exit
+; define-key-word
+ok

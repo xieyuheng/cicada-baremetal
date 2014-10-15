@@ -3,65 +3,574 @@
 #+EMAIL: xyheme@gmail.com
 
 
-** ><>< string & define-constant-string (new lexicographer)
-*** implementation
-    #+begin_src cicada
-    : :" (* -- string[address of Basic-string-buffer, length] *)
-      read-string-into-buffer
-      Exit
-    ; define-verb
-
-    : ." (* -- string[address of Basic-string-buffer, length] *)
-      read-string-into-buffer print-string
-      Exit
-    ; define-verb
-
-    : define-constant-string,by-string
-      (* initial-string[address, length],
-         string[address, length], the number of words] -- *)
-      create-word-header
-      Constant-string-explainer append-number-to-here
-      xx|swap|x (* leave wordHeader *)
-      append-string-to-here (* initial-string *)
-      add-new-word-to-dictionary
-      Exit
-    ; define-verb
-
-    : define-constant-string (* by word-string *)
-      (* string[address, length],
-         word-string[address, the number of words] -- *)
-      head-of-word-string
-      define-constant-string,by-string
-      Exit
-    ; define-verb
-    #+end_src
-*** test
-    #+begin_src cicada
-    :" xxx"
-    : k ; define-constant-string
-    k print-string (* xxx *)
-    #+end_src
-** ><>< predicates
+* --------------------------------------------------
+* ><>< string & define-constant-string (new lexicographer)
+** implementation
    #+begin_src cicada
-   : special-key-word? (* word[explainer] -- True or False *)
-     dup literal literal           == if drop True Exit then
-     dup literal branch            == if drop True Exit then
-     dup literal false?branch      == if drop True Exit then
-     drop False
+   : :" (* -- string[address of Basic-string-buffer, length] *)
+     read-string-into-buffer
+     Exit
+   ; define-verb
+
+   : ." (* -- string[address of Basic-string-buffer, length] *)
+     read-string-into-buffer print-string
+     Exit
+   ; define-verb
+
+   : define-constant-string,by-string
+     (* initial-string[address, length],
+        string[address, length], the number of words] -- *)
+     create-word-header
+     Constant-string-explainer append-number-to-here
+     xx|swap|x (* leave wordHeader *)
+     append-string-to-here (* initial-string *)
+     add-new-word-to-dictionary
+     Exit
+   ; define-verb
+
+   : define-constant-string (* by word-string *)
+     (* string[address, length],
+        word-string[address, the number of words] -- *)
+     head-of-word-string
+     define-constant-string,by-string
      Exit
    ; define-verb
    #+end_src
-** print-string,null-terminated
+** test
    #+begin_src cicada
-   : print-string,null-terminated
-     (* null-terminated-string[address] -- *)
-     dup fetch-byte zero? if
+   :" xxx"
+   : k ; define-constant-string
+   k print-string (* xxx *)
+   #+end_src
+* ><>< predicates
+  #+begin_src cicada
+  : special-key-word? (* word[explainer] -- True or False *)
+    dup literal literal           == if drop True Exit then
+    dup literal branch            == if drop True Exit then
+    dup literal false?branch      == if drop True Exit then
+    drop False
+    Exit
+  ; define-verb
+  #+end_src
+* print-string,null-terminated
+  #+begin_src cicada
+  : print-string,null-terminated
+    (* null-terminated-string[address] -- *)
+    dup fetch-byte zero? if
+      drop
+      Exit
+    then
+    dup fetch-byte write-char
+    add1
+    print-string,null-terminated
+    Exit
+  ; define-verb
+  #+end_src
+* --------------------------------------------------
+* >< cicada->fasm
+** note
+   1. 其实目前 cicada->fasm 将 只能在 linux 中使用
+   2. 我必须能在 当前的 runtime 本身中 调用这个函数
+      但是 在还没有 定义字符串的函数的前提下
+      为了简单起见
+      这个 本来因该被实现为一个 以字符串为参数的函数
+      在这里被实现为 一个 特殊的语法关键词
+      它 读它之后的 文件名 load 到 Fasm_buffer_in
+      然后把它 编译到 Fasm_buffer_out
+      然后 更换后缀名 把它 写出 到对定的文件
+      - 注意现在 已经是纯粹的编译语义了
+   3. cicada->fasm
+      1) 首先这个函数必须实现在汇编中
+      2) 输出的 fasm 代码将没有可读性
+      3) 需要
+         1. 把文件 load 到 一个 buffer 中
+         2. 这个文件将被 作为
+         3. 每个词 将被转换为 一行 fasm
+            需要有对命名规则的转换
+         4. 不允许 ": ... ;" "define-verb" "define-noun" 等等
+            之外的东西出现
+** implementation
+   #+begin_src fasm
+   hereUnInitializedData
+
+   Size_of_fasm_buffer = 4 * 1024 * 1024
+
+   Fasm_buffer_in labeling
+        preserve Size_of_fasm_buffer
+   Fasm_buffer_out labeling
+        preserve Size_of_fasm_buffer
+
+   ;; note that nothing like Data_section is needed here
+   def_noun "Current-fasm-buffer-in", Current_fasm_buffer_in
+      xx Fasm_buffer_in
+   def_noun_end Current_fasm_buffer_in
+
+   def_noun "Current-fasm-buffer-out", Current_fasm_buffer_out
+      xx Fasm_buffer_out
+   def_noun_end Current_fasm_buffer_out
+
+
+   ;; just to find the next ";" to count the length of the word-string for define-verb
+   def_verb "help:cicada->fasm,compile,colon", help__cicada_to_fasm__compile__colon
+      ;; (* word-string[address, length] -- word-string[address, length] *)
+      xx
+      xx Exit
+   def_verb_end help__cicada_to_fasm__compile__colon
+
+
+   def_verb "help:cicada->fasm,compile,comment", help__cicada_to_fasm__compile__comment
+      ;; (* word-string[address, length] -- word-string[address, length] *)
+      xx ignore_comment
+      xx Exit
+   def_verb_end help__cicada_to_fasm__compile__comment
+
+   def_verb "help:cicada->fasm,compile,define-verb", help__cicada_to_fasm__compile__define_verb
+      ;; (* word-string[address, length] -- *)
+      xx
+      xx Exit
+   def_verb_end help__cicada_to_fasm__compile__define_verb
+
+   def_verb "help:cicada->fasm,compile,define", help__cicada_to_fasm__compile__define
+      ;; (* word-string[address, length] -- *)
+      xx
+      xx Exit
+   def_verb_end help__cicada_to_fasm__compile__define
+
+   ;; only handles the following words:
+   ;; ":"  "(*"  "define-verb"  "define-noun"
+   def_verb "help:cicada->fasm,compile", help__cicada_to_fasm__compile
+      ;; (* [Fasm_buffer_in as address, length] -- *)
+      xx tail_and_head_of_word_string
+      xx dup2,
+      xx Exit
+   def_verb_end help__cicada_to_fasm__compile
+
+
+   def_verb "help:cicada->fasm,change-file-name", help__cicada_to_fasm__change_file_name
+      ;; (* file-name[address, length] -- file-name[address, length] *)
+      xx ><><><
+      xx Exit
+   def_verb_end help__cicada_to_fasm__change_file_name
+
+
+   def_key_word "cicada->fasm", cicada_to_fasm
+      ;; (* word-string[address, length] -- word-string[address, length] *)
+      ;; note that error handling is wrong here
+      ;; for right error handling needs to "Exit" more than one level of function-body
+      ;; but ...
+      xx tail_and_head_of_word_string
+      xx dup2, ready
+
+      ;; (* load file *)
+      xx _literal, Fasm_buffer_in
+      xx _literal, Size_of_fasm_buffer
+      xx file_to_buffer__with_error
+      xx dup, _literal, 0, less_than?, _false?branch, 5
+      xx   Message__cicada_to_fasm__error, print_string, cr
+      xx   Exit
+      xx _address, Current_fasm_buffer_in, add_save
+
+      ;; (* compile buffer *)
+      xx help__cicada_to_fasm__compile
+
+      ;; (* wirte to file *)
+      xx _literal, Fasm_buffer_out
+      xx dup, Current_fasm_buffer_out, swap, subtraction
+      xx get_back, help__cicada_to_fasm__change_file_name
+      xx buffer_to_file__with_error
+      xx dup, _literal, 0, less_than?, _false?branch, 5
+      xx   Message__cicada_to_fasm__error, print_string, cr
+      xx   Exit
+      xx drop
+      xx Exit
+   def_key_word_end cicada_to_fasm
+
+   def_string "Message:cicada->fasm,error", "ERROR: cicada->fasm", Message__cicada_to_fasm__error
+   #+end_src
+* --------------------------------------------------
+* hash
+** note
+   1. ``string-hash->index index-hashback->string''
+      is a identity function
+      and if the argumt is a index returned by ``string-hash->index''
+      ``index-hashback->string string-hash->index''
+      also is a identity function
+   2. you can set a 8 bytes value
+      to every symbol in this hash-table
+      by:
+      [value, index] index->address save
+      dynamic type system make use of it
+      for I implement type-tag as a special symbol
+      but you should NOT set a pair to a symbol
+      for I can not afford to let gc scan the whole hash-table to mark it
+   3. hash-function (string)
+      ==> (sum-up [byte_n * 2^n]) mod Number-of-symbol-entrys
+      + where:
+        0 <= n < Symbol-max-length
+        and the Number-of-symbol-entrys is a prime number
+      after sum-up, the greatest number < 2^(Symbol-max-length + 8)
+      so I let Symbol-max-length == 64 - 8 == 56
+      only first Symbol-max-length of the string is used by the hash-function
+** string-hash->index & index-hashback->string
+   #+begin_src cicada
+   (* a Symbol-entry [unit : byte]
+    ,* ==========================
+    ,*  ||   8 : Symbol-value   ||
+    ,* --------------------------
+    ,*  ||   1 : Symbol-length  ||
+    ,* --------------------------
+    ,*  || 56+ : Symbol-string  ||
+    ,* ==========================
+    ,* where Symbol-max-length = 56
+    ,*)
+
+   :" an error occurs!
+   index->address said:
+      ``My function-type is (* index -- address *)
+        The following unsign-number is not a index of the hash-table
+        I will not touch it and call debuger.''
+      --> "
+   : Message:index->address,error ; define-constant-string
+
+   : index->address (* index -- address *)
+     dup Number-of-symbol-entrys >= if
+       Message:index->address,error print-string
+       dup write-dec-number cr
+       debuger Exit
+     then
+     dup 0 < if
+       Message:index->address,error print-string
+       dup write-dec-number cr
+       debuger Exit
+     then
+     Symbol-entry-bytes-size *
+     First-symbol-entry +
+     Exit
+   ; define-verb
+
+   : index-hashback->string
+     (* index -- string[address, length] *)
+     index->address Cell-width +
+     dup add1 swap
+     fetch-byte
+     Exit
+   ; define-verb
+
+
+   : help:string-hash->index,sum-up
+     (* sum-up , string[address, length] -- sum-up *)
+     dup zero? if
+       drop2 Exit
+     then
+     tail-and-head-of-string
+     over shift-left
+     x|swap|xxx  +  xx|swap|x
+     help:string-hash->index,sum-up
+     Exit
+   ; define-verb
+
+   : help:string-hash->index,find-old-or-creat-new
+     (* string[address, length], index -- index *)
+     xx|tuck|x
+     index-hashback->string
+     (* index, string[address, length], string-2[address, length] *)
+     dup zero? if  (* creat-new *)
        drop
+       (* index, string[address, length], destination-address *)
+       over over
+       (* index, string[address, length], destination-address, length, address *)
+       sub1 save-byte
+       swap
+       (* index,, source-address, destination-address, length *)
+       copy-byte-string
        Exit
      then
-     dup fetch-byte write-char
+     (* index, string[address, length], string-2[address, length] *)
+     xx|over|xx equal-string? if (* found old *)
+       drop2 Exit
+     then
+     x|swap|xx (* to get next-index *)
+     (* string[address, length], index *)
+     dup index->address Last-symbol-entry == if
+       drop
+       0
+       help:string-hash->index,find-old-or-creat-new
+       Exit
+     then
      add1
-     print-string,null-terminated
+     help:string-hash->index,find-old-or-creat-new
+     Exit
+   ; define-verb
+
+   : help:string-hash->index,sum-up->index
+     (* sum-up -- index *)
+     Number-of-symbol-entrys mod
+     Exit
+   ; define-verb
+
+   : string-hash->index
+     (* string[address, length] -- index *)
+     dup2
+       dup Symbol-max-length > if
+         drop Symbol-max-length
+         (* this means only first Symbol-max-length of the string is used by the hash-function *)
+       then
+       0 xx|swap|x
+       help:string-hash->index,sum-up
+       help:string-hash->index,sum-up->index
+     help:string-hash->index,find-old-or-creat-new
      Exit
    ; define-verb
    #+end_src
+** test
+   #+begin_src cicada
+   Number-of-symbol-entrys 1 -
+   index->address Last-symbol-entry == . (* 1 *)
+
+   -1 index->address
+   basic-REPL
+   1000000000 index->address
+   basic-REPL
+
+   :" a" string-hash->index . cr
+   :" b" string-hash->index . cr
+   :" c" string-hash->index . cr
+
+   :" k" string-hash->index . cr
+   :" kk" string-hash->index . cr
+   :" xxx" string-hash->index . cr
+   :" xxxk" string-hash->index . cr
+   :" xxxkk" string-hash->index . cr
+   :" xxxxxx" string-hash->index . cr
+   :" xxxxxxk" string-hash->index . cr
+   :" xxxxxxkk" string-hash->index . cr
+   :" xxxxxxxxx" string-hash->index . cr
+   :" xxxxxxxxxk" string-hash->index . cr
+   :" xxxxxxxxxkk" string-hash->index . cr
+   :" xxxxxxxxxxxx" string-hash->index . cr
+   :" xxxxxxxxxxxxk" string-hash->index . cr
+   :" xxxxxxxxxxxxkk" string-hash->index . cr
+   :" xxxxxxxxxxxxxxx" string-hash->index . cr
+   :" xxxxxxxxxxxxxxxk" string-hash->index . cr
+   :" xxxxxxxxxxxxxxxkk" string-hash->index . cr
+
+
+   (* Number-of-symbol-entrys : 10_0333 , 10_0003
+      97      97
+      98      98
+      99      99
+      107     107
+      321     321
+      749     749
+      1605    1605
+      3317    3317
+      6741    6741
+      13589   13589
+      27285   27285
+      54677   54677
+      9128    9458
+      18363   19023
+      36833   38153
+      73773   76413
+      47320   52930
+      94747   5964
+      89268   12035
+      78310   24177
+    *)
+
+
+   (* test: collision *)
+   (*  'A'*2 + 'c' = 'B'*2 + 'a' *)
+   :" Ac" string-hash->index . cr (* 229 *)
+   :" Ba" string-hash->index . cr (* 230 *)
+
+   :" A"
+     string-hash->index index-hashback->string
+   print-string
+
+   :" Ac"
+     string-hash->index index-hashback->string
+   print-string
+
+   :" Ba"
+     string-hash->index index-hashback->string
+   print-string
+
+   (* test: rounding *)
+
+   (* when: Number-of-symbol-entrys = 10_0003 *)
+   10_0003 .bin (* 11000011010100011 *)
+
+   (* when: Number-of-symbol-entrys = 10_0333 *)
+   10_0333 .bin (* 11000011111101101 *)
+
+
+   (* I do not want to solve two funny equations about ascii-chars,
+    * just to test the two ``Number-of-symbol-entrys'' above !!!???
+    * so, to test this, I reset ``Number-of-symbol-entrys'' to 230, in assembler,
+    * then the greatest index == 229,
+    * then to test collision is to test rounding
+    *)
+
+
+   :" Ac" string-hash->index . cr (* 229 *)
+   :" Ba" string-hash->index . cr (* 0 *)
+
+   :" Ac"
+     string-hash->index index-hashback->string
+   print-string
+
+   :" Ba"
+     string-hash->index index-hashback->string
+   print-string
+   #+end_src
+* dynamic type system
+  #+begin_src cicada
+  (* if 1 is setted to a symbol, this symbol is a fixnum like data type
+     if 2 is setted to a symbol, this symbol is a pair like data type *)
+
+  : define-data-type
+    (* word-string[address, the number of words] -- *)
+    dup2
+      head-of-word-string
+      string-hash->index
+      dup
+        index->address 1 swap save
+      xx|swap|x
+    define-constant
+    Exit
+  ; define-verb
+
+  : define-pair-like-data-type
+    (* word-string[address, the number of words] -- *)
+    dup2
+      head-of-word-string
+      string-hash->index
+      dup
+        index->address 2 swap save
+      xx|swap|x
+    define-constant
+    Exit
+  ; define-verb
+
+
+  (* every word can be used as a name of a data type
+     the following are my convention *)
+
+  : <fixnum>    ; define-data-type
+  : <bool>      ; define-data-type
+  : <type>      ; define-data-type
+  : <char>      ; define-data-type
+  : <symbol>    ; define-data-type
+  : <substring> ; define-data-type
+  : <null>      ; define-data-type
+
+
+  : <fixnum-like>? (* type -- True or False *)
+      index->address fetch 1 ==
+      Exit
+  ; define-verb
+
+
+  0 : Null ; define-constant
+
+  : null Null <null> Exit ; define-verb
+
+  : null? (* [value, type] -- True or False *)
+    <null> == if
+      Null == if
+        True Exit
+      then
+      False Exit
+    then
+    drop False Exit
+  ; define-verb
+
+
+
+
+  : True-Bool  True  <bool> Exit ; define-verb
+  : False-Bool False <bool> Exit ; define-verb
+
+
+
+  : <pair>    ; define-pair-like-data-type
+  : <string>  ; define-pair-like-data-type
+  : <list>    ; define-pair-like-data-type
+
+  : <dali>   ; define-pair-like-data-type
+
+  : <wodi>           ; define-pair-like-data-type
+  : <bound-variable> ; define-pair-like-data-type
+  : <wodili>         ; define-pair-like-data-type
+
+
+  : <pair-like>? (* type -- True or False *)
+      index->address fetch 2 ==
+      Exit
+  ; define-verb
+
+  : <not-pair-like>? (* type -- True or False *)
+      index->address fetch 2 =/=
+      Exit
+  ; define-verb
+
+
+  : <dali-like>? (* type -- True or False *)
+    dup <dali> == if
+      drop True Exit
+    then
+    dup <wodili> == if
+      drop True Exit
+    then
+    drop False Exit
+  ; define-verb
+
+
+  : <not-dali-like>? (* type -- True or False *)
+    dup <dali> == if
+      drop False Exit
+    then
+    dup <wodili> == if
+      drop False Exit
+    then
+    drop True Exit
+  ; define-verb
+
+
+
+
+  :" an error occurs!
+  print-type-tag said:
+     ``My function-type is (* type-tag[index of hash-table] -- *)
+       The following index is not a type-tag
+       I will not touch it and call debuger.''
+     --> "
+  : Message:print-type-tag,error ; define-constant-string
+
+  : print-type-tag
+    (* type-tag[index of hash-table] -- *)
+    dup
+    index->address fetch 1 == if
+      index-hashback->string print-string Exit
+    then
+    dup
+    index->address fetch 2 == if
+      index-hashback->string print-string Exit
+    then
+    Message:print-type-tag,error print-string
+    write-dec-number cr
+    debuger Exit
+  ; define-verb
+
+
+  : eq? (* [value, type], [value, type] -- True or False *)
+    x|over|xx =/= if
+      drop drop2 False Exit
+    then
+    x|over|xx =/= if
+      drop2 False Exit
+    then
+    drop2 True Exit
+  ; define-verb
+  #+end_src

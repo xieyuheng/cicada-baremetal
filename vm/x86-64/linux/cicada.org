@@ -899,6 +899,7 @@
   hereInitializedData
   Initial_files_to_load:
      file "../../../core/english-core.cicada"
+     file "../../../core/chinese-core.cicada"
      ;; file "../../../lib/x86-64/linux/compiler.cicada"
   Size_of_initial_files_to_load = ($ - Initial_files_to_load) ;; unit :: byte
   #+end_src
@@ -1365,9 +1366,9 @@
 
 
    def_verb "assemblyDebug", assemblyDebug
-      ;; xx read_phrase
-      ;; xx print_string
-      ;; xx _branch, -3
+      xx read_phrase
+      xx print_string
+      xx _branch, -3
 
         .read_phrase:
         xx read_phrase

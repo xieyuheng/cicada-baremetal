@@ -93,11 +93,12 @@
     then
     dup sub1 factorial * Exit
   ; define-verb
-
+  ok 
 
   1 factorial .
   2 factorial .
   3 factorial .
+  ok 
 
   (* need to re-define "." to run the following *)
   4 factorial .
@@ -135,27 +136,30 @@
      1 swap save-byte
      Exit
    ; define-verb
+   ok
    #+end_src
 * char
-** [key-word] char
-   #+begin_src cicada :tangle english-core.cicada
-   (* need UTF-8 support in the following function *)
-   : string->char
-     (* string[address, length] -- char *)
-     drop fetch-byte
-     Exit
-   ; define-verb
+  #+begin_src cicada :tangle english-core.cicada
+  (* need UTF-8 support in the following function *)
+  (* 即 通过改变 string->char 这个函数 就能扩展 所能够处理的 char *)
+  : string->char
+    (* string[address, length] -- char *)
+    drop fetch-byte
+    Exit
+  ; define-verb
+  ok
 
-   : char
-     (* word-string[address, length] -- word-string[address, length] *)
-     (* compile::
-          _literal[address of explainer], char *)
-     literal _literal append-number-to-here
-     tail-and-head-of-word-string
-     string->char append-number-to-here
-     Exit
-   ; define-key-word
-   #+end_src
+  : char
+    (* word-string[address, length] -- word-string[address, length] *)
+    (* compile::
+         _literal[address of explainer], char *)
+    literal _literal append-number-to-here
+    tail-and-head-of-word-string
+    string->char append-number-to-here
+    Exit
+  ; define-key-word
+  ok
+  #+end_src
 * *test*
   #+begin_src cicada
   : .12 (* 1 2 -- *)
@@ -176,29 +180,77 @@
     then
     Exit
   ; define-verb
+  ok
 
   1 2 .12 cr
   6 2 .12 cr
   1 6 .12 cr
   6 6 .12 cr
+  ok
   #+end_src
-* >< string
+* string
 ** note
    1. I will NOT implement simple string as "aaa"
       I have tried
       and I found that
       it against the natural of a Forth-like language so much
-** [key-word] string
-   #+begin_src cicada
-   : :" (* -- string[address of Basic-string-buffer, length] *)
-     read-string-into-buffer
-     Exit
-   ; define-verb
+   2. string 这个语法关键词 必须是 可扩展的
+** :"
+   #+begin_src cicada :tangle english-core.cicada
+   (* for single line string only *)
 
-   : ." (* -- string[address of Basic-string-buffer, length] *)
-     read-string-into-buffer print-string
+   : help,:"
+     (* word-string[address, length] -- word-string[address, length] *)
+     (* compile ::
+          string[address, length] *)
+     (* compile to [data section] ::
+          string-header and string ended by 0 *)
+     tail-and-head-of-string
+     dup char " == if
+       drop
+       (* compile address to here *)
+       literal _literal append-number-to-here
+         pop-lambda-stack dup push-lambda-stack
+       append-number-to-here
+       (* compile length to here *)
+       literal _literal append-number-to-here
+       Current-data-section
+         pop-lambda-stack dup push-lambda-stack
+       sub dup
+       append-number-to-here
+       (* set the string header *)
+       pop-lambda-stack
+       Cell-width
+       sub save
+       (* add a tailling 0 *)
+       0 append-byte-to-current-data-section
+       Exit
+     then
+     append-byte-to-current-data-section
+     help,:"
      Exit
    ; define-verb
+   ok
+
+   : :"
+     (* word-string[address, length] -- word-string[address, length] *)
+     (* compile ::
+          string[address, length] *)
+     (* compile to [data section] ::
+          string-header and string ended by 0 *)
+     Cell-width address Current-data-section add-save (* for string header *)
+     Current-data-section push-lambda-stack (* for compile to here *)
+     help,:"
+     Exit
+   ; define-key-word
+   ok
+   #+end_src
+** string
+   #+begin_src cicada
+   : string
+     (* -- *)
+     Exit
+   ; define-key-word
    #+end_src
 * number writer
 ** note
@@ -1118,512 +1170,70 @@
       Exit
     ; _define-verb
     #+end_src
-* hash
-** note
-   1. ``string-hash->index index-hashback->string''
-      is a identity function
-      and if the argumt is a index returned by ``string-hash->index''
-      ``index-hashback->string string-hash->index''
-      also is a identity function
-   2. you can set a 8 bytes value
-      to every symbol in this hash-table
-      by:
-      [value, index] index->address save
-      dynamic type system make use of it
-      for I implement type-tag as a special symbol
-      but you should NOT set a pair to a symbol
-      for I can not afford to let gc scan the whole hash-table to mark it
-   3. hash-function (string)
-      ==> (sum-up [byte_n * 2^n]) mod Number-of-symbol-entrys
-      + where:
-        0 <= n < Symbol-max-length
-        and the Number-of-symbol-entrys is a prime number
-      after sum-up, the greatest number < 2^(Symbol-max-length + 8)
-      so I let Symbol-max-length == 64 - 8 == 56
-      only first Symbol-max-length of the string is used by the hash-function
-** string-hash->index & index-hashback->string
+* dictionary operations
+** implementation
    #+begin_src cicada
-   (* a Symbol-entry [unit : byte]
-    * ==========================
-    *  ||   8 : Symbol-value   ||
-    * --------------------------
-    *  ||   1 : Symbol-length  ||
-    * --------------------------
-    *  || 56+ : Symbol-string  ||
-    * ==========================
-    * where Symbol-max-length = 56 *)
+   (*
+    * a word in the dictionary [unit : Cell-width = 8 bytes]
+    *   ||  1 : name-string-header-which-contains-the-length-of-name-string  ||
+    *   ||  m : name-string  ||
+    *   ||  1 : SizeOfFunctionBody ||
+    *   ||  1 : identification  ||
+    *   ||  1 : link  ||
+    *   ||  1 : type  ||
+    *   ||  1 : address-of-name-string-header  ||
+    *   ||  1 : address-of-explainer  ||
+    *   ||  n : body  ||
+    * where
+    *   ||  1 : type  ||
+    * ==
+    *   | type-bit-63 | ... | type-bit-1 | type-bit-0 |
+    * type-bit-0 is for HiddenWord
+    * type-bit-1 is for VariableOfTypedValue [DynamicVar]
+    *)
 
-   :" an error occurs!
-   index->address said:
-      ``My function-type is (* index -- address *)
-        The following unsign-number is not a index of the hash-table
-        I will not touch it and call debuger.''
-      --> "
-   : Message:index->address,error ; define-constant-string
-
-   : index->address (* index -- address *)
-     dup Number-of-symbol-entrys >= if
-       Message:index->address,error print-string
-       dup write-dec-number cr
-       debuger Exit
-     then
-     dup 0 < if
-       Message:index->address,error print-string
-       dup write-dec-number cr
-       debuger Exit
-     then
-     Symbol-entry-bytes-size *
-     First-symbol-entry +
-     Exit
+   : last-word-in-dictionary? (* word[address of link] -- True or False *)
+       zero? Exit
    ; define-verb
 
-   : index-hashback->string
-     (* index -- string[address, length] *)
-     index->address Cell-width +
-     dup add1 swap
-     fetch-byte
-     Exit
+   : next-word-in-dictionary
+     (* word[address of link] -- next-word[address of link] *)
+       fetch Exit
    ; define-verb
 
-
-   : help:string-hash->index,sum-up
-     (* sum-up , string[address, length] -- sum-up *)
-     dup zero? if
-       drop2 Exit
-     then
-     tail-and-head-of-string
-     over shift-left
-     x|swap|xxx  +  xx|swap|x
-     help:string-hash->index,sum-up
-     Exit
-   ; define-verb
-
-   : help:string-hash->index,find-old-or-creat-new
-     (* string[address, length], index -- index *)
-     xx|tuck|x
-     index-hashback->string
-     (* index, string[address, length], string-2[address, length] *)
-     dup zero? if  (* creat-new *)
-       drop
-       (* index, string[address, length], destination-address *)
-       over over
-       (* index, string[address, length], destination-address, length, address *)
-       sub1 save-byte
-       swap
-       (* index,, source-address, destination-address, length *)
-       copy-byte-string
+   : fetch-word-type (* word[address of link] -- WordType *)
+       add8 fetch
        Exit
-     then
-     (* index, string[address, length], string-2[address, length] *)
-     xx|over|xx equal-string? if (* found old *)
-       drop2 Exit
-     then
-     x|swap|xx (* to get next-index *)
-     (* string[address, length], index *)
-     dup index->address Last-symbol-entry == if
-       drop
-       0
-       help:string-hash->index,find-old-or-creat-new
+   ; define-verb
+
+   : save-word-type (* word[address of link], WordType -- *)
+       swap add8 save
        Exit
-     then
-     add1
-     help:string-hash->index,find-old-or-creat-new
-     Exit
    ; define-verb
 
-   : help:string-hash->index,sum-up->index
-     (* sum-up -- index *)
-     Number-of-symbol-entrys mod
-     Exit
-   ; define-verb
 
-   : string-hash->index
-     (* string[address, length] -- index *)
-     dup2
-       dup Symbol-max-length > if
-         drop Symbol-max-length
-         (* this means only first Symbol-max-length of the string is used by the hash-function *)
-       then
-       0 xx|swap|x
-       help:string-hash->index,sum-up
-       help:string-hash->index,sum-up->index
-     help:string-hash->index,find-old-or-creat-new
+   0 : Offset-for-hidden-word          ; define-constant
+   1 : Offset-for-dynamic-variable-word ; define-constant
+
+   : dynamic-variable-word? (* word[address of link] -- True or False *)
+     fetch-word-type Offset-for-dynamic-variable-word fetch-bit one?
      Exit
    ; define-verb
    #+end_src
 ** test
    #+begin_src cicada
-   Number-of-symbol-entrys 1 -
-   index->address Last-symbol-entry == . (* 1 *)
-
-   -1 index->address
-   basic-REPL
-   1000000000 index->address
-   basic-REPL
-
-   :" a" string-hash->index . cr
-   :" b" string-hash->index . cr
-   :" c" string-hash->index . cr
-
-   :" k" string-hash->index . cr
-   :" kk" string-hash->index . cr
-   :" xxx" string-hash->index . cr
-   :" xxxk" string-hash->index . cr
-   :" xxxkk" string-hash->index . cr
-   :" xxxxxx" string-hash->index . cr
-   :" xxxxxxk" string-hash->index . cr
-   :" xxxxxxkk" string-hash->index . cr
-   :" xxxxxxxxx" string-hash->index . cr
-   :" xxxxxxxxxk" string-hash->index . cr
-   :" xxxxxxxxxkk" string-hash->index . cr
-   :" xxxxxxxxxxxx" string-hash->index . cr
-   :" xxxxxxxxxxxxk" string-hash->index . cr
-   :" xxxxxxxxxxxxkk" string-hash->index . cr
-   :" xxxxxxxxxxxxxxx" string-hash->index . cr
-   :" xxxxxxxxxxxxxxxk" string-hash->index . cr
-   :" xxxxxxxxxxxxxxxkk" string-hash->index . cr
-
-
-   (* Number-of-symbol-entrys : 10_0333 , 10_0003
-      97      97
-      98      98
-      99      99
-      107     107
-      321     321
-      749     749
-      1605    1605
-      3317    3317
-      6741    6741
-      13589   13589
-      27285   27285
-      54677   54677
-      9128    9458
-      18363   19023
-      36833   38153
-      73773   76413
-      47320   52930
-      94747   5964
-      89268   12035
-      78310   24177
-    *)
-
-
-   (* test: collision *)
-   (*  'A'*2 + 'c' = 'B'*2 + 'a' *)
-   :" Ac" string-hash->index . cr (* 229 *)
-   :" Ba" string-hash->index . cr (* 230 *)
-
-   :" A"
-     string-hash->index index-hashback->string
-   print-string
-
-   :" Ac"
-     string-hash->index index-hashback->string
-   print-string
-
-   :" Ba"
-     string-hash->index index-hashback->string
-   print-string
-
-   (* test: rounding *)
-
-   (* when: Number-of-symbol-entrys = 10_0003 *)
-   10_0003 .bin (* 11000011010100011 *)
-
-   (* when: Number-of-symbol-entrys = 10_0333 *)
-   10_0333 .bin (* 11000011111101101 *)
-
-
-   (* I do not want to solve two funny equations about ascii-chars,
-    * just to test the two ``Number-of-symbol-entrys'' above !!!???
-    * so, to test this, I reset ``Number-of-symbol-entrys'' to 230, in assembler,
-    * then the greatest index == 229,
-    * then to test collision is to test rounding
-    *)
-
-
-   :" Ac" string-hash->index . cr (* 229 *)
-   :" Ba" string-hash->index . cr (* 0 *)
-
-   :" Ac"
-     string-hash->index index-hashback->string
-   print-string
-
-   :" Ba"
-     string-hash->index index-hashback->string
-   print-string
-   #+end_src
-* dynamic type system
-** >< [OLD] note
-   1. I make the following stipulations about creating cicada words:
-      1 constants) and variables are nouns,
-         the first letter of them should be capitalized.
-         (just as in Deutsch)
-      2) functions are verbs,
-         the first letter of them should be NOT capitalized.
-      3) I use compoundWordByCamelCase
-         when the word is about non-typed value.
-         examples:
-         print-string print-type-tag define-verb
-      4) I use compound-word-with-dashes
-         when the word is about typed value.
-         examples:
-         cons car cdr set-car! set-cdr! list-copy
-      5) I use <this-kind-of-word>
-         when the word is about type.
-         examples:
-         <pair> <pair-like>? <graph> <lambda> <fixnum> <type>
-      6) I do not use compound_word_with_underscores
-   2. atom :
-      TypedValue[valus, type tag]
-   3. non-atom :
-      TypedValue[address, type tag]
-   4. this is really a flexible and dangerous way to use dynamic-type-value
-   5. this is dangerous,
-      for you can meet semantic overload sometimes
-      for example,
-      True-Bool == [1, <bool>]
-      True == 1
-      that means you have two syntaxes to denote one semantic
-      then, how should you implement ``if,else,then'' ???
-      this is really not acceptable !!!
-   6. this is flexible,
-      for you can easily define different kinds of <pair-like> values:
-      1) <list>
-      2) <alist> (associated-list)
-      3) <dali> (double-linked-list)
-      4) <wodili> (wodili)
-      5) <graph>
-      6) and more
-   7. to implement gc
-      one have to (and only have to)
-      be able to distinguish <pair> and <non-pair>
-   8. every new data type implemented by <pair>
-      have to be handled by gc as <pair>
-   9. I do not need type-inherit at all
-      for I can easily convert one type to another
-      say, I have <xxx-list>
-      a function apply on <list> will not apply on <xxx-list>
-      but if I use <xxx-list> as a list
-      which every cdr is of type <list>
-      only the first type is change from <list> to <xxx-list>
-      then, when I want to treat this <xxx-list> as a <list>
-      I just ``drop <list>''
-** implementation
-   #+begin_src cicada
-   (* if 1 is setted to a symbol, this symbol is a fixnum like data type
-      if 2 is setted to a symbol, this symbol is a pair like data type *)
-
-   : define-data-type
-     (* word-string[address, the number of words] -- *)
-     dup2
-       head-of-word-string
-       string-hash->index
-       dup
-         index->address 1 swap save
-       xx|swap|x
-     define-constant
+   : ~ (* word[address of link] -- word[address of link] *)
+       dup dynamic-variable-word? .
+       (* dup last-word-in-dictionary? . *)
+       next-word-in-dictionary
      Exit
    ; define-verb
 
-   : define-pair-like-data-type
-     (* word-string[address, the number of words] -- *)
-     dup2
-       head-of-word-string
-       string-hash->index
-       dup
-         index->address 2 swap save
-       xx|swap|x
-     define-constant
-     Exit
-   ; define-verb
+   first-word-in-dictionary fetch
 
-
-   (* every word can be used as a name of a data type
-      the following are my convention *)
-
-   : <fixnum>    ; define-data-type
-   : <bool>      ; define-data-type
-   : <type>      ; define-data-type
-   : <char>      ; define-data-type
-   : <symbol>    ; define-data-type
-   : <substring> ; define-data-type
-   : <null>      ; define-data-type
-
-
-   : <fixnum-like>? (* type -- True or False *)
-       index->address fetch 1 ==
-       Exit
-   ; define-verb
-
-
-   0 : Null ; define-constant
-
-   : null Null <null> Exit ; define-verb
-
-   : null? (* [value, type] -- True or False *)
-     <null> == if
-       Null == if
-         True Exit
-       then
-       False Exit
-     then
-     drop False Exit
-   ; define-verb
-
-
-
-
-   : True-Bool  True  <bool> Exit ; define-verb
-   : False-Bool False <bool> Exit ; define-verb
-
-
-
-   : <pair>    ; define-pair-like-data-type
-   : <string>  ; define-pair-like-data-type
-   : <list>    ; define-pair-like-data-type
-
-   : <dali>   ; define-pair-like-data-type
-
-   : <wodi>           ; define-pair-like-data-type
-   : <bound-variable> ; define-pair-like-data-type
-   : <wodili>         ; define-pair-like-data-type
-
-
-   : <pair-like>? (* type -- True or False *)
-       index->address fetch 2 ==
-       Exit
-   ; define-verb
-
-   : <not-pair-like>? (* type -- True or False *)
-       index->address fetch 2 =/=
-       Exit
-   ; define-verb
-
-
-   : <dali-like>? (* type -- True or False *)
-     dup <dali> == if
-       drop True Exit
-     then
-     dup <wodili> == if
-       drop True Exit
-     then
-     drop False Exit
-   ; define-verb
-
-
-   : <not-dali-like>? (* type -- True or False *)
-     dup <dali> == if
-       drop False Exit
-     then
-     dup <wodili> == if
-       drop False Exit
-     then
-     drop True Exit
-   ; define-verb
-
-
-
-
-   :" an error occurs!
-   print-type-tag said:
-      ``My function-type is (* type-tag[index of hash-table] -- *)
-        The following index is not a type-tag
-        I will not touch it and call debuger.''
-      --> "
-   : Message:print-type-tag,error ; define-constant-string
-
-   : print-type-tag
-     (* type-tag[index of hash-table] -- *)
-     dup
-     index->address fetch 1 == if
-       index-hashback->string print-string Exit
-     then
-     dup
-     index->address fetch 2 == if
-       index-hashback->string print-string Exit
-     then
-     Message:print-type-tag,error print-string
-     write-dec-number cr
-     debuger Exit
-   ; define-verb
-
-
-   : eq? (* [value, type], [value, type] -- True or False *)
-     x|over|xx =/= if
-       drop drop2 False Exit
-     then
-     x|over|xx =/= if
-       drop2 False Exit
-     then
-     drop2 True Exit
-   ; define-verb
+   ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
+   ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
    #+end_src
-** dictionary operations
-*** >< note
-*** implementation
-    #+begin_src cicada
-    (*
-     * a word in the dictionary [unit : Cell-width = 8 bytes]
-     *   ||  1 : name-string-header-which-contains-the-length-of-name-string  ||
-     *   ||  m : name-string  ||
-     *   ||  1 : SizeOfFunctionBody ||
-     *   ||  1 : identification  ||
-     *   ||  1 : link  ||
-     *   ||  1 : type  ||
-     *   ||  1 : address-of-name-string-header  ||
-     *   ||  1 : address-of-explainer  ||
-     *   ||  n : body  ||
-     * where
-     *   ||  1 : type  ||
-     * ==
-     *   | type-bit-63 | ... | type-bit-1 | type-bit-0 |
-     * type-bit-0 is for HiddenWord
-     * type-bit-1 is for VariableOfTypedValue [DynamicVar]
-     *)
-
-    : last-word-in-dictionary? (* word[address of link] -- True or False *)
-        zero? Exit
-    ; define-verb
-
-    : next-word-in-dictionary
-      (* word[address of link] -- next-word[address of link] *)
-        fetch Exit
-    ; define-verb
-
-    : fetch-word-type (* word[address of link] -- WordType *)
-        add8 fetch
-        Exit
-    ; define-verb
-
-    : save-word-type (* word[address of link], WordType -- *)
-        swap add8 save
-        Exit
-    ; define-verb
-
-
-    0 : Offset-for-hidden-word          ; define-constant
-    1 : Offset-for-dynamic-variable-word ; define-constant
-
-    : dynamic-variable-word? (* word[address of link] -- True or False *)
-        fetch-word-type Offset-for-dynamic-variable-word fetch-bit one?
-        Exit
-    ; define-verb
-    #+end_src
-*** test
-    #+begin_src cicada
-    : ~ (* word[address of link] -- word[address of link] *)
-        dup dynamic-variable-word? .
-        (* dup last-word-in-dictionary? . *)
-        next-word-in-dictionary
-      Exit
-    ; define-verb
-
-    first-word-in-dictionary fetch
-
-    ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
-    ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
-    #+end_src
 * incremental-gc of <pair> & <string>
 ** note
    1. this gc is a incremental-gc

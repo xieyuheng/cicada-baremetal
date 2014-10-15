@@ -1,10 +1,10 @@
 def_noun "Here", Here
-   xx   0
+   xx 0
 def_noun_end Here
 
 
 def_noun "first-word-in-dictionary" , First_word_in_dictionary
-   xx  LinkOfLatest_word_in_assembly
+   xx LinkOfLatest_word_in_assembly
 def_noun_end  First_word_in_dictionary
 
 ;; note that:
@@ -1219,6 +1219,16 @@ def_verb "append-number-to-current-data-section", append_number_to_current_data_
    xx Exit
 def_verb_end append_number_to_current_data_section
 
+def_verb "append-byte-to-current-data-section", append_byte_to_current_data_section
+   ;; (* a 64 bits number -- *)
+   ;; reset "Current_data_section", which points next free memory
+   xx Current_data_section
+   xx save_byte
+   xx _literal, 1
+   xx _address, Current_data_section, add_save
+   xx Exit
+def_verb_end append_byte_to_current_data_section
+
 ;; note that:
 ;; a string in stack is string[address, length]
 ;; a string in memory is ||  1 cell : length  ||  n byte : string  ||  1 byte : 0  ||
@@ -1298,17 +1308,56 @@ def_key_word ":", colon
    xx _branch, (.tail_and_head_of_word_string-$)/Cell_width
    xx Exit
 def_key_word_end colon
-
-
-
-;; ><><><
-;; Chinese version
-
 def_string "Bra:fuzhe", "夫", Bra__fuzhe
 def_string "Ket:fuzhe", "者", Ket__fuzhe
 
 def_key_word "夫", 夫
    ;; (* word-string[address, length] -- word-string[address, length] *)
+   ;; (* compile ::
+   ;;      string[address, length] *)
+   ;; (* compile to [data section] ::
+   ;;      string-header and string ended by 0 *)
+   xx dup2
+   xx _literal, 0, push_lambda_stack ;; counter
+   .tail_and_head_of_word_string:
+   xx tail_and_head_of_word_string
+   xx dup2, Bra__fuzhe, equal_string?, _false?branch, (.dup2-$)/Cell_width
+   xx   drop2
+   xx   pop_lambda_stack, add1, push_lambda_stack
+   xx   _branch, (.tail_and_head_of_word_string-$)/Cell_width
+   .dup2:
+   xx dup2, Ket__fuzhe, equal_string?, _false?branch, (.drop2-$)/Cell_width
+   xx   drop2
+   xx   pop_lambda_stack
+   xx   dup, zero?, _false?branch, (.sub1-$)/Cell_width
+   xx     drop
+   ;;     (* word-string-begin[address, length], word-string-end[address, length] *)
+   xx     dup2, ready
+   ;;       (* calculate the length and copy to [data section] *)
+   xx       drop, swap, drop
+   xx       Ket__fuzhe, swap, drop, add1
+   xx       subtraction ;; sub the length of Ket__fuzhe
+   xx       over, subtraction
+   xx         Current_data_section
+   xx         _literal, Cell_width, addition
+   xx         over, push_lambda_stack  ;; (* length to compile to here *)
+   xx         push_lambda_stack        ;; (* address to compile to here *)
+   xx       append_string_to_current_data_section
+   ;;       (* compile the string into function-body *)
+   ;;       (* address to compile to here *)
+   xx       _literal, _literal, append_number_to_here
+   xx       pop_lambda_stack, append_number_to_here
+   ;;       (* length to compile to here *)
+   xx       _literal, _literal, append_number_to_here
+   xx       pop_lambda_stack, append_number_to_here
+   xx     get_back
+   xx     Exit
+   .sub1:
+   xx   sub1, push_lambda_stack
+   xx   _branch, (.tail_and_head_of_word_string-$)/Cell_width
+   .drop2:
+   xx drop2
+   xx _branch, (.tail_and_head_of_word_string-$)/Cell_width
    xx Exit
 def_key_word_end 夫
 def_verb "basic-REPL", basic_REPL
@@ -1337,6 +1386,9 @@ def_verb "execute-word", execute_word
 def_verb_end execute_word
 
 def_string "Message:undefined-word", "   UNDEFINED WORD: ", Message_undefined_word
+def_string "ok", "ok", ok
+def_string "no", "no", no
+
 hereUnInitializedData
 ;; ------------------------
 Size_of_buffer_for_read_phrase = 1024*1024
@@ -1345,58 +1397,29 @@ Buffer_for_read_phrase labeling
         preserve Size_of_buffer_for_read_phrase
 
 
-;; 1. use "read_word__while_saving_to_string"
-;; 2. 每次 读一个 词 然后看 词界 是否是 回车
-;;    如果是 就做一个 phrase 然后返回
-;;    如果不是 就继续读
-;; 3. only ":" ";", as a pair of bra-ket, are been handled by a counter here
-;;    >< this is not the right thing
-;;    因为 比如说 当出现 "(" 的时候
-;;    后面所跟的字符串 一定要保证 能够被 正确地 "(" 处理
-;;    也就是 read-phrase 说这个函数
-;;    只应该接受 那些 bra-ket 正确匹配了的 以回车结尾的 字符串
-;; 4. 这个 错误以后再弥补
-;;    因为我需要快把基本的东西实现出来
-;;    让解释器 重新跑起来 以方便做测试
-;; 5. add "Exit" to the end of the string
-
 def_verb "read-phrase", read_phrase
    ;; (*  -- string[address, length] *)
    xx _literal, Buffer_for_read_phrase
    xx _literal, 0
 
-   xx _literal, 0, push_lambda_stack ;; leave a counter of ":"
-
    .read_word__while_saving_to_string:
    xx read_word__while_saving_to_string
    ;; (* string[address, length], word[address, length] *)
 
-   xx dup2, Bra__cosemi, equal_string?, _false?branch, (.dup2-$)/Cell_width
-   xx   drop2
-   xx   pop_lambda_stack, add1, push_lambda_stack
-   xx   _branch, (.read_word__while_saving_to_string-$)/Cell_width
+   .ok:
+   xx dup2, ok, equal_string?, _false?branch, (.dup2-$)/Cell_width
+   xx   swap, drop, add1, subtraction
+   xx   Exit
 
    .dup2:
-   xx dup2, Ket__cosemi, equal_string?, _false?branch, (.xxoverxx-$)/Cell_width
-   xx   pop_lambda_stack, sub1, push_lambda_stack
-
-   .xxoverxx:
-   ;; to see the what char the "word-boundary,end" is
-   xx xxoverxx, addition, sub1, fetch_byte
-   xx _literal, ASCII_linefeed, equal?, false?, _false?branch, (.drop2-$)/Cell_width
+   xx dup2, no, equal_string?, _false?branch, (.drop2-$)/Cell_width
    xx   drop2
-   xx   _branch, (.read_word__while_saving_to_string-$)/Cell_width
+   xx   drop2
+   xx   read_phrase
+   xx   Exit
 
    .drop2:
    xx drop2
-
-   xx pop_lambda_stack
-   xx dup, zero?, _false?branch, (.push_lambda_stack-$)/Cell_width
-   xx   drop
-   xx   Exit
-
-   .push_lambda_stack:
-   xx push_lambda_stack
    xx _branch, (.read_word__while_saving_to_string-$)/Cell_width
 def_verb_end read_phrase
 def_verb "eval-phrase", eval_phrase
@@ -1421,7 +1444,7 @@ def_verb "compile-phrase", compile_phrase
    xx Current_data_section, push_lambda_stack
    xx   _literal, Buffer_of_function_body__for_compile_phrase, _address, Here, save
    xx   _literal, Buffer_of_data_section__for_compile_phrase, _address, Current_data_section, save
-   xx   _Verb_explainer, append_number_to_here
+   xx   Verb_explainer, append_number_to_here
    xx   append_word_description_to_here
    xx   The_Exit, append_number_to_here
    xx pop_lambda_stack, _address, Current_data_section, save
@@ -1822,34 +1845,6 @@ def_verb "string->integer,with-error", string_to_integer__with_error
    xx False
    xx Exit
 def_verb_end string_to_integer__with_error
-hereUnInitializedData
-;; ------------------------------------------
-;; note that, Subsequent calls will overwrite Basic_string_buffer
-MaxStringLength = 1024*1024
-
-Basic_string_buffer labeling
-        preserve MaxStringLength
-
-def_noun "Basic-string-buffer", _Basic_string_buffer
-   xx Basic_string_buffer
-def_noun_end _Basic_string_buffer
-
-def_verb "read-string-into-buffer", read_string_into_buffer
-   ;; (*  -- string[address of Basic_string_buffer, length] *)
-   xx _literal, Basic_string_buffer ;; (* leave one of the return values *)
-   xx _literal, 0                   ;; (* leave length counter *)
-
-   xx _literal, Basic_string_buffer
-
-   .read_char:
-   xx read_char, dup, _literal, '"', equal?, _false?branch, 3
-   xx   drop2
-   xx   Exit
-
-   xx over, save_byte, add1
-   xx swap, add1, swap
-   xx _branch, (- ($ - .read_char) / Cell_width)
-def_verb_end read_string_into_buffer
 ;; : find-char-address
 ;;   (* char, [address, length] -- address or -1 *)
 ;;   dup zero? if
@@ -1909,6 +1904,16 @@ def_verb "cr", cr
    xx _literal, ASCII_linefeed, write_char
    xx Exit
 def_verb_end cr
+;; (* a Symbol-entry [unit : byte]
+;;  * ==========================
+;;  *  ||   8 : Symbol-value   ||
+;;  * --------------------------
+;;  *  ||   1 : Symbol-length  ||
+;;  * --------------------------
+;;  *  || 56+ : Symbol-string  ||
+;;  * ==========================
+;;  * where Symbol-max-length = 56
+;;  *)
 def_assembly_code "execute", execute
    ;; ( word[address of explainer] -- )
    pop_argument_stack Explainer_pointer
@@ -2001,13 +2006,13 @@ def_noun_end 已矣
 
 ;; ><><>< that is the Chinese version of "The-Exit"
 
-def_noun "Verb-explainer", _Verb_explainer
+def_noun "Verb-explainer", Verb_explainer
    xx explain_verb
-def_noun_end _Verb_explainer
+def_noun_end Verb_explainer
 
-def_noun "Noun-explainer", _Noun_explainer
+def_noun "Noun-explainer", Noun_explainer
    xx explain_noun
-def_noun_end _Noun_explainer
+def_noun_end Noun_explainer
 ;; recall
 ;; a word in the dictionary (unit : Cell_width = 8 bytes)
 ;; ==
@@ -2317,7 +2322,7 @@ def_verb "word,link->type", word__link_to_type
 def_verb_end word__link_to_type
 
 def_verb "word,link->address-of-type", word__link_to_address_of_type
-   ;; (* word.link[address] -- word.type[value] *)
+   ;; (* word.link[address] -- word.type[address] *)
    xx _literal, Cell_width
    xx _literal, 1, multiple
    xx addition
@@ -2408,7 +2413,11 @@ def_verb "append-word-description-to-here", append_word_description_to_here
    xx dup2, string_full_of_blank?, _false?branch, 3
    xx   drop2
    xx   Exit
+
    xx tail_and_head_of_word_string
+   ;; ;; (* for debug *)
+   ;; xx dup2, print_string, cr
+
    xx dup2, string_denote_integer?, _false?branch, 4
    xx   help__append_word_description_to_here__number
    xx   append_word_description_to_here
@@ -2465,7 +2474,7 @@ def_verb "define-verb", define_verb
    xx create_word_header
    xx dup, push_lambda_stack
    xx   add_new_word_to_dictionary
-   xx   _Verb_explainer, append_number_to_here
+   xx   Verb_explainer, append_number_to_here
    xx   append_word_description_to_here
    xx pop_lambda_stack
    xx set_size_of_word
@@ -2485,34 +2494,22 @@ def_verb_end eval_string__for_define
 hereUnInitializedData
 ;; ------------------------
 Size_of_buffer_of_function_body__for_compile_string__for_define = 1024*1024
-Size_of_buffer_of_data_section__for_compile_string__for_define = 1024*1024
 
 Buffer_of_function_body__for_compile_string__for_define labeling
         preserve Size_of_buffer_of_function_body__for_compile_string__for_define
-Buffer_of_data_section__for_compile_string__for_define labeling
-        preserve Size_of_buffer_of_data_section__for_compile_string__for_define
-
-def_noun "Current-data-section,for-compile-string,for-define", Current_data_section__for_compile_string__for_define
-   xx Buffer_of_data_section__for_compile_string__for_define
-def_noun_end Current_data_section__for_compile_string__for_define
 
 
 def_verb "compile-string,for-define", compile_string__for_define
    ;; (* word-string[address, length] --  *)
    xx Here, push_lambda_stack
-   xx Current_data_section, push_lambda_stack
 
    xx   _literal, Buffer_of_function_body__for_compile_string__for_define
    xx   _address, Here, save
 
-   xx   Current_data_section__for_compile_string__for_define
-   xx   _address, Current_data_section, save
-
-   xx   _Verb_explainer, append_number_to_here
+   xx   Verb_explainer, append_number_to_here
    xx   append_word_description_to_here
    xx   The_Exit, append_number_to_here
 
-   xx pop_lambda_stack, _address, Current_data_section, save
    xx pop_lambda_stack, _address, Here, save
    xx Exit
 def_verb_end compile_string__for_define
@@ -2560,12 +2557,29 @@ def_verb "define", _define
    xx create_word_header
    xx dup, push_lambda_stack
    xx   add_new_word_to_dictionary
-   xx   _Noun_explainer, append_number_to_here
+   xx   Noun_explainer, append_number_to_here
    xx   append_word_description_to_here__for_noun
    xx pop_lambda_stack
    xx set_size_of_word
    xx Exit
 def_verb_end _define
+def_verb "动词也", 动词也
+   ;; (* words-string[address, length] -- *)
+   xx define_verb
+   xx Exit
+def_verb_end 动词也
+
+def_verb "函数也", 函数也
+   ;; (* words-string[address, length] -- *)
+   xx define_function
+   xx Exit
+def_verb_end 函数也
+
+def_verb "也", 也
+   ;; (* words-string[address, length] -- *)
+   xx _define
+   xx Exit
+def_verb_end 也
 hereUnInitializedData
 
 ;;   (unit : byte)

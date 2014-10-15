@@ -268,12 +268,12 @@
 ** important nouns
    #+begin_src fasm :tangle threaded-code.inc
    def_noun "Here", Here
-      xx   0
+      xx 0
    def_noun_end Here
 
 
    def_noun "first-word-in-dictionary" , First_word_in_dictionary
-      xx  LinkOfLatest_word_in_assembly
+      xx LinkOfLatest_word_in_assembly
    def_noun_end  First_word_in_dictionary
 
    ;; note that:
@@ -1675,6 +1675,16 @@
       xx Exit
    def_verb_end append_number_to_current_data_section
 
+   def_verb "append-byte-to-current-data-section", append_byte_to_current_data_section
+      ;; (* a 64 bits number -- *)
+      ;; reset "Current_data_section", which points next free memory
+      xx Current_data_section
+      xx save_byte
+      xx _literal, 1
+      xx _address, Current_data_section, add_save
+      xx Exit
+   def_verb_end append_byte_to_current_data_section
+
    ;; note that:
    ;; a string in stack is string[address, length]
    ;; a string in memory is ||  1 cell : length  ||  n byte : string  ||  1 byte : 0  ||
@@ -1754,140 +1764,61 @@
       xx _branch, (.tail_and_head_of_word_string-$)/Cell_width
       xx Exit
    def_key_word_end colon
-
-
-
-   ;; ><><><
-   ;; Chinese version
-
+   #+end_src
+** chinese colon
+   #+begin_src fasm :tangle threaded-code.inc
    def_string "Bra:fuzhe", "夫", Bra__fuzhe
    def_string "Ket:fuzhe", "者", Ket__fuzhe
 
    def_key_word "夫", 夫
       ;; (* word-string[address, length] -- word-string[address, length] *)
+      ;; (* compile ::
+      ;;      string[address, length] *)
+      ;; (* compile to [data section] ::
+      ;;      string-header and string ended by 0 *)
+      xx dup2
+      xx _literal, 0, push_lambda_stack ;; counter
+      .tail_and_head_of_word_string:
+      xx tail_and_head_of_word_string
+      xx dup2, Bra__fuzhe, equal_string?, _false?branch, (.dup2-$)/Cell_width
+      xx   drop2
+      xx   pop_lambda_stack, add1, push_lambda_stack
+      xx   _branch, (.tail_and_head_of_word_string-$)/Cell_width
+      .dup2:
+      xx dup2, Ket__fuzhe, equal_string?, _false?branch, (.drop2-$)/Cell_width
+      xx   drop2
+      xx   pop_lambda_stack
+      xx   dup, zero?, _false?branch, (.sub1-$)/Cell_width
+      xx     drop
+      ;;     (* word-string-begin[address, length], word-string-end[address, length] *)
+      xx     dup2, ready
+      ;;       (* calculate the length and copy to [data section] *)
+      xx       drop, swap, drop
+      xx       Ket__fuzhe, swap, drop, add1
+      xx       subtraction ;; sub the length of Ket__fuzhe
+      xx       over, subtraction
+      xx         Current_data_section
+      xx         _literal, Cell_width, addition
+      xx         over, push_lambda_stack  ;; (* length to compile to here *)
+      xx         push_lambda_stack        ;; (* address to compile to here *)
+      xx       append_string_to_current_data_section
+      ;;       (* compile the string into function-body *)
+      ;;       (* address to compile to here *)
+      xx       _literal, _literal, append_number_to_here
+      xx       pop_lambda_stack, append_number_to_here
+      ;;       (* length to compile to here *)
+      xx       _literal, _literal, append_number_to_here
+      xx       pop_lambda_stack, append_number_to_here
+      xx     get_back
+      xx     Exit
+      .sub1:
+      xx   sub1, push_lambda_stack
+      xx   _branch, (.tail_and_head_of_word_string-$)/Cell_width
+      .drop2:
+      xx drop2
+      xx _branch, (.tail_and_head_of_word_string-$)/Cell_width
       xx Exit
    def_key_word_end 夫
-   #+end_src
-* --------------------------------------------------
-* >< cicada->fasm
-** note
-   1. 其实目前 cicada->fasm 将 只能在 linux 中使用
-   2. 我必须能在 当前的 runtime 本身中 调用这个函数
-      但是 在还没有 定义字符串的函数的前提下
-      为了简单起见
-      这个 本来因该被实现为一个 以字符串为参数的函数
-      在这里被实现为 一个 特殊的语法关键词
-      它 读它之后的 文件名 load 到 Fasm_buffer_in
-      然后把它 编译到 Fasm_buffer_out
-      然后 更换后缀名 把它 写出 到对定的文件
-      - 注意现在 已经是纯粹的编译语义了
-   3. cicada->fasm
-      1) 首先这个函数必须实现在汇编中
-      2) 输出的 fasm 代码将没有可读性
-      3) 需要
-         1. 把文件 load 到 一个 buffer 中
-         2. 这个文件将被 作为
-         3. 每个词 将被转换为 一行 fasm
-            需要有对命名规则的转换
-         4. 不允许 ": ... ;" "define-verb" "define-noun" 等等
-            之外的东西出现
-** implementation
-   #+begin_src fasm
-   hereUnInitializedData
-
-   Size_of_fasm_buffer = 4 * 1024 * 1024
-
-   Fasm_buffer_in labeling
-        preserve Size_of_fasm_buffer
-   Fasm_buffer_out labeling
-        preserve Size_of_fasm_buffer
-
-   ;; note that nothing like Data_section is needed here
-   def_noun "Current-fasm-buffer-in", Current_fasm_buffer_in
-      xx Fasm_buffer_in
-   def_noun_end Current_fasm_buffer_in
-
-   def_noun "Current-fasm-buffer-out", Current_fasm_buffer_out
-      xx Fasm_buffer_out
-   def_noun_end Current_fasm_buffer_out
-
-
-   ;; just to find the next ";" to count the length of the word-string for define-verb
-   def_verb "help:cicada->fasm,compile,colon", help__cicada_to_fasm__compile__colon
-      ;; (* word-string[address, length] -- word-string[address, length] *)
-      xx
-      xx Exit
-   def_verb_end help__cicada_to_fasm__compile__colon
-
-
-   def_verb "help:cicada->fasm,compile,comment", help__cicada_to_fasm__compile__comment
-      ;; (* word-string[address, length] -- word-string[address, length] *)
-      xx ignore_comment
-      xx Exit
-   def_verb_end help__cicada_to_fasm__compile__comment
-
-   def_verb "help:cicada->fasm,compile,define-verb", help__cicada_to_fasm__compile__define_verb
-      ;; (* word-string[address, length] -- *)
-      xx
-      xx Exit
-   def_verb_end help__cicada_to_fasm__compile__define_verb
-
-   def_verb "help:cicada->fasm,compile,define", help__cicada_to_fasm__compile__define
-      ;; (* word-string[address, length] -- *)
-      xx
-      xx Exit
-   def_verb_end help__cicada_to_fasm__compile__define
-
-   ;; only handles the following words:
-   ;; ":"  "(*"  "define-verb"  "define-noun"
-   def_verb "help:cicada->fasm,compile", help__cicada_to_fasm__compile
-      ;; (* [Fasm_buffer_in as address, length] -- *)
-      xx tail_and_head_of_word_string
-      xx dup2,
-      xx Exit
-   def_verb_end help__cicada_to_fasm__compile
-
-
-   def_verb "help:cicada->fasm,change-file-name", help__cicada_to_fasm__change_file_name
-      ;; (* file-name[address, length] -- file-name[address, length] *)
-      xx ><><><
-      xx Exit
-   def_verb_end help__cicada_to_fasm__change_file_name
-
-
-   def_key_word "cicada->fasm", cicada_to_fasm
-      ;; (* word-string[address, length] -- word-string[address, length] *)
-      ;; note that error handling is wrong here
-      ;; for right error handling needs to "Exit" more than one level of function-body
-      ;; but ...
-      xx tail_and_head_of_word_string
-      xx dup2, ready
-
-      ;; (* load file *)
-      xx _literal, Fasm_buffer_in
-      xx _literal, Size_of_fasm_buffer
-      xx file_to_buffer__with_error
-      xx dup, _literal, 0, less_than?, _false?branch, 5
-      xx   Message__cicada_to_fasm__error, print_string, cr
-      xx   Exit
-      xx _address, Current_fasm_buffer_in, add_save
-
-      ;; (* compile buffer *)
-      xx help__cicada_to_fasm__compile
-
-      ;; (* wirte to file *)
-      xx _literal, Fasm_buffer_out
-      xx dup, Current_fasm_buffer_out, swap, subtraction
-      xx get_back, help__cicada_to_fasm__change_file_name
-      xx buffer_to_file__with_error
-      xx dup, _literal, 0, less_than?, _false?branch, 5
-      xx   Message__cicada_to_fasm__error, print_string, cr
-      xx   Exit
-      xx drop
-      xx Exit
-   def_key_word_end cicada_to_fasm
-
-   def_string "Message:cicada->fasm,error", "ERROR: cicada->fasm", Message__cicada_to_fasm__error
    #+end_src
 * --------------------------------------------------
 * basic-REPL
@@ -1921,15 +1852,19 @@
   #+end_src
 * phrase
 ** note
-   1. functions about phrase are just for runtime
+   1. "ok" and "no" are two reversed word in cicada now
+      they are for the runtime function "read-phrase"
+      interesting design ^_^
+      but they can not even show up in comment
+   2. functions about phrase are just for runtime
       with a buffer been overwrited each time the functions run
       nested calling is not allowed
-   2. nested calling needs GC about string
-   3. 没有 GC 根本就很难把东西 实现正确
+   3. nested calling needs GC about string
+   4. 没有 GC 根本就很难把东西 实现正确
       比如在这里
       如果 把 字符出 的 存储空间 分配在 Buffer_for_read_phrase 中的话
       那么 两个 phrase 中给出的两个字符串 就有可能 相互 覆盖
-   4. ><><>< BUG
+   5. ><><>< BUG
       可见必须有 GC 才能把这里处理好
       但是我不能把 GC 写在汇编中
       所以 这些问题 等我写出编译器之后再解决
@@ -1937,6 +1872,9 @@
       "当一个 phrase 结束时, 就假设其中的数据全部都无法被引用了"
 ** read-phrase
    #+begin_src fasm :tangle threaded-code.inc
+   def_string "ok", "ok", ok
+   def_string "no", "no", no
+
    hereUnInitializedData
    ;; ------------------------
    Size_of_buffer_for_read_phrase = 1024*1024
@@ -1945,58 +1883,29 @@
            preserve Size_of_buffer_for_read_phrase
 
 
-   ;; 1. use "read_word__while_saving_to_string"
-   ;; 2. 每次 读一个 词 然后看 词界 是否是 回车
-   ;;    如果是 就做一个 phrase 然后返回
-   ;;    如果不是 就继续读
-   ;; 3. only ":" ";", as a pair of bra-ket, are been handled by a counter here
-   ;;    >< this is not the right thing
-   ;;    因为 比如说 当出现 "(" 的时候
-   ;;    后面所跟的字符串 一定要保证 能够被 正确地 "(" 处理
-   ;;    也就是 read-phrase 说这个函数
-   ;;    只应该接受 那些 bra-ket 正确匹配了的 以回车结尾的 字符串
-   ;; 4. 这个 错误以后再弥补
-   ;;    因为我需要快把基本的东西实现出来
-   ;;    让解释器 重新跑起来 以方便做测试
-   ;; 5. add "Exit" to the end of the string
-
    def_verb "read-phrase", read_phrase
       ;; (*  -- string[address, length] *)
       xx _literal, Buffer_for_read_phrase
       xx _literal, 0
 
-      xx _literal, 0, push_lambda_stack ;; leave a counter of ":"
-
       .read_word__while_saving_to_string:
       xx read_word__while_saving_to_string
       ;; (* string[address, length], word[address, length] *)
 
-      xx dup2, Bra__cosemi, equal_string?, _false?branch, (.dup2-$)/Cell_width
-      xx   drop2
-      xx   pop_lambda_stack, add1, push_lambda_stack
-      xx   _branch, (.read_word__while_saving_to_string-$)/Cell_width
+      .ok:
+      xx dup2, ok, equal_string?, _false?branch, (.dup2-$)/Cell_width
+      xx   swap, drop, add1, subtraction
+      xx   Exit
 
       .dup2:
-      xx dup2, Ket__cosemi, equal_string?, _false?branch, (.xxoverxx-$)/Cell_width
-      xx   pop_lambda_stack, sub1, push_lambda_stack
-
-      .xxoverxx:
-      ;; to see the what char the "word-boundary,end" is
-      xx xxoverxx, addition, sub1, fetch_byte
-      xx _literal, ASCII_linefeed, equal?, false?, _false?branch, (.drop2-$)/Cell_width
+      xx dup2, no, equal_string?, _false?branch, (.drop2-$)/Cell_width
       xx   drop2
-      xx   _branch, (.read_word__while_saving_to_string-$)/Cell_width
+      xx   drop2
+      xx   read_phrase
+      xx   Exit
 
       .drop2:
       xx drop2
-
-      xx pop_lambda_stack
-      xx dup, zero?, _false?branch, (.push_lambda_stack-$)/Cell_width
-      xx   drop
-      xx   Exit
-
-      .push_lambda_stack:
-      xx push_lambda_stack
       xx _branch, (.read_word__while_saving_to_string-$)/Cell_width
    def_verb_end read_phrase
    #+end_src
@@ -2027,7 +1936,7 @@
       xx Current_data_section, push_lambda_stack
       xx   _literal, Buffer_of_function_body__for_compile_phrase, _address, Here, save
       xx   _literal, Buffer_of_data_section__for_compile_phrase, _address, Current_data_section, save
-      xx   _Verb_explainer, append_number_to_here
+      xx   Verb_explainer, append_number_to_here
       xx   append_word_description_to_here
       xx   The_Exit, append_number_to_here
       xx pop_lambda_stack, _address, Current_data_section, save
@@ -2480,37 +2389,6 @@
    def_verb_end string_to_integer__with_error
    #+end_src
 * string misc
-** read_string_into_buffer
-   #+begin_src fasm :tangle threaded-code.inc
-   hereUnInitializedData
-   ;; ------------------------------------------
-   ;; note that, Subsequent calls will overwrite Basic_string_buffer
-   MaxStringLength = 1024*1024
-
-   Basic_string_buffer labeling
-           preserve MaxStringLength
-
-   def_noun "Basic-string-buffer", _Basic_string_buffer
-      xx Basic_string_buffer
-   def_noun_end _Basic_string_buffer
-
-   def_verb "read-string-into-buffer", read_string_into_buffer
-      ;; (*  -- string[address of Basic_string_buffer, length] *)
-      xx _literal, Basic_string_buffer ;; (* leave one of the return values *)
-      xx _literal, 0                   ;; (* leave length counter *)
-
-      xx _literal, Basic_string_buffer
-
-      .read_char:
-      xx read_char, dup, _literal, '"', equal?, _false?branch, 3
-      xx   drop2
-      xx   Exit
-
-      xx over, save_byte, add1
-      xx swap, add1, swap
-      xx _branch, (- ($ - .read_char) / Cell_width)
-   def_verb_end read_string_into_buffer
-   #+end_src
 ** find-char-address & find-char-index
    #+begin_src fasm :tangle threaded-code.inc
    ;; : find-char-address
@@ -2576,6 +2454,116 @@
       xx Exit
    def_verb_end cr
    #+end_src
+* >< hash-table for symbol
+** note
+   1. "string-hash->index index-hashback->string"
+      is a identity function
+      and if the argument is a index returned by "string-hash->index"
+      "index-hashback->string string-hash->index"
+      also is a identity function
+   2. you can set a value  (of size Cell-width)
+      to every symbol in this hash-table
+      by:
+      (* value, index *) index->address save
+      dynamic type system make use of it
+      for I implement type-tag as a special symbol
+      but you should NOT set a pair to a symbol
+      for I can not afford to let gc scan the whole hash-table to mark it
+   3. hash-function (string)
+      ==> (sum-up [byte_n * 2^n]) mod Number-of-symbol-entrys
+      + where:
+        0 <= n < Symbol-max-length
+        and the Number-of-symbol-entrys is a prime number
+      after sum-up, the greatest number < 2^(Symbol-max-length + 8)
+      so I let Symbol-max-length == 64 - 8 == 56
+      only first Symbol-max-length of the string is used by the hash-function
+   -----------------------------
+   1. string-hash->index index-hashback->string
+      这两个函数的复合 所得到的 将是一个 恒等函数
+      并且 如果 参数 是 一个 由 string-hash->index 返回的 index
+      那么 index-hashback->string string-hash->index
+      这两个函数的复合 所得到的 也将是一个 恒等函数
+   2. 也就是说 在每次系统运行的时候
+      这两个函数都会伪装成一个 无穷集上的 一对互逆映射
+      但是 要知道 这是不可能的 计算机 对无穷集的实现只能是假的
+   3. 散列表中的每一项 都有一个域
+      可以用来保存一个 大小为 Cell-width 的值
+      其使用方式如下
+      (* value, index *) index->address save
+      动态类型系统 把这个 量解释为 类型的类型
+      但是需要注意的是
+      不能用这个 域来保存 pair
+      因为 我不能让 garbage-collectior 在每个工作周期的开始时
+      扫描整个 hash-table
+   3. 用类似数学表达式 来表示 这里所使用的 散列函数 如下 :
+      hash-function (string)
+      ==> (sum-up [byte_n * 2^n]) mod Number-of-symbol-entrys
+      + 其中 :
+        0 <= n < Symbol-max-length
+        并且 Number-of-symbol-entrys 是一个素数
+      在用 sum-up 相加之后 最大的可能的和 < 2^(Symbol-max-length + 8)
+      所以 我定义 Symbol-max-length == 64 - 8 == 56
+      每个字符串中 只有前 Symbol-max-length 个字符被 hash-function 使用到了
+      因此 前 Symbol-max-length 个字符 相同的两个字符串 一定会相互冲突
+** string-hash->index & index-hashback->string
+   #+begin_src fasm :tangle threaded-code.inc
+   ;; (* a Symbol-entry [unit : byte]
+   ;;  * ==========================
+   ;;  *  ||   8 : Symbol-value   ||
+   ;;  * --------------------------
+   ;;  *  ||   1 : Symbol-length  ||
+   ;;  * --------------------------
+   ;;  *  || 56+ : Symbol-string  ||
+   ;;  * ==========================
+   ;;  * where Symbol-max-length = 56
+   ;;  *)
+
+   #+end_src
+* >< type
+** note
+   1. garbage-collectior needs type
+      for it have to be able to distinguish
+      <pair> from <non-pair>
+      i.e. address from value
+   2. a type-tag is implemented as a symbol
+      i.e. a index of hash-table for symbol
+      and the structure of an entry in hash-table
+      can be made rich enough to hold needed informations
+      for example, a type field is very useful
+      i.e. a type field in an entry of the hash-table
+      can denote the type of type
+      thus <pair> and <non-pair> are distinguished
+   3. 但是
+      其实 这些类型标签 只是 在 pair 的数组中
+      才有相对完备的 去 区分量的类型的功能
+      而在 某些情况下 它们是不充分的
+      这在于
+      因为我没有 限制所有的量都 必须是这种带有 类型标签的
+      占据 两个 Cell 的量
+      这导致了
+      在某些情况下 我还是必须使用 地址 来判断某个量是不是 <pair>
+      虽然导致了 一些不谐
+      但是 这是可以接受的
+      因为 实现 <pair> 的只不过是一个 结构化的 数组而已
+   4. 我必须做一些相对复杂的 对数组中所保存的量 的匹配
+      才能 在某些特殊的情况下 对 pair 做判断
+      比如 对于 noun
+      为了在 garbage-collectior 的工作周期的开始时 初始化被染色的 pair
+      我需要 看这个 noun 的大小是不是 大于1
+      同时 还需要在其中找 <pair>
+      当找到的时候 需要看 入栈之时 这个 <pair> 是不是在最末尾
+      如果不是 在最末尾 那么它和它之后的那个量才有可能 组成一个 带有类型标签的量
+      这是 需要看它之后 的那个量 作为一个地址 是不是 在 pair 的数组 中的合适的位置
+      如果是的话 就认为 这个 noun 中保存了一个 动态类型的量
+      此时 根据 garbage-collectior 的需要 来处理这个量 就可以了
+   5. 另外关于 garbage-collectior 的一个难点是
+      当我允许在数据段中出现 链表 的时候
+      这些 链表 必须是绝对静态的
+      并且要知道 这些 链表是在 pair 的数组之外的
+      garbage-collectior 应该以特殊的方式处理这些 东西
+      我想 这是可以实现的
+      这个问题留到具体实现的候再去考虑
+** implementation
 * dictionary & lexicographer
 ** explainers & execute & Exit
    #+begin_src fasm :tangle threaded-code.inc
@@ -2671,13 +2659,13 @@
 
    ;; ><><>< that is the Chinese version of "The-Exit"
 
-   def_noun "Verb-explainer", _Verb_explainer
+   def_noun "Verb-explainer", Verb_explainer
       xx explain_verb
-   def_noun_end _Verb_explainer
+   def_noun_end Verb_explainer
 
-   def_noun "Noun-explainer", _Noun_explainer
+   def_noun "Noun-explainer", Noun_explainer
       xx explain_noun
-   def_noun_end _Noun_explainer
+   def_noun_end Noun_explainer
    #+end_src
 ** find (dictionary look up)
    #+begin_src fasm :tangle threaded-code.inc
@@ -3130,7 +3118,11 @@
        xx dup2, string_full_of_blank?, _false?branch, 3
        xx   drop2
        xx   Exit
+
        xx tail_and_head_of_word_string
+       ;; ;; (* for debug *)
+       ;; xx dup2, print_string, cr
+
        xx dup2, string_denote_integer?, _false?branch, 4
        xx   help__append_word_description_to_here__number
        xx   append_word_description_to_here
@@ -3193,7 +3185,7 @@
        xx create_word_header
        xx dup, push_lambda_stack
        xx   add_new_word_to_dictionary
-       xx   _Verb_explainer, append_number_to_here
+       xx   Verb_explainer, append_number_to_here
        xx   append_word_description_to_here
        xx pop_lambda_stack
        xx set_size_of_word
@@ -3211,7 +3203,8 @@
     1. eval == compile and call
     2. here the Buffer_of_data_section will NOT be overwrited
        while Buffer_of_function_body will be overwrited
-    3. nested calling is not allowed
+    3. just use the global data section
+    4. nested calling is not allowed
        nested calling needs GC about string
 *** implementation
     #+begin_src fasm :tangle threaded-code.inc
@@ -3226,34 +3219,22 @@
     hereUnInitializedData
     ;; ------------------------
     Size_of_buffer_of_function_body__for_compile_string__for_define = 1024*1024
-    Size_of_buffer_of_data_section__for_compile_string__for_define = 1024*1024
 
     Buffer_of_function_body__for_compile_string__for_define labeling
             preserve Size_of_buffer_of_function_body__for_compile_string__for_define
-    Buffer_of_data_section__for_compile_string__for_define labeling
-            preserve Size_of_buffer_of_data_section__for_compile_string__for_define
-
-    def_noun "Current-data-section,for-compile-string,for-define", Current_data_section__for_compile_string__for_define
-       xx Buffer_of_data_section__for_compile_string__for_define
-    def_noun_end Current_data_section__for_compile_string__for_define
 
 
     def_verb "compile-string,for-define", compile_string__for_define
        ;; (* word-string[address, length] --  *)
        xx Here, push_lambda_stack
-       xx Current_data_section, push_lambda_stack
 
        xx   _literal, Buffer_of_function_body__for_compile_string__for_define
        xx   _address, Here, save
 
-       xx   Current_data_section__for_compile_string__for_define
-       xx   _address, Current_data_section, save
-
-       xx   _Verb_explainer, append_number_to_here
+       xx   Verb_explainer, append_number_to_here
        xx   append_word_description_to_here
        xx   The_Exit, append_number_to_here
 
-       xx pop_lambda_stack, _address, Current_data_section, save
        xx pop_lambda_stack, _address, Here, save
        xx Exit
     def_verb_end compile_string__for_define
@@ -3311,13 +3292,33 @@
        xx create_word_header
        xx dup, push_lambda_stack
        xx   add_new_word_to_dictionary
-       xx   _Noun_explainer, append_number_to_here
+       xx   Noun_explainer, append_number_to_here
        xx   append_word_description_to_here__for_noun
        xx pop_lambda_stack
        xx set_size_of_word
        xx Exit
     def_verb_end _define
     #+end_src
+* chinese lexicographer
+  #+begin_src fasm :tangle threaded-code.inc
+  def_verb "动词也", 动词也
+     ;; (* words-string[address, length] -- *)
+     xx define_verb
+     xx Exit
+  def_verb_end 动词也
+
+  def_verb "函数也", 函数也
+     ;; (* words-string[address, length] -- *)
+     xx define_function
+     xx Exit
+  def_verb_end 函数也
+
+  def_verb "也", 也
+     ;; (* words-string[address, length] -- *)
+     xx _define
+     xx Exit
+  def_verb_end 也
+  #+end_src
 * --------------------------------------------------
 * memory allocation
 ** Pair-constructions-array
