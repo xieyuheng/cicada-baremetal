@@ -4,155 +4,164 @@
 
 
 * ==================================================
-* TODO
-** ><
-   1. move the following to assembly code :
-      1) type system
-      2) hash-table
-         and use it to implement dictionary looking-up
-      3) debuger
-      for I need them to implement better compiler-semantic
-      to make the order of function definitions not important anymore
-   2. as the "debuger" is defined in cicada code
-      it is hard to do good error handling in assembly code
-      这是因为我没法在出错的时候即使调用 debuger 来报错
-      - 比如 通常的函数类型的错误
-        我应该 及时的 调用 debuger 来报告错误
-        而在不利的条件下 我必须 返回一个出错码
-        来表示函数 所接受的数据类型不对
-   3. redesign the syntax about strings
-      to allow more
-   4. the whole english-core.org needs to be rewrited
-   5. ><><>< 注意 ><><><
-      对于新的 define 要更改 GC
-      整个 GC 都应该被重写了吗 ???
-   6. make good use of indentation
-      1) for wodili 应该 在 wodili 的已有的 解析器 的基础上
-         增加一个 好好 利用 indentation 的解析器
-         两种解析器各自有各自的用处
-      2) 把 利用"支撑树" 来进行相对引用的 性质加到 yaml 中
-         就能 形成 我想要的 digrap 的语法
-   7. 写编译器
-      1) 从最简单 的 babystep 开始
-      2) 编译 bootloader
-      3) 注意要保持设计的灵活性
-         或者直接从 文档开始
-         用中文写文档 以加快速度
-** ><
-   1. erlang 的 bit syntax 在于让人方便地处理 bit fields
-      这在于 能 用模式匹配
-   2. 关于 linux下 图形界面 的 文本编辑器
-      因为我已经能把 动态链接的库加载到 cicada 中了
-      所以是有可能实现的
-      需要用 C 把某先函数包装好
-      在 cicada 中调用 C 函数的时候需要保护跟栈 有关的寄存器
-   3. it also feels fun
-      to reimplement some UNIX userland functions :)
-   4. 比如 当同时考虑 整数 还有 实数 等等 数据类型的时候
-      面向对象的 节省命名空间 的优点 就充分地体现出来了
-      这在于 (也只在于) 这样写出来的 代码
-      更接近于人们日常对数学运算的模糊表达
-   5. 需要好好 分析一下 增加了 Lambda-stack 之后
-      整个系统的数学性质的变化
-      因为 感觉上 太帅了
-      好像 增加了一个维度
-      好像 走出了柏拉图的洞穴一样
-   6. 需要 cicada-assembler 的理由:
-      1) 统一 命名规则
-      2) 让我 能够探索一些关于编译的技术
-      3) 有些 小的 CPU 并没有 类似 fasm 的 合适的编译器的
-         当我有 cicada-assembler 的时候
-         我就能不受限制于这个事实了
-      4) 当我调整代码的结构
-         以让我方便地 维护两个汇编版本的时候
-         我就发现 其中有很多重复的部分
-         想要消除这些重复
-         我可以通过 更多的 把文件 分开来实现
-         但是如果我想保持
-         我的 类文学编程 组织代码的风格的话
-         也许 创造一些新的东西来支持 我的风格就是必须的了
-   7. 不需要 cicada-assembler 的理由:
-      1) 一个人认为 一个语言需要这种东西
-         可能只是因为 当这个语言的编译器能够自己编译自己的时候
-         看起来很 cool 而已
-      2) 为了 实现 一个 x86-64 的汇编器
-         有太多的 关于 CPU 的底层细节需要 被掌握
-   8. 就用户接口的设计而言
-      我可以把那几个 核心的栈 的图示 放在 左边的一个窗口里
-      在这之后 我就能设计 debuger 的更好的使用方式
-      但是一个问题是 当我的界面不再是一个简单的解释器的时候
-      我就不能 直接利用 emacs 了
-      也就是必须 要先写自己的 文本编辑器
-      之后才能考虑窗口 之类的问题
-   9. 也许 可以从 isforth 那里 学习在 linux 下写文本编辑器的基本工作
-   10. 生成中文字典 交给 Recaler
-   11. 支持 windows 及其环境下的开发
-   12. 支持 Mac 及其环境下的开发
-** english-core
-   1. use hash-table to lookup dictionary
-      then mutually recursive call
-   2. 用hash-table来find
-      这些不必实现在汇编代码中
-      因为 list还是必要的
-      因为这样就能保持对字典的灵活控制
-      所以 需要写一些函数把
-      字典重新加载到 hash-table 中
-   3. need to redesign the way to do test
-      should tangle test to separated file
-      for i do not have my org-mode now
-   4. wodyli processing
-      then digrap in cicada
-   5. tab completion in the REPL
-      (or in text editor)
-   6. let functions in assembly-code
-      be able to call functions in cicada-style-assembly-code
-   7. >< 实现对多种实现技术的定制
-   8. >< 重新思考某些术语和命名方式
-   9. cicada should design it's own abstractions of IO
-      this can help cicada to be portable
-      现在 有的只是 read-char 和 write-char 两个基础的东西而已
-      这样太贫乏了
-   10. memory allocation
-   11. flow-point number
-   12. >< maybe substitute word to execute in lambda-body
-   13. >< maybe syntax-check
-   14. >< modern pattern-match  HOW ???
-   15. better interface for debuger
-   16. TAIL-CALL-OPTIMIZATION in apply lambda-body
-   17. more protection on allocated memory
-       maybe use paging
-   18. cicada-assembler
-   19. cicada-editor
-   20. APL-like array-processing
-   21. needs better sexp-reader&write
-       design a better way
-       to use local-label to from list-with-circuit
-** baremetal
-   1. 作为一个使用纯粹释性语言
-      我应该 重新 思考 对 公共的 函数库的使用方式
-   2. in lmode, how to set up the "attributes-and-type" field in an entry of IDT ?
-   3. SMP support
-      作为一个以栈为基础的语言
-      我应该重新思考 利用 多核 的方式
-   4. learn more from baremetal-OS
-   5. convert the code about storage & BMFS from old-asm to forth-like-asm
-      to examine the bug of "readsectors"
-   6. fix "bye"
-   7. design game-like UI in text mode
-   8. rewrite cicada to make it standard and portable
-      (this will always be TODO)
-** linux
-   1. to allow executables to dynamically access external functionality at run time
-      and thereby reduce their overall memory footprint
-      在我的操作系统中 我可以以我的方式来完成上面的这种特性
-      我只需要一个 "need" 函数 来声明 某段被解释的代码 所需要的 sub-dictionary
-      我还需要一些 处理 sub-dictionary 的函数
-      sub-dictionary 的性质 是 :
-      - 它可以有很多个
-      - 并且它所占用的 内存可以被回收的
-      - 内存的回收 可以用 类似字符串的 垃圾回收器 来完成
-      - 当全面地使用 hash 来实现 dictionary 时
-        内存的回收 也可以用 类似链表的 垃圾回收器 来完成
+* TODO =============================================
+* UTF-8 support
+  1. 翻译更多的基本的英文词
+     以实现 中文的 语法关键词 "字"
+  2. Chinese core needs UTF-8 support
+  3. re-naming :
+     1) read-char to read-byte
+     2) write-char to write-byte
+     add UTF-8 support in read-char and write-char
+  4. 实现 中文的 语法关键词 "字"
+* ><
+  1. move the following to assembly code :
+     1) type system
+     2) hash-table
+        and use it to implement dictionary looking-up
+     3) debuger
+     for I need them to implement better compiler-semantic
+     to make the order of function definitions not important anymore
+  2. as the "debuger" is defined in cicada code
+     it is hard to do good error handling in assembly code
+     这是因为我没法在出错的时候即使调用 debuger 来报错
+     - 比如 通常的函数类型的错误
+       我应该 及时的 调用 debuger 来报告错误
+       而在不利的条件下 我必须 返回一个出错码
+       来表示函数 所接受的数据类型不对
+  3. redesign the syntax about strings
+     to allow more
+  4. the whole english-core.org needs to be rewrited
+  5. ><><>< 注意 ><><><
+     对于新的 define 要更改 GC
+     整个 GC 都应该被重写了吗 ???
+  6. make good use of indentation
+     1) for wodili 应该 在 wodili 的已有的 解析器 的基础上
+        增加一个 好好 利用 indentation 的解析器
+        两种解析器各自有各自的用处
+     2) 把 利用"支撑树" 来进行相对引用的 性质加到 yaml 中
+        就能 形成 我想要的 digrap 的语法
+  7. 写编译器
+     1) 从最简单 的 babystep 开始
+     2) 编译 bootloader
+     3) 注意要保持设计的灵活性
+        或者直接从 文档开始
+        用中文写文档 以加快速度
+* ><
+  1. erlang 的 bit syntax 在于让人方便地处理 bit fields
+     这在于 能 用模式匹配
+  2. 关于 linux下 图形界面 的 文本编辑器
+     因为我已经能把 动态链接的库加载到 cicada 中了
+     所以是有可能实现的
+     需要用 C 把某先函数包装好
+     在 cicada 中调用 C 函数的时候需要保护跟栈 有关的寄存器
+  3. it also feels fun
+     to reimplement some UNIX userland functions :)
+  4. 比如 当同时考虑 整数 还有 实数 等等 数据类型的时候
+     面向对象的 节省命名空间 的优点 就充分地体现出来了
+     这在于 (也只在于) 这样写出来的 代码
+     更接近于人们日常对数学运算的模糊表达
+  5. 需要好好 分析一下 增加了 Lambda-stack 之后
+     整个系统的数学性质的变化
+     因为 感觉上 太帅了
+     好像 增加了一个维度
+     好像 走出了柏拉图的洞穴一样
+  6. 需要 cicada-assembler 的理由:
+     1) 统一 命名规则
+     2) 让我 能够探索一些关于编译的技术
+     3) 有些 小的 CPU 并没有 类似 fasm 的 合适的编译器的
+        当我有 cicada-assembler 的时候
+        我就能不受限制于这个事实了
+     4) 当我调整代码的结构
+        以让我方便地 维护两个汇编版本的时候
+        我就发现 其中有很多重复的部分
+        想要消除这些重复
+        我可以通过 更多的 把文件 分开来实现
+        但是如果我想保持
+        我的 类文学编程 组织代码的风格的话
+        也许 创造一些新的东西来支持 我的风格就是必须的了
+  7. 不需要 cicada-assembler 的理由:
+     1) 一个人认为 一个语言需要这种东西
+        可能只是因为 当这个语言的编译器能够自己编译自己的时候
+        看起来很 cool 而已
+     2) 为了 实现 一个 x86-64 的汇编器
+        有太多的 关于 CPU 的底层细节需要 被掌握
+  8. 就用户接口的设计而言
+     我可以把那几个 核心的栈 的图示 放在 左边的一个窗口里
+     在这之后 我就能设计 debuger 的更好的使用方式
+     但是一个问题是 当我的界面不再是一个简单的解释器的时候
+     我就不能 直接利用 emacs 了
+     也就是必须 要先写自己的 文本编辑器
+     之后才能考虑窗口 之类的问题
+  9. 也许 可以从 isforth 那里 学习在 linux 下写文本编辑器的基本工作
+  10. 生成中文字典 交给 Recaler
+  11. 支持 windows 及其环境下的开发
+  12. 支持 Mac 及其环境下的开发
+* english-core
+  1. use hash-table to lookup dictionary
+     then mutually recursive call
+  2. 用hash-table来find
+     这些不必实现在汇编代码中
+     因为 list还是必要的
+     因为这样就能保持对字典的灵活控制
+     所以 需要写一些函数把
+     字典重新加载到 hash-table 中
+  3. need to redesign the way to do test
+     should tangle test to separated file
+     for i do not have my org-mode now
+  4. wodyli processing
+     then digrap in cicada
+  5. tab completion in the REPL
+     (or in text editor)
+  6. let functions in assembly-code
+     be able to call functions in cicada-style-assembly-code
+  7. >< 实现对多种实现技术的定制
+  8. >< 重新思考某些术语和命名方式
+  9. cicada should design it's own abstractions of IO
+     this can help cicada to be portable
+     现在 有的只是 read-char 和 write-char 两个基础的东西而已
+     这样太贫乏了
+  10. memory allocation
+  11. flow-point number
+  12. >< maybe substitute word to execute in lambda-body
+  13. >< maybe syntax-check
+  14. >< modern pattern-match  HOW ???
+  15. better interface for debuger
+  16. TAIL-CALL-OPTIMIZATION in apply lambda-body
+  17. more protection on allocated memory
+      maybe use paging
+  18. cicada-assembler
+  19. cicada-editor
+  20. APL-like array-processing
+  21. needs better sexp-reader&write
+      design a better way
+      to use local-label to from list-with-circuit
+* baremetal
+  1. 作为一个使用纯粹释性语言
+     我应该 重新 思考 对 公共的 函数库的使用方式
+  2. in lmode, how to set up the "attributes-and-type" field in an entry of IDT ?
+  3. SMP support
+     作为一个以栈为基础的语言
+     我应该重新思考 利用 多核 的方式
+  4. learn more from baremetal-OS
+  5. convert the code about storage & BMFS from old-asm to forth-like-asm
+     to examine the bug of "readsectors"
+  6. fix "bye"
+  7. design game-like UI in text mode
+  8. rewrite cicada to make it standard and portable
+     (this will always be TODO)
+* linux
+  1. to allow executables to dynamically access external functionality at run time
+     and thereby reduce their overall memory footprint
+     在我的操作系统中 我可以以我的方式来完成上面的这种特性
+     我只需要一个 "need" 函数 来声明 某段被解释的代码 所需要的 sub-dictionary
+     我还需要一些 处理 sub-dictionary 的函数
+     sub-dictionary 的性质 是 :
+     - 它可以有很多个
+     - 并且它所占用的 内存可以被回收的
+     - 内存的回收 可以用 类似字符串的 垃圾回收器 来完成
+     - 当全面地使用 hash 来实现 dictionary 时
+       内存的回收 也可以用 类似链表的 垃圾回收器 来完成
 * ==================================================
 * note
 ** about decision
@@ -469,4 +478,36 @@
       2) 利用 linux 中的图形环境 和 中文字体
          我可以 继续研究 蝉语的中文语法
 * windows
+* ==================================================
+* 记
+** 直观 与 抽象
+   1. 用抽象的数学来描述那些
+      超出我们直观的想像能力的东西
+      是非常重要的
+      每个个体的人的直观想像能力的局限性
+      决定了他对抽象方法的需要
+   2. 同时
+      我们的想像能力本身却又是可以拓展的
+      就像一个潜水者通过长期的练习就能够更熟悉水的性质一样
+      对某种语言的学习
+      或者对某种新的表达方式的学习
+      也能帮我们去熟悉一种新的思考方式
+   3. 但是我们应该如何来看待我们所学到的某种新的思考方式呢 ?
+      我们拓展了我们的直观想像 ?
+      还是我们获取了新的抽象技巧 ?
+      看似对立的 直观想像 和 符号性的抽象技巧
+      本为一物矣
+** 编译器的渐进开发
+   1. 有一种对编译器的测试叫 三重编译 测试
+      当有一个能编译自身的编译器之后   
+      当你更改编译器的源代码
+      而得到一个新的编译器之后
+      对同样的源代码
+      必须要编译三次来检验新的编译器是否基本正确
+      第一次使用旧的编译器
+      第二次使用新的编译器
+      第三次使用新新的编译器
+      测试在于比较 新的编译器 和 新新的编译器 是否完全相同
+      它们应该完全相同 因为它们是 "同样的" 编译器编译 
+      编译 同一份源代码 所得到的二进制文件
 * ==================================================

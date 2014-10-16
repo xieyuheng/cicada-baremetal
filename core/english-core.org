@@ -84,6 +84,14 @@
          在我的中文代码中 表 句之结构的 标点符号 就只有空格而已
          其实也类似于标点符号 因为它们也有 表明句之结构的功能
          只不过它们 使用了 比异于文字的 标点符号 更 让人亲近的 文字本身 而已
+** about char
+   1. the default char encoding is UTF-8
+      thus
+      when Cell-width >= 4
+      a char can be stored into a Cell
+   2. if be wished
+      one can change the encoding easily
+      by re-define the needed functions
 * ==================================================
 * *test*
   #+begin_src cicada
@@ -93,12 +101,12 @@
     then
     dup sub1 factorial * Exit
   ; define-verb
-  ok 
+  ok
 
   1 factorial .
   2 factorial .
   3 factorial .
-  ok 
+  ok
 
   (* need to re-define "." to run the following *)
   4 factorial .
@@ -134,9 +142,9 @@
     (* word-string[address, length] -- word-string[address, length] *)
     (* compile::
          _literal[address of explainer], char *)
-    literal _literal append-number-to-here
+    literal _literal compile-number-to-here
     tail-and-head-of-word-string
-    string->char append-number-to-here
+    string->char compile-number-to-here
     Exit
   ; define-key-word
   ok
@@ -145,18 +153,18 @@
   #+begin_src cicada
   : .12 (* 1 2 -- *)
     2 == if
-      char 2 write-char
+      char 2 write-byte
       1 == if
-        char 1 write-char
+        char 1 write-byte
       else
-        char _ write-char
+        char _ write-byte
       then
     else
-      char _ write-char
+      char _ write-byte
       1 == if
-        char 1 write-char
+        char 1 write-byte
       else
-        char _ write-char
+        char _ write-byte
       then
     then
     Exit
@@ -190,24 +198,24 @@
      dup char " == if
        drop
        (* compile address to here *)
-       literal _literal append-number-to-here
+       literal _literal compile-number-to-here
          pop-lambda-stack dup push-lambda-stack
-       append-number-to-here
+       compile-number-to-here
        (* compile length to here *)
-       literal _literal append-number-to-here
+       literal _literal compile-number-to-here
        Current-data-section
          pop-lambda-stack dup push-lambda-stack
        sub dup
-       append-number-to-here
+       compile-number-to-here
        (* set the string header *)
        pop-lambda-stack
        Cell-width
        sub save
        (* add a tailling 0 *)
-       0 append-byte-to-current-data-section
+       0 compile-byte-to-current-data-section
        Exit
      then
-     append-byte-to-current-data-section
+     compile-byte-to-current-data-section
      help,:"
      Exit
    ; define-verb
@@ -243,7 +251,7 @@
 *** write-dec-number
     #+begin_src cicada
     : write-dec-number-char (* byte -- *)
-      '0' + write-char
+      '0' + write-byte
       Exit
     ; define-verb
 
@@ -259,12 +267,12 @@
       Exit
     ; define-verb
 
-    : help:write-dec-number,write-chars
+    : help:write-dec-number,write-bytes
       (* ... , number of small DecNumbers -- *)
       dup zero? if drop Exit
       then
       sub1 swap write-dec-number-char
-      help:write-dec-number,write-chars
+      help:write-dec-number,write-bytes
       Exit
     ; define-verb
 
@@ -272,13 +280,13 @@
     : write-dec-number,unsign (* fixnum -- *)
       0 swap
       help:write-dec-number,push-chars
-      help:write-dec-number,write-chars
+      help:write-dec-number,write-bytes
       Exit
     ; define-verb
 
     : write-dec-number,sign (* fixnum -- *)
       dup 0 < if
-        '-' write-char
+        '-' write-byte
         negate
       then
       write-dec-number,unsign
@@ -293,7 +301,7 @@
 *** write-bin-number
     #+begin_src cicada
     : write-bin-number-char (* byte -- *)
-      '0' + write-char
+      '0' + write-byte
       Exit
     ; define-verb
 
@@ -309,25 +317,25 @@
       Exit
     ; define-verb
 
-    : help:write-bin-number,write-chars
+    : help:write-bin-number,write-bytes
       (* ... , number of small BinNumbers -- *)
       dup zero? if drop Exit
       then
       sub1 swap write-bin-number-char
-      help:write-bin-number,write-chars
+      help:write-bin-number,write-bytes
       Exit
     ; define-verb
 
     : write-bin-number,unsign (* fixnum -- *)
       0 swap
       help:write-bin-number,push-chars
-      help:write-bin-number,write-chars
+      help:write-bin-number,write-bytes
       Exit
     ; define-verb
 
     : write-bin-number,sign (* fixnum -- *)
       dup 0 < if
-        '-' write-char
+        '-' write-byte
         negate
       then
       write-bin-number,unsign
@@ -342,7 +350,7 @@
 *** write-oct-number
     #+begin_src cicada
     : write-oct-number-char (* byte -- *)
-      '0' + write-char
+      '0' + write-byte
       Exit
     ; define-verb
 
@@ -358,25 +366,25 @@
       Exit
     ; define-verb
 
-    : help:write-oct-number,write-chars
+    : help:write-oct-number,write-bytes
       (* ... , number of small OctNumbers -- *)
       dup zero? if drop Exit
       then
       sub1 swap write-oct-number-char
-      help:write-oct-number,write-chars
+      help:write-oct-number,write-bytes
       Exit
     ; define-verb
 
     : write-oct-number,unsign (* fixnum -- *)
       0 swap
       help:write-oct-number,push-chars
-      help:write-oct-number,write-chars
+      help:write-oct-number,write-bytes
       Exit
     ; define-verb
 
     : write-oct-number,sign (* fixnum -- *)
       dup 0 < if
-        '-' write-char
+        '-' write-byte
         negate
       then
       write-oct-number,unsign
@@ -392,19 +400,19 @@
     #+begin_src cicada
     : write-hex-number-char (* byte -- *)
       dup 10 < if
-        '0' + write-char Exit
+        '0' + write-byte Exit
       then
       10 -
-      'a' + write-char
+      'a' + write-byte
       Exit
     ; define-verb
 
     : write-hex-number-char,capital (* byte -- *)
       dup 10 < if
-        '0' + write-char Exit
+        '0' + write-byte Exit
       then
       10 -
-      'A' + write-char
+      'A' + write-byte
       Exit
     ; define-verb
 
@@ -420,41 +428,41 @@
       Exit
     ; define-verb
 
-    : help:write-hex-number,write-chars
+    : help:write-hex-number,write-bytes
       (* ... , number of small HexNumbers -- *)
       dup zero? if drop Exit
       then
       sub1 swap write-hex-number-char
-      help:write-hex-number,write-chars
+      help:write-hex-number,write-bytes
       Exit
     ; define-verb
 
-    : help:write-hex-number,write-chars,capital
+    : help:write-hex-number,write-bytes,capital
       (* ... , number of small HexNumbers -- *)
       dup zero? if drop Exit
       then
       sub1 swap write-hex-number-char,capital
-      help:write-hex-number,write-chars,capital
+      help:write-hex-number,write-bytes,capital
       Exit
     ; define-verb
 
     : write-hex-number,unsign (* fixnum -- *)
       0 swap
       help:write-hex-number,push-chars
-      help:write-hex-number,write-chars
+      help:write-hex-number,write-bytes
       Exit
     ; define-verb
 
     : write-hex-number,capital (* fixnum -- *)
       0 swap
       help:write-hex-number,push-chars
-      help:write-hex-number,write-chars,capital
+      help:write-hex-number,write-bytes,capital
       Exit
     ; define-verb
 
     : write-hex-number,sign (* fixnum -- *)
       dup 0 < if
-        '-' write-char
+        '-' write-byte
         negate
       then
       write-hex-number,unsign
@@ -463,7 +471,7 @@
 
     : write-hex-number,sign,capital (* fixnum -- *)
       dup 0 < if
-        '-' write-char
+        '-' write-byte
         negate
       then
       write-hex-number,capital
@@ -479,19 +487,19 @@
     #+begin_src cicada
     : write-aph-number-char (* byte -- *)
       dup 10 < if
-        '0' + write-char Exit
+        '0' + write-byte Exit
       then
       10 -
-      'a' + write-char
+      'a' + write-byte
       Exit
     ; define-verb
 
     : write-aph-number-char,capital (* byte -- *)
       dup 10 < if
-        '0' + write-char Exit
+        '0' + write-byte Exit
       then
       10 -
-      'A' + write-char
+      'A' + write-byte
       Exit
     ; define-verb
 
@@ -507,41 +515,41 @@
       Exit
     ; define-verb
 
-    : help:write-aph-number,write-chars
+    : help:write-aph-number,write-bytes
       (* ... , number of small AphNumbers -- *)
       dup zero? if drop Exit
       then
       sub1 swap write-aph-number-char
-      help:write-aph-number,write-chars
+      help:write-aph-number,write-bytes
       Exit
     ; define-verb
 
-    : help:write-aph-number,write-chars,capital
+    : help:write-aph-number,write-bytes,capital
       (* ... , number of small AphNumbers -- *)
       dup zero? if drop Exit
       then
       sub1 swap write-aph-number-char,capital
-      help:write-aph-number,write-chars,capital
+      help:write-aph-number,write-bytes,capital
       Exit
     ; define-verb
 
     : write-aph-number,unsign (* fixnum -- *)
       0 swap
       help:write-aph-number,push-chars
-      help:write-aph-number,write-chars
+      help:write-aph-number,write-bytes
       Exit
     ; define-verb
 
     : write-aph-number,capital (* fixnum -- *)
       0 swap
       help:write-aph-number,push-chars
-      help:write-aph-number,write-chars,capital
+      help:write-aph-number,write-bytes,capital
       Exit
     ; define-verb
 
     : write-aph-number,sign (* fixnum -- *)
       dup 0 < if
-        '-' write-char
+        '-' write-byte
         negate
       then
       write-aph-number,unsign
@@ -550,7 +558,7 @@
 
     : write-aph-number,sign,capital (* fixnum -- *)
       dup 0 < if
-        '-' write-char
+        '-' write-byte
         negate
       then
       write-aph-number,capital
@@ -566,13 +574,13 @@
     #+begin_src cicada
     : .unsign (* fixnum -- *)
       write-dec-number
-      'space' write-char
+      'space' write-byte
       Exit
     ; define-verb
 
     : .sign (* fixnum -- *)
       write-dec-number,sign
-      'space' write-char
+      'space' write-byte
       Exit
     ; define-verb
 
@@ -582,79 +590,79 @@
 
     : .bin (* fixnum -- *)
       write-bin-number
-      'space' write-char
+      'space' write-byte
       Exit
     ; define-verb
 
     : .bin,sign (* fixnum -- *)
       write-bin-number,sign
-      'space' write-char
+      'space' write-byte
       Exit
     ; define-verb
 
     : .oct (* fixnum -- *)
       write-oct-number
-      'space' write-char
+      'space' write-byte
       Exit
     ; define-verb
 
     : .oct,sign (* fixnum -- *)
       write-oct-number,sign
-      'space' write-char
+      'space' write-byte
       Exit
     ; define-verb
 
     : .hex (* fixnum -- *)
       write-hex-number
-      'space' write-char
+      'space' write-byte
       Exit
     ; define-verb
 
     : .hex,sign (* fixnum -- *)
       write-hex-number,sign
-      'space' write-char
+      'space' write-byte
       Exit
     ; define-verb
 
     : .hex,capital (* fixnum -- *)
       write-hex-number,capital
-      'space' write-char
+      'space' write-byte
       Exit
     ; define-verb
 
     : .hex,sign,capital (* fixnum -- *)
       write-hex-number,sign,capital
-      'space' write-char
+      'space' write-byte
       Exit
     ; define-verb
 
 
     : .aph (* fixnum -- *)
       write-aph-number
-      'space' write-char
+      'space' write-byte
       Exit
     ; define-verb
 
     : .aph,sign (* fixnum -- *)
       write-aph-number,sign
-      'space' write-char
+      'space' write-byte
       Exit
     ; define-verb
 
     : .aph,capital (* fixnum -- *)
       write-aph-number,capital
-      'space' write-char
+      'space' write-byte
       Exit
     ; define-verb
 
     : .aph,sign,capital (* fixnum -- *)
       write-aph-number,sign,capital
-      'space' write-char
+      'space' write-byte
       Exit
     ; define-verb
 
     : write-space (* -- *)
-      'space' write-char Exit
+      'space' write-byte Exit
     ; define-verb
 
     : write-some-space (* n -- *)
@@ -745,7 +753,7 @@
       then
       dup2 find dup zero? false? if
         xx|swap|x drop2
-        word-link->word-explainer execute
+        word->explainer execute
         Exit
       then
       drop
@@ -1024,7 +1032,7 @@
           drop Exit
         then
         sub1
-        'space' write-char
+        'space' write-byte
         debuger
         write-some-space
         Exit
@@ -1044,7 +1052,7 @@
     #+end_src
 ** new lexicographers with debuger
 *** note
-    1. the following redefined ``append-word-description-to-here''
+    1. the following redefined ``compile-word-description-to-here''
        will call debuger if it meets a undefined word
     2. there will be syntax-check after the implementation of ``list''
 *** implementation
@@ -1062,26 +1070,26 @@
 
 
     :" an error occurs!
-    append-word-description-to-here said:
+    compile-word-description-to-here said:
        ``I am a tail-recursive-function.
          My function-type is (* word-string[address, the number of words] -- *)
          `define-verb' and `define-verb' call me.
          The following word is undefined.
          I will print the rest of the Word-list and call debuger.''
        --> "
-    : Message:append-word-description-to-here,meet-undefined-word
+    : Message:compile-word-description-to-here,meet-undefined-word
     ; define-constant-string
 
     :" The length of the rest of the Word-list is: "
-    : Message:append-word-description-to-here,length-of-the-rest-of-the-word-list
+    : Message:compile-word-description-to-here,length-of-the-rest-of-the-word-list
     ; define-constant-string
 
     :" The rest of the Word-list is: "
-    : Message:append-word-description-to-here,the-rest-of-the-word-list
+    : Message:compile-word-description-to-here,the-rest-of-the-word-list
     ; define-constant-string
 
 
-    : append-word-description-to-here
+    : compile-word-description-to-here
       (* word-string[address, the number of words] -- *)
       dup2 string-full-of-blank? if
         drop2
@@ -1089,47 +1097,47 @@
       then
       tail-and-head-of-word-string
       dup2 Bra:comment equal-string? if
-        help:append-word-description-to-here,comment
-        append-word-description-to-here
+        help:compile-word-description-to-here,comment
+        compile-word-description-to-here
         Exit
       then
       dup2 Key-word:if equal-string? if
-        help:append-word-description-to-here,if
-        append-word-description-to-here
+        help:compile-word-description-to-here,if
+        compile-word-description-to-here
         Exit
       then
       dup2 Key-word:else equal-string? if
-        help:append-word-description-to-here,else
-        append-word-description-to-here
+        help:compile-word-description-to-here,else
+        compile-word-description-to-here
         Exit
       then
       dup2 Key-word:then equal-string? if
-        help:append-word-description-to-here,then
-        append-word-description-to-here
+        help:compile-word-description-to-here,then
+        compile-word-description-to-here
         Exit
       then
       dup2 string-denote-literal-or-branch? if
-        help:append-word-description-to-here,literal&branch
-        append-word-description-to-here
+        help:compile-word-description-to-here,literal&branch
+        compile-word-description-to-here
         Exit
       then
       dup2 string-denote-integer? if
-        help:append-word-description-to-here,number
-        append-word-description-to-here
+        help:compile-word-description-to-here,number
+        compile-word-description-to-here
         Exit
       then
       dup2 find dup zero? false? if
-        word-link->word-explainer append-number-to-here
+        word->explainer compile-number-to-here
         drop2 (* drop the string[address, length], which is for debuger *)
-        append-word-description-to-here
+        compile-word-description-to-here
         Exit
       then
       drop (* drop the 0 *)
-      Message:append-word-description-to-here,meet-undefined-word print-string
+      Message:compile-word-description-to-here,meet-undefined-word print-string
       print-string cr
-      Message:append-word-description-to-here,length-of-the-rest-of-the-word-list
+      Message:compile-word-description-to-here,length-of-the-rest-of-the-word-list
       print-string dup write-dec-number cr
-      Message:append-word-description-to-here,the-rest-of-the-word-list print-string cr
+      Message:compile-word-description-to-here,the-rest-of-the-word-list print-string cr
       print-word-list
       debuger
       Exit
@@ -1146,8 +1154,8 @@
       create-word-header
       set-size-of-word
       add-new-word-to-dictionary
-      Verb-explainer append-number-to-here
-      append-word-description-to-here
+      Verb-explainer compile-number-to-here
+      compile-word-description-to-here
       Exit
     ; _define-verb
     #+end_src
@@ -1210,7 +1218,7 @@
      Exit
    ; define-verb
 
-   first-word-in-dictionary fetch
+   First-word-in-dictionary fetch
 
    ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
    ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
@@ -1401,7 +1409,7 @@
 *** read-string
     #+begin_src cicada
     : read-non-string-ending-char (* -- FirstNonBlankChar or 0 *)
-      read-char
+      read-byte
       dup '"' == if
         drop 0
       then Exit
@@ -1853,25 +1861,25 @@
     : create-word-header-for-typed-value
       (* string[address, length] -- word[address of link] *)
       Here fetch xx|swap|x (* address-of-name-string-header *)
-      append-string-to-here
-      Here fetch append-number-to-here (* identification *)
+      compile-string-to-here
+      Here fetch compile-number-to-here (* identification *)
       Here fetch (* leave the word[link] *)
-      0 append-number-to-here (* link *)
-      2 append-number-to-here  (* type *)
+      0 compile-number-to-here (* link *)
+      2 compile-number-to-here  (* type *)
       swap
-      append-number-to-here (* address-of-name-string-header *)
+      compile-number-to-here (* address-of-name-string-header *)
       Exit
     ; define-verb
 
     : define,by-string
       (* [value, type], string[address, length] -- *)
       create-word-header-for-typed-value
-      Variable-explainer append-number-to-here
+      Variable-explainer compile-number-to-here
       xx|swap|x  (* leave wordHeader *)
       dup <pair-like>? if
         try,white->grey
       then
-      append-number-to-here append-number-to-here
+      compile-number-to-here compile-number-to-here
       add-new-word-to-dictionary
       Exit
     ; define-verb
@@ -1939,7 +1947,7 @@
     : dynamic-variable-word-for-<pair-like>?
       (* word[address of link] -- True or False *)
       dup dynamic-variable-word? if
-      word-link->word-explainer execute fetch2
+      word->explainer execute fetch2
       swap drop
       <pair-like>?
       Exit
@@ -1953,7 +1961,7 @@
         drop Exit
       then
       dup dynamic-variable-word-for-<pair-like>? if
-      dup word-link->word-explainer execute fetch2
+      dup word->explainer execute fetch2
       try,white->grey drop2
       then
       next-word-in-dictionary
@@ -1962,9 +1970,9 @@
     ; define-verb
 
     : push-all-root-node-into-grey-pair-stack (* -- *)
-        first-word-in-dictionary fetch
-        help:push-all-root-node-into-grey-pair-stack
-        Exit
+      First-word-in-dictionary fetch
+      help:push-all-root-node-into-grey-pair-stack
+      Exit
     ; define-verb
 
 
@@ -2131,7 +2139,7 @@
     #+begin_src cicada
     (* for test *)
     : print-type-of-it (* type -- *)
-      print-type-tag ':' write-char write-space Exit
+      print-type-tag ':' write-byte write-space Exit
     ; define-verb
 
     (* test: gc *)
@@ -2495,21 +2503,21 @@
         Exit
       then
       dup <list> == if
-        Message:write-list find word-link->word-explainer execute
+        Message:write-list find word->explainer execute
         Exit
       then
       dup <dali> == if
-        Message:write-*dali find word-link->word-explainer execute
+        Message:write-*dali find word->explainer execute
         Exit
       then
       dup <wodi> ==
       over <bound-variable> ==
       bitwise-or if
-        Message:write-wodi-or-bound-variable find word-link->word-explainer execute
+        Message:write-wodi-or-bound-variable find word->explainer execute
         Exit
       then
       dup <wodili> == if
-        Message:write-wodili find word-link->word-explainer execute
+        Message:write-wodili find word->explainer execute
         Exit
       then
       Message:write,type-error print-string
@@ -2569,7 +2577,7 @@
     : execute-word,for-list-reader
       (* string[address, length] -- [value, type] *)
       dup2 string-denote-list-reader? if
-        find word-link->word-explainer execute
+        find word->explainer execute
         Exit
       then
       dup2 string-denote-integer? if
@@ -2603,7 +2611,7 @@
       then
       dup2 find dup zero? false? if
         xx|swap|x drop2
-        word-link->word-explainer execute
+        word->explainer execute
         list-escape-REPL
         Exit
       then
@@ -4549,7 +4557,7 @@
       then
       dup2 find dup zero? false? if
         xx|swap|x drop2
-        word-link->word-explainer execute Exit
+        word->explainer execute Exit
       then
       drop (* drop the 0 that denotes finding-error *)
       Message:undefined-word print-string
@@ -4988,7 +4996,7 @@
       over
         index-hashback->string
         find (* ><><>< error handling when not found *)
-        word-link->word-explainer
+        word->explainer
         <explainer>
       cons drop <explainer-pair>
         [cdr,cons]!  [car,cons]!
@@ -5257,7 +5265,7 @@
       then
 
       (* example:
-           [{ word-name . word-explainer }, <explainer-pair>] *)
+           [{ word-name . explainer }, <explainer-pair>] *)
       dup <explainer-pair> == if
         cdr
         drop (* drop type-tag: <explainer> *)
@@ -6292,7 +6300,7 @@
     *)
    #+end_src
 ** >< tryREDL
-   just use the ``read-char''
+   just use the ``read-byte''
    #+begin_src cicada
    :" 1234567890"
    : InitString,for-update-display ; define-constant-string
@@ -6334,7 +6342,7 @@
      (* D *)
      update-display
      (* R *)
-     read-char  (* write-space write-dec-number cr *)
+     read-byte  (* write-space write-dec-number cr *)
      (* E *)
      char->function-name-symbol
      executeSymbol
@@ -6395,7 +6403,7 @@
      (* D *)
      update-display
      (* R *)
-     read-char
+     read-byte
      (* E *)
      char->function-name-symbol
      executeSymbol

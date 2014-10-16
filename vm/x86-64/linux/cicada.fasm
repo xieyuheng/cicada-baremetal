@@ -788,7 +788,7 @@ def_noun_end   _End_of_input_buffer
 ;; 2. note that, there is no char in the address of a "Reading_boundary"
 ;;    an example of "Reading_boundary" is "End_of_input_buffer"
 ;; 3. when "Current_reading" == "Reading_boundary"
-;;    for the function "read_char"
+;;    for the function "read_byte"
 ;;    we need to reset it to read from "Input_buffer"
 ;;    and call "inputLine" to fetch more chars
 ;;    and loop back
@@ -801,35 +801,35 @@ def_noun "Reading-boundary", Reading_boundary
 def_noun_end Reading_boundary
 
 
-def_assembly_code "read-char", read_char
+def_assembly_code "read-byte", read_byte
    ;; read a char from stdin, return it into the ArgumentStack as following
    ;; (*  -- char *)
-   ;; read_char calls the Linux read system call to fill Input_buffer
-   ;; The other thing that read_char does is
+   ;; read_byte calls the Linux read system call to fill Input_buffer
+   ;; The other thing that read_byte does is
    ;; if it detects that stdin has closed, it exits the program
    ;; which is why when you hit C-d, the system exits
-   call _read_char
-   ;; _read_char will save the return value in rax
+   call _read_byte
+   ;; _read_byte will save the return value in rax
    push_argument_stack rax
    next
 
-_read_char:
+_read_byte:
    ;; r8 is a helper-register for "cmp"
    mov r8, [Current_reading + Cell_width]
    cmp r8, [Reading_boundary + Cell_width]
    ;-- IF: [Current_reading + Cell_width] < [Reading_boundary + Cell_width]
    ;-- WK: there is still some chars in the Input_buffer to be processed
-   jl read_char_stillSomeChars
+   jl read_byte_stillSomeChars
    ;-- EL: [Current_reading + Cell_width] >= [Reading_boundary + Cell_width]
    ;-- WK: all chars in Input_buffer have been processed
    mov rax, End_of_input_buffer
    cmp r8, rax
-   jg read_char_addBlankAtTheEnding
+   jg read_byte_addBlankAtTheEnding
    mov rax, Input_buffer
    cmp r8, rax
-   jl read_char_addBlankAtTheEnding
-   jmp read_char_fetchMoreCharsFromStdinToInput_buffer
-read_char_addBlankAtTheEnding:
+   jl read_byte_addBlankAtTheEnding
+   jmp read_byte_fetchMoreCharsFromStdinToInput_buffer
+read_byte_addBlankAtTheEnding:
    ;; otherwise,  when the a string not ending with blank
    ;; `evalString' will not work correctly
    mov rax, Input_buffer
@@ -838,12 +838,12 @@ read_char_addBlankAtTheEnding:
    xor rax, rax
    mov al, 10
    ret
-read_char_stillSomeChars:
+read_byte_stillSomeChars:
    ;; for the following will just uses the al part of rax
    ;; it is necessary to clear rax
    xor rax, rax
    ;-- DO: fetch a char from Input_buffer to rax
-   ;-- NT: after _read_char return rax will be push_argument_stack
+   ;-- NT: after _read_byte return rax will be push_argument_stack
    mov al, byte[r8]
    ;-- DO: increment [Current_reading + Cell_width]
    inc r8
@@ -852,7 +852,7 @@ read_char_stillSomeChars:
 ;; note that, in the following subroutine
 ;; set [Current_reading + Cell_width]  == Input_buffer
 ;; set [Reading_boundary + Cell_width] == Input_buffer + length of string that was input (NULL not counted)
-read_char_fetchMoreCharsFromStdinToInput_buffer:
+read_byte_fetchMoreCharsFromStdinToInput_buffer:
    ;; read to fetch more input chars from STDIN to Input_buffer
    mov sys_3_rdx,     Size_of_input_buffer    ;; max length to be read
    mov sys_2_rsi,     Input_buffer        ;; buffer address
@@ -867,8 +867,8 @@ read_char_fetchMoreCharsFromStdinToInput_buffer:
    ;-- IF: rax <= 0
    ;-- WK: there is an error or it is end of input
    ;-- DO: exit
-   jz read_char_exit
-   js read_char_exit
+   jz read_byte_exit
+   js read_byte_exit
    ;-- EL: rax > 0
    ;-- WK: there are some chars has been fetched by syscall read
    ;-- DO: set [Reading_boundary + Cell_width] to the right place
@@ -878,10 +878,10 @@ read_char_fetchMoreCharsFromStdinToInput_buffer:
    add sys_2_rsi, rax
    mov [Reading_boundary + Cell_width], sys_2_rsi
    ;-- DO: jump back
-   jmp _read_char
+   jmp _read_byte
 
 
-read_char_exit:
+read_byte_exit:
    ;; exit with exit code = the value syscall_read returned
    xor sys_1_rdi, sys_1_rdi
    mov sys_n_rax, syscall_exit
@@ -890,14 +890,14 @@ hereInitializedData
 ScratchUsedByWriteChar:
    rb 1
 
-def_assembly_code "write-char", write_char
+def_assembly_code "write-byte", write_byte
    ;; ( char --  ) write a char to stdin
    ;; just calls the Linux write system call
    pop_argument_stack rax
-   call _write_char
+   call _write_byte
    next
 
-_write_char:
+_write_byte:
    mov sys_1_rdi, 1 ;; stdout
    ;; write can not just write the char in al to stdout
    ;; write needs the address of the byte to write
@@ -913,7 +913,7 @@ def_verb "print-string", print_string
    xx   drop2
    xx   Exit
    xx sub1, swap
-   xx dup, fetch_byte, write_char
+   xx dup, fetch_byte, write_byte
    xx add1, swap
    xx _branch, -14
 def_verb_end print_string
@@ -1082,11 +1082,11 @@ def_assembly_code "l", _l
 include "../threaded-code.inc"
 def_verb ".", print_little_number
    xx _literal, '0'
-   xx addition, write_char
+   xx addition, write_byte
    xx _literal, 32
-   xx write_char
+   xx write_byte
    xx _literal, 32
-   xx write_char
+   xx write_byte
    xx Exit
 def_verb_end print_little_number
 

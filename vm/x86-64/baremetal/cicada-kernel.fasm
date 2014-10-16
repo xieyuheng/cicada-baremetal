@@ -851,7 +851,7 @@ db ASCII_space
 ;; test
 
 ;; def_verb "test_inputChar", test_inputChar
-;;    xx inputChar, write_char, _branch, -3
+;;    xx inputChar, write_byte, _branch, -3
 ;;    xx Exit
 ;; def_verb_end test_inputChar
 ;; 1. this function is like a little editor
@@ -867,7 +867,7 @@ db ASCII_space
 def_verb "input-line", inputLine
    ;; (* [address, max length] -- string[address, actual length] *)
    xx dup2 ;; leave address and to calculate actual length
-   xx _literal, '_', write_char, decrementCursor
+   xx _literal, '_', write_byte, decrementCursor
 
    ;; (* address, max length, [address, length] *)
    xx inputChar
@@ -878,11 +878,11 @@ def_verb "input-line", inputLine
    xx   drop
    xx   dup, xoverxxx, equal?, _false?branch, 3
    xx     _branch, -14 ;; inputChar
-   xx   _literal, ' ', write_char, decrementCursor
+   xx   _literal, ' ', write_byte, decrementCursor
    ;;   clear the '_', the cursor, leaved by every writed chars
    xx   decrementCursor
    ;;   write the new cursor
-   xx   _literal, '_', write_char, decrementCursor
+   xx   _literal, '_', write_byte, decrementCursor
    xx   add1, swap
    xx   sub1, swap
    xx   _branch, -29 ;; inputChar
@@ -900,9 +900,9 @@ def_verb "input-line", inputLine
    ;; "Exit" only on "newline"
    xx dup, _literal, ASCII_newline
    xx equal?, _false?branch, 17
-   xx   _literal, ' ', write_char, decrementCursor
+   xx   _literal, ' ', write_byte, decrementCursor
    ;;   clear the '_', the cursor, leaved by every writed chars
-   xx   dup, write_char
+   xx   dup, write_byte
    xx   xoverxx, save_byte
    xx   sub1, swap
    xx   add1, swap
@@ -912,8 +912,8 @@ def_verb "input-line", inputLine
    xx   Exit
 
    ;; (* address, max length, [address, length], ASCII char *)
-   xx dup, write_char
-   xx _literal, '_', write_char, decrementCursor
+   xx dup, write_byte
+   xx _literal, '_', write_byte, decrementCursor
    ;; leave a '_' after every writed chars as cursor
    xx xoverxx, save_byte
    xx sub1, swap
@@ -949,7 +949,7 @@ def_noun_end   TheEnd_of_input_buffer
 ;; 2. note that, there is no char in the address of a "Reading_boundary"
 ;;    an example of "Reading_boundary" is "End_of_input_buffer"
 ;; 3. when "Current_reading" == "Reading_boundary"
-;;    for the function "read_char"
+;;    for the function "read_byte"
 ;;    we need to reset it to read from "Input_buffer"
 ;;    and call "inputLine" to fetch more chars
 ;;    and loop back
@@ -962,7 +962,7 @@ def_noun "Reading-boundary", Reading_boundary
 def_noun_end Reading_boundary
 
 
-def_verb "read-char", read_char
+def_verb "read-byte", read_byte
    ;; (*  -- char *)
    xx Current_reading
    xx Reading_boundary
@@ -995,7 +995,7 @@ def_verb "read-char", read_char
    xx _address, Reading_boundary, add_save
    xx drop
    xx _branch, -31
-def_verb_end read_char
+def_verb_end read_byte
 
 def_verb "not-reading-from-input-buffer?", notReadingFromInput_buffer?
    ;; (* -- True of False *)
@@ -1334,7 +1334,7 @@ def_verb "print-newline", printNewline
    xx getCurrentCursorAddress, add_save
    xx Exit
 def_verb_end printNewline
-def_verb "write-char-with-color", write_char_with_color
+def_verb "write-byte-with-color", write_byte_with_color
    ;; (* char, back color, fore color --  *)
    xx xoverxx, _literal, ASCII_linefeed
    xx equal?, _false?branch, 5
@@ -1343,10 +1343,10 @@ def_verb "write-char-with-color", write_char_with_color
    xx putCharWithColor
    xx incrementCursor
    xx Exit
-def_verb_end write_char_with_color
+def_verb_end write_byte_with_color
 
 
-def_verb "write-char", write_char
+def_verb "write-byte", write_byte
    ;; (* char --  *)
    xx dup, _literal, ASCII_linefeed
    xx equal?, _false?branch, 4
@@ -1355,14 +1355,14 @@ def_verb "write-char", write_char
    xx putChar
    xx incrementCursor
    xx Exit
-def_verb_end write_char
+def_verb_end write_byte
 def_verb "print-string", print_string
    ;; (* string[address, length] -- *)
    xx dup, zero?, _false?branch, 3
    xx   drop2
    xx   Exit
    xx sub1, swap
-   xx dup, fetch_byte, write_char
+   xx dup, fetch_byte, write_byte
    xx add1, swap
    xx _branch, -14
 def_verb_end print_string
@@ -1378,11 +1378,11 @@ def_assembly_code "reboot", reboot
        jmp .loop
 def_verb ".", print_little_number
        xx _literal, '0'
-       xx addition, write_char
+       xx addition, write_byte
        xx _literal, 32
-       xx write_char
+       xx write_byte
        xx _literal, 32
-       xx write_char
+       xx write_byte
        xx Exit
 def_verb_end print_little_number
 def_noun "Address-of-VBE-info-block", Assembly_VBEInfoBlock

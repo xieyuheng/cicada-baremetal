@@ -11,9 +11,9 @@ ok
   (* word-string[address, length] -- word-string[address, length] *)
   (* compile::
        _literal[address of explainer], char *)
-  literal _literal append-number-to-here
+  literal _literal compile-number-to-here
   tail-and-head-of-word-string
-  string->char append-number-to-here
+  string->char compile-number-to-here
   Exit
 ; define-key-word
 ok
@@ -29,24 +29,24 @@ ok
   dup char " == if
     drop
     (* compile address to here *)
-    literal _literal append-number-to-here
+    literal _literal compile-number-to-here
       pop-lambda-stack dup push-lambda-stack
-    append-number-to-here
+    compile-number-to-here
     (* compile length to here *)
-    literal _literal append-number-to-here
+    literal _literal compile-number-to-here
     Current-data-section
       pop-lambda-stack dup push-lambda-stack
     sub dup
-    append-number-to-here
+    compile-number-to-here
     (* set the string header *)
     pop-lambda-stack
     Cell-width
     sub save
     (* add a tailling 0 *)
-    0 append-byte-to-current-data-section
+    0 compile-byte-to-current-data-section
     Exit
   then
-  append-byte-to-current-data-section
+  compile-byte-to-current-data-section
   help,:"
   Exit
 ; define-verb

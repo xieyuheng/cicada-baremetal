@@ -1583,7 +1583,7 @@
           next
    #+end_src
 * IO
-** read_char
+** read_byte
 *** note
     - 尽可能详尽地 不做转换地 用 keyboard scan code 记录用户的击键
       形成一层抽象 将具体的转码工作交给另一层次的函数去做
@@ -1603,17 +1603,17 @@
       这里是基本的输入接口
       需要 echo
       并且 包含一些编辑功能
-    - read_char
+    - read_byte
       这里需要一个全局变量
       来切换 当前被读的 buffer 的位置
       ScancodeQueue 已经形成了一次 buffering 了
-      再在 read_char 中形成一次 buffering 也许不合理
-      read_char 的特点在于
+      再在 read_byte 中形成一次 buffering 也许不合理
+      read_byte 的特点在于
       这个函数所读写的地方取决于
       [Current_reading + Cell_width] 和 [Reading_boundary + Cell_width] 这两个全局变量
-      因为 调用 read_char 的函数所看到的 read_char 是被静态编译到函数体中的
+      因为 调用 read_byte 的函数所看到的 read_byte 是被静态编译到函数体中的
       所以 要想 方便的实现 evalString 这个函数
-      就有必要 使用这两个全局变量 来控制 read_char 所读取的位置
+      就有必要 使用这两个全局变量 来控制 read_byte 所读取的位置
 *** ScancodeQueue
     #+begin_src fasm :tangle cicada-kernel.fasm
     def_assembly_code "empty?scan-code-queue", empty?ScancodeQueue
@@ -1836,7 +1836,7 @@
     ;; test
 
     ;; def_verb "test_inputChar", test_inputChar
-    ;;    xx inputChar, write_char, _branch, -3
+    ;;    xx inputChar, write_byte, _branch, -3
     ;;    xx Exit
     ;; def_verb_end test_inputChar
     #+end_src
@@ -1855,7 +1855,7 @@
     def_verb "input-line", inputLine
        ;; (* [address, max length] -- string[address, actual length] *)
        xx dup2 ;; leave address and to calculate actual length
-       xx _literal, '_', write_char, decrementCursor
+       xx _literal, '_', write_byte, decrementCursor
 
        ;; (* address, max length, [address, length] *)
        xx inputChar
@@ -1866,11 +1866,11 @@
        xx   drop
        xx   dup, xoverxxx, equal?, _false?branch, 3
        xx     _branch, -14 ;; inputChar
-       xx   _literal, ' ', write_char, decrementCursor
+       xx   _literal, ' ', write_byte, decrementCursor
        ;;   clear the '_', the cursor, leaved by every writed chars
        xx   decrementCursor
        ;;   write the new cursor
-       xx   _literal, '_', write_char, decrementCursor
+       xx   _literal, '_', write_byte, decrementCursor
        xx   add1, swap
        xx   sub1, swap
        xx   _branch, -29 ;; inputChar
@@ -1888,9 +1888,9 @@
        ;; "Exit" only on "newline"
        xx dup, _literal, ASCII_newline
        xx equal?, _false?branch, 17
-       xx   _literal, ' ', write_char, decrementCursor
+       xx   _literal, ' ', write_byte, decrementCursor
        ;;   clear the '_', the cursor, leaved by every writed chars
-       xx   dup, write_char
+       xx   dup, write_byte
        xx   xoverxx, save_byte
        xx   sub1, swap
        xx   add1, swap
@@ -1900,8 +1900,8 @@
        xx   Exit
 
        ;; (* address, max length, [address, length], ASCII char *)
-       xx dup, write_char
-       xx _literal, '_', write_char, decrementCursor
+       xx dup, write_byte
+       xx _literal, '_', write_byte, decrementCursor
        ;; leave a '_' after every writed chars as cursor
        xx xoverxx, save_byte
        xx sub1, swap
@@ -1911,7 +1911,7 @@
 
     def_verb_end inputLine
     #+end_src
-*** read_char
+*** read_byte
     #+begin_src fasm :tangle cicada-kernel.fasm
     hereUnInitializedData
     ;; ------------------------------------------
@@ -1940,7 +1940,7 @@
     ;; 2. note that, there is no char in the address of a "Reading_boundary"
     ;;    an example of "Reading_boundary" is "End_of_input_buffer"
     ;; 3. when "Current_reading" == "Reading_boundary"
-    ;;    for the function "read_char"
+    ;;    for the function "read_byte"
     ;;    we need to reset it to read from "Input_buffer"
     ;;    and call "inputLine" to fetch more chars
     ;;    and loop back
@@ -1953,7 +1953,7 @@
     def_noun_end Reading_boundary
 
 
-    def_verb "read-char", read_char
+    def_verb "read-byte", read_byte
        ;; (*  -- char *)
        xx Current_reading
        xx Reading_boundary
@@ -1986,7 +1986,7 @@
        xx _address, Reading_boundary, add_save
        xx drop
        xx _branch, -31
-    def_verb_end read_char
+    def_verb_end read_byte
 
     def_verb "not-reading-from-input-buffer?", notReadingFromInput_buffer?
        ;; (* -- True of False *)
@@ -2172,7 +2172,7 @@
        xx Exit
     def_verb_end decrementCursor
     #+end_src
-** write-char
+** write-byte
 *** putCharWithColor & putChar
     #+begin_src fasm :tangle cicada-kernel.fasm
     ;; text mode (aka. mode 0) -- the most simple output
@@ -2343,9 +2343,9 @@
        xx Exit
     def_verb_end printNewline
     #+end_src
-*** write_char_with_color & write_char
+*** write_byte_with_color & write_byte
     #+begin_src fasm :tangle cicada-kernel.fasm
-    def_verb "write-char-with-color", write_char_with_color
+    def_verb "write-byte-with-color", write_byte_with_color
        ;; (* char, back color, fore color --  *)
        xx xoverxx, _literal, ASCII_linefeed
        xx equal?, _false?branch, 5
@@ -2354,10 +2354,10 @@
        xx putCharWithColor
        xx incrementCursor
        xx Exit
-    def_verb_end write_char_with_color
+    def_verb_end write_byte_with_color
 
 
-    def_verb "write-char", write_char
+    def_verb "write-byte", write_byte
        ;; (* char --  *)
        xx dup, _literal, ASCII_linefeed
        xx equal?, _false?branch, 4
@@ -2366,7 +2366,7 @@
        xx putChar
        xx incrementCursor
        xx Exit
-    def_verb_end write_char
+    def_verb_end write_byte
     #+end_src
 ** print_string
    #+begin_src fasm :tangle cicada-kernel.fasm
@@ -2376,7 +2376,7 @@
       xx   drop2
       xx   Exit
       xx sub1, swap
-      xx dup, fetch_byte, write_char
+      xx dup, fetch_byte, write_byte
       xx add1, swap
       xx _branch, -14
    def_verb_end print_string
@@ -2403,11 +2403,11 @@
    #+begin_src fasm :tangle cicada-kernel.fasm
    def_verb ".", print_little_number
           xx _literal, '0'
-          xx addition, write_char
+          xx addition, write_byte
           xx _literal, 32
-          xx write_char
+          xx write_byte
           xx _literal, 32
-          xx write_char
+          xx write_byte
           xx Exit
    def_verb_end print_little_number
    #+end_src

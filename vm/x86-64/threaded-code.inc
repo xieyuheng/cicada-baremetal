@@ -3,7 +3,7 @@ def_noun "Here", Here
 def_noun_end Here
 
 
-def_noun "first-word-in-dictionary" , First_word_in_dictionary
+def_noun "First-word-in-dictionary" , First_word_in_dictionary
    xx LinkOfLatest_word_in_assembly
 def_noun_end  First_word_in_dictionary
 
@@ -374,6 +374,7 @@ def_assembly_code "make-self-reference-value,in-argument-stack", make_self_refer
    next
 
 def_verb "fetch-argument-stack-pointer", fetch_argument_stack_pointer
+   ;; ( -- address )
    xx make_self_reference_value__in_argument_stack
    xx _literal, Cell_width, addition
    xx Exit
@@ -401,7 +402,6 @@ def_assembly_code "drop2", drop2
    pop_argument_stack rax
    pop_argument_stack rax
    next
-
 def_assembly_code "dup", dup
    ;; (* a -- a a *)
    mov  rax, [Argument_stack_pointer]
@@ -468,6 +468,25 @@ def_assembly_code "xx|over|xxxx", xxoverxxxx
    mov  rax, [Argument_stack_pointer + (5 * Cell_width)] ;; not (4 * Cell_width)
    push_argument_stack rax
    next
+
+
+def_assembly_code "x-y-over", x_y_over
+   ;; (* [x 个], [y 个], x, y -- [x 个], [y 个], [x 个] *)
+   pop_argument_stack r9 ;; y
+   pop_argument_stack r8 ;; x
+   mov rcx, r8
+   add r8, r9
+   dec r8
+   imul r8, Cell_width
+   ;; rcx == x
+   ;; r8 == (x+y-1)*Cell_width
+   ;; r9 == y
+   ;; 我懒得优化它
+.loop:
+   mov  rax, [Argument_stack_pointer + r8]
+   push_argument_stack rax
+   loop .loop
+   next
 def_assembly_code "tuck", tuck
    ;; (* a b -- b | a b *)
    pop_argument_stack rbx
@@ -526,6 +545,16 @@ def_assembly_code "xxx|tuck|x", xxxtuckx
    push_argument_stack rcx
    push_argument_stack rdx
    next
+
+def_verb "x-y-tuck", x_y_tuck
+   ;; (* [x 个], [y 个], x, y -- [y 个], [x 个], [y 个] *)
+   xx dup2
+   xx ready
+   xx x_y_swap
+   xx get_back, swap
+   xx x_y_over
+   xx Exit
+def_verb_end x_y_tuck
 def_assembly_code "swap", swap
    ;; (* a b -- b a *)
    pop_argument_stack rbx
@@ -650,6 +679,38 @@ def_assembly_code "xxxx|swap|xx", xxxxswapxx
    push_argument_stack rbx
    push_argument_stack rcx
    push_argument_stack rdx
+   next
+
+
+def_assembly_code "x-y-swap", x_y_swap
+   ;; (* [x 个], [y 个], x, y -- [y 个], [x 个] *)
+   pop_argument_stack r9 ;; y
+   pop_argument_stack r8 ;; x
+
+   mov rcx, r9
+.loop_y_push:
+   pop_argument_stack rax
+   push rax
+   loop .loop_y_push
+
+   mov rcx, r8
+.loop_x_push_return_stack:
+   pop_argument_stack rax
+   push_return_stack rax
+   loop .loop_x_push_return_stack
+
+   mov rcx, r9
+.loop_y_pop:
+   pop rax
+   push_argument_stack rax
+   loop .loop_y_pop
+
+   mov rcx, r8
+.loop_x_pop_return_stack:
+   pop_return_stack rax
+   push_argument_stack rax
+   loop .loop_x_pop_return_stack
+
    next
 def_assembly_code "|123->321|", abc_to_cba
    pop_argument_stack rax
@@ -952,7 +1013,8 @@ def_assembly_code "fetch-bit", fetch_bit
    push_argument_stack rax
    next
 
-def_assembly_code "set-bit", setBit
+
+def_assembly_code "set-bit", set_bit
    ;; ( fixnum, offset -- fixnum )
    pop_argument_stack rbx
    pop_argument_stack rax
@@ -960,7 +1022,7 @@ def_assembly_code "set-bit", setBit
    push_argument_stack rax
    next
 
-def_assembly_code "clear-bit", clearBit
+def_assembly_code "clear-bit", clear_bit
    ;; ( fixnum, offset -- fixnum )
    pop_argument_stack rbx
    pop_argument_stack rax
@@ -968,7 +1030,7 @@ def_assembly_code "clear-bit", clearBit
    push_argument_stack rax
    next
 
-def_assembly_code "invert-bit", invertBit
+def_assembly_code "invert-bit", invert_bit
    ;; ( fixnum, offset -- fixnum )
    pop_argument_stack rbx
    pop_argument_stack rax
@@ -1074,10 +1136,10 @@ def_key_word "literal", literal
    ;; (* word-string[address, length] -- word-string[address, length] *)
    ;; (* compile::
    ;;      _literal[address of explainer], number *)
-   xx _literal, _literal, append_number_to_here
+   xx _literal, _literal, compile_number_to_here
    xx tail_and_head_of_word_string
    ;; need error handling when not found
-   xx find, word_link_to_word_explainer, append_number_to_here
+   xx find, word_to_explainer, compile_number_to_here
    xx Exit
 def_key_word_end literal
 
@@ -1110,10 +1172,10 @@ def_key_word "branch", branch
    ;; (* word-string[address, length] -- word-string[address, length] *)
    ;; (* compile::
    ;;      _literal[address of explainer], number *)
-   xx _literal, _branch, append_number_to_here
+   xx _literal, _branch, compile_number_to_here
    xx tail_and_head_of_word_string
    xx dup2, string_denote_integer?, _false?branch, 5
-   xx   string_to_integer__with_error, drop, append_number_to_here
+   xx   string_to_integer__with_error, drop, compile_number_to_here
    xx   Exit
    ;; need error handling when branch followed by a non integer
    xx Exit
@@ -1166,18 +1228,143 @@ def_key_word "false?branch", false?branch
    ;; (* word-string[address, length] -- word-string[address, length] *)
    ;; (* compile::
    ;;      _literal[address of explainer], number *)
-   xx _literal, _false?branch, append_number_to_here
+   xx _literal, _false?branch, compile_number_to_here
    xx tail_and_head_of_word_string
    xx dup2, string_denote_integer?, _false?branch, 5
-   xx   string_to_integer__with_error, drop, append_number_to_here
+   xx   string_to_integer__with_error, drop, compile_number_to_here
    xx   Exit
    ;; need error handling when branch followed by a non integer
    xx Exit
 def_key_word_end false?branch
+;; this word should not be found
+;; the interface of this word is the next word "即"
+def_assembly_code "_即", _即
+   ;; (* -- number *)
+   ;; 1. if NOT at the end of the function body
+   ;;    (* Return-stack::
+   ;;         address -- address + Cell_width *)
+   ;; 2. if at the end of the function body
+   ;;    (* Return-stack::
+   ;;         address -- *)
+   pop_return_stack rbx
+   mov  rax, [rbx]
+   push_argument_stack rax
+   add  rbx, Cell_width
+   cmp dword[rbx], Exit
+   je _即__meet_end
+   cmp dword[rbx], 已矣
+   je _即__meet_end
+   push_return_stack rbx
+_即__meet_end:
+   next
 
-;; ><><><
-;; Chinese version
-;; 即 转 假则转
+;; no error handling for string_full_of_blank
+def_key_word "即", 即
+   ;; (* word-string[address, length] -- word-string[address, length] *)
+   ;; (* compile::
+   ;;      _即[address of explainer], number *)
+   xx _即, _即, compile_number_to_here
+   xx tail_and_head_of_word_string
+   ;; need error handling when not found
+   xx find, word_to_explainer, compile_number_to_here
+   xx Exit
+def_key_word_end 即
+
+
+
+;; the following handles _转 to "Exit"
+;; >< alth branch to "Exit" should never be used
+def_assembly_code "_转", _转
+   ;; 1. if NOT at the end of the function body
+   ;;    (* Return-stack::
+   ;;         address -- address + offset * Cell_width *)
+   ;; 2. if at the end of the function body
+   ;;    (* Return-stack::
+   ;;         address -- *)
+   ;; and "next"
+   ;; (could be optimize by not using "next")
+   pop_return_stack rbx
+   mov  rax, [rbx]
+   imul rax, Cell_width
+   add  rbx, rax
+   cmp dword[rbx], Exit
+   je _转__meet_end
+   cmp dword[rbx], 已矣
+   je _转__meet_end
+   push_return_stack rbx
+_转__meet_end:
+   next
+
+
+
+;; no error handling for string_full_of_blank
+def_key_word "转", 转
+   ;; (* word-string[address, length] -- word-string[address, length] *)
+   ;; (* compile::
+   ;;      _即[address of explainer], number *)
+   xx _即, _转, compile_number_to_here
+   xx tail_and_head_of_word_string
+   xx dup2, string_denote_integer?, _假则转, 5
+   xx   string_to_integer__with_error, drop, compile_number_to_here
+   xx   Exit
+   ;; need error handling when branch followed by a non integer
+   xx Exit
+def_key_word_end 转
+
+;; the following handles _假则转 to "Exit"
+def_assembly_code "_假则转", _假则转
+   ;; (* True of False -- *)
+   ;; 0. if NOT _转
+   ;;    (* Return-stack::
+   ;;         address -- address + Cell_width *)
+   ;; 1. if NOT at the end of the function body
+   ;;    (* Return-stack::
+   ;;         address -- address + offset * Cell_width *)
+   ;; 2. if at the end of the function body
+   ;;    (* Return-stack::
+   ;;         address -- *)
+   ;; and "next"
+   ;; (could be optimize by not using "next")
+   pop_argument_stack rax
+   test rax, rax
+   jnz _假则转__not_to_转
+
+   pop_return_stack rbx
+   mov  rax, [rbx]
+   imul rax, Cell_width
+   add  rbx, rax
+   cmp dword[rbx], Exit
+   je _假则转__meet_end
+   cmp dword[rbx], 已矣
+   je _假则转__meet_end
+   push_return_stack rbx
+_假则转__meet_end:
+   next
+
+_假则转__not_to_转:
+   pop_return_stack rbx
+   add rbx, Cell_width
+   cmp dword[rbx], Exit
+   je _假则转__not_to_转__meet_end
+   cmp dword[rbx], 已矣
+   je _假则转__not_to_转__meet_end
+   push_return_stack rbx
+_假则转__not_to_转__meet_end:
+   next
+
+;; no error handling for string_full_of_blank
+def_key_word "假则转", 假则转
+   ;; (* word-string[address, length] -- word-string[address, length] *)
+   ;; (* compile::
+   ;;      _即[address of explainer], number *)
+   xx _即, _假则转, compile_number_to_here
+   xx tail_and_head_of_word_string
+   xx dup2, string_denote_integer?, _假则转, 5
+   xx   string_to_integer__with_error, drop, compile_number_to_here
+   xx   Exit
+   ;; need error handling when branch followed by a non integer
+   xx Exit
+def_key_word_end 假则转
 def_assembly_code "", _address
    ;; (* -- address *)
    ;; 1. if NOT at the end of the function body
@@ -1205,12 +1392,23 @@ def_key_word "address", address
    ;; (* word-string[address, length] -- word-string[address, length] *)
    ;; (* compile::
    ;;      _literal[address of explainer], number *)
-   xx _literal, _address, append_number_to_here
+   xx _literal, _address, compile_number_to_here
    xx tail_and_head_of_word_string
    ;; need error handling when not found
-   xx find, word_link_to_word_explainer, append_number_to_here
+   xx find, word_to_explainer, compile_number_to_here
    xx Exit
 def_key_word_end address
+;; no error handling for string_full_of_blank
+def_key_word "址", 址
+   ;; (* word-string[address, length] -- word-string[address, length] *)
+   ;; (* compile::
+   ;;      _literal[address of explainer], number *)
+   xx _literal, _address, compile_number_to_here
+   xx tail_and_head_of_word_string
+   ;; need error handling when not found
+   xx find, word_to_explainer, compile_number_to_here
+   xx Exit
+def_key_word_end 址
 ;; one predicate can make two branchs
 ;; three predicates can make four branchs
 ;; three predicates may only make three branchs
@@ -1222,9 +1420,9 @@ def_key_word "if", _if
    ;;       -- address after _false?branch *)
    ;; (* compile::
    ;;      _false?branch[address of explainer], 0 *)
-   xx _literal, _false?branch, append_number_to_here
+   xx _literal, _false?branch, compile_number_to_here
    xx Here, push_lambda_stack
-   xx _literal, 0, append_number_to_here ;; (* leave a place *)
+   xx _literal, 0, compile_number_to_here ;; (* leave a place *)
    xx Exit
 def_key_word_end _if
 
@@ -1236,10 +1434,10 @@ def_key_word "else", _else
    ;;      _branch[address of explainer], 0 *)
    ;; (* compile to [address after _false?branch] ::
    ;;      [appropriate offset] *)
-   xx _literal, _branch, append_number_to_here
+   xx _literal, _branch, compile_number_to_here
    xx pop_lambda_stack
    xx   Here, push_lambda_stack
-   xx   _literal, 0, append_number_to_here ;; (* leave a place *)
+   xx   _literal, 0, compile_number_to_here ;; (* leave a place *)
    xx Here, over, subtraction, _literal, Cell_width, moddiv, swap, drop
    xx swap, save
    xx Exit
@@ -1262,9 +1460,9 @@ def_key_word "则", 则
    ;;       -- address after _false?branch *)
    ;; (* compile::
    ;;      _false?branch[address of explainer], 0 *)
-   xx _literal, _false?branch, append_number_to_here
+   xx _literal, _false?branch, compile_number_to_here
    xx Here, push_lambda_stack
-   xx _literal, 0, append_number_to_here ;; (* leave a place *)
+   xx _literal, 0, compile_number_to_here ;; (* leave a place *)
    xx Exit
 def_key_word_end 则
 
@@ -1276,10 +1474,10 @@ def_key_word "否则", 否则
    ;;      _branch[address of explainer], 0 *)
    ;; (* compile to [address after _false?branch] ::
    ;;      [appropriate offset] *)
-   xx _literal, _branch, append_number_to_here
+   xx _literal, _branch, compile_number_to_here
    xx pop_lambda_stack
    xx   Here, push_lambda_stack
-   xx   _literal, 0, append_number_to_here ;; (* leave a place *)
+   xx   _literal, 0, compile_number_to_here ;; (* leave a place *)
    xx Here, over, subtraction, _literal, Cell_width, moddiv, swap, drop
    xx swap, save
    xx Exit
@@ -1309,7 +1507,7 @@ def_key_word "(*", ignore_comment
    xx Ket__comment, equal_string?, _false?branch, -13
    xx   Exit
 def_key_word_end ignore_comment
-def_verb "append-number-to-current-data-section", append_number_to_current_data_section
+def_verb "compile-number-to-current-data-section", compile_number_to_current_data_section
    ;; (* a 64 bits number -- *)
    ;; reset "Current_data_section", which points next free memory
    xx Current_data_section
@@ -1318,9 +1516,9 @@ def_verb "append-number-to-current-data-section", append_number_to_current_data_
    xx _literal, Cell_width, addition
    xx _address, Current_data_section, save
    xx Exit
-def_verb_end append_number_to_current_data_section
+def_verb_end compile_number_to_current_data_section
 
-def_verb "append-byte-to-current-data-section", append_byte_to_current_data_section
+def_verb "compile-byte-to-current-data-section", compile_byte_to_current_data_section
    ;; (* a 64 bits number -- *)
    ;; reset "Current_data_section", which points next free memory
    xx Current_data_section
@@ -1328,16 +1526,16 @@ def_verb "append-byte-to-current-data-section", append_byte_to_current_data_sect
    xx _literal, 1
    xx _address, Current_data_section, add_save
    xx Exit
-def_verb_end append_byte_to_current_data_section
+def_verb_end compile_byte_to_current_data_section
 
 ;; note that:
 ;; a string in stack is string[address, length]
 ;; a string in memory is ||  1 cell : length  ||  n byte : string  ||  1 byte : 0  ||
-def_verb "append-string-to-current-data-section", append_string_to_current_data_section
+def_verb "compile-string-to-current-data-section", compile_string_to_current_data_section
    ;; (* string[address, length] -- *)
    ;; for update Current_data_section
    xx dup, push_lambda_stack
-   xx   dup, append_number_to_current_data_section
+   xx   dup, compile_number_to_current_data_section
    xx   Current_data_section, swap, copy_byte_string
    ;; update Current_data_section
    xx pop_lambda_stack
@@ -1346,7 +1544,7 @@ def_verb "append-string-to-current-data-section", append_string_to_current_data_
    xx add1
    xx _address, Current_data_section, save
    xx Exit
-def_verb_end append_string_to_current_data_section
+def_verb_end compile_string_to_current_data_section
 
 
 
@@ -1391,14 +1589,14 @@ def_key_word ":", colon
    xx         _literal, Cell_width, addition
    xx         over, push_lambda_stack  ;; (* length to compile to here *)
    xx         push_lambda_stack        ;; (* address to compile to here *)
-   xx       append_string_to_current_data_section
+   xx       compile_string_to_current_data_section
    ;;       (* compile the string into function-body *)
    ;;       (* address to compile to here *)
-   xx       _literal, _literal, append_number_to_here
-   xx       pop_lambda_stack, append_number_to_here
+   xx       _literal, _literal, compile_number_to_here
+   xx       pop_lambda_stack, compile_number_to_here
    ;;       (* length to compile to here *)
-   xx       _literal, _literal, append_number_to_here
-   xx       pop_lambda_stack, append_number_to_here
+   xx       _literal, _literal, compile_number_to_here
+   xx       pop_lambda_stack, compile_number_to_here
    xx     get_back
    xx     Exit
    .sub1:
@@ -1443,14 +1641,14 @@ def_key_word "夫", 夫
    xx         _literal, Cell_width, addition
    xx         over, push_lambda_stack  ;; (* length to compile to here *)
    xx         push_lambda_stack        ;; (* address to compile to here *)
-   xx       append_string_to_current_data_section
+   xx       compile_string_to_current_data_section
    ;;       (* compile the string into function-body *)
    ;;       (* address to compile to here *)
-   xx       _literal, _literal, append_number_to_here
-   xx       pop_lambda_stack, append_number_to_here
+   xx       _literal, _literal, compile_number_to_here
+   xx       pop_lambda_stack, compile_number_to_here
    ;;       (* length to compile to here *)
-   xx       _literal, _literal, append_number_to_here
-   xx       pop_lambda_stack, append_number_to_here
+   xx       _literal, _literal, compile_number_to_here
+   xx       pop_lambda_stack, compile_number_to_here
    xx     get_back
    xx     Exit
    .sub1:
@@ -1477,12 +1675,12 @@ def_verb "execute-word", execute_word
    xx   Exit
    xx dup2, find, dup, _false?branch, 6
    xx   xxswapx, drop2
-   xx   word_link_to_word_explainer, execute
+   xx   word_to_explainer, execute
    xx   Exit
    xx drop ;; drop zero
    xx Message_undefined_word, print_string
    xx print_string
-   xx _literal, ASCII_linefeed, write_char
+   xx _literal, ASCII_linefeed, write_byte
    xx Exit
 def_verb_end execute_word
 
@@ -1545,9 +1743,9 @@ def_verb "compile-phrase", compile_phrase
    xx Current_data_section, push_lambda_stack
    xx   _literal, Buffer_of_function_body__for_compile_phrase, _address, Here, save
    xx   _literal, Buffer_of_data_section__for_compile_phrase, _address, Current_data_section, save
-   xx   Verb_explainer, append_number_to_here
-   xx   append_word_description_to_here
-   xx   The_Exit, append_number_to_here
+   xx   Verb_explainer, compile_number_to_here
+   xx   compile_word_description_to_here
+   xx   The_Exit, compile_number_to_here
    xx pop_lambda_stack, _address, Current_data_section, save
    xx pop_lambda_stack, _address, Here, save
    xx Exit
@@ -2002,7 +2200,7 @@ def_verb_end find_char_index
 ;;  *)
 def_verb "cr", cr
    ;; (* -- *)
-   xx _literal, ASCII_linefeed, write_char
+   xx _literal, ASCII_linefeed, write_byte
    xx Exit
 def_verb_end cr
 ;; (* a Symbol-entry [unit : byte]
@@ -2117,7 +2315,7 @@ def_noun_end Noun_explainer
 ;; recall
 ;; a word in the dictionary (unit : Cell_width = 8 bytes)
 ;; ==
-;;    ||  1 : name-string-header-which-contains-the-length-of-name-string  ||
+;;    ||  1 : name-string-header  ||
 ;;    ||  m : name-string  ||
 ;;    ||  1 : SizeOfFunctionBody  ||
 ;;    ||  1 : identification  ||
@@ -2135,10 +2333,47 @@ def_noun_end Noun_explainer
 ;; 0 -- function
 ;; 1 -- key word
 
-
 WordType_HiddenMask = (1 shl 63)
 
-def_verb "word-link->name-string", word_link_to_name_string
+def_verb "word->size", word_to_size
+   ;; (* word.link[address] -- word.size[value] *)
+   xx _literal, Cell_width
+   xx _literal, -2, multiple
+   xx addition, fetch
+   xx Exit
+def_verb_end word_to_size
+
+def_verb "word->address-of-size", word_to_address_of_size
+   ;; (* word.link[address] -- word.address-of-size[address] *)
+   xx _literal, Cell_width
+   xx _literal, -2, multiple
+   xx addition
+   xx Exit
+def_verb_end word_to_address_of_size
+
+def_verb "word->id", word_to_id
+   ;; (* word.link[address] -- word.id[address also as value] *)
+   xx _literal, Cell_width
+   xx _literal, -1, multiple
+   xx addition
+   xx Exit
+def_verb_end word_to_id
+
+def_verb "word->type", word_to_type
+   ;; (* word.link[address] -- word.type[value] *)
+   xx _literal, Cell_width
+   xx addition, fetch
+   xx Exit
+def_verb_end word_to_type
+
+def_verb "word->address-of-type", word_to_address_of_type
+   ;; (* word.link[address] -- word.type[address] *)
+   xx _literal, Cell_width
+   xx addition
+   xx Exit
+def_verb_end word_to_address_of_type   
+
+def_verb "word->name-string", word_to_name_string
    ;; (* link[address] -- string[address, length] *)
    xx _literal, Cell_width
    xx _literal, 2, multiple
@@ -2147,33 +2382,35 @@ def_verb "word-link->name-string", word_link_to_name_string
    xx dup, _literal, Cell_width, addition
    xx swap, fetch
    xx Exit
-def_verb_end word_link_to_name_string
+def_verb_end word_to_name_string
 
-def_verb "word-link->word-explainer", word_link_to_word_explainer
+def_verb "word->explainer", word_to_explainer
    ;; (* word[address of link] -- word[address of explainer] *)
    xx _literal, Cell_width
    xx _literal, 3, multiple
    xx addition
    xx Exit
-def_verb_end word_link_to_word_explainer
+def_verb_end word_to_explainer
 
-def_verb "word-link->word-type", word_link_to_word_type
-   ;; (* word[address of link] -- word-type *)
+def_verb "word->description", word_to_description
+   ;; (* word.link[address] -- word.description[address] *)
    xx _literal, Cell_width
-   xx addition, fetch
+   xx _literal, 4, multiple
+   xx addition
    xx Exit
-def_verb_end word_link_to_word_type
-
-
+def_verb_end word_to_description
 def_verb "help,find", help__find
    ;; (* wordString[address, length], link[address] -- word[address of link] or Zero *)
-   xx dup, zero?, _false?branch, 4
-   xx   xxswapx, drop2
+   xx dup, zero?, _false?branch, 6
+   xx   drop, drop2
+   xx   _literal, 0
    xx   Exit
-   xx xxtuckx, word_link_to_name_string, xxoverxx, equal_string?, _false?branch, 3
-   xx   drop2
+   xx dup, push_lambda_stack
+   xx word_to_name_string, xxoverxx
+   xx equal_string?, _false?branch, 4
+   xx   drop2, pop_lambda_stack
    xx   Exit
-   xx xswapxx, fetch
+   xx pop_lambda_stack, fetch
    xx help__find
    xx Exit
 def_verb_end help__find
@@ -2203,7 +2440,7 @@ def_verb_end string_append_char
 def_verb "read-first-non-blank-char,while-saving-to-string", read_first_non_blank_char__while_saving_to_string
    ;; (* string[address, length] --
    ;;    string-with-char[address, length], FirstNonBlankChar *)
-   xx read_char, dup, push_lambda_stack
+   xx read_byte, dup, push_lambda_stack
    xx   string_append_char
    xx pop_lambda_stack
    xx dup, _literal, ASCII_space, greater_than?, _false?branch, 2
@@ -2233,15 +2470,15 @@ def_verb "read-word,while-saving-to-string", read_word__while_saving_to_string
    xx _literal, Buffer_for_read_word__while_saving_to_string, add1
    xx push_lambda_stack
 
-   .read_char:
-   xx read_char
+   .read_byte:
+   xx read_byte
    xx dup, xxoverxx, addition, save_byte, swap, add1, swap
    xx dup, _literal, ASCII_space, greater_than?, _false?branch, ((.then - $) / Cell_width)
    xx   pop_lambda_stack, tuck, save_byte, add1
    xx   pop_lambda_stack, add1
    xx   push_lambda_stack
    xx   push_lambda_stack
-   xx   _branch, (-($ - .read_char) / Cell_width)
+   xx   _branch, (-($ - .read_byte) / Cell_width)
    .then:
 
    xx drop
@@ -2390,74 +2627,7 @@ def_verb "tail-and-head-of-word-string", tail_and_head_of_word_string
    xx head_of_word_string
    xx Exit
 def_verb_end tail_and_head_of_word_string
-def_verb "word,link->size", word__link_to_size
-   ;; (* word.link[address] -- word.size[value] *)
-   xx _literal, Cell_width
-   xx _literal, -2, multiple
-   xx addition, fetch
-   xx Exit
-def_verb_end word__link_to_size
-
-def_verb "word,link->address-of-size", word__link_to_address_of_size
-   ;; (* word.link[address] -- word.address-of-size[address] *)
-   xx _literal, Cell_width
-   xx _literal, -2, multiple
-   xx addition
-   xx Exit
-def_verb_end word__link_to_address_of_size
-
-def_verb "word,link->id", word__link_to_id
-   ;; (* word.link[address] -- word.id[address also as value] *)
-   xx _literal, Cell_width
-   xx _literal, -1, multiple
-   xx addition
-   xx Exit
-def_verb_end word__link_to_id
-
-def_verb "word,link->type", word__link_to_type
-   ;; (* word.link[address] -- word.type[value] *)
-   xx _literal, Cell_width
-   xx _literal, 1, multiple
-   xx addition, fetch
-   xx Exit
-def_verb_end word__link_to_type
-
-def_verb "word,link->address-of-type", word__link_to_address_of_type
-   ;; (* word.link[address] -- word.type[address] *)
-   xx _literal, Cell_width
-   xx _literal, 1, multiple
-   xx addition
-   xx Exit
-def_verb_end word__link_to_address_of_type
-
-def_verb "word,link->explainer", word__link_to_explainer
-   ;; (* word.link[address] -- word.explainer[address] *)
-   xx _literal, Cell_width
-   xx _literal, 3, multiple
-   xx addition
-   xx Exit
-def_verb_end word__link_to_explainer
-
-def_verb "word,link->description", word__link_to_description
-   ;; (* word.link[address] -- word.description[address] *)
-   xx _literal, Cell_width
-   xx _literal, 4, multiple
-   xx addition
-   xx Exit
-def_verb_end word__link_to_description
-;; a string denotes key-word or not
-;; is not depended on the morphology of the string
-def_verb "string-denote-key-word?", string_denote_key_word?
-   ;; (* string[address, length] -- True or False *)
-   xx find, word_link_to_word_type
-   xx _literal, 111b, bitwise_and
-   xx _literal, 1, equal?, _false?branch, 3
-   xx   True
-   xx   Exit
-   xx False
-   xx Exit
-def_verb_end string_denote_key_word?
-def_verb "append-number-to-here", append_number_to_here
+def_verb "compile-number-to-here", compile_number_to_here
    ;; (* a 64 bits number -- *)
    ;; reset "Here", which points next free memory
    xx Here
@@ -2466,16 +2636,16 @@ def_verb "append-number-to-here", append_number_to_here
    xx _literal, Cell_width, addition
    xx _address, Here, save
    xx Exit
-def_verb_end append_number_to_here
+def_verb_end compile_number_to_here
 
 ;; note that:
 ;; a string in stack is string[address, length]
 ;; a string in memory is ||  1 : length  ||  n : string  ||  1 : 0  ||
-def_verb "append-string-to-here", append_string_to_here
+def_verb "compile-string-to-here", compile_string_to_here
    ;; (* string[address, length] -- *)
    ;; for update Here
    xx dup, push_lambda_stack
-   xx   dup, append_number_to_here
+   xx   dup, compile_number_to_here
    xx   Here, swap, copy_byte_string
    ;; update Here
    xx pop_lambda_stack
@@ -2484,32 +2654,32 @@ def_verb "append-string-to-here", append_string_to_here
    xx add1
    xx _address, Here, save
    xx Exit
-def_verb_end append_string_to_here
+def_verb_end compile_string_to_here
 
 
-def_verb "help:append-word-description-to-here,number", help__append_word_description_to_here__number
+def_verb "help:compile-word-description-to-here,number", help__compile_word_description_to_here__number
    ;; (* string[address, length] -- *)
    ;; reading-error reported by "number" is not handled
-   xx _literal, _literal, append_number_to_here
-   xx string_to_integer__with_error, drop, append_number_to_here
+   xx _literal, _literal, compile_number_to_here
+   xx string_to_integer__with_error, drop, compile_number_to_here
    xx Exit
-def_verb_end help__append_word_description_to_here__number
+def_verb_end help__compile_word_description_to_here__number
 
 ;; error handling when not found is after debuger
-def_verb "help:append-word-description-to-here,word", help__append_word_description_to_here__word
+def_verb "help:compile-word-description-to-here,word", help__compile_word_description_to_here__word
    ;; (* string[address, length] -- *)
-   xx find, word_link_to_word_explainer, append_number_to_here
+   xx find, word_to_explainer, compile_number_to_here
    xx Exit
-def_verb_end help__append_word_description_to_here__word
+def_verb_end help__compile_word_description_to_here__word
 
-def_verb "help:append-word-description-to-here,key-word", help__append_word_description_to_here__key_word
+def_verb "help:compile-word-description-to-here,key-word", help__compile_word_description_to_here__key_word
    ;; (* word-string[address, length], string[address, length] -- word-string[address, length] *)
-   xx find, word_link_to_word_explainer, execute
+   xx find, word_to_explainer, execute
    xx Exit
-def_verb_end help__append_word_description_to_here__key_word
+def_verb_end help__compile_word_description_to_here__key_word
 
 
-def_verb "append-word-description-to-here", append_word_description_to_here
+def_verb "compile-word-description-to-here", compile_word_description_to_here
    ;; (* word-string[address, length] -- *)
    xx dup2, string_full_of_blank?, _false?branch, 3
    xx   drop2
@@ -2520,28 +2690,40 @@ def_verb "append-word-description-to-here", append_word_description_to_here
    ;; xx dup2, print_string, cr
 
    xx dup2, string_denote_integer?, _false?branch, 4
-   xx   help__append_word_description_to_here__number
-   xx   append_word_description_to_here
+   xx   help__compile_word_description_to_here__number
+   xx   compile_word_description_to_here
    xx   Exit
    xx dup2, string_denote_key_word?, _false?branch, 4
-   xx   help__append_word_description_to_here__key_word
-   xx   append_word_description_to_here
+   xx   help__compile_word_description_to_here__key_word
+   xx   compile_word_description_to_here
    xx   Exit
    ;; else
-   xx   help__append_word_description_to_here__word
-   xx   append_word_description_to_here
+   xx   help__compile_word_description_to_here__word
+   xx   compile_word_description_to_here
    xx   Exit
-def_verb_end append_word_description_to_here
+def_verb_end compile_word_description_to_here
+;; a string denotes key-word or not
+;; is not depended on the morphology of the string
+def_verb "string-denote-key-word?", string_denote_key_word?
+   ;; (* string[address, length] -- True or False *)
+   xx find, word_to_type
+   xx _literal, 111b, bitwise_and
+   xx _literal, 1, equal?, _false?branch, 3
+   xx   True
+   xx   Exit
+   xx False
+   xx Exit
+def_verb_end string_denote_key_word?
 def_verb "create-word-header", create_word_header
    ;; (* string[address, length] -- word[address of link] *)
    xx Here, push_lambda_stack ;; for address-of-name-string-header
-   xx   append_string_to_here
-   xx   _literal, 0, append_number_to_here ;; (* SizeOfFunctionBody *)
-   xx   Here, append_number_to_here ;; (* identification *)
+   xx   compile_string_to_here
+   xx   _literal, 0, compile_number_to_here ;; (* SizeOfFunctionBody *)
+   xx   Here, compile_number_to_here ;; (* identification *)
    xx   Here ;; (* leave the word[link] as return-value *)
-   xx   _literal, 0, append_number_to_here ;; (* link *)
-   xx   _literal, 0, append_number_to_here ;; (* type *)
-   xx pop_lambda_stack, append_number_to_here ;; address-of-name-string-header
+   xx   _literal, 0, compile_number_to_here ;; (* link *)
+   xx   _literal, 0, compile_number_to_here ;; (* type *)
+   xx pop_lambda_stack, compile_number_to_here ;; address-of-name-string-header
    xx Exit
 def_verb_end create_word_header
 
@@ -2558,14 +2740,14 @@ def_verb_end add_new_word_to_dictionary
 
 ;; the following function
 ;; must be called at the end of word definition
-;; i.e. after "append_word_description_to_here"
+;; i.e. after "compile_word_description_to_here"
 ;; for it uses "Here" as an implicit argument
 def_verb "set-size-of-word", set_size_of_word
    ;; (* word[address of link] -- *)
-   xx dup, word__link_to_description
+   xx dup, word_to_description
    xx Here, swap, subtraction
    xx _literal, Cell_width, division
-   xx swap, word__link_to_address_of_size
+   xx swap, word_to_address_of_size
    xx save
    xx Exit
 def_verb_end set_size_of_word
@@ -2575,8 +2757,8 @@ def_verb "define-verb", define_verb
    xx create_word_header
    xx dup, push_lambda_stack
    xx   add_new_word_to_dictionary
-   xx   Verb_explainer, append_number_to_here
-   xx   append_word_description_to_here
+   xx   Verb_explainer, compile_number_to_here
+   xx   compile_word_description_to_here
    xx pop_lambda_stack
    xx set_size_of_word
    xx Exit
@@ -2607,9 +2789,9 @@ def_verb "compile-string,for-define", compile_string__for_define
    xx   _literal, Buffer_of_function_body__for_compile_string__for_define
    xx   _address, Here, save
 
-   xx   Verb_explainer, append_number_to_here
-   xx   append_word_description_to_here
-   xx   The_Exit, append_number_to_here
+   xx   Verb_explainer, compile_number_to_here
+   xx   compile_word_description_to_here
+   xx   The_Exit, compile_number_to_here
 
    xx pop_lambda_stack, _address, Here, save
    xx Exit
@@ -2620,22 +2802,22 @@ def_verb "call-compiled-string,for-define", call_compiled_string__for_define
    xx execute
    xx Exit
 def_verb_end call_compiled_string__for_define
-def_noun "Mark:append-word-description-to-here,for-noun", Mark__append_word_description_to_here__for_noun
+def_noun "Mark:compile-word-description-to-here,for-noun", Mark__compile_word_description_to_here__for_noun
    xx 0
-def_noun_end Mark__append_word_description_to_here__for_noun
+def_noun_end Mark__compile_word_description_to_here__for_noun
 
-def_verb "append-word-description-to-here,for-noun", append_word_description_to_here__for_noun
+def_verb "compile-word-description-to-here,for-noun", compile_word_description_to_here__for_noun
    ;; (* word-string[address, length] -- *)
    xx push_lambda_stack, push_lambda_stack
    xx   fetch_argument_stack_pointer
-   xx   _address, Mark__append_word_description_to_here__for_noun, save
+   xx   _address, Mark__compile_word_description_to_here__for_noun, save
    xx pop_lambda_stack, pop_lambda_stack
 
    xx eval_string__for_define
 
    ;; note that, when push stack grows to lower address
    xx fetch_argument_stack_pointer
-   xx Mark__append_word_description_to_here__for_noun
+   xx Mark__compile_word_description_to_here__for_noun
    xx swap, subtraction
    xx _literal, Cell_width, division
    ;; need error handling on negate number
@@ -2649,17 +2831,17 @@ def_verb "append-word-description-to-here,for-noun", append_word_description_to_
    xx   Exit
    .sub1:
    xx sub1
-   xx pop_lambda_stack, append_number_to_here
+   xx pop_lambda_stack, compile_number_to_here
    xx _branch, (.dup-$)/Cell_width
-def_verb_end append_word_description_to_here__for_noun
+def_verb_end compile_word_description_to_here__for_noun
 def_verb "define", _define
    ;; (* words-string[address, length] -- *)
    xx tail_and_head_of_word_string
    xx create_word_header
    xx dup, push_lambda_stack
    xx   add_new_word_to_dictionary
-   xx   Noun_explainer, append_number_to_here
-   xx   append_word_description_to_here__for_noun
+   xx   Noun_explainer, compile_number_to_here
+   xx   compile_word_description_to_here__for_noun
    xx pop_lambda_stack
    xx set_size_of_word
    xx Exit
@@ -2670,11 +2852,11 @@ def_verb "define-key-word", define_key_word
    xx create_word_header
    xx dup, push_lambda_stack
    xx   add_new_word_to_dictionary
-   xx   Verb_explainer, append_number_to_here
-   xx   append_word_description_to_here
+   xx   Verb_explainer, compile_number_to_here
+   xx   compile_word_description_to_here
    xx pop_lambda_stack
    xx dup, set_size_of_word
-   xx word__link_to_address_of_type
+   xx word_to_address_of_type
    xx _literal, 1, swap, save_byte
    xx Exit
 def_verb_end define_key_word
