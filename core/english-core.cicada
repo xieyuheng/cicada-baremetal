@@ -1,18 +1,3 @@
-: define-key-word
-  (* words-string[address, length] -- *)
-  tail-and-head-of-word-string
-  create-word-header
-  dup push-lambda-stack
-    add-new-word-to-dictionary
-    Verb-explainer append-number-to-here
-    append-word-description-to-here
-  pop-lambda-stack
-  dup set-size-of-word
-  word,link->address-of-type
-  1 swap save-byte
-  Exit
-; define-verb
-ok
 (* need UTF-8 support in the following function *)
 (* 即 通过改变 string->char 这个函数 就能扩展 所能够处理的 char *)
 : string->char

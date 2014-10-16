@@ -475,7 +475,7 @@
    ;;     ||  1 : value-3  ||
    ;;     ...
    ;;   on stack:
-   ;;     [ ... , value-3, value-2, value-1]
+   ;;     (* value-1, value-2, value-3, ... *)
    ;; of course we have:
    ;;   fetch2 : memory=copy=>stack
    ;;   save2  : stack->memory
@@ -486,50 +486,6 @@
       pop_argument_stack rax
       mov qword[rbx], rax
       next
-
-   def_assembly_code "save2", save2
-      ;; ( value-2, value-1, address -- )
-      pop_argument_stack rbx
-      pop_argument_stack rax
-      mov qword[rbx], rax
-      pop_argument_stack rax
-      mov qword[rbx + Cell_width], rax
-      next
-
-
-
-   def_assembly_code "fetch", fetch
-      ;; ( address -- value )
-      pop_argument_stack  rbx
-      mov rax, qword[rbx]
-      push_argument_stack rax
-      next
-
-   def_assembly_code "fetch2", fetch2
-      ;; ( address -- value-1, value-2 )
-      pop_argument_stack  rbx
-      mov rax, qword[rbx + Cell_width]
-      push_argument_stack rax
-      mov rax, qword[rbx]
-      push_argument_stack rax
-      next
-
-
-
-   def_assembly_code "add-save", add_save
-      ;; ( number to add, address -- )
-      pop_argument_stack rbx
-      pop_argument_stack rax
-      add qword[rbx], rax
-      next
-
-   def_assembly_code "sub-save", sub_save
-      ;; ( number to add, address -- )
-      pop_argument_stack rbx
-      pop_argument_stack rax
-      sub qword[rbx], rax
-      next
-
 
    def_assembly_code "save-byte", save_byte
       ;; ( value, address -- )
@@ -552,6 +508,52 @@
       mov dword [rbx], eax
       next
 
+   def_assembly_code "n-save", n_save
+      ;; (* value-n, ..., value-1, address, n -- *)
+      pop_argument_stack rcx
+      pop_argument_stack rdx
+      mov rax, Cell_width
+      imul rax, rcx
+      add rdx, rax
+      ;; for address is based on 0
+      ;; but n is based on 1
+      sub rdx, Cell_width
+   .loop:
+      pop_argument_stack rax
+      mov qword [rdx], rax
+      sub rdx, Cell_width
+      loop .loop
+      next
+
+   def_verb "save2", save2
+      ;; (* value-2, value-1, address -- *)
+      xx _literal, 2
+      xx n_save
+      xx Exit
+   def_verb_end save2
+
+   def_assembly_code "n-save-byte", n_save_byte
+      ;; (* value-n, ..., value-1, address, n -- *)
+      pop_argument_stack rcx
+      pop_argument_stack rdx
+      add rdx, rcx
+      dec rdx
+   .loop:
+      pop_argument_stack rax
+      mov byte [rdx], al
+      dec rdx
+      loop .loop
+      next
+
+
+
+
+   def_assembly_code "fetch", fetch
+      ;; ( address -- value )
+      pop_argument_stack  rbx
+      mov rax, qword[rbx]
+      push_argument_stack rax
+      next
 
    def_assembly_code "fetch-byte", fetch_byte
       ;; ( address -- value )
@@ -577,19 +579,58 @@
       push_argument_stack rax
       next
 
-
-
-
-   def_assembly_code "copy-byte", copy_byte
-      ;; ( source address, destination address --
-      ;;   source address + 1, destination address + 1 )
-      mov rbx, [Argument_stack_pointer + Cell_width] ;; source address
-      mov al,  byte[rbx]                        ;; get a char from source address
-      pop_argument_stack rdi                        ;; destination address
-      stosb                                     ;; copy to destination
-      push_argument_stack rdi                       ;; destination address is incremented by stosb
-      inc qword[Argument_stack_pointer + Cell_width] ;; increment source address
+   ;;   in memory:
+   ;;     ||  1 : value-1  ||
+   ;;     ...
+   ;;     ||  1 : value-n  ||
+   def_assembly_code "n-fetch", n_fetch
+      ;; (* address, n -- value-1, ..., value-n *)
+      pop_argument_stack  rcx
+      pop_argument_stack  rdx
+   .loop:
+      mov rax, qword[rdx]
+      push_argument_stack rax
+      add rdx, Cell_width
+      loop .loop
       next
+
+   def_assembly_code "n-fetch-byte", n_fetch_byte
+      ;; (* address, n -- byte-1, ..., byte-n *)
+      pop_argument_stack  rcx
+      pop_argument_stack  rdx
+      xor rax, rax
+   .loop:
+      mov al, byte [rdx]
+      push_argument_stack rax
+      inc rdx
+      loop .loop
+      next
+
+   def_verb "fetch2", fetch2
+      ;; (* address -- value-1, value-2 *)
+      xx _literal, 2
+      xx n_fetch
+      xx Exit
+   def_verb_end fetch2
+
+
+
+
+   def_assembly_code "add-save", add_save
+      ;; ( number to add, address -- )
+      pop_argument_stack rbx
+      pop_argument_stack rax
+      add qword[rbx], rax
+      next
+
+   def_assembly_code "sub-save", sub_save
+      ;; ( number to add, address -- )
+      pop_argument_stack rbx
+      pop_argument_stack rax
+      sub qword[rbx], rax
+      next
+
+
 
    def_assembly_code "copy-byte-string", copy_byte_string
       ;; ( source address, destination address, length -- )
@@ -637,6 +678,14 @@
        pop_argument_stack rax
        next
 
+    def_assembly_code "n-drop", n_drop
+       ;; (* value-n, ..., value-1, n -- *)
+       pop_argument_stack rcx
+    .loop:
+       pop_argument_stack rax
+       loop .loop
+       next
+
     def_assembly_code "drop2", drop2
        ;; (* a b -- *)
        pop_argument_stack rax
@@ -647,6 +696,18 @@
        ;; (* a -- a a *)
        mov  rax, [Argument_stack_pointer]
        push_argument_stack rax
+       next
+
+    def_assembly_code "n-dup", n_dup
+       ;; (* value-n, ..., value-1, n --
+       ;;    value-n, ..., value-1, value-n, ..., value-1 *)
+       pop_argument_stack rcx
+       imul rbx, rcx, Cell_width
+       sub rbx, Cell_width
+    .loop:
+       mov  rax, [Argument_stack_pointer + rbx]
+       push_argument_stack rax
+       loop .loop
        next
 
     def_assembly_code "dup2", dup2
@@ -1123,7 +1184,6 @@
     1. 0 as False
        1 as True
     2. there can not be bool-type in low-level forth-like-language
-    3. "notFalse?" is NOT "true?"
     4. "false?" is "zero?"
        "true?" is "one?"
     #+begin_src fasm :tangle threaded-code.inc
@@ -1645,6 +1705,49 @@
       xx swap, save
       xx Exit
    def_key_word_end _then
+   #+end_src
+** chinese if else then
+   #+begin_src fasm :tangle threaded-code.inc
+   def_key_word "则", 则
+      ;; (* word-string[address, length] -- word-string[address, length] *)
+      ;; (* Lambda-stack::
+      ;;       -- address after _false?branch *)
+      ;; (* compile::
+      ;;      _false?branch[address of explainer], 0 *)
+      xx _literal, _false?branch, append_number_to_here
+      xx Here, push_lambda_stack
+      xx _literal, 0, append_number_to_here ;; (* leave a place *)
+      xx Exit
+   def_key_word_end 则
+
+   def_key_word "否则", 否则
+      ;; (* word-string[address, length] -- word-string[address, length] *)
+      ;; (* Lambda-stack ::
+      ;;      [address after _false?branch] -- [address after _branch] *)
+      ;; (* compile ::
+      ;;      _branch[address of explainer], 0 *)
+      ;; (* compile to [address after _false?branch] ::
+      ;;      [appropriate offset] *)
+      xx _literal, _branch, append_number_to_here
+      xx pop_lambda_stack
+      xx   Here, push_lambda_stack
+      xx   _literal, 0, append_number_to_here ;; (* leave a place *)
+      xx Here, over, subtraction, _literal, Cell_width, moddiv, swap, drop
+      xx swap, save
+      xx Exit
+   def_key_word_end 否则
+
+   def_key_word "再", 再
+      ;; (* word-string[address, length] -- word-string[address, length] *)
+      ;; (* Lambda-stack ::
+      ;;      [address after _false?branch] or [address after _branch] --  *)
+      ;; (* compile to [address after _false?branch] or [address after _branch] ::
+      ;;      [appropriate offset] *)
+      xx pop_lambda_stack
+      xx Here, over, subtraction, _literal, Cell_width, moddiv, swap, drop
+      xx swap, save
+      xx Exit
+   def_key_word_end 再
    #+end_src
 ** comment
    #+begin_src fasm :tangle threaded-code.inc
@@ -3299,6 +3402,23 @@
        xx Exit
     def_verb_end _define
     #+end_src
+** define-key-word
+   #+begin_src fasm :tangle threaded-code.inc
+   def_verb "define-key-word", define_key_word
+      ;; (* words-string[address, length] -- *)
+      xx tail_and_head_of_word_string
+      xx create_word_header
+      xx dup, push_lambda_stack
+      xx   add_new_word_to_dictionary
+      xx   Verb_explainer, append_number_to_here
+      xx   append_word_description_to_here
+      xx pop_lambda_stack
+      xx dup, set_size_of_word
+      xx word__link_to_address_of_type
+      xx _literal, 1, swap, save_byte
+      xx Exit
+   def_verb_end define_key_word
+   #+end_src
 * chinese lexicographer
   #+begin_src fasm :tangle threaded-code.inc
   def_verb "动词也", 动词也
@@ -3318,6 +3438,12 @@
      xx _define
      xx Exit
   def_verb_end 也
+
+  def_verb "虚词也", 虚词也
+     ;; (* words-string[address, length] -- *)
+     xx define_key_word
+     xx Exit
+  def_verb_end 虚词也
   #+end_src
 * --------------------------------------------------
 * memory allocation

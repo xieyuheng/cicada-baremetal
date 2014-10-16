@@ -6,8 +6,6 @@
 * ==================================================
 * TODO
 ** ><
-   1. 基本的对中文代码的支持
-** ><
    1. move the following to assembly code :
       1) type system
       2) hash-table

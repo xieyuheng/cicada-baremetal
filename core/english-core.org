@@ -119,25 +119,6 @@
   19 factorial .
   20 factorial .
   #+end_src
-* lexicographer
-** define-key-word
-   #+begin_src cicada :tangle english-core.cicada
-   : define-key-word
-     (* words-string[address, length] -- *)
-     tail-and-head-of-word-string
-     create-word-header
-     dup push-lambda-stack
-       add-new-word-to-dictionary
-       Verb-explainer append-number-to-here
-       append-word-description-to-here
-     pop-lambda-stack
-     dup set-size-of-word
-     word,link->address-of-type
-     1 swap save-byte
-     Exit
-   ; define-verb
-   ok
-   #+end_src
 * char
   #+begin_src cicada :tangle english-core.cicada
   (* need UTF-8 support in the following function *)
