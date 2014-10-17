@@ -394,14 +394,6 @@ preserve  equ LowestMemoryAddress = LowestMemoryAddress +
 alignTo16InMemoryMap equ LowestMemoryAddress = LowestMemoryAddress + (16 - (LowestMemoryAddress mod 16))
 
 hereUnInitializedData  equ alignTo16InMemoryMap
-ASCII_backspace = 8
-ASCII_tab       = 9
-ASCII_linefeed  = 10
-ASCII_newline   = 10
-ASCII_esc       = 27
-ASCII_escape    = 27
-ASCII_space     = 32
-ASCII_delete    = 127
 format elf64 executable 3
 macro Elf32_Sym name,value,size,bind,type,other,shndx
 {

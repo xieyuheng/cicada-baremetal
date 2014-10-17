@@ -1,3 +1,11 @@
+ASCII_backspace = 8
+ASCII_tab       = 9
+ASCII_linefeed  = 10
+ASCII_newline   = 10
+ASCII_esc       = 27
+ASCII_escape    = 27
+ASCII_space     = 32
+ASCII_delete    = 127
 ;; 1. when "push", a stack-pointer moves to lower address
 ;; 2. under the a stack-pointer,
 ;;    there always stores the value of the-top-of-the-stack

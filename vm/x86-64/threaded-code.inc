@@ -892,6 +892,24 @@ def_verb "tail-and-head-of-string", tail_and_head_of_string
    xx head_of_string
    xx Exit
 def_verb_end tail_and_head_of_string
+
+
+;; this helper function :
+;; 0. when meet zero-length string always reture True
+def_verb "string-full-of-blank?", string_full_of_blank?
+   ;; (* string[address, length] -- True or False *)
+   xx dup, zero?, _false?branch, 4
+   xx   drop2
+   xx   True
+   xx   Exit
+   xx tail_and_head_of_string
+   xx _literal, ASCII_space, less_or_equal?, _false?branch, 3
+   xx   string_full_of_blank?
+   xx   Exit
+   xx drop2
+   xx False
+   xx Exit
+def_verb_end string_full_of_blank?
 def_verb "true?", true?
    xx one?
    xx Exit
@@ -2371,7 +2389,7 @@ def_verb "word->address-of-type", word_to_address_of_type
    xx _literal, Cell_width
    xx addition
    xx Exit
-def_verb_end word_to_address_of_type   
+def_verb_end word_to_address_of_type
 
 def_verb "word->name-string", word_to_name_string
    ;; (* link[address] -- string[address, length] *)
@@ -2504,7 +2522,6 @@ def_verb_end find_word_boundary_address__begin
 
 ;; end will always success
 ;; so be careful when use it to save and fetch from string
-;; ><><>< 也许我应该给每个 string 都加的 0 做结尾 这样也许会好一些
 def_verb "find-word-boundary-address,end", find_word_boundary_address__end
    ;; (* [address, length] -- address or -1 *)
    xx dup, zero?, _false?branch, 3
@@ -2573,23 +2590,6 @@ def_verb_end find_word_boundary_index__end
 ;; :" kkk" find-word-boundary-index,end . (* 3 *) cr
 ;; :"  kkk" find-word-boundary-index,end . (* 4 *) cr
 ;; :"   kkk" find-word-boundary-index,end . (* 5 *) cr
-;; this helper function :
-;; 0. when meet zero-length string always reture True
-def_verb "string-full-of-blank?", string_full_of_blank?
-   ;; (* string[address, length] -- True or False *)
-   xx dup, zero?, _false?branch, 4
-   xx   drop2
-   xx   True
-   xx   Exit
-   xx tail_and_head_of_string
-   xx _literal, ASCII_space, less_or_equal?, _false?branch, 3
-   xx   string_full_of_blank?
-   xx   Exit
-   xx drop2
-   xx False
-   xx Exit
-def_verb_end string_full_of_blank?
-
 ;; the following 3 functions can not apply on string-full-of-blank
 ;; before call them
 ;; one should make sure the argument is not string-full-of-blank
@@ -2640,7 +2640,8 @@ def_verb_end compile_number_to_here
 
 ;; note that:
 ;; a string in stack is string[address, length]
-;; a string in memory is ||  1 : length  ||  n : string  ||  1 : 0  ||
+;; a string in memory is
+;;   ||  1 : length  ||  n : string  ||  1 : 0  ||
 def_verb "compile-string-to-here", compile_string_to_here
    ;; (* string[address, length] -- *)
    ;; for update Here
@@ -2698,6 +2699,7 @@ def_verb "compile-word-description-to-here", compile_word_description_to_here
    xx   compile_word_description_to_here
    xx   Exit
    ;; else
+   ;; 这里一定要对查找的结果进行 错误处理
    xx   help__compile_word_description_to_here__word
    xx   compile_word_description_to_here
    xx   Exit
@@ -2706,7 +2708,10 @@ def_verb_end compile_word_description_to_here
 ;; is not depended on the morphology of the string
 def_verb "string-denote-key-word?", string_denote_key_word?
    ;; (* string[address, length] -- True or False *)
-   xx find, word_to_type
+   xx find
+   xx dup, _literal, 0, equal?, _false?branch, 2   
+   xx   Exit
+   xx word_to_type
    xx _literal, 111b, bitwise_and
    xx _literal, 1, equal?, _false?branch, 3
    xx   True
