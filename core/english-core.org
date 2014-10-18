@@ -133,7 +133,9 @@
   (* 即 通过改变 string->char 这个函数 就能扩展 所能够处理的 char *)
   : string->char
     (* string[address, length] -- char *)
-    drop fetch-byte
+    (* drop fetch-byte *)
+    get-char 
+    xx|swap|x drop2
     Exit
   ; define-verb
   ok

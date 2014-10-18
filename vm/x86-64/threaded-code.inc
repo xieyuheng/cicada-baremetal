@@ -1819,7 +1819,9 @@ def_verb "char-header->char-length", char_header_to_char_length
 def_verb_end char_header_to_char_length
 ;; get-char == tail-and-head-of-char-string
 
-Buffer_for_get_char: dq 0
+def_noun "Buffer-for-get-char", Buffer_for_get_char
+   xx 0
+def_noun_end Buffer_for_get_char
 
 ;; >< no error handling
 def_verb "get-char", get_char
@@ -1828,18 +1830,17 @@ def_verb "get-char", get_char
 
    ;; clear Buffer_for_get_char
    xx _literal, 0
-   xx _literal, Buffer_for_get_char
+   xx _address, Buffer_for_get_char
    xx save
 
    xx over
    xx fetch_byte, char_header_to_char_length
    xx dup, push_lambda_stack
-   xx xoverxx, _literal, Buffer_for_get_char
+   xx xoverxx, _address, Buffer_for_get_char
    xx xswapxx
    xx copy_byte_string
 
-   xx _literal, Buffer_for_get_char
-   xx fetch
+   xx Buffer_for_get_char
    xx pop_lambda_stack, swap, push_lambda_stack
    xx   tuck
    xx   subtraction
@@ -1848,13 +1849,15 @@ def_verb "get-char", get_char
    xx pop_lambda_stack
    xx Exit
 def_verb_end get_char
-Buffer_for_write_char: dq 0
+def_noun "Buffer-for-write-char", Buffer_for_write_char
+   xx 0
+def_noun_end Buffer_for_write_char
 
 def_verb "write-char", write_char
    ;; (* UTF-8 char --  *)
-   xx dup, _literal, Buffer_for_write_char, save
+   xx dup, _address, Buffer_for_write_char, save
    xx char_header_to_char_length
-   xx _literal, Buffer_for_write_char
+   xx _address, Buffer_for_write_char
    xx swap
    xx print_string
    xx Exit

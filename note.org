@@ -5,12 +5,12 @@
 
 * ==================================================
 * TODO =============================================
+* rewrite number writer in cicada english-core
 * word boundary
   1. ><><>< the note about word boundary is wrong ???
 * branch
   1. 是否对 branch 给更好的支持 ?
      用 label 来计算 offset ???
-* 实现 中文的 语法关键词 "字"
 * ><
   1. move the following to assembly code :
      1) type system
