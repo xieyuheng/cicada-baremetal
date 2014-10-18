@@ -1601,7 +1601,8 @@ def_key_word ":", colon
    xx     dup2, ready
    ;;       (* calculate the length and copy to [data section] *)
    xx       drop, swap, drop
-   xx       _literal, 2, subtraction ;; sub the length of "; "
+   ;; xx       _literal, 2, subtraction ;; sub the length of "; "
+   xx       _literal, 1, subtraction ;; sub the length of ";"
    xx       over, subtraction
    xx         Current_data_section
    xx         _literal, Cell_width, addition
@@ -1652,7 +1653,8 @@ def_key_word "夫", 夫
    xx     dup2, ready
    ;;       (* calculate the length and copy to [data section] *)
    xx       drop, swap, drop
-   xx       Ket__fuzhe, swap, drop, add1
+   xx       Ket__fuzhe, swap, drop
+   ;; xx       add1
    xx       subtraction ;; sub the length of Ket__fuzhe
    xx       over, subtraction
    xx         Current_data_section
@@ -1696,13 +1698,13 @@ def_verb "execute-word", execute_word
    xx   word_to_explainer, execute
    xx   Exit
    xx drop ;; drop zero
-   xx Message_undefined_word, print_string
+   xx Message__undefined_word, print_string
    xx print_string
    xx _literal, ASCII_linefeed, write_byte
    xx Exit
 def_verb_end execute_word
 
-def_string "Message:undefined-word", "   UNDEFINED WORD: ", Message_undefined_word
+def_string "Message:undefined-word", "   UNDEFINED WORD: ", Message__undefined_word
 def_string "ok", "ok", ok
 def_string "no", "no", no
 
@@ -1774,6 +1776,89 @@ def_verb "call-compiled-phrase", call_compiled_phrase
    xx execute
    xx Exit
 def_verb_end call_compiled_phrase
+;;   | 0xxxxxxx |          |          |          |          |          |
+;;   | 110xxxxx | 10xxxxxx |          |          |          |          |
+;;   | 1110xxxx | 10xxxxxx | 10xxxxxx |          |          |          |
+;;   | 11110xxx | 10xxxxxx | 10xxxxxx | 10xxxxxx |          |          |
+;;   | 111110xx | 10xxxxxx | 10xxxxxx | 10xxxxxx | 10xxxxxx |          |
+;;   | 1111110x | 10xxxxxx | 10xxxxxx | 10xxxxxx | 10xxxxxx | 10xxxxxx |
+def_verb "char-header->char-length", char_header_to_char_length
+   ;; (* UTF-8 char -- length or 0 *)
+   xx dup
+   xx _literal, 10000000b, bitwise_and
+   xx _literal, 00000000b, equal?, _false?branch, 5
+   xx   drop, _literal, 1
+   xx   Exit
+   xx dup
+   xx _literal, 11100000b, bitwise_and
+   xx _literal, 11000000b, equal?, _false?branch, 5
+   xx   drop, _literal, 2
+   xx   Exit
+   xx dup
+   xx _literal, 11110000b, bitwise_and
+   xx _literal, 11100000b, equal?, _false?branch, 5
+   xx   drop, _literal, 3
+   xx   Exit
+   xx dup
+   xx _literal, 11111000b, bitwise_and
+   xx _literal, 11110000b, equal?, _false?branch, 5
+   xx   drop, _literal, 4
+   xx   Exit
+   xx dup
+   xx _literal, 11111100b, bitwise_and
+   xx _literal, 11111000b, equal?, _false?branch, 5
+   xx   drop, _literal, 5
+   xx   Exit
+   xx dup
+   xx _literal, 11111110b, bitwise_and
+   xx _literal, 11111100b, equal?, _false?branch, 5
+   xx   drop, _literal, 6
+   xx   Exit
+   xx drop, _literal, 0
+   xx Exit
+def_verb_end char_header_to_char_length
+;; get-char == tail-and-head-of-char-string
+
+Buffer_for_get_char: dq 0
+
+;; >< no error handling
+def_verb "get-char", get_char
+   ;; (* string[address, length] --
+   ;;    string[address, length], UTF-8 char *)
+
+   ;; clear Buffer_for_get_char
+   xx _literal, 0
+   xx _literal, Buffer_for_get_char
+   xx save
+
+   xx over
+   xx fetch_byte, char_header_to_char_length
+   xx dup, push_lambda_stack
+   xx xoverxx, _literal, Buffer_for_get_char
+   xx xswapxx
+   xx copy_byte_string
+
+   xx _literal, Buffer_for_get_char
+   xx fetch
+   xx pop_lambda_stack, swap, push_lambda_stack
+   xx   tuck
+   xx   subtraction
+   xx   xxswapx, addition
+   xx   swap
+   xx pop_lambda_stack
+   xx Exit
+def_verb_end get_char
+Buffer_for_write_char: dq 0
+
+def_verb "write-char", write_char
+   ;; (* UTF-8 char --  *)
+   xx dup, _literal, Buffer_for_write_char, save
+   xx char_header_to_char_length
+   xx _literal, Buffer_for_write_char
+   xx swap
+   xx print_string
+   xx Exit
+def_verb_end write_char
 ;; 1. just take the 10 based number on the left of "#" as base
 ;;    while the base must be not-zero
 ;;    (actually, when it is zero, just let the zero return,
@@ -2439,6 +2524,21 @@ def_verb "find", find
    xx help__find
    xx Exit
 def_verb_end find
+;; a string denotes key-word or not
+;; is not depended on the morphology of the string
+def_verb "string-denote-key-word?", string_denote_key_word?
+   ;; (* string[address, length] -- True or False *)
+   xx find
+   xx dup, _literal, 0, equal?, _false?branch, 2
+   xx   Exit
+   xx word_to_type
+   xx _literal, 111b, bitwise_and
+   xx _literal, 1, equal?, _false?branch, 3
+   xx   True
+   xx   Exit
+   xx False
+   xx Exit
+def_verb_end string_denote_key_word?
 ;; 1. the following functions are for read-phrase
 ;; 2. 需要 一个 另一个版本的 read_word
 ;;    来 帮助 实现 read-word-string,for-lexicographer
@@ -2666,18 +2766,18 @@ def_verb "help:compile-word-description-to-here,number", help__compile_word_desc
    xx Exit
 def_verb_end help__compile_word_description_to_here__number
 
-;; error handling when not found is after debuger
-def_verb "help:compile-word-description-to-here,word", help__compile_word_description_to_here__word
-   ;; (* string[address, length] -- *)
-   xx find, word_to_explainer, compile_number_to_here
-   xx Exit
-def_verb_end help__compile_word_description_to_here__word
-
 def_verb "help:compile-word-description-to-here,key-word", help__compile_word_description_to_here__key_word
    ;; (* word-string[address, length], string[address, length] -- word-string[address, length] *)
    xx find, word_to_explainer, execute
    xx Exit
 def_verb_end help__compile_word_description_to_here__key_word
+
+;; error handling when not found is after debuger
+def_verb "help:compile-word-description-to-here,word", help__compile_word_description_to_here__word
+   ;; (* word-link[address] -- *)
+   xx word_to_explainer, compile_number_to_here
+   xx Exit
+def_verb_end help__compile_word_description_to_here__word
 
 
 def_verb "compile-word-description-to-here", compile_word_description_to_here
@@ -2698,27 +2798,23 @@ def_verb "compile-word-description-to-here", compile_word_description_to_here
    xx   help__compile_word_description_to_here__key_word
    xx   compile_word_description_to_here
    xx   Exit
-   ;; else
-   ;; 这里一定要对查找的结果进行 错误处理
+   xx dup2, find
+   xx dup, _literal, 0, equal?, false?, _false?branch, 6
+   xx   xxswapx, drop2
    xx   help__compile_word_description_to_here__word
    xx   compile_word_description_to_here
    xx   Exit
-def_verb_end compile_word_description_to_here
-;; a string denotes key-word or not
-;; is not depended on the morphology of the string
-def_verb "string-denote-key-word?", string_denote_key_word?
-   ;; (* string[address, length] -- True or False *)
-   xx find
-   xx dup, _literal, 0, equal?, _false?branch, 2   
-   xx   Exit
-   xx word_to_type
-   xx _literal, 111b, bitwise_and
-   xx _literal, 1, equal?, _false?branch, 3
-   xx   True
-   xx   Exit
-   xx False
+   ;; else
+   xx drop
+   xx cr
+   xx Message__undefined_word, print_string
+   xx print_string, cr
+   xx Message__the_rest, print_string, cr
+   xx print_string, cr
    xx Exit
-def_verb_end string_denote_key_word?
+def_verb_end compile_word_description_to_here
+
+def_string "Message:the-rest", "   The rest of the word string to compile is:", Message__the_rest
 def_verb "create-word-header", create_word_header
    ;; (* string[address, length] -- word[address of link] *)
    xx Here, push_lambda_stack ;; for address-of-name-string-header

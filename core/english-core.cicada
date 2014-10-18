@@ -27,9 +27,9 @@ ok
        string-header and string ended by 0 *)
   tail-and-head-of-string
   dup char " == if
-    drop
+    drop 
     (* compile address to here *)
-    literal _literal compile-number-to-here
+    literal _literal compile-number-to-here 
       pop-lambda-stack dup push-lambda-stack
     compile-number-to-here
     (* compile length to here *)

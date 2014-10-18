@@ -1119,7 +1119,7 @@
       mov sys_n_rax, syscall_exit
       syscall
    #+end_src
-** write_byte
+** write-byte
    #+begin_src fasm :tangle cicada.fasm
    hereInitializedData
    ScratchUsedByWriteChar:
@@ -1153,7 +1153,8 @@
       xx sub1, swap
       xx dup, fetch_byte, write_byte
       xx add1, swap
-      xx _branch, -14
+      xx print_string
+      xx Exit
    def_verb_end print_string
    #+end_src
 ** file

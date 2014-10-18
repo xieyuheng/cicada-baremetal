@@ -907,7 +907,8 @@ def_verb "print-string", print_string
    xx sub1, swap
    xx dup, fetch_byte, write_byte
    xx add1, swap
-   xx _branch, -14
+   xx print_string
+   xx Exit
 def_verb_end print_string
 ;; buffer->file,with-error == string->file,with-error
 

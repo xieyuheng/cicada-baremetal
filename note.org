@@ -5,18 +5,12 @@
 
 * ==================================================
 * TODO =============================================
-* branch 
+* word boundary
+  1. ><><>< the note about word boundary is wrong ???
+* branch
   1. 是否对 branch 给更好的支持 ?
      用 label 来计算 offset ???
-* UTF-8 support
-  1. 翻译更多的基本的英文词
-     以实现 中文的 语法关键词 "字"
-  2. Chinese core needs UTF-8 support
-  3. re-naming :
-     1) read-char to read-byte
-     2) write-char to write-byte
-     add UTF-8 support in read-char and write-char
-  4. 实现 中文的 语法关键词 "字"
+* 实现 中文的 语法关键词 "字"
 * ><
   1. move the following to assembly code :
      1) type system
@@ -497,7 +491,7 @@
       本为一物矣
 ** 编译器的渐进开发
    1. 有一种对编译器的测试叫 三重编译 测试
-      当有一个能编译自身的编译器之后   
+      当有一个能编译自身的编译器之后
       当你更改编译器的源代码
       而得到一个新的编译器之后
       对同样的源代码
@@ -506,6 +500,6 @@
       第二次使用新的编译器
       第三次使用新新的编译器
       测试在于比较 新的编译器 和 新新的编译器 是否完全相同
-      它们应该完全相同 因为它们是 "同样的" 编译器编译 
+      它们应该完全相同 因为它们是 "同样的" 编译器编译
       编译 同一份源代码 所得到的二进制文件
 * ==================================================
