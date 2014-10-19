@@ -462,7 +462,6 @@ cicada_virtual_machine:
 hereInitializedData
 cicada_begin_thread:
        xx initialize
-       xx basic_REPL
 def_assembly_code "load-core-file", load_core_file
    ;; (* -- *)
    mov rsi, Initial_files_to_load
@@ -492,6 +491,10 @@ def_verb "initialize", initialize
        xx load_core_file
 
        xx openInterrupt
+
+       xx load_hash_table
+
+       xx basic_REPL
 
        xx Exit
 def_verb_end initialize

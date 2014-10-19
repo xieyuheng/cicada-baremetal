@@ -2,4 +2,153 @@
 #+EMAIL:     xyheme@gmail.com
 
 
-Do NOT try or learn or use this language, for now.
+* what is cicada ?
+  cicada is a very simple programming language,
+  it is a stack-based and functional language,
+  the design of cicada is influenced by scheme and forth and joy.
+
+* what is the purpose cicada project ?
+  the purpose of the cicada project is
+  - to provide support
+  - about programming language and *math*
+  - to *programmable devices*
+  - for *the creative spirit* in everyone's mind ^_^
+
+  ------------------------
+
+  by "programmable devices",
+  I intend to capture the most general concept.
+  devices better be programmable,
+  for they are stupid and can do less if we do not program them,
+  and in my point of view,
+  the more creative smart people program them,
+  the better the world will be ^_^.
+  cicada suits this generalized purpose,
+  for it is very easy to port cicada to any CPU,
+  and the IDE of cicada will be a simple yet powerful text-editor,
+  which will be used as an uniform programming platform across different hardwares.
+
+  by "the creative spirit",
+  I mean that cicada is very easy to be
+  entirely understanded by anyone who has that curiosity,
+  even my 14 years old little brother.
+  and then one can use cicada to program his/her "programmable devices".
+
+  I added "math" above,
+  simply for I love math ^_^,
+  and I will use cicada to do some math experiments,
+  to gratify my curiosity about math.
+
+* on which platforms ?
+  - cicada for linux ::
+       =vm/x86-64/linux/=
+       only for 64 bits linux.
+       when the development environments of cicada operating systems have not been written,
+       GNU/linux operating system will be used as the main development environment.
+  - cicada for windows [not written yet] ::
+       =vm/x86-64/windows/=
+       only for 64 bits windows.
+       which is developed under linux with the help of [[https://www.winehq.org/][wine]],
+       and tested under my friends' windows operating system.
+  - operating system for x86_64 [need to fix some bug] ::
+       =vm/x86-64/baremetal=
+       single user operating system.
+       dynamic type support, users can define their own types.
+       memory management was done by an incremental garbage collector.
+       all code shared a single address space.
+  - operating system for ARM [not written yet] ::
+       which will be running on raspberry pi.
+
+* how to install and run ?
+  please type =make help= or just =make=
+  or read the Makefile.
+
+  for examples :
+  1. after type =make linux=,
+     you should go to =vm/x86-64/linux/= to find the executable ELF file =cicada=.
+  2. after type =make x86-64-kernel=,
+     you should go to =vm/x86-64/baremetal/= to find the binary image file =cicada-image.bin=.
+     and back to the main directory, you can type =make qemu-x86-64-kernel= to test it.
+
+* where can I find more documentations ?
+  please visit
+  http://cicada-language.github.io
+
+* where to visit this open source project ?
+  https://github.com/cicada-language
+
+* -------------------------------------
+* 什么是 cicada ?
+  cicada language 的中文名字叫 蝉语.
+  蝉语 是一个非常简单的程序语言.
+  它是 一个以明显地方式运用栈的 函数式编程语言.
+  蝉语 的设计灵感来源于 scheme 和 forth 还有 joy 这另外三个有趣的程序语言.
+
+* 蝉语项目 的 目的 何在 ?
+  蝉语 的目的是
+  为每个人灵魂中渴望创造的精灵提供程序语言和数学上的支持
+  以使其能够为身边的可编程设备编程
+
+  ------------------------
+
+  "可编程设备" 这个词意在泛化所指,
+  你知道 设备最好是可编程的 这样才有趣,
+  而且在我看来,
+  有越多的有创造精神的聪明的人给它们编程,
+  这个世界就越美好 ^_^.
+  蝉语 很适合这个泛化的目的,
+  因为我很容易把它快速地向各种 处理器 移植,
+  而且 蝉语 的开发环境将是 简单而功能强大的文本编辑器,
+  它将在不同的平台和硬件上保持统一的视觉和操作感受.
+
+  "渴望创造的精灵" 这在于 蝉语 能够很容易地被 有足够好奇心的人 透彻地掌握,
+  有了中文语法的支持之后,
+  就连我上中学的弟弟 谢雨田 也能在很段的时间内学会它.
+
+  "数学支持" 则在于我很喜欢数学,
+  我将用 蝉语 来实践一些我的关于数学的有趣的想法.
+
+* 在什么平台上能用呢 ?
+  * x86_64上的linux操作系统
+    =vm/x86-64/linux/=
+    其实现在只能在 linux操作系统 上使用.
+    而且是限于在 64 位的 x86_64 处理器上允许的 linux操作系统.
+    我和我的朋友 曹雨 很快就会改变这种情况.
+    目前 请不要尝试 linux 版本 之外的其他版本.
+  * x86_64上的windows操作系统
+  * 直接运行于 x86_64 上而不依赖于其他操作系统
+  * 直接运行于 raspberry pi 上而不依赖于其他操作系统
+
+* 如何安装和运行 ?
+  没有复杂的安装过程,
+  请在在终端中输入 =make help= 或 =make= 或 直接阅读 Makefile 来看 蝉语 是如何被编译的.
+
+  例如 :
+  1. 在输入 =make linux= 之后,
+     去 =vm/x86-64/linux/= 路径下你就能找到 ELF 格式的 可执行文件 =cicada=.
+
+* 像别的程序语言一样 这个语言 有各种版本吗 ?
+  没有.
+  这个程序语言的代码都托管在 github 上.
+  git 提供了对程序的版本的管理.
+  你可以把这个程序理解成是滚动升级的,
+  新的信息的发布将是非常频繁的.
+  实验性的性状也经常会被加入,
+  如果希望的话,
+  你可以停留在整个版本的树状图中的任何一个你希望的点上来使用蝉语.
+
+* 去哪儿能找到更多的文档 ?
+  请访问 :
+  http://cicada-language.github.io
+
+* 去哪儿能找到这个开源项目 ?
+  请访问 :
+  https://github.com/cicada-language
+
+* 都有谁在参与这个项目 如何 联系你们 ?
+  - 硬件驱动还有底层编程将由 曹雨 负责.
+  - 某些视觉艺术上的设计将由 瑞思乐 负责.
+  - 我是 谢宇恒.
+    我的邮箱是 =xyheme@gmail.com=
+    我负责程序语言的设计.
+  - irc.freenode.net 上 的 #cicada-language 是我们的 IRC 频道.

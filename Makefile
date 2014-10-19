@@ -5,6 +5,23 @@ help:
 	echo -e " \E[33;1m                                                           \E[0m "
 	echo -e " \E[33;1m   dependencies                                            \E[0m "
 	echo -e " \E[33;1m     fasm   to compile                                     \E[0m "
+	echo -e " \E[33;1m                                                           \E[0m "
+	echo -e " \E[33;1m                                                           \E[0m "
+	echo -e " \E[33;1m   Makefile functions                                      \E[0m "
+	echo -e " \E[33;1m     linux                                                 \E[0m "
+	echo -e " \E[33;1m     clean                                                 \E[0m "
+	echo -e " \E[33;1m							     \E[0m "
+	echo -e " \E[33;1m                                                           \E[0m "
+	echo -e " \E[33;1m   please read the Makefile for more informations          \E[0m "
+	echo -e " \E[33;1m							     \E[0m "
+	echo -e " \E[33;1m   I wish you happy making ^_^                             \E[0m "
+	echo -e " \E[33;1m                                                           \E[0m "
+
+old-help:
+	@
+	echo -e " \E[33;1m                                                           \E[0m "
+	echo -e " \E[33;1m   dependencies                                            \E[0m "
+	echo -e " \E[33;1m     fasm   to compile                                     \E[0m "
 	echo -e " \E[33;1m     qemu   to test x86-64 kernel image                    \E[0m "
 	echo -e " \E[33;1m                                                           \E[0m "
 	echo -e " \E[33;1m                                                           \E[0m "

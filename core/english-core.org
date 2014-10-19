@@ -155,18 +155,18 @@
   #+begin_src cicada
   : .12 (* 1 2 -- *)
     2 == if
-      char 2 write-byte
+      char 2 write-char
       1 == if
-        char 1 write-byte
+        char 1 write-char
       else
-        char _ write-byte
+        char _ write-char
       then
     else
-      char _ write-byte
+      char _ write-char
       1 == if
-        char 1 write-byte
+        char 1 write-char
       else
-        char _ write-byte
+        char _ write-char
       then
     then
     Exit

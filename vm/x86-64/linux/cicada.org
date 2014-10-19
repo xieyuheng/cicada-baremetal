@@ -870,7 +870,6 @@
   cicada_begin_thread:
 
           xx initialize
-          xx basic_REPL
           ;; xx assemblyDebug
   #+end_src
 * load-core-file & Initial-files-to-load
@@ -898,6 +897,8 @@
          ;; (* -- *)
 
          xx load_core_file
+         xx load_hash_table
+         xx basic_REPL
 
          xx Exit
   def_verb_end initialize

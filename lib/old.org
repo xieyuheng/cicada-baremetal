@@ -215,11 +215,11 @@
    #+begin_src cicada
    (* a Symbol-entry [unit : byte]
     ,* ==========================
-    ,*  ||   8 : Symbol-value   ||
-    ,* --------------------------
-    ,*  ||   1 : Symbol-length  ||
-    ,* --------------------------
-    ,*  || 56+ : Symbol-string  ||
+    ,*  ||  Symbol-value   ||
+    ,* ---------------------
+    ,*  ||  Symbol-length  ||
+    ,* ---------------------
+    ,*  ||  Symbol-string  ||
     ,* ==========================
     ,* where Symbol-max-length = 56
     ,*)
@@ -331,6 +331,10 @@
    basic-REPL
    1000000000 index->address
    basic-REPL
+
+   :" a" print-string cr
+   :" b" print-string cr
+   :" c" print-string cr
 
    :" a" string-hash->index . cr
    :" b" string-hash->index . cr

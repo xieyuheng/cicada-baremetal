@@ -3,42 +3,30 @@
 #+EMAIL: xyheme@gmail.com
 
 
+use hash-table in assembly to implement
+better compiler-semantic
 * ==================================================
-* TODO =============================================
-* rewrite number writer in cicada english-core
-* word boundary
-  1. ><><>< the note about word boundary is wrong ???
-* branch
-  1. 是否对 branch 给更好的支持 ?
-     用 label 来计算 offset ???
 * ><
-  1. move the following to assembly code :
-     1) type system
-     2) hash-table
-        and use it to implement dictionary looking-up
-     3) debuger
-     for I need them to implement better compiler-semantic
-     to make the order of function definitions not important anymore
-  2. as the "debuger" is defined in cicada code
+  1. as the "debuger" is defined in cicada code
      it is hard to do good error handling in assembly code
      这是因为我没法在出错的时候即使调用 debuger 来报错
      - 比如 通常的函数类型的错误
        我应该 及时的 调用 debuger 来报告错误
        而在不利的条件下 我必须 返回一个出错码
        来表示函数 所接受的数据类型不对
-  3. redesign the syntax about strings
+  2. redesign the syntax about strings
      to allow more
-  4. the whole english-core.org needs to be rewrited
-  5. ><><>< 注意 ><><><
+  3. the whole english-core.org needs to be rewrited
+  4. ><><>< 注意 ><><><
      对于新的 define 要更改 GC
      整个 GC 都应该被重写了吗 ???
-  6. make good use of indentation
+  5. make good use of indentation
      1) for wodili 应该 在 wodili 的已有的 解析器 的基础上
         增加一个 好好 利用 indentation 的解析器
         两种解析器各自有各自的用处
      2) 把 利用"支撑树" 来进行相对引用的 性质加到 yaml 中
         就能 形成 我想要的 digrap 的语法
-  7. 写编译器
+  6. 写编译器
      1) 从最简单 的 babystep 开始
      2) 编译 bootloader
      3) 注意要保持设计的灵活性
@@ -86,9 +74,14 @@
      也就是必须 要先写自己的 文本编辑器
      之后才能考虑窗口 之类的问题
   8. 也许 可以从 isforth 那里 学习在 linux 下写文本编辑器的基本工作
-  9. 生成中文字典 交给 Recaler
-  10. 支持 windows 及其环境下的开发
-  11. 支持 Mac 及其环境下的开发
+  9. 支持 windows 及其环境下的开发
+  10. 支持 Mac 及其环境下的开发
+* rewrite number writer in cicada english-core
+* word boundary
+  1. ><><>< the note about word boundary is wrong ???
+* branch
+  1. 是否对 branch 给更好的支持 ?
+     用 label 来计算 offset ???
 * english-core
   1. use hash-table to lookup dictionary
      then mutually recursive call

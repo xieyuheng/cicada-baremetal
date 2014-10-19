@@ -643,7 +643,6 @@ hereInitializedData
 cicada_begin_thread:
 
         xx initialize
-        xx basic_REPL
         ;; xx assemblyDebug
 def_assembly_code "load-core-file", load_core_file
    ;; (* -- *)
@@ -665,6 +664,8 @@ def_verb "initialize", initialize
        ;; (* -- *)
 
        xx load_core_file
+       xx load_hash_table
+       xx basic_REPL
 
        xx Exit
 def_verb_end initialize

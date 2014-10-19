@@ -153,11 +153,11 @@ def_verb "/", _div
 def_verb_end _div
 
 
-def_verb "mod", module
+def_verb "mod", _mod
    ;; (* a, b -- a mod b *)
    xx moddiv, drop
    xx Exit
-def_verb_end module
+def_verb_end _mod
 
 
 def_verb "negate", negate
@@ -2309,16 +2309,191 @@ def_verb "cr", cr
    xx _literal, ASCII_linefeed, write_byte
    xx Exit
 def_verb_end cr
-;; (* a Symbol-entry [unit : byte]
+hereUnInitializedData
+
+;; a Symbol_entry (unit : byte)
+;; ===========================
+;;  ||   8 : Symbol_value   ||
+;; ---------------------------
+;;  ||   1 : Symbol_length  ||
+;; ---------------------------
+;;  || 56+ : Symbol_string  ||
+;; ===========================
+
+Symbol_length_bytes_size = 1
+Symbol_value_bytes_size  = 16
+Symbol_string_bytes_size = 56+0
+;; 上面的量决定了 多长的字符串 能够被找会来
+Symbol_max_length       = 56
+Symbol_entry_bytes_size = Symbol_value_bytes_size + Symbol_length_bytes_size + Symbol_string_bytes_size
+;; Number_of_symbol_entrys = 1000003
+;; Number_of_symbol_entrys = 1000033
+;; Number_of_symbol_entrys = 1000333
+;; Number_of_symbol_entrys = 100003
+Number_of_symbol_entrys = 100333
+;; Number_of_symbol_entrys = 997
+;; Number_of_symbol_entrys = 499
+;; Number_of_symbol_entrys = 230 ;; for a special test
+
+First_symbol_entry labeling
+        preserve Symbol_entry_bytes_size
+
+        ;; ========================
+        preserve ((Number_of_symbol_entrys - 2) * Symbol_entry_bytes_size)
+        ;; ========================
+
+Last_symbol_entry labeling
+        preserve Symbol_entry_bytes_size
+
+
+def_noun "Number-of-symbol-entrys",  _Number_of_symbol_entrys
+   xx   Number_of_symbol_entrys
+def_noun_end  _Number_of_symbol_entrys
+
+def_noun "Symbol-value-bytes-size",  _Symbol_value_bytes_size
+   xx   Symbol_value_bytes_size
+def_noun_end  _Symbol_value_bytes_size
+
+def_noun "Symbol-length-bytes-size", _Symbol_length_bytes_size
+   xx  Symbol_length_bytes_size
+def_noun_end _Symbol_length_bytes_size
+
+def_noun "Symbol-string-bytes-size", _Symbol_string_bytes_size
+   xx  Symbol_string_bytes_size
+def_noun_end _Symbol_string_bytes_size
+
+def_noun "Symbol-max-length",        _Symbol_max_length
+   xx         Symbol_max_length
+def_noun_end        _Symbol_max_length
+
+def_noun "Symbol-entry-bytes-size",  _Symbol_entry_bytes_size
+   xx   Symbol_entry_bytes_size
+def_noun_end  _Symbol_entry_bytes_size
+
+
+def_noun "First-symbol-entry", _First_symbol_entry
+   xx  First_symbol_entry
+def_noun_end _First_symbol_entry
+
+def_noun "Last-symbol-entry",  _Last_symbol_entry
+   xx   Last_symbol_entry
+def_noun_end  _Last_symbol_entry
+;; (* a Symbol-entry 
 ;;  * ==========================
-;;  *  ||   8 : Symbol-value   ||
-;;  * --------------------------
-;;  *  ||   1 : Symbol-length  ||
-;;  * --------------------------
-;;  *  || 56+ : Symbol-string  ||
+;;  *  ||  Symbol-value   ||
+;;  * ---------------------
+;;  *  ||  Symbol-length  ||
+;;  * ---------------------
+;;  *  ||  Symbol-string  ||
 ;;  * ==========================
 ;;  * where Symbol-max-length = 56
 ;;  *)
+
+def_verb "index->address", index_to_address
+   ;; (* index -- address *)
+   xx _Symbol_entry_bytes_size, multiple
+   xx _First_symbol_entry, addition
+   xx Exit
+def_verb_end index_to_address
+
+def_verb "index-hashback->string", index_hashback_to_string
+   ;; (* index -- string[address, length] *)
+   xx index_to_address, _literal, Cell_width, addition
+   xx dup, add1, swap
+   xx fetch_byte
+   xx Exit
+def_verb_end index_hashback_to_string
+
+
+def_verb "help:string-hash->index,sum-up", help__string_hash_to_index__sum_up
+  ;; (* sum-up , string[address, length] -- sum-up *)
+  xx dup, zero?, _false?branch, 3
+  xx   drop2
+  xx   Exit
+  xx tail_and_head_of_string
+  xx over, shift_left
+  xx xswapxxx,  addition,  xxswapx
+  xx help__string_hash_to_index__sum_up
+  xx Exit
+def_verb_end help__string_hash_to_index__sum_up
+
+
+def_verb "help:string-hash->index,find-old-or-creat-new", help__string_hash_to_index__find_old_or_creat_new
+   ;; (* string[address, length], index -- index *)
+   xx xxtuckx
+   xx index_hashback_to_string
+   ;; (* index, string[address, length], string-2[address, length] *)
+   xx dup, zero?, _false?branch, (.xxoverxx-$)/Cell_width ;; (* creat-new *)
+   xx   drop
+   ;;   (* index, string[address, length], destination-address *)
+   xx   over, over
+   ;;   (* index, string[address, length], destination-address, length, address *)
+   xx   sub1, save_byte
+   xx   swap
+   ;;   (* index,, source-address, destination-address, length *)
+   xx   copy_byte_string
+   xx   Exit
+   ;; (* index, string[address, length], string-2[address, length] *)
+   .xxoverxx:
+   xx xxoverxx, equal_string?, _false?branch, 3 ;; (* found old *)
+   xx   drop2
+   xx   Exit
+
+   xx xswapxx ;; (* to get next-index *)
+   ;; (* string[address, length], index *)
+   xx dup, index_to_address, _Last_symbol_entry, equal?, _false?branch, (.add1-$)/Cell_width
+   xx   drop
+   xx   _literal, 0
+   xx   help__string_hash_to_index__find_old_or_creat_new
+   xx   Exit
+   .add1:
+   xx add1
+   xx help__string_hash_to_index__find_old_or_creat_new
+   xx Exit
+def_verb_end help__string_hash_to_index__find_old_or_creat_new
+
+
+def_verb "help:string-hash->index,sum-up->index", help__string_hash_to_index__sum_up_to_index
+  ;; (* sum-up -- index *)
+  xx _Number_of_symbol_entrys, _mod
+  xx Exit
+def_verb_end help__string_hash_to_index__sum_up_to_index
+
+
+def_verb "string-hash->index", string_hash_to_index
+  ;; (* string[address, length] -- index *)
+  xx dup2
+  xx   dup, _Symbol_max_length, greater_than?, _false?branch, 3
+  xx     drop, _Symbol_max_length
+  ;;     (* this means only first Symbol-max-length of the string is used by the hash-function *)
+  xx   _literal, 0, xxswapx
+  xx   help__string_hash_to_index__sum_up
+  xx   help__string_hash_to_index__sum_up_to_index
+  xx help__string_hash_to_index__find_old_or_creat_new
+  xx Exit
+def_verb_end string_hash_to_index
+def_verb "help:load-hash-table", help__load_hash_table
+   ;; (* word[address of link] -- *)
+   xx dup, zero?, _false?branch, 3
+   xx   drop
+   xx   Exit
+
+   xx dup, dup
+   xx word_to_name_string, string_hash_to_index, index_to_address
+   xx save
+
+   xx fetch
+   xx help__load_hash_table
+   xx Exit
+def_verb_end help__load_hash_table
+
+
+def_verb "load-hash-table", load_hash_table
+   ;; (* -- *)
+   xx First_word_in_dictionary
+   xx help__load_hash_table
+   xx Exit
+def_verb_end load_hash_table
 def_assembly_code "execute", execute
    ;; ( word[address of explainer] -- )
    pop_argument_stack Explainer_pointer
@@ -2505,26 +2680,11 @@ def_verb "word->description", word_to_description
    xx addition
    xx Exit
 def_verb_end word_to_description
-def_verb "help,find", help__find
-   ;; (* wordString[address, length], link[address] -- word[address of link] or Zero *)
-   xx dup, zero?, _false?branch, 6
-   xx   drop, drop2
-   xx   _literal, 0
-   xx   Exit
-   xx dup, push_lambda_stack
-   xx word_to_name_string, xxoverxx
-   xx equal_string?, _false?branch, 4
-   xx   drop2, pop_lambda_stack
-   xx   Exit
-   xx pop_lambda_stack, fetch
-   xx help__find
-   xx Exit
-def_verb_end help__find
-
 def_verb "find", find
    ;; (* wordString[address, length] -- word[address of link] or Zero *)
-   xx First_word_in_dictionary
-   xx help__find
+   xx string_hash_to_index
+   xx index_to_address
+   xx fetch
    xx Exit
 def_verb_end find
 ;; a string denotes key-word or not
@@ -2830,10 +2990,18 @@ def_verb "create-word-header", create_word_header
    xx pop_lambda_stack, compile_number_to_here ;; address-of-name-string-header
    xx Exit
 def_verb_end create_word_header
-
 def_verb "add-new-word-to-dictionary", add_new_word_to_dictionary
-   ;; reset First_word_in_dictionary to point to the newly defined word
    ;; (* word[address of link] -- *)
+
+   xx dup
+
+   ;; for now hash-table
+   xx dup
+   xx word_to_name_string, string_hash_to_index, index_to_address
+   xx save
+
+   ;; for old linked list
+   ;; reset First_word_in_dictionary to point to the newly defined word
    xx dup
    xx First_word_in_dictionary
    xx swap
@@ -2841,7 +3009,6 @@ def_verb "add-new-word-to-dictionary", add_new_word_to_dictionary
    xx _address, First_word_in_dictionary, save
    xx Exit
 def_verb_end add_new_word_to_dictionary
-
 ;; the following function
 ;; must be called at the end of word definition
 ;; i.e. after "compile_word_description_to_here"
@@ -3060,73 +3227,6 @@ def_noun_end  _Last_pair_construction
 def_noun "Current-free-pair-construction", Current_free_pair_construction
    xx  First_pair_construction
 def_noun_end Current_free_pair_construction
-hereUnInitializedData
-
-;; a Symbol_entry (unit : byte)
-;; ===========================
-;;  ||   8 : Symbol_value   ||
-;; ---------------------------
-;;  ||   1 : Symbol_length  ||
-;; ---------------------------
-;;  || 56+ : Symbol_string  ||
-;; ===========================
-
-Symbol_length_bytes_size = 1
-Symbol_value_bytes_size  = 8
-Symbol_string_bytes_size = 56+0
-Symbol_max_length       = 56
-Symbol_entry_bytes_size = Symbol_value_bytes_size + Symbol_length_bytes_size + Symbol_string_bytes_size
-;; Number_of_symbol_entrys = 1000003
-;; Number_of_symbol_entrys = 1000033
-;; Number_of_symbol_entrys = 1000333
-;; Number_of_symbol_entrys = 100003
-Number_of_symbol_entrys = 100333
-;; Number_of_symbol_entrys = 997
-;; Number_of_symbol_entrys = 499
-;; Number_of_symbol_entrys = 230 ;; for a special test
-
-First_symbol_entry labeling
-        preserve Symbol_entry_bytes_size
-
-        ;; ========================
-        preserve ((Number_of_symbol_entrys - 2) * Symbol_entry_bytes_size)
-        ;; ========================
-
-Last_symbol_entry labeling
-        preserve Symbol_entry_bytes_size
-
-def_noun "Number-of-symbol-entrys",  _Number_of_symbol_entrys
-   xx   Number_of_symbol_entrys
-def_noun_end  _Number_of_symbol_entrys
-
-def_noun "Symbol-value-bytes-size",  _Symbol_value_bytes_size
-   xx   Symbol_value_bytes_size
-def_noun_end  _Symbol_value_bytes_size
-
-def_noun "Symbol-length-bytes-size", _Symbol_length_bytes_size
-   xx  Symbol_length_bytes_size
-def_noun_end _Symbol_length_bytes_size
-
-def_noun "Symbol-string-bytes-size", _Symbol_string_bytes_size
-   xx  Symbol_string_bytes_size
-def_noun_end _Symbol_string_bytes_size
-
-def_noun "Symbol-max-length",        _Symbol_max_length
-   xx         Symbol_max_length
-def_noun_end        _Symbol_max_length
-
-def_noun "Symbol-entry-bytes-size",  _Symbol_entry_bytes_size
-   xx   Symbol_entry_bytes_size
-def_noun_end  _Symbol_entry_bytes_size
-
-
-def_noun "First-symbol-entry", _First_symbol_entry
-   xx  First_symbol_entry
-def_noun_end _First_symbol_entry
-
-def_noun "Last-symbol-entry",  _Last_symbol_entry
-   xx   Last_symbol_entry
-def_noun_end  _Last_symbol_entry
 hereUnInitializedData
 
 Size_of_string_heap = 5*1024*1024

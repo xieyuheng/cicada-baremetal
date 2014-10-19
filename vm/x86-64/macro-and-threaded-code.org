@@ -440,11 +440,11 @@
    def_verb_end _div
 
 
-   def_verb "mod", module
+   def_verb "mod", _mod
       ;; (* a, b -- a mod b *)
       xx moddiv, drop
       xx Exit
-   def_verb_end module
+   def_verb_end _mod
 
 
    def_verb "negate", negate
@@ -2888,7 +2888,7 @@
       xx Exit
    def_verb_end cr
    #+end_src
-* >< hash-table for symbol
+* hash-table for symbol
 ** note
    1. "string-hash->index index-hashback->string"
       is a identity function
@@ -2929,6 +2929,9 @@
       不能用这个 域来保存 pair
       因为 我不能让 garbage-collectior 在每个工作周期的开始时
       扫描整个 hash-table
+      + 让这个域的大小为 2 * Cell-width
+        第一个 Cell 保存 地址
+        第二个 Cell 保存 类型
    3. 用类似数学表达式 来表示 这里所使用的 散列函数 如下 :
       hash-function (string)
       ==> (sum-up [byte_n * 2^n]) mod Number-of-symbol-entrys
@@ -2939,65 +2942,245 @@
       所以 我定义 Symbol-max-length == 64 - 8 == 56
       每个字符串中 只有前 Symbol-max-length 个字符被 hash-function 使用到了
       因此 前 Symbol-max-length 个字符 相同的两个字符串 一定会相互冲突
+** memory allocation of Hash-Table-For-Symbol
+   using linear probing
+   so, the load factor must be lower then 0.5
+   #+begin_src fasm :tangle threaded-code.inc
+   hereUnInitializedData
+
+   ;; a Symbol_entry (unit : byte)
+   ;; ===========================
+   ;;  ||   8 : Symbol_value   ||
+   ;; ---------------------------
+   ;;  ||   1 : Symbol_length  ||
+   ;; ---------------------------
+   ;;  || 56+ : Symbol_string  ||
+   ;; ===========================
+
+   Symbol_length_bytes_size = 1
+   Symbol_value_bytes_size  = 16
+   Symbol_string_bytes_size = 56+0
+   ;; 上面的量决定了 多长的字符串 能够被找会来
+   Symbol_max_length       = 56
+   Symbol_entry_bytes_size = Symbol_value_bytes_size + Symbol_length_bytes_size + Symbol_string_bytes_size
+   ;; Number_of_symbol_entrys = 1000003
+   ;; Number_of_symbol_entrys = 1000033
+   ;; Number_of_symbol_entrys = 1000333
+   ;; Number_of_symbol_entrys = 100003
+   Number_of_symbol_entrys = 100333
+   ;; Number_of_symbol_entrys = 997
+   ;; Number_of_symbol_entrys = 499
+   ;; Number_of_symbol_entrys = 230 ;; for a special test
+
+   First_symbol_entry labeling
+           preserve Symbol_entry_bytes_size
+
+           ;; ========================
+           preserve ((Number_of_symbol_entrys - 2) * Symbol_entry_bytes_size)
+           ;; ========================
+
+   Last_symbol_entry labeling
+           preserve Symbol_entry_bytes_size
+
+
+   def_noun "Number-of-symbol-entrys",  _Number_of_symbol_entrys
+      xx   Number_of_symbol_entrys
+   def_noun_end  _Number_of_symbol_entrys
+
+   def_noun "Symbol-value-bytes-size",  _Symbol_value_bytes_size
+      xx   Symbol_value_bytes_size
+   def_noun_end  _Symbol_value_bytes_size
+
+   def_noun "Symbol-length-bytes-size", _Symbol_length_bytes_size
+      xx  Symbol_length_bytes_size
+   def_noun_end _Symbol_length_bytes_size
+
+   def_noun "Symbol-string-bytes-size", _Symbol_string_bytes_size
+      xx  Symbol_string_bytes_size
+   def_noun_end _Symbol_string_bytes_size
+
+   def_noun "Symbol-max-length",        _Symbol_max_length
+      xx         Symbol_max_length
+   def_noun_end        _Symbol_max_length
+
+   def_noun "Symbol-entry-bytes-size",  _Symbol_entry_bytes_size
+      xx   Symbol_entry_bytes_size
+   def_noun_end  _Symbol_entry_bytes_size
+
+
+   def_noun "First-symbol-entry", _First_symbol_entry
+      xx  First_symbol_entry
+   def_noun_end _First_symbol_entry
+
+   def_noun "Last-symbol-entry",  _Last_symbol_entry
+      xx   Last_symbol_entry
+   def_noun_end  _Last_symbol_entry
+   #+end_src
 ** string-hash->index & index-hashback->string
    #+begin_src fasm :tangle threaded-code.inc
-   ;; (* a Symbol-entry [unit : byte]
+   ;; (* a Symbol-entry
    ;;  * ==========================
-   ;;  *  ||   8 : Symbol-value   ||
-   ;;  * --------------------------
-   ;;  *  ||   1 : Symbol-length  ||
-   ;;  * --------------------------
-   ;;  *  || 56+ : Symbol-string  ||
+   ;;  *  ||  Symbol-value   ||
+   ;;  * ---------------------
+   ;;  *  ||  Symbol-length  ||
+   ;;  * ---------------------
+   ;;  *  ||  Symbol-string  ||
    ;;  * ==========================
    ;;  * where Symbol-max-length = 56
    ;;  *)
 
+   def_verb "index->address", index_to_address
+      ;; (* index -- address *)
+      xx _Symbol_entry_bytes_size, multiple
+      xx _First_symbol_entry, addition
+      xx Exit
+   def_verb_end index_to_address
+
+   def_verb "index-hashback->string", index_hashback_to_string
+      ;; (* index -- string[address, length] *)
+      xx index_to_address, _literal, Cell_width, addition
+      xx dup, add1, swap
+      xx fetch_byte
+      xx Exit
+   def_verb_end index_hashback_to_string
+
+
+   def_verb "help:string-hash->index,sum-up", help__string_hash_to_index__sum_up
+     ;; (* sum-up , string[address, length] -- sum-up *)
+     xx dup, zero?, _false?branch, 3
+     xx   drop2
+     xx   Exit
+     xx tail_and_head_of_string
+     xx over, shift_left
+     xx xswapxxx,  addition,  xxswapx
+     xx help__string_hash_to_index__sum_up
+     xx Exit
+   def_verb_end help__string_hash_to_index__sum_up
+
+
+   def_verb "help:string-hash->index,find-old-or-creat-new", help__string_hash_to_index__find_old_or_creat_new
+      ;; (* string[address, length], index -- index *)
+      xx xxtuckx
+      xx index_hashback_to_string
+      ;; (* index, string[address, length], string-2[address, length] *)
+      xx dup, zero?, _false?branch, (.xxoverxx-$)/Cell_width ;; (* creat-new *)
+      xx   drop
+      ;;   (* index, string[address, length], destination-address *)
+      xx   over, over
+      ;;   (* index, string[address, length], destination-address, length, address *)
+      xx   sub1, save_byte
+      xx   swap
+      ;;   (* index,, source-address, destination-address, length *)
+      xx   copy_byte_string
+      xx   Exit
+      ;; (* index, string[address, length], string-2[address, length] *)
+      .xxoverxx:
+      xx xxoverxx, equal_string?, _false?branch, 3 ;; (* found old *)
+      xx   drop2
+      xx   Exit
+
+      xx xswapxx ;; (* to get next-index *)
+      ;; (* string[address, length], index *)
+      xx dup, index_to_address, _Last_symbol_entry, equal?, _false?branch, (.add1-$)/Cell_width
+      xx   drop
+      xx   _literal, 0
+      xx   help__string_hash_to_index__find_old_or_creat_new
+      xx   Exit
+      .add1:
+      xx add1
+      xx help__string_hash_to_index__find_old_or_creat_new
+      xx Exit
+   def_verb_end help__string_hash_to_index__find_old_or_creat_new
+
+
+   def_verb "help:string-hash->index,sum-up->index", help__string_hash_to_index__sum_up_to_index
+     ;; (* sum-up -- index *)
+     xx _Number_of_symbol_entrys, _mod
+     xx Exit
+   def_verb_end help__string_hash_to_index__sum_up_to_index
+
+
+   def_verb "string-hash->index", string_hash_to_index
+     ;; (* string[address, length] -- index *)
+     xx dup2
+     xx   dup, _Symbol_max_length, greater_than?, _false?branch, 3
+     xx     drop, _Symbol_max_length
+     ;;     (* this means only first Symbol-max-length of the string is used by the hash-function *)
+     xx   _literal, 0, xxswapx
+     xx   help__string_hash_to_index__sum_up
+     xx   help__string_hash_to_index__sum_up_to_index
+     xx help__string_hash_to_index__find_old_or_creat_new
+     xx Exit
+   def_verb_end string_hash_to_index
    #+end_src
-* >< type
-** note
-   1. garbage-collectior needs type
-      for it have to be able to distinguish
-      <pair> from <non-pair>
-      i.e. address from value
-   2. a type-tag is implemented as a symbol
-      i.e. a index of hash-table for symbol
-      and the structure of an entry in hash-table
-      can be made rich enough to hold needed informations
-      for example, a type field is very useful
-      i.e. a type field in an entry of the hash-table
-      can denote the type of type
-      thus <pair> and <non-pair> are distinguished
-   3. 但是
-      其实 这些类型标签 只是 在 pair 的数组中
-      才有相对完备的 去 区分量的类型的功能
-      而在 某些情况下 它们是不充分的
-      这在于
-      因为我没有 限制所有的量都 必须是这种带有 类型标签的
-      占据 两个 Cell 的量
-      这导致了
-      在某些情况下 我还是必须使用 地址 来判断某个量是不是 <pair>
-      虽然导致了 一些不谐
-      但是 这是可以接受的
-      因为 实现 <pair> 的只不过是一个 结构化的 数组而已
-   4. 我必须做一些相对复杂的 对数组中所保存的量 的匹配
-      才能 在某些特殊的情况下 对 pair 做判断
-      比如 对于 noun
-      为了在 garbage-collectior 的工作周期的开始时 初始化被染色的 pair
-      我需要 看这个 noun 的大小是不是 大于1
-      同时 还需要在其中找 <pair>
-      当找到的时候 需要看 入栈之时 这个 <pair> 是不是在最末尾
-      如果不是 在最末尾 那么它和它之后的那个量才有可能 组成一个 带有类型标签的量
-      这是 需要看它之后 的那个量 作为一个地址 是不是 在 pair 的数组 中的合适的位置
-      如果是的话 就认为 这个 noun 中保存了一个 动态类型的量
-      此时 根据 garbage-collectior 的需要 来处理这个量 就可以了
-   5. 另外关于 garbage-collectior 的一个难点是
-      当我允许在数据段中出现 链表 的时候
-      这些 链表 必须是绝对静态的
-      并且要知道 这些 链表是在 pair 的数组之外的
-      garbage-collectior 应该以特殊的方式处理这些 东西
-      我想 这是可以实现的
-      这个问题留到具体实现的候再去考虑
-** implementation
+* load-hash-table
+  #+begin_src fasm :tangle threaded-code.inc
+  def_verb "help:load-hash-table", help__load_hash_table
+     ;; (* word[address of link] -- *)
+     xx dup, zero?, _false?branch, 3
+     xx   drop
+     xx   Exit
+
+     xx dup, dup
+     xx word_to_name_string, string_hash_to_index, index_to_address
+     xx save
+
+     xx fetch
+     xx help__load_hash_table
+     xx Exit
+  def_verb_end help__load_hash_table
+
+
+  def_verb "load-hash-table", load_hash_table
+     ;; (* -- *)
+     xx First_word_in_dictionary
+     xx help__load_hash_table
+     xx Exit
+  def_verb_end load_hash_table
+  #+end_src
+* note about type
+  1. garbage-collectior needs type
+     for it have to be able to distinguish
+     <pair> from <non-pair>
+     i.e. address from value
+  2. a type-tag is implemented as a symbol
+     i.e. a index of hash-table for symbol
+     and the structure of an entry in hash-table
+     can be made rich enough to hold needed informations
+     for example, a type field is very useful
+     i.e. a type field in an entry of the hash-table
+     can denote the type of type
+     thus <pair> and <non-pair> are distinguished
+  3. 但是
+     其实 这些类型标签 只是 在 pair 的数组中
+     才有相对完备的 去 区分量的类型的功能
+     而在 某些情况下 它们是不充分的
+     这在于
+     因为我没有 限制所有的量都 必须是这种带有 类型标签的
+     占据 两个 Cell 的量
+     这导致了
+     在某些情况下 我还是必须使用 地址 来判断某个量是不是 <pair>
+     虽然导致了 一些不谐
+     但是 这是可以接受的
+     因为 实现 <pair> 的只不过是一个 结构化的 数组而已
+  4. 我必须做一些相对复杂的 对数组中所保存的量 的匹配
+     才能 在某些特殊的情况下 对 pair 做判断
+     比如 对于 noun
+     为了在 garbage-collectior 的工作周期的开始时 初始化被染色的 pair
+     我需要 看这个 noun 的大小是不是 大于1
+     同时 还需要在其中找 <pair>
+     当找到的时候 需要看 入栈之时 这个 <pair> 是不是在最末尾
+     如果不是 在最末尾 那么它和它之后的那个量才有可能 组成一个 带有类型标签的量
+     这是 需要看它之后 的那个量 作为一个地址 是不是 在 pair 的数组 中的合适的位置
+     如果是的话 就认为 这个 noun 中保存了一个 动态类型的量
+     此时 根据 garbage-collectior 的需要 来处理这个量 就可以了
+  5. 另外关于 garbage-collectior 的一个难点是
+     当我允许在数据段中出现 链表 的时候
+     这些 链表 必须是绝对静态的
+     并且要知道 这些 链表是在 pair 的数组之外的
+     garbage-collectior 应该以特殊的方式处理这些 东西
+     我想 这是可以实现的
+     这个问题留到具体实现的候再去考虑
 * dictionary & lexicographer
 ** explainers & execute & Exit
    #+begin_src fasm :tangle threaded-code.inc
@@ -3191,31 +3374,42 @@
       xx Exit
    def_verb_end word_to_description
    #+end_src
-** find (dictionary look up)
-   #+begin_src fasm :tangle threaded-code.inc
-   def_verb "help,find", help__find
-      ;; (* wordString[address, length], link[address] -- word[address of link] or Zero *)
-      xx dup, zero?, _false?branch, 6
-      xx   drop, drop2
-      xx   _literal, 0
-      xx   Exit
-      xx dup, push_lambda_stack
-      xx word_to_name_string, xxoverxx
-      xx equal_string?, _false?branch, 4
-      xx   drop2, pop_lambda_stack
-      xx   Exit
-      xx pop_lambda_stack, fetch
-      xx help__find
-      xx Exit
-   def_verb_end help__find
+** find
+*** [NOT USING] by linked list
+    #+begin_src fasm
+    def_verb "help,find", help__find
+       ;; (* wordString[address, length], link[address] -- word[address of link] or Zero *)
+       xx dup, zero?, _false?branch, 6
+       xx   drop, drop2
+       xx   _literal, 0
+       xx   Exit
+       xx dup, push_lambda_stack
+       xx word_to_name_string, xxoverxx
+       xx equal_string?, _false?branch, 4
+       xx   drop2, pop_lambda_stack
+       xx   Exit
+       xx pop_lambda_stack, fetch
+       xx help__find
+       xx Exit
+    def_verb_end help__find
 
-   def_verb "find", find
-      ;; (* wordString[address, length] -- word[address of link] or Zero *)
-      xx First_word_in_dictionary
-      xx help__find
-      xx Exit
-   def_verb_end find
-   #+end_src
+    def_verb "find", find
+       ;; (* wordString[address, length] -- word[address of link] or Zero *)
+       xx First_word_in_dictionary
+       xx help__find
+       xx Exit
+    def_verb_end find
+    #+end_src
+*** by hash-table
+    #+begin_src fasm :tangle threaded-code.inc
+    def_verb "find", find
+       ;; (* wordString[address, length] -- word[address of link] or Zero *)
+       xx string_hash_to_index
+       xx index_to_address
+       xx fetch
+       xx Exit
+    def_verb_end find
+    #+end_src
 ** string_denote_key_word?
    #+begin_src fasm :tangle threaded-code.inc
    ;; a string denotes key-word or not
@@ -3536,8 +3730,8 @@
 
    def_string "Message:the-rest", "   The rest of the word string to compile is:", Message__the_rest
    #+end_src
-** define-verb
-*** helper functions
+** helper functions
+*** create-word-header
     #+begin_src fasm :tangle threaded-code.inc
     def_verb "create-word-header", create_word_header
        ;; (* string[address, length] -- word[address of link] *)
@@ -3551,10 +3745,21 @@
        xx pop_lambda_stack, compile_number_to_here ;; address-of-name-string-header
        xx Exit
     def_verb_end create_word_header
-
+    #+end_src
+*** add-new-word-to-dictionary
+    #+begin_src fasm :tangle threaded-code.inc
     def_verb "add-new-word-to-dictionary", add_new_word_to_dictionary
-       ;; reset First_word_in_dictionary to point to the newly defined word
        ;; (* word[address of link] -- *)
+
+       xx dup
+
+       ;; for now hash-table
+       xx dup
+       xx word_to_name_string, string_hash_to_index, index_to_address
+       xx save
+
+       ;; for old linked list
+       ;; reset First_word_in_dictionary to point to the newly defined word
        xx dup
        xx First_word_in_dictionary
        xx swap
@@ -3562,7 +3767,9 @@
        xx _address, First_word_in_dictionary, save
        xx Exit
     def_verb_end add_new_word_to_dictionary
-
+    #+end_src
+*** set-size-of-word
+    #+begin_src fasm :tangle threaded-code.inc
     ;; the following function
     ;; must be called at the end of word definition
     ;; i.e. after "compile_word_description_to_here"
@@ -3577,27 +3784,27 @@
        xx Exit
     def_verb_end set_size_of_word
     #+end_src
-*** implementation
-    #+begin_src fasm :tangle threaded-code.inc
-    def_verb "define-verb", define_verb
-       ;; (* words-string[address, length] -- *)
-       xx tail_and_head_of_word_string
-       xx create_word_header
-       xx dup, push_lambda_stack
-       xx   add_new_word_to_dictionary
-       xx   Verb_explainer, compile_number_to_here
-       xx   compile_word_description_to_here
-       xx pop_lambda_stack
-       xx set_size_of_word
-       xx Exit
-    def_verb_end define_verb
+** define-verb
+   #+begin_src fasm :tangle threaded-code.inc
+   def_verb "define-verb", define_verb
+      ;; (* words-string[address, length] -- *)
+      xx tail_and_head_of_word_string
+      xx create_word_header
+      xx dup, push_lambda_stack
+      xx   add_new_word_to_dictionary
+      xx   Verb_explainer, compile_number_to_here
+      xx   compile_word_description_to_here
+      xx pop_lambda_stack
+      xx set_size_of_word
+      xx Exit
+   def_verb_end define_verb
 
-    def_verb "define-function", define_function
-       ;; (* words-string[address, length] -- *)
-       xx define_verb
-       xx Exit
-    def_verb_end define_function
-    #+end_src
+   def_verb "define-function", define_function
+      ;; (* words-string[address, length] -- *)
+      xx define_verb
+      xx Exit
+   def_verb_end define_function
+   #+end_src
 ** eval-string,for-define
 *** note
     1. eval == compile and call
@@ -3818,78 +4025,6 @@
    def_noun "Current-free-pair-construction", Current_free_pair_construction
       xx  First_pair_construction
    def_noun_end Current_free_pair_construction
-   #+end_src
-** Hash-Table-For-Symbol
-   using linear probing
-   so, the load factor must be lower then 0.5
-   #+begin_src fasm :tangle threaded-code.inc
-   hereUnInitializedData
-
-   ;; a Symbol_entry (unit : byte)
-   ;; ===========================
-   ;;  ||   8 : Symbol_value   ||
-   ;; ---------------------------
-   ;;  ||   1 : Symbol_length  ||
-   ;; ---------------------------
-   ;;  || 56+ : Symbol_string  ||
-   ;; ===========================
-
-   Symbol_length_bytes_size = 1
-   Symbol_value_bytes_size  = 8
-   Symbol_string_bytes_size = 56+0
-   Symbol_max_length       = 56
-   Symbol_entry_bytes_size = Symbol_value_bytes_size + Symbol_length_bytes_size + Symbol_string_bytes_size
-   ;; Number_of_symbol_entrys = 1000003
-   ;; Number_of_symbol_entrys = 1000033
-   ;; Number_of_symbol_entrys = 1000333
-   ;; Number_of_symbol_entrys = 100003
-   Number_of_symbol_entrys = 100333
-   ;; Number_of_symbol_entrys = 997
-   ;; Number_of_symbol_entrys = 499
-   ;; Number_of_symbol_entrys = 230 ;; for a special test
-
-   First_symbol_entry labeling
-           preserve Symbol_entry_bytes_size
-
-           ;; ========================
-           preserve ((Number_of_symbol_entrys - 2) * Symbol_entry_bytes_size)
-           ;; ========================
-
-   Last_symbol_entry labeling
-           preserve Symbol_entry_bytes_size
-
-   def_noun "Number-of-symbol-entrys",  _Number_of_symbol_entrys
-      xx   Number_of_symbol_entrys
-   def_noun_end  _Number_of_symbol_entrys
-
-   def_noun "Symbol-value-bytes-size",  _Symbol_value_bytes_size
-      xx   Symbol_value_bytes_size
-   def_noun_end  _Symbol_value_bytes_size
-
-   def_noun "Symbol-length-bytes-size", _Symbol_length_bytes_size
-      xx  Symbol_length_bytes_size
-   def_noun_end _Symbol_length_bytes_size
-
-   def_noun "Symbol-string-bytes-size", _Symbol_string_bytes_size
-      xx  Symbol_string_bytes_size
-   def_noun_end _Symbol_string_bytes_size
-
-   def_noun "Symbol-max-length",        _Symbol_max_length
-      xx         Symbol_max_length
-   def_noun_end        _Symbol_max_length
-
-   def_noun "Symbol-entry-bytes-size",  _Symbol_entry_bytes_size
-      xx   Symbol_entry_bytes_size
-   def_noun_end  _Symbol_entry_bytes_size
-
-
-   def_noun "First-symbol-entry", _First_symbol_entry
-      xx  First_symbol_entry
-   def_noun_end _First_symbol_entry
-
-   def_noun "Last-symbol-entry",  _Last_symbol_entry
-      xx   Last_symbol_entry
-   def_noun_end  _Last_symbol_entry
    #+end_src
 ** two String_heap s
    #+begin_src fasm :tangle threaded-code.inc
