@@ -1744,7 +1744,7 @@ def_verb "eval-phrase", eval_phrase
    xx Exit
 def_verb_end eval_phrase
 hereUnInitializedData
-;; ------------------------
+
 Size_of_buffer_of_function_body__for_compile_phrase = 1024*1024
 Size_of_buffer_of_data_section__for_compile_phrase = 1024*1024
 
@@ -1771,8 +1771,87 @@ def_verb "call-compiled-phrase", call_compiled_phrase
    ;; (* -- unknown *)
    xx _literal, Buffer_of_function_body__for_compile_phrase
    xx execute
+   xx clear_waiting_symbol_list__for_phrase
    xx Exit
 def_verb_end call_compiled_phrase
+;; the following function do a side-effect on Waiting_symbol_list
+;; but bad thing is that
+;; single-linked-list is not very good for side-effect
+;; but I use it anyway
+
+;; 检测链表中的第二个元素 而不是第一个元素
+;; 这样就可以在 检查到 phrase 的 buffer 中的地址时
+;; 从中间消去链表的一个元素
+;; 结束递归的条件是 发现 链表是 由单个元素组成的
+;; 当链表不是由单个元素组成的 的时候
+;; 递归作用以两种方式减少 链表的长度
+;; 1. 不需要消去时 参数后移
+;; 2. 需要消去时 消去一个元素
+;; 链表的头元素始终是被处理过了的 (即 确定以需要被包含在链表内的)
+;; 空链表和链表元素个数为 1 的情形
+;; 在递归部分之外处理
+;; 其实 不应该说是 递归之外
+;; 因为这里是在用一个循环 来寻找
+;; 第一个 需要被留在链表中的元素
+
+def_verb "clear-waiting-symbol-list,for-phrase", clear_waiting_symbol_list__for_phrase
+   ;; (* -- *)
+   xx Waiting_symbol_list
+
+   .main:
+   ;; (* 这个循环是为了找到第一个需要被保留在链表内的元素 *)
+   xx dup, _Null_waiting_symbol_entry, equal?, _false?branch, 3
+   xx   drop
+   xx   Exit
+   xx dup
+   xx entry_in_buffer_of_function_body__for_compile_phrase?
+   xx _false?branch, (.not_match-$)/Cell_width
+   xx   cdr_of_waiting_symbol_list
+   xx   dup, _address, Waiting_symbol_list, save
+   xx   _branch, (.main-$)/Cell_width
+   .not_match:
+   ;; (* list[address] *)
+   xx help__clear_waiting_symbol_list__for_phrase
+   xx Exit
+def_verb_end clear_waiting_symbol_list__for_phrase
+
+
+def_verb "help:clear-waiting-symbol-list,for-phrase", help__clear_waiting_symbol_list__for_phrase
+   ;; (* list[address] -- *)
+   xx dup, one_entry_waiting_symbol_list?, _false?branch, 3
+   xx   drop
+   xx   Exit
+   xx dup, cdr_of_waiting_symbol_list
+   xx entry_in_buffer_of_function_body__for_compile_phrase?
+   xx _false?branch, (.not_match-$)/Cell_width
+   xx   remove_car_of_cdr_of_waiting_symbol_list
+   xx   help__clear_waiting_symbol_list__for_phrase
+   xx   Exit
+   .not_match:
+   xx cdr_of_waiting_symbol_list
+   xx help__clear_waiting_symbol_list__for_phrase
+   xx Exit
+def_verb_end help__clear_waiting_symbol_list__for_phrase
+
+
+def_verb "entry-in-buffer-of-function-body,for-compile-phrase?", entry_in_buffer_of_function_body__for_compile_phrase?
+   ;; (* list[address] -- True or False *)
+   xx car_of_waiting_symbol_list
+   xx dup
+   xx _literal, Buffer_of_function_body__for_compile_phrase
+   xx less_than?, _false?branch, 4
+   xx   drop
+   xx   False
+   xx   Exit
+   xx _literal, Buffer_of_function_body__for_compile_phrase
+   xx _literal, Size_of_buffer_of_function_body__for_compile_phrase
+   xx addition
+   xx greater_or_equal?, _false?branch, 3
+   xx   False
+   xx   Exit
+   xx True
+   xx Exit
+def_verb_end entry_in_buffer_of_function_body__for_compile_phrase?
 ;;   | 0xxxxxxx |          |          |          |          |          |
 ;;   | 110xxxxx | 10xxxxxx |          |          |          |          |
 ;;   | 1110xxxx | 10xxxxxx | 10xxxxxx |          |          |          |
@@ -2690,7 +2769,7 @@ def_verb "remove-car-of-cdr-of-waiting-symbol-list", remove_car_of_cdr_of_waitin
    xx save
    xx Exit
 def_verb_end remove_car_of_cdr_of_waiting_symbol_list
-;; 比对链表中的第二个元素 而是第一个元素
+;; 比对链表中的第二个元素 而不是第一个元素
 ;; 这样就可以在 比对成功时 从中间消去链表的一个元素
 ;; 结束递归的条件是 发现 链表是 由单个元素组成的
 ;; 当链表不是由单个元素组成的 的时候
@@ -2700,6 +2779,9 @@ def_verb_end remove_car_of_cdr_of_waiting_symbol_list
 ;; 链表的头元素始终是被处理过了的 (即 确定以需要被包含在链表内的)
 ;; 空链表和链表元素个数为 1 的情形
 ;; 在递归部分之外处理
+;; 其实 不应该说是 递归之外
+;; 因为这里是在用一个循环 来寻找
+;; 第一个 需要被留在链表中的元素
 
 def_verb "sub-symbol-from-waiting-symbol-list", sub_symbol_from_waiting_symbol_list
    ;; (* symbol[index] -- *)
@@ -2765,7 +2847,6 @@ def_verb "help:sub-symbol-from-waiting-symbol-list,try", help__sub_symbol_from_w
    xx False
    xx Exit
 def_verb_end help__sub_symbol_from_waiting_symbol_list__try
-
 ;; 检测 list 的 长度
 def_verb "help:t", help__t
    xx dup, _Null_waiting_symbol_entry, equal?, _false?branch, 5
@@ -3264,7 +3345,7 @@ def_verb "compile-word-description-to-here", compile_word_description_to_here
 
    ;; when not found, add a symbol into the waiting symbol tabel
    xx drop
-     xx dup2, print_string, cr
+   ;; xx dup2, print_string, cr
    xx string_hash_to_index
    xx add_symbol_to_waiting_symbol_list
    xx compile_word_description_to_here
@@ -3375,8 +3456,87 @@ def_verb "call-compiled-string,for-define", call_compiled_string__for_define
    ;; (* -- unknown *)
    xx _literal, Buffer_of_function_body__for_compile_string__for_define
    xx execute
+   xx clear_waiting_symbol_list__for_define
    xx Exit
 def_verb_end call_compiled_string__for_define
+;; the following function do a side-effect on Waiting_symbol_list
+;; but bad thing is that
+;; single-linked-list is not very good for side-effect
+;; but I use it anyway
+
+;; 检测链表中的第二个元素 而不是第一个元素
+;; 这样就可以在 检查到 define 的 buffer 中的地址时
+;; 从中间消去链表的一个元素
+;; 结束递归的条件是 发现 链表是 由单个元素组成的
+;; 当链表不是由单个元素组成的 的时候
+;; 递归作用以两种方式减少 链表的长度
+;; 1. 不需要消去时 参数后移
+;; 2. 需要消去时 消去一个元素
+;; 链表的头元素始终是被处理过了的 (即 确定以需要被包含在链表内的)
+;; 空链表和链表元素个数为 1 的情形
+;; 在递归部分之外处理
+;; 其实 不应该说是 递归之外
+;; 因为这里是在用一个循环 来寻找
+;; 第一个 需要被留在链表中的元素
+
+def_verb "clear-waiting-symbol-list,for-define", clear_waiting_symbol_list__for_define
+   ;; (* -- *)
+   xx Waiting_symbol_list
+
+   .main:
+   ;; (* 这个循环是为了找到第一个需要被保留在链表内的元素 *)
+   xx dup, _Null_waiting_symbol_entry, equal?, _false?branch, 3
+   xx   drop
+   xx   Exit
+   xx dup
+   xx entry_in_buffer_of_function_body__for_compile_define?
+   xx _false?branch, (.not_match-$)/Cell_width
+   xx   cdr_of_waiting_symbol_list
+   xx   dup, _address, Waiting_symbol_list, save
+   xx   _branch, (.main-$)/Cell_width
+   .not_match:
+   ;; (* list[address] *)
+   xx help__clear_waiting_symbol_list__for_define
+   xx Exit
+def_verb_end clear_waiting_symbol_list__for_define
+
+
+def_verb "help:clear-waiting-symbol-list,for-define", help__clear_waiting_symbol_list__for_define
+   ;; (* list[address] -- *)
+   xx dup, one_entry_waiting_symbol_list?, _false?branch, 3
+   xx   drop
+   xx   Exit
+   xx dup, cdr_of_waiting_symbol_list
+   xx entry_in_buffer_of_function_body__for_compile_define?
+   xx _false?branch, (.not_match-$)/Cell_width
+   xx   remove_car_of_cdr_of_waiting_symbol_list
+   xx   help__clear_waiting_symbol_list__for_define
+   xx   Exit
+   .not_match:
+   xx cdr_of_waiting_symbol_list
+   xx help__clear_waiting_symbol_list__for_define
+   xx Exit
+def_verb_end help__clear_waiting_symbol_list__for_define
+
+
+def_verb "entry-in-buffer-of-function-body,for-compile-define?", entry_in_buffer_of_function_body__for_compile_define?
+   ;; (* list[address] -- True or False *)
+   xx car_of_waiting_symbol_list
+   xx dup
+   xx _literal, Buffer_of_function_body__for_compile_string__for_define
+   xx less_than?, _false?branch, 4
+   xx   drop
+   xx   False
+   xx   Exit
+   xx _literal, Buffer_of_function_body__for_compile_string__for_define
+   xx _literal, Size_of_buffer_of_function_body__for_compile_string__for_define
+   xx addition
+   xx greater_or_equal?, _false?branch, 3
+   xx   False
+   xx   Exit
+   xx True
+   xx Exit
+def_verb_end entry_in_buffer_of_function_body__for_compile_define?
 def_noun "Mark:compile-word-description-to-here,for-noun", Mark__compile_word_description_to_here__for_noun
    xx 0
 def_noun_end Mark__compile_word_description_to_here__for_noun
@@ -3418,7 +3578,9 @@ def_verb "define", _define
    xx   Noun_explainer, compile_number_to_here
    xx   compile_word_description_to_here__for_noun
    xx pop_lambda_stack
-   xx set_size_of_word
+   xx dup, set_size_of_word
+   xx word_to_name_string, string_hash_to_index
+   xx sub_symbol_from_waiting_symbol_list
    xx Exit
 def_verb_end _define
 def_verb "define-key-word", define_key_word
@@ -3430,6 +3592,15 @@ def_verb "define-key-word", define_key_word
    xx   Verb_explainer, compile_number_to_here
    xx   compile_word_description_to_here
    xx pop_lambda_stack
+   ;; 这里 如果能够 在 Waiting_symbol_list 中找到 这个 词
+   ;; 就应该报错
+   ;; 因为此时在 用户在 使用一个 语法关键词 之前
+   ;; 没有定义这个语法关键词
+   ;; 如果 不处理这个 错误的话
+   ;; 只有当 用户定义一个
+   ;; 与 这个语法关键词 有 同样名字的 名词或动词
+   ;; 的时候 这个 等待 被定义的 位置 才会 被补上
+   ;; 我 暂时不处理这个 错误
    xx dup, set_size_of_word
    xx word_to_address_of_type
    xx _literal, 1, swap, save_byte

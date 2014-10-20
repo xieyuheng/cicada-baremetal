@@ -850,27 +850,28 @@
   hereCode
   cicada_virtual_machine:
 
-          cld ;; set DF = 0, then rsi and rdi are incremented
+     cld ;; set DF = 0, then rsi and rdi are incremented
 
-          mov Argument_stack_pointer,   Argument_stack_top
-          mov Grey_pair_stack_pointer, Grey_pair_stack_top
-          mov Return_stack_pointer,   Return_stack_top
+     mov Argument_stack_pointer,   Argument_stack_top
+     mov Grey_pair_stack_pointer, Grey_pair_stack_top
+     mov Return_stack_pointer,   Return_stack_top
 
-          ;; initialize the variable "Here"
-          ;; to point at beginning of User_data_area
-          mov r8, User_data_area
-          mov [Here + Cell_width], r8
+     ;; initialize the variable "Here"
+     ;; to point at beginning of User_data_area
+     mov r8, User_data_area
+     mov [Here + Cell_width], r8
 
-          mov rax, cicada_begin_thread
-          push_return_stack rax
+     mov rax, cicada_begin_thread
+     push_return_stack rax
 
-          next
+     next
 
   hereInitializedData
   cicada_begin_thread:
-
-          xx initialize
-          ;; xx assemblyDebug
+     xx load_core_file
+     xx load_hash_table
+     xx basic_REPL
+     ;; xx assemblyDebug
   #+end_src
 * load-core-file & Initial-files-to-load
   #+begin_src fasm :tangle cicada.fasm
@@ -890,18 +891,6 @@
      file "../../../core/chinese-core.cicada"
      ;; file "../../../lib/x86-64/linux/compiler.cicada"
   Size_of_initial_files_to_load = ($ - Initial_files_to_load) ;; unit :: byte
-  #+end_src
-* initialize
-  #+begin_src fasm :tangle cicada.fasm
-  def_verb "initialize", initialize
-         ;; (* -- *)
-
-         xx load_core_file
-         xx load_hash_table
-         xx basic_REPL
-
-         xx Exit
-  def_verb_end initialize
   #+end_src
 * IO
 ** ioctl for terminal

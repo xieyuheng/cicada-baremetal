@@ -251,10 +251,6 @@
      Exit
    ; define-key-word
    #+end_src
-* ok
-  #+begin_src cicada :tangle english-core.cicada
-  ok
-  #+end_src
 * number writer
 ** note
    1. due to the lack of the "semantic of substitution"
@@ -6517,4 +6513,9 @@
 
    cr
    #+end_src
+* ==================================================
+* ok
+  #+begin_src cicada :tangle english-core.cicada
+  ok
+  #+end_src
 * ==================================================

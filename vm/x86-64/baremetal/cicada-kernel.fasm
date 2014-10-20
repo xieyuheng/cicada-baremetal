@@ -434,34 +434,51 @@ include "../macro.inc"
 hereCode
 cicada_virtual_machine:
 
-       cli
+   cli
 
-       cld ;; set DF = 0, then rsi and rdi are incremented
+   cld ;; set DF = 0, then rsi and rdi are incremented
 
-       ;; to clear memory range FirstLowestMemoryAddress - User_data_area
-       mov rdi, FirstLowestMemoryAddress
-       mov rcx, (User_data_area - FirstLowestMemoryAddress)/8
-       xor rax, rax
-       ;; Store rax to [rdi], rcx - 1, rdi + 8, if rcx > 0 then do it again
-       rep stosq
+   ;; to clear memory range FirstLowestMemoryAddress - User_data_area
+   mov rdi, FirstLowestMemoryAddress
+   mov rcx, (User_data_area - FirstLowestMemoryAddress)/8
+   xor rax, rax
+   ;; Store rax to [rdi], rcx - 1, rdi + 8, if rcx > 0 then do it again
+   rep stosq
 
-       mov Argument_stack_pointer,   Argument_stack_top
-       mov Grey_pair_stack_pointer, Grey_pair_stack_top
-       mov Return_stack_pointer,   Return_stack_top
+   mov Argument_stack_pointer,   Argument_stack_top
+   mov Grey_pair_stack_pointer, Grey_pair_stack_top
+   mov Return_stack_pointer,   Return_stack_top
 
-       ;; initialize the variable "Here"
-       ;; to point at beginning of User_data_area
-       mov r8, User_data_area
-       mov [Here + Cell_width], r8
+   ;; initialize the variable "Here"
+   ;; to point at beginning of User_data_area
+   mov r8, User_data_area
+   mov [Here + Cell_width], r8
 
-       mov rax, cicada_begin_thread
-       push_return_stack rax
+   mov rax, cicada_begin_thread
+   push_return_stack rax
 
-       next
+   next
 
 hereInitializedData
 cicada_begin_thread:
-       xx initialize
+
+   xx closeInterrupt
+
+   xx createBarekeyboard
+
+   ;; text mode is configured by kernelloader
+   ;; it is ok to just use it
+   xx configureColorPalette
+   xx clearScreen
+   xx resetCurrentCursor
+
+   xx load_core_file
+
+   xx openInterrupt
+
+   xx load_hash_table
+
+   xx basic_REPL
 def_assembly_code "load-core-file", load_core_file
    ;; (* -- *)
    mov rsi, Initial_files_to_load
@@ -476,28 +493,6 @@ hereInitializedData
 Initial_files_to_load:
    file "../../../core/english-core.cicada"
 Size_of_initial_files_to_load = ($ - Initial_files_to_load) ;; unit :: byte
-def_verb "initialize", initialize
-       ;; (* -- *)
-       xx closeInterrupt
-
-       xx createBarekeyboard
-
-       ;; text mode is configured by kernelloader
-       ;; it is ok to just use it
-       xx configureColorPalette
-       xx clearScreen
-       xx resetCurrentCursor
-
-       xx load_core_file
-
-       xx openInterrupt
-
-       xx load_hash_table
-
-       xx basic_REPL
-
-       xx Exit
-def_verb_end initialize
 def_assembly_code "close-interrupt", closeInterrupt
    ;; (* -- *)
    cli

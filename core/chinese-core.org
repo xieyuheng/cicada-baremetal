@@ -799,6 +799,58 @@
       已矣
    者 动词也
    #+end_src
+* 编撰 于 数据段
+  #+begin_src cicada :tangle chinese-core.cicada
+  夫 编撰数于数据段
+     (* 数 -- *)
+     (* 编撰 于 数据段 ::
+          数 *)
+     Current-data-section
+     存
+     Current-data-section
+     单元大小 加
+     址 Current-data-section 存
+     已矣
+  者 动词也
+
+  夫 编撰比特于数据段
+     (* 比特 -- *)
+     (* 编撰 于 数据段 ::
+          数 *)
+     Current-data-section
+     小存
+     1 址 Current-data-section 加存
+     已矣
+  者 动词也
+
+  (*
+   ,* 注意
+   ,* 比特串在 内存中的样子是:
+   ,* | 1 单元 | 长度   |
+   ,* | n 比特 | 比特串 |
+   ,* | 1 比特 | 0      |
+   ,*)
+
+  夫 编撰比特串于数据段
+     (* 比特串[地址, 长度] -- *)
+     (* 编撰 于 数据段 ::
+      ,* | 1 单元 | 长度   |
+      ,* | n 比特 | 比特串 |
+      ,* | 1 比特 | 0      |
+      ,*)
+     复 入木答栈 (* 为更新 Current-data-section *)
+       复 编撰数于数据段
+       Current-data-section
+       换 复制比特串
+     (* 更新 Current-data-section *)
+     出木答栈
+     Current-data-section 加
+     0 跃 小存
+     1 加
+     址 Current-data-section 存
+     已矣
+  者 动词也
+  #+end_src
 * 词典 与 词典编撰者
 ** 记
    1. 词典的编撰
@@ -1174,11 +1226,9 @@
 
       (* 下面的错误处理是不好的 今后将予以改进 *)
       弃
-      换行
-      夫 未定义的词: 者 写比特串
-      写比特串 换行
-      夫 余下的词: 者 写比特串 换行
-      写比特串 换行
+      比特串-散->索引
+      添加符号于等待列表
+      编撰词之定义于词典
       已矣
    者 动词也
    #+end_src
@@ -1241,6 +1291,21 @@
        已矣
     者 动词也
     #+end_src
+** 为了编译语义而定义的函数
+   1. 这里没有重定义
+      只是映射过来而已
+   2. 接口其实只是下面两个函数而已
+   #+begin_src cicada :tangle chinese-core.cicada
+   夫 添加符号于等待列表
+      add-symbol-to-waiting-symbol-list
+      已矣
+   者 动词也
+
+   夫 消去符号于等待列表
+      sub-symbol-from-waiting-symbol-list
+      已矣
+   者 动词也
+   #+end_src
 ** 动词也
    #+begin_src cicada :tangle chinese-core.cicada
    (* 下面利用 两个同名的函数来互相重新定义对方 *)
@@ -1254,7 +1319,9 @@
          动词诠释者 编撰数于词典
          编撰词之定义于词典
       出木答栈
-      设置词之大小
+      复 设置词之大小
+      词->名字 比特串-散->索引
+      消去符号于等待列表
       已矣
    者 动词也
 
@@ -1268,11 +1335,13 @@
          动词诠释者 编撰数于词典
          编撰词之定义于词典
       出木答栈
-      设置词之大小
+      复 设置词之大小
+      词->名字 比特串-散->索引
+      消去符号于等待列表
       已矣
    者 函数也
    #+end_src
-** >< 也
+** >< 也 [未重定义]
 ** 虚词也
    #+begin_src cicada :tangle chinese-core.cicada
    夫 虚词也
@@ -1290,58 +1359,6 @@
       已矣
    者 动词也
    #+end_src
-* 编撰 于 数据段
-  #+begin_src cicada :tangle chinese-core.cicada
-  夫 编撰数于数据段
-     (* 数 -- *)
-     (* 编撰 于 数据段 ::
-          数 *)
-     Current-data-section
-     存
-     Current-data-section
-     单元大小 加
-     址 Current-data-section 存
-     已矣
-  者 动词也
-
-  夫 编撰比特于数据段
-     (* 比特 -- *)
-     (* 编撰 于 数据段 ::
-          数 *)
-     Current-data-section
-     小存
-     1 址 Current-data-section 加存
-     已矣
-  者 动词也
-
-  (*
-   ,* 注意
-   ,* 比特串在 内存中的样子是:
-   ,* | 1 单元 | 长度   |
-   ,* | n 比特 | 比特串 |
-   ,* | 1 比特 | 0      |
-   ,*)
-
-  夫 编撰比特串于数据段
-     (* 比特串[地址, 长度] -- *)
-     (* 编撰 于 数据段 ::
-      ,* | 1 单元 | 长度   |
-      ,* | n 比特 | 比特串 |
-      ,* | 1 比特 | 0      |
-      ,*)
-     复 入木答栈 (* 为更新 Current-data-section *)
-       复 编撰数于数据段
-       Current-data-section
-       换 复制比特串
-     (* 更新 Current-data-section *)
-     出木答栈
-     Current-data-section 加
-     0 跃 小存
-     1 加
-     址 Current-data-section 存
-     已矣
-  者 动词也
-  #+end_src
 * --------------------------------------------------
 * *测试*
   #+begin_src cicada
@@ -1388,10 +1405,6 @@
   者 虚词也
   ok
   #+end_src
-* ok
-  #+begin_src cicada :tangle chinese-core.cicada
-  ok
-  #+end_src
 * *测试*
   #+begin_src cicada
   夫 .12 (* 1 2 -- *)
@@ -1411,7 +1424,7 @@
      再
      已矣
   者 动词也
-  ok
+
 
   1 2 .12 换行
   6 2 .12 换行
@@ -1487,4 +1500,9 @@
     ,* 来 阅读那些不能打印的 比特
     *)
    #+end_src
+* ==================================================
+* ok
+  #+begin_src cicada :tangle chinese-core.cicada
+  ok
+  #+end_src
 * ==================================================

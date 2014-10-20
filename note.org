@@ -4,7 +4,6 @@
 
 
 * ==================================================
-* note about compiler-semantic [2nd version]
 * redesign the debuger
   1. as the "debuger" is defined in cicada code
      it is hard to do good error handling in assembly code
