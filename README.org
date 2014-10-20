@@ -77,7 +77,7 @@
 * where to visit this open source project ?
   https://github.com/cicada-language
 
-* -------------------------------------
+* ------------------------------------
 * 什么是 cicada ?
   cicada language 的中文名字叫 蝉语.
   蝉语 是一个非常简单的程序语言.

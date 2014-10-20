@@ -95,13 +95,21 @@
 * ==================================================
 * *test*
   #+begin_src cicada
+  : f
+    1 factorial .
+    2 factorial .
+    3 factorial .
+    Exit
+  ; define-verb
+
   : factorial (* n -- n! *)
     dup one? if
       Exit
     then
     dup sub1 factorial * Exit
   ; define-verb
-  ok
+
+  f ok
 
   1 factorial .
   2 factorial .
@@ -134,11 +142,11 @@
   : string->char
     (* string[address, length] -- char *)
     (* drop fetch-byte *)
-    get-char 
+    get-char
     xx|swap|x drop2
     Exit
   ; define-verb
-  ok
+
 
   : char
     (* word-string[address, length] -- word-string[address, length] *)
@@ -171,7 +179,7 @@
     then
     Exit
   ; define-verb
-  ok
+
 
   1 2 .12 cr
   6 2 .12 cr
@@ -198,9 +206,9 @@
           string-header and string ended by 0 *)
      tail-and-head-of-string
      dup char " == if
-       drop 
+       drop
        (* compile address to here *)
-       literal _literal compile-number-to-here 
+       literal _literal compile-number-to-here
          pop-lambda-stack dup push-lambda-stack
        compile-number-to-here
        (* compile length to here *)
@@ -214,14 +222,14 @@
        Cell-width
        sub save
        (* add a tailling 0 *)
-       0 compile-byte-to-current-data-section
+       0 compile-byte-to-data-section
        Exit
      then
-     compile-byte-to-current-data-section
+     compile-byte-to-data-section
      help,:"
      Exit
    ; define-verb
-   ok
+
 
    : :"
      (* word-string[address, length] -- word-string[address, length] *)
@@ -243,6 +251,10 @@
      Exit
    ; define-key-word
    #+end_src
+* ok
+  #+begin_src cicada :tangle english-core.cicada
+  ok
+  #+end_src
 * number writer
 ** note
    1. due to the lack of the "semantic of substitution"
@@ -1246,7 +1258,7 @@
     (* example of a substring stored in string-heap :
        || 4 : length of substring  ||
        || n : substring  ||
-     *)
+     ,*)
 
     String-heap-1 : Pointer:String-heap,from ; define-variable
     String-heap-2 : Pointer:string-heap,to   ; define-variable
@@ -1257,22 +1269,22 @@
 
 
     (*
-     * : fetch-four-bytes (\* address -- value *\)
-     *   0 fetch-argument-stack-pointer
-     *   x|over|xx swap
-     *   4 copy-byte-string
-     *   swap drop
-     *   Exit
-     * ; define-verb
-     *
-     * : save-four-bytes (\* value, address -- *\)
-     *   swap fetch-argument-stack-pointer
-     *   x|over|xx
-     *   4 copy-byte-string
-     *   drop2
-     *   Exit
-     * ; define-verb
-     *)
+     ,* : fetch-four-bytes (\* address -- value *\)
+     ,*   0 fetch-argument-stack-pointer
+     ,*   x|over|xx swap
+     ,*   4 copy-byte-string
+     ,*   swap drop
+     ,*   Exit
+     ,* ; define-verb
+     ,*
+     ,* : save-four-bytes (\* value, address -- *\)
+     ,*   swap fetch-argument-stack-pointer
+     ,*   x|over|xx
+     ,*   4 copy-byte-string
+     ,*   drop2
+     ,*   Exit
+     ,* ; define-verb
+     ,*)
 
 
 
@@ -1310,10 +1322,10 @@
     : try,copy-substring,from->to
       (* [address, <substring>] -- [address, <substring>] *)
       (*
-       * dup <substring> =/= if
-       *   Exit
-       * then
-       *)
+       ,* dup <substring> =/= if
+       ,*   Exit
+       ,* then
+       ,*)
       over dup
       string-in?string-heap,to if
         drop Exit
@@ -1332,15 +1344,15 @@
 
     (* test: *)
     (*
-     * Current-free-string-address,to fetch
-     *   s" xxx " dup2 print-string (\* xxx *\)
-     *   drop <substring>
-     *   try,copy-substring,from->to
-     *   drop2
-     * add4 dup
-     * get-length-of-string
-     * print-string (\* xxx *\)
-     *)
+     ,* Current-free-string-address,to fetch
+     ,*   s" xxx " dup2 print-string (\* xxx *\)
+     ,*   drop <substring>
+     ,*   try,copy-substring,from->to
+     ,*   drop2
+     ,* add4 dup
+     ,* get-length-of-string
+     ,* print-string (\* xxx *\)
+     ,*)
 
 
     : try,copy-substring,from->to,for-car
@@ -1369,39 +1381,39 @@
 
 
     (*
-     * {* s" xxx" drop <substring>
-     *    s" ppp" drop <substring> *}
-     *
-     * dup2
-     *   car print-type-tag cr (\* <substring> *\)
-     *   dup get-length-of-string
-     *   print-string cr (\* xxx *\)
-     * dup2
-     *   cdr print-type-tag cr (\* <substring> *\)
-     *   dup get-length-of-string
-     *   print-string cr (\* ppp *\)
-     *
-     * dup2
-     *   car drop .hex cr (\* >< *\)
-     * dup2
-     *   cdr drop .hex cr (\* >< *\)
-     *
-     * dup2
-     *   try,copy-substring,from->to,for-car
-     *   try,copy-substring,from->to,for-cdr
-     *
-     * dup2
-     *   car print-type-tag cr (\* <substring> *\)
-     *   dup get-length-of-string
-     *   print-string cr (\* xxx *\)
-     * dup2
-     *   cdr print-type-tag cr (\* <substring> *\)
-     *   dup get-length-of-string
-     *   print-string cr (\* ppp *\)
-     *
-     * (\* the two hex numbers must be different *\)
-     * dup2
-     *   car drop .hex cr (\* >< *\)
+     ,* {* s" xxx" drop <substring>
+     ,*    s" ppp" drop <substring> *}
+     ,*
+     ,* dup2
+     ,*   car print-type-tag cr (\* <substring> *\)
+     ,*   dup get-length-of-string
+     ,*   print-string cr (\* xxx *\)
+     ,* dup2
+     ,*   cdr print-type-tag cr (\* <substring> *\)
+     ,*   dup get-length-of-string
+     ,*   print-string cr (\* ppp *\)
+     ,*
+     ,* dup2
+     ,*   car drop .hex cr (\* >< *\)
+     ,* dup2
+     ,*   cdr drop .hex cr (\* >< *\)
+     ,*
+     ,* dup2
+     ,*   try,copy-substring,from->to,for-car
+     ,*   try,copy-substring,from->to,for-cdr
+     ,*
+     ,* dup2
+     ,*   car print-type-tag cr (\* <substring> *\)
+     ,*   dup get-length-of-string
+     ,*   print-string cr (\* xxx *\)
+     ,* dup2
+     ,*   cdr print-type-tag cr (\* <substring> *\)
+     ,*   dup get-length-of-string
+     ,*   print-string cr (\* ppp *\)
+     ,*
+     ,* (\* the two hex numbers must be different *\)
+     ,* dup2
+     ,*   car drop .hex cr (\* >< *\)
      * dup2
      *   cdr drop .hex cr (\* >< *\)
      *
@@ -1929,12 +1941,12 @@
 
 
     (* a cyclic permutation
-     * of the two three period cyclic permutation
-     * in the third-order permutation group
+     ,* of the two three period cyclic permutation
+     ,* in the third-order permutation group
      Mutative-color-offset-for-finding  --> Mutative-color-offset-for-cleaning
      Mutative-color-offset-for-marking  --> Mutative-color-offset-for-finding
      Mutative-color-offset-for-cleaning --> Mutative-color-offset-for-marking
-     *)
+     ,*)
     : reset-color-offsets (* -- *)
       Mutative-color-offset-for-finding  fetch
       Mutative-color-offset-for-marking  fetch
@@ -1983,11 +1995,11 @@
        but I have to use it this way *)
 
     (* a value meet the following three conditions is an AddressOfPair
-     *  (the following is infix notations)
-     * 1. Value >= First-pair-construction
-     * 2. Value <= Last-pair-construction
-     * 3. [Value - First-pair-construction] mod Cons-bytes-size == 0
-     *)
+     ,*  (the following is infix notations)
+     ,* 1. Value >= First-pair-construction
+     ,* 2. Value <= Last-pair-construction
+     ,* 3. [Value - First-pair-construction] mod Cons-bytes-size == 0
+     ,*)
 
     : addressOfPair? (* value -- True or False *)
         dup First-pair-construction < if

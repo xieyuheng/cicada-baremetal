@@ -3,11 +3,11 @@
 : string->char
   (* string[address, length] -- char *)
   (* drop fetch-byte *)
-  get-char 
+  get-char
   xx|swap|x drop2
   Exit
 ; define-verb
-ok
+
 
 : char
   (* word-string[address, length] -- word-string[address, length] *)
@@ -29,9 +29,9 @@ ok
        string-header and string ended by 0 *)
   tail-and-head-of-string
   dup char " == if
-    drop 
+    drop
     (* compile address to here *)
-    literal _literal compile-number-to-here 
+    literal _literal compile-number-to-here
       pop-lambda-stack dup push-lambda-stack
     compile-number-to-here
     (* compile length to here *)
@@ -45,14 +45,14 @@ ok
     Cell-width
     sub save
     (* add a tailling 0 *)
-    0 compile-byte-to-current-data-section
+    0 compile-byte-to-data-section
     Exit
   then
-  compile-byte-to-current-data-section
+  compile-byte-to-data-section
   help,:"
   Exit
 ; define-verb
-ok
+
 
 : :"
   (* word-string[address, length] -- word-string[address, length] *)
@@ -65,4 +65,5 @@ ok
   help,:"
   Exit
 ; define-key-word
+ok
 ok

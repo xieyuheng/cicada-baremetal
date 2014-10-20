@@ -3,10 +3,9 @@
 #+EMAIL: xyheme@gmail.com
 
 
-use hash-table in assembly to implement
-better compiler-semantic
 * ==================================================
-* ><
+* note about compiler-semantic [2nd version]
+* redesign the debuger
   1. as the "debuger" is defined in cicada code
      it is hard to do good error handling in assembly code
      这是因为我没法在出错的时候即使调用 debuger 来报错
@@ -14,39 +13,23 @@ better compiler-semantic
        我应该 及时的 调用 debuger 来报告错误
        而在不利的条件下 我必须 返回一个出错码
        来表示函数 所接受的数据类型不对
-  2. redesign the syntax about strings
-     to allow more
-  3. the whole english-core.org needs to be rewrited
-  4. ><><>< 注意 ><><><
-     对于新的 define 要更改 GC
+* re-writing garbage-collectior
+  1. ??? 对于新的 define 要更改 GC
      整个 GC 都应该被重写了吗 ???
-  5. make good use of indentation
-     1) for wodili 应该 在 wodili 的已有的 解析器 的基础上
-        增加一个 好好 利用 indentation 的解析器
-        两种解析器各自有各自的用处
-     2) 把 利用"支撑树" 来进行相对引用的 性质加到 yaml 中
-        就能 形成 我想要的 digrap 的语法
-  6. 写编译器
-     1) 从最简单 的 babystep 开始
-     2) 编译 bootloader
-     3) 注意要保持设计的灵活性
-        或者直接从 文档开始
-        用中文写文档 以加快速度
-* ><
-  1. erlang 的 bit syntax 在于让人方便地处理 bit fields
-     这在于 能 用模式匹配
-  2. 关于 linux下 图形界面 的 文本编辑器
-     因为我已经能把 动态链接的库加载到 cicada 中了
-     所以是有可能实现的
-     需要用 C 把某先函数包装好
-     在 cicada 中调用 C 函数的时候需要保护跟栈 有关的寄存器
-  3. it also feels fun
-     to reimplement some UNIX userland functions :)
-  4. 比如 当同时考虑 整数 还有 实数 等等 数据类型的时候
-     面向对象的 节省命名空间 的优点 就充分地体现出来了
-     这在于 (也只在于) 这样写出来的 代码
-     更接近于人们日常对数学运算的模糊表达
-  5. 需要 cicada-assembler 的理由:
+* make good use of indentation
+  1. for wodili 应该 在 wodili 的已有的 解析器 的基础上
+     增加一个 好好 利用 indentation 的解析器
+     两种解析器各自有各自的用处
+  2. 把 利用"支撑树" 来进行相对引用的 性质加到 yaml 中
+     就能 形成 我想要的 digrap 的语法
+* write a cross compiler
+  1. 从最简单 的 babystep 开始
+  2. 编译 bootloader
+  3. 注意要保持设计的灵活性
+     或者直接从 文档开始
+     用中文写文档 以加快速度
+  -----------------------------
+  1. 需要 cicada-assembler 的理由:
      1) 统一 命名规则
      2) 让我 能够探索一些关于编译的技术
      3) 有些 小的 CPU 并没有 类似 fasm 的 合适的编译器的
@@ -60,23 +43,39 @@ better compiler-semantic
         但是如果我想保持
         我的 类文学编程 组织代码的风格的话
         也许 创造一些新的东西来支持 我的风格就是必须的了
-  6. 不需要 cicada-assembler 的理由:
+  2. 不需要 cicada-assembler 的理由:
      1) 一个人认为 一个语言需要这种东西
         可能只是因为 当这个语言的编译器能够自己编译自己的时候
         看起来很 cool 而已
      2) 为了 实现 一个 x86-64 的汇编器
         有太多的 关于 CPU 的底层细节需要 被掌握
-  7. 就用户接口的设计而言
-     我可以把那几个 核心的栈 的图示 放在 左边的一个窗口里
-     在这之后 我就能设计 debuger 的更好的使用方式
-     但是一个问题是 当我的界面不再是一个简单的解释器的时候
-     我就不能 直接利用 emacs 了
-     也就是必须 要先写自己的 文本编辑器
-     之后才能考虑窗口 之类的问题
-  8. 也许 可以从 isforth 那里 学习在 linux 下写文本编辑器的基本工作
-  9. 支持 windows 及其环境下的开发
-  10. 支持 Mac 及其环境下的开发
-* rewrite number writer in cicada english-core
+* more syntax
+** erlang's bit syntax
+   在于让人方便地处理 bit fields
+   这在于 能 用模式匹配
+** redesign the syntax about strings
+* 关于 linux下 图形界面 的 文本编辑器
+  因为我已经能把 动态链接的库加载到 cicada 中了
+  所以是有可能实现的
+  需要用 C 把某先函数包装好
+  在 cicada 中调用 C 函数的时候需要保护跟栈 有关的寄存器
+* reimplement some UNIX userland functions
+* about OO support
+  1. 比如 当同时考虑 整数 还有 实数 等等 数据类型的时候
+     面向对象的 节省命名空间 的优点 就充分地体现出来了
+     这在于 (也只在于) 这样写出来的 代码
+     更接近于人们日常对数学运算的模糊表达
+* about UI
+  我可以把那几个 核心的栈 的图示 放在 左边的一个窗口里
+  在这之后 我就能设计 debuger 的更好的使用方式
+  但是一个问题是 当我的界面不再是一个简单的解释器的时候
+  我就不能 直接利用 emacs 了
+  也就是必须 要先写自己的 文本编辑器
+  之后才能考虑窗口 之类的问题
+* learn from isforth
+* more platforms
+  1. windows
+  2. Mac
 * word boundary
   1. ><><>< the note about word boundary is wrong ???
 * branch

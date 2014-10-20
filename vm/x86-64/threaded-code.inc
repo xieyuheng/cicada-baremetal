@@ -1525,7 +1525,7 @@ def_key_word "(*", ignore_comment
    xx Ket__comment, equal_string?, _false?branch, -13
    xx   Exit
 def_key_word_end ignore_comment
-def_verb "compile-number-to-current-data-section", compile_number_to_current_data_section
+def_verb "compile-number-to-data-section", compile_number_to_data_section
    ;; (* a 64 bits number -- *)
    ;; reset "Current_data_section", which points next free memory
    xx Current_data_section
@@ -1534,9 +1534,9 @@ def_verb "compile-number-to-current-data-section", compile_number_to_current_dat
    xx _literal, Cell_width, addition
    xx _address, Current_data_section, save
    xx Exit
-def_verb_end compile_number_to_current_data_section
+def_verb_end compile_number_to_data_section
 
-def_verb "compile-byte-to-current-data-section", compile_byte_to_current_data_section
+def_verb "compile-byte-to-data-section", compile_byte_to_data_section
    ;; (* a 64 bits number -- *)
    ;; reset "Current_data_section", which points next free memory
    xx Current_data_section
@@ -1544,16 +1544,16 @@ def_verb "compile-byte-to-current-data-section", compile_byte_to_current_data_se
    xx _literal, 1
    xx _address, Current_data_section, add_save
    xx Exit
-def_verb_end compile_byte_to_current_data_section
+def_verb_end compile_byte_to_data_section
 
 ;; note that:
 ;; a string in stack is string[address, length]
 ;; a string in memory is ||  1 cell : length  ||  n byte : string  ||  1 byte : 0  ||
-def_verb "compile-string-to-current-data-section", compile_string_to_current_data_section
+def_verb "compile-string-to-data-section", compile_string_to_data_section
    ;; (* string[address, length] -- *)
    ;; for update Current_data_section
    xx dup, push_lambda_stack
-   xx   dup, compile_number_to_current_data_section
+   xx   dup, compile_number_to_data_section
    xx   Current_data_section, swap, copy_byte_string
    ;; update Current_data_section
    xx pop_lambda_stack
@@ -1562,10 +1562,7 @@ def_verb "compile-string-to-current-data-section", compile_string_to_current_dat
    xx add1
    xx _address, Current_data_section, save
    xx Exit
-def_verb_end compile_string_to_current_data_section
-
-
-
+def_verb_end compile_string_to_data_section
 ;; cosemi = colon + semicolon
 def_string "Bra:cosemi", ":", Bra__cosemi
 def_string "Ket:cosemi", ";", Ket__cosemi
@@ -1608,7 +1605,7 @@ def_key_word ":", colon
    xx         _literal, Cell_width, addition
    xx         over, push_lambda_stack  ;; (* length to compile to here *)
    xx         push_lambda_stack        ;; (* address to compile to here *)
-   xx       compile_string_to_current_data_section
+   xx       compile_string_to_data_section
    ;;       (* compile the string into function-body *)
    ;;       (* address to compile to here *)
    xx       _literal, _literal, compile_number_to_here
@@ -1661,7 +1658,7 @@ def_key_word "夫", 夫
    xx         _literal, Cell_width, addition
    xx         over, push_lambda_stack  ;; (* length to compile to here *)
    xx         push_lambda_stack        ;; (* address to compile to here *)
-   xx       compile_string_to_current_data_section
+   xx       compile_string_to_data_section
    ;;       (* compile the string into function-body *)
    ;;       (* address to compile to here *)
    xx       _literal, _literal, compile_number_to_here
@@ -2378,7 +2375,7 @@ def_noun_end _First_symbol_entry
 def_noun "Last-symbol-entry",  _Last_symbol_entry
    xx   Last_symbol_entry
 def_noun_end  _Last_symbol_entry
-;; (* a Symbol-entry 
+;; (* a Symbol-entry
 ;;  * ==========================
 ;;  *  ||  Symbol-value   ||
 ;;  * ---------------------
@@ -2494,6 +2491,303 @@ def_verb "load-hash-table", load_hash_table
    xx help__load_hash_table
    xx Exit
 def_verb_end load_hash_table
+hereUnInitializedData
+
+Number_of_waiting_symbol_entry = 16 * 1024
+
+Size_of_waiting_symbol_entry_flag = 1
+Size_of_waiting_symbol_entry_symbol = 8
+Size_of_waiting_symbol_entry_car = 8
+Size_of_waiting_symbol_entry_cdr = 8
+Size_of_waiting_symbol_entry = Size_of_waiting_symbol_entry_flag + Size_of_waiting_symbol_entry_symbol + Size_of_waiting_symbol_entry_car + Size_of_waiting_symbol_entry_cdr
+
+Null_waiting_symbol_entry labeling
+        preserve Size_of_waiting_symbol_entry
+
+First_waiting_symbol_entry labeling
+        preserve Size_of_waiting_symbol_entry
+
+        ;; ========================
+        preserve ((Number_of_waiting_symbol_entry - 2) * Size_of_waiting_symbol_entry)
+        ;; ========================
+
+Last_waiting_symbol_entry labeling
+        preserve Size_of_waiting_symbol_entry
+
+
+def_noun "Number-of-waiting-symbol-entry", _Number_of_waiting_symbol_entry
+   xx Number_of_waiting_symbol_entry
+def_noun_end _Number_of_waiting_symbol_entry
+
+
+def_noun "Size-of-waiting-symbol-entry-flag", _Size_of_waiting_symbol_entry_flag
+   xx Size_of_waiting_symbol_entry_flag
+def_noun_end _Size_of_waiting_symbol_entry_flag
+
+def_noun "Size-of-waiting-symbol-entry-symbol", _Size_of_waiting_symbol_entry_symbol
+   xx Size_of_waiting_symbol_entry_symbol
+def_noun_end _Size_of_waiting_symbol_entry_symbol
+
+def_noun "Size-of-waiting-symbol-entry-car", _Size_of_waiting_symbol_entry_car
+   xx Size_of_waiting_symbol_entry_car
+def_noun_end _Size_of_waiting_symbol_entry_car
+
+def_noun "Size-of-waiting-symbol-entry-cdr", _Size_of_waiting_symbol_entry_cdr
+   xx Size_of_waiting_symbol_entry_cdr
+def_noun_end _Size_of_waiting_symbol_entry_cdr
+
+
+def_noun "Size-of-waiting-symbol-entry", _Size_of_waiting_symbol_entry
+   xx Size_of_waiting_symbol_entry
+def_noun_end _Size_of_waiting_symbol_entry
+
+def_noun "Null-waiting-symbol-entry", _Null_waiting_symbol_entry
+   xx Null_waiting_symbol_entry
+def_noun_end _Null_waiting_symbol_entry
+
+def_noun "First-waiting-symbol-entry", _First_waiting_symbol_entry
+   xx First_waiting_symbol_entry
+def_noun_end _First_waiting_symbol_entry
+
+def_noun "Last-waiting-symbol-entry", _Last_waiting_symbol_entry
+   xx Last_waiting_symbol_entry
+def_noun_end _Last_waiting_symbol_entry
+def_noun "Waiting-symbol-list", Waiting_symbol_list
+   xx Null_waiting_symbol_entry ;; not _Null_waiting_symbol_entry
+def_noun_end Waiting_symbol_list
+;; >< need error handling
+;; when the whole waiting_symbol_table is filled
+
+def_verb "help:find-next-free-waiting-symbol-entry", help__find_next_free_waiting_symbol_entry
+   ;; (* address -- address *)
+   xx dup, fetch_byte, zero?, _false?branch, 2
+   xx   Exit
+   xx _Size_of_waiting_symbol_entry, addition
+   xx dup, _Last_waiting_symbol_entry, greater_than?, _false?branch, 5
+   xx   drop
+   xx   _First_waiting_symbol_entry
+   xx   help__find_next_free_waiting_symbol_entry
+   xx   Exit
+   xx help__find_next_free_waiting_symbol_entry
+   xx Exit
+def_verb_end help__find_next_free_waiting_symbol_entry
+
+def_verb "find-next-free-waiting-symbol-entry", find_next_free_waiting_symbol_entry
+   ;; (* -- address *)
+   xx Waiting_symbol_list
+   xx _Size_of_waiting_symbol_entry, addition
+   xx help__find_next_free_waiting_symbol_entry
+   xx Exit
+def_verb_end find_next_free_waiting_symbol_entry
+def_verb "add-symbol-to-waiting-symbol-list", add_symbol_to_waiting_symbol_list
+   ;; (* symbol[index] -- *)
+
+   ;; get current Here
+   xx Here
+
+   ;; leave a Cell
+   ;xx _literal, 0
+   xx _literal, meet_undefined_word
+   xx compile_number_to_here
+
+   xx find_next_free_waiting_symbol_entry
+
+   ;; set flag
+   xx _literal, 1, over, save_byte
+
+   ;; (* symbol, old-Here, address *)
+   ;; save the old-Here to car
+   xx tuck
+   xx address_of_car_of_waiting_symbol_list
+   xx save
+
+   ;; (* symbol, address *)
+   ;; save the symbol to symbol-field
+   xx tuck
+   xx address_of_symbol_of_waiting_symbol_list
+   xx save
+
+   ;; link the entry to the beginning of the list
+   xx Waiting_symbol_list
+   xx over
+   xx address_of_cdr_of_waiting_symbol_list
+   xx save
+
+   ;; update Waiting_symbol_list
+   xx _address, Waiting_symbol_list
+   xx save
+
+   xx Exit
+def_verb_end add_symbol_to_waiting_symbol_list
+def_verb "flag-of-waiting-symbol-list", flag_of_waiting_symbol_list
+   ;; (* list[address] -- tail[address] *)
+   xx fetch
+   xx Exit
+def_verb_end flag_of_waiting_symbol_list
+
+
+def_verb "address-of-symbol-of-waiting-symbol-list", address_of_symbol_of_waiting_symbol_list
+   ;; (* list[address] -- address *)
+   xx _Size_of_waiting_symbol_entry_flag, addition
+   xx Exit
+def_verb_end address_of_symbol_of_waiting_symbol_list
+
+def_verb "symbol-of-waiting-symbol-list", symbol_of_waiting_symbol_list
+   ;; (* list[address] -- tail[address] *)
+   xx address_of_symbol_of_waiting_symbol_list
+   xx fetch
+   xx Exit
+def_verb_end symbol_of_waiting_symbol_list
+
+def_verb "address-of-car-of-waiting-symbol-list", address_of_car_of_waiting_symbol_list
+   ;; (* list[address] -- address *)
+   xx _Size_of_waiting_symbol_entry_flag, addition
+   xx _Size_of_waiting_symbol_entry_symbol, addition
+   xx Exit
+def_verb_end address_of_car_of_waiting_symbol_list
+
+def_verb "car-of-waiting-symbol-list", car_of_waiting_symbol_list
+   ;; (* list[address] -- tail[address] *)
+   xx address_of_car_of_waiting_symbol_list
+   xx fetch
+   xx Exit
+def_verb_end car_of_waiting_symbol_list
+
+def_verb "address-of-cdr-of-waiting-symbol-list", address_of_cdr_of_waiting_symbol_list
+   ;; (* list[address] -- address *)
+   xx _Size_of_waiting_symbol_entry_flag, addition
+   xx _Size_of_waiting_symbol_entry_symbol, addition
+   xx _Size_of_waiting_symbol_entry_car, addition
+   xx Exit
+def_verb_end address_of_cdr_of_waiting_symbol_list
+
+def_verb "cdr-of-waiting-symbol-list", cdr_of_waiting_symbol_list
+   ;; (* list[address] -- tail[address] *)
+   xx address_of_cdr_of_waiting_symbol_list
+   xx fetch
+   xx Exit
+def_verb_end cdr_of_waiting_symbol_list
+
+
+def_verb "one-entry-waiting-symbol-list?", one_entry_waiting_symbol_list?
+   ;; (* list[address] -- True or False *)
+   xx cdr_of_waiting_symbol_list, _Null_waiting_symbol_entry, equal?
+   xx Exit
+def_verb_end one_entry_waiting_symbol_list?
+
+
+;; no error handling on list which length < 2
+def_verb "remove-car-of-cdr-of-waiting-symbol-list", remove_car_of_cdr_of_waiting_symbol_list
+   ;; (* list[address] -- list[address] *)
+   xx dup
+
+   xx cdr_of_waiting_symbol_list
+   xx cdr_of_waiting_symbol_list
+
+   xx over
+   xx address_of_cdr_of_waiting_symbol_list
+
+   xx save
+   xx Exit
+def_verb_end remove_car_of_cdr_of_waiting_symbol_list
+;; 比对链表中的第二个元素 而是第一个元素
+;; 这样就可以在 比对成功时 从中间消去链表的一个元素
+;; 结束递归的条件是 发现 链表是 由单个元素组成的
+;; 当链表不是由单个元素组成的 的时候
+;; 递归作用以两种方式减少 链表的长度
+;; 1. 不需要消去时 参数后移
+;; 2. 需要消去时 消去一个元素
+;; 链表的头元素始终是被处理过了的 (即 确定以需要被包含在链表内的)
+;; 空链表和链表元素个数为 1 的情形
+;; 在递归部分之外处理
+
+def_verb "sub-symbol-from-waiting-symbol-list", sub_symbol_from_waiting_symbol_list
+   ;; (* symbol[index] -- *)
+   xx Waiting_symbol_list
+
+   ;; (* symbol[index], list[address] *)
+   .main:
+   ;; (* 这个循环是为了找到第一个需要被保留在链表内的元素 *)
+   xx dup, _Null_waiting_symbol_entry, equal?, _false?branch, 4
+   xx   drop, drop
+   xx   Exit
+
+   xx dup2, help__sub_symbol_from_waiting_symbol_list__try
+   xx _false?branch, (.not_match-$)/Cell_width
+   xx   cdr_of_waiting_symbol_list
+   xx   dup, _address, Waiting_symbol_list, save
+   xx   _branch, (.main-$)/Cell_width
+
+   .not_match:
+   ;; (* symbol[index], list[address] *)
+   xx help__sub_symbol_from_waiting_symbol_list
+   xx Exit
+def_verb_end sub_symbol_from_waiting_symbol_list
+
+
+
+def_verb "help:sub-symbol-from-waiting-symbol-list", help__sub_symbol_from_waiting_symbol_list
+   ;; (* symbol[index], list[address] *)
+   xx dup, one_entry_waiting_symbol_list?, _false?branch, 4
+   xx   drop, drop
+   xx   Exit
+   xx dup2, cdr_of_waiting_symbol_list
+   xx help__sub_symbol_from_waiting_symbol_list__try
+   xx _false?branch, (.not_match-$)/Cell_width
+   xx   remove_car_of_cdr_of_waiting_symbol_list
+   xx   help__sub_symbol_from_waiting_symbol_list
+   xx   Exit
+   .not_match:
+   xx cdr_of_waiting_symbol_list
+   xx help__sub_symbol_from_waiting_symbol_list
+   xx Exit
+def_verb_end help__sub_symbol_from_waiting_symbol_list
+
+
+
+;; if match, flag will be set by the following function
+def_verb "help:sub-symbol-from-waiting-symbol-list,try", help__sub_symbol_from_waiting_symbol_list__try
+   ;; (* symbol[index], list[address] -- True or False *)
+   ;; True  : on match
+   ;; False : on not match
+   xx dup2
+   xx symbol_of_waiting_symbol_list, equal?, _false?branch, (.not_match-$)/Cell_width
+   xx   swap
+   xx   index_to_address, fetch, word_to_explainer
+   xx   over, car_of_waiting_symbol_list
+   xx   save
+   xx   _literal, 0, swap, save_byte
+   xx   True
+   xx   Exit
+
+   .not_match:
+   xx drop2
+   xx False
+   xx Exit
+def_verb_end help__sub_symbol_from_waiting_symbol_list__try
+
+;; 检测 list 的 长度
+def_verb "help:t", help__t
+   xx dup, _Null_waiting_symbol_entry, equal?, _false?branch, 5
+   xx   drop, pop_lambda_stack, print_little_number
+   xx   Exit
+   xx pop_lambda_stack, add1, push_lambda_stack
+   xx cdr_of_waiting_symbol_list
+   xx help__t
+   xx Exit
+def_verb_end help__t
+
+def_verb "t", t
+   xx Waiting_symbol_list
+   xx _literal, 0, push_lambda_stack
+   xx help__t
+   xx Exit
+def_verb_end t
+def_verb "meet-undefined-word", meet_undefined_word
+   ;; (* -- *)
+   xx Message__undefined_word, print_string, cr
+   xx Exit
+def_verb_end meet_undefined_word
 def_assembly_code "execute", execute
    ;; ( word[address of explainer] -- )
    pop_argument_stack Explainer_pointer
@@ -2967,14 +3261,22 @@ def_verb "compile-word-description-to-here", compile_word_description_to_here
    xx   help__compile_word_description_to_here__word
    xx   compile_word_description_to_here
    xx   Exit
-   ;; else
+
+   ;; when not found, add a symbol into the waiting symbol tabel
    xx drop
-   xx cr
-   xx Message__undefined_word, print_string
-   xx print_string, cr
-   xx Message__the_rest, print_string, cr
-   xx print_string, cr
+     xx dup2, print_string, cr
+   xx string_hash_to_index
+   xx add_symbol_to_waiting_symbol_list
+   xx compile_word_description_to_here
    xx Exit
+
+   ;; xx drop
+   ;; xx cr
+   ;; xx Message__undefined_word, print_string
+   ;; xx print_string, cr
+   ;; xx Message__the_rest, print_string, cr
+   ;; xx print_string, cr
+   ;; xx Exit
 def_verb_end compile_word_description_to_here
 
 def_string "Message:the-rest", "   The rest of the word string to compile is:", Message__the_rest
@@ -3031,7 +3333,9 @@ def_verb "define-verb", define_verb
    xx   Verb_explainer, compile_number_to_here
    xx   compile_word_description_to_here
    xx pop_lambda_stack
-   xx set_size_of_word
+   xx dup, set_size_of_word
+   xx word_to_name_string, string_hash_to_index
+   xx sub_symbol_from_waiting_symbol_list
    xx Exit
 def_verb_end define_verb
 
@@ -3154,8 +3458,6 @@ def_verb "虚词也", 虚词也
    xx define_key_word
    xx Exit
 def_verb_end 虚词也
-hereUnInitializedData
-
 ;;   (unit : byte)
 ;; ========================
 ;;   ||  1 : color     ||
@@ -3166,7 +3468,9 @@ hereUnInitializedData
 ;;   ||  8 : type tag  ||
 ;;   ||  8 : value     ||
 ;; ========================
+
 hereUnInitializedData
+
 Clr_bytes_size = 1
 Car_bytes_size = 16
 Cdr_bytes_size = 16
