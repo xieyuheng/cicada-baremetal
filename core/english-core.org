@@ -187,6 +187,472 @@
   6 6 .12 cr
   ok
   #+end_src
+* number writer
+** note
+   1. due to the lack of the "semantic of substitution"
+      to achieve the following functions
+      I have to copy lots of code
+      instead of just using lambda-abstraction
+   2. >< 这里的某些处理方式其实是想要实现
+      对 数字的格式输出
+      但是 这里的实现方式并不另我满意
+      1) 首先 很多重复的 代码 就已经不对了
+      2) 其次 这种命名方式
+         让我很难在翻译之后
+         仍然在中文代码中以方便地方式使用这些函数
+      即 跟数字有关的 语法 是允许去使用特殊的符号的
+      这样有助于 让这些语法 在中文和英文中保持一致
+** implementation
+*** write-dec-number
+    #+begin_src cicada :tangle english-core.cicada
+    : write-dec-number-char (* byte -- *)
+      char 0  + write-byte
+      Exit
+    ; define-verb
+
+    : help:write-dec-number,push-chars
+      (* ... , number of small DecNumbers, fixnum --
+         ... , number of small DecNumbers *)
+      10 moddiv
+      dup zero? if
+        drop swap add1 Exit
+      then
+      xx|swap|x xx|swap|x add1 swap
+      help:write-dec-number,push-chars
+      Exit
+    ; define-verb
+
+    : help:write-dec-number,write-bytes
+      (* ... , number of small DecNumbers -- *)
+      dup zero? if drop Exit
+      then
+      sub1 swap write-dec-number-char
+      help:write-dec-number,write-bytes
+      Exit
+    ; define-verb
+
+
+    : write-dec-number,unsign (* fixnum -- *)
+      0 swap
+      help:write-dec-number,push-chars
+      help:write-dec-number,write-bytes
+      Exit
+    ; define-verb
+
+    : write-dec-number,sign (* fixnum -- *)
+      dup 0 < if
+        char -  write-byte
+        negate
+      then
+      write-dec-number,unsign
+      Exit
+    ; define-verb
+
+    : write-dec-number
+      write-dec-number,sign
+      Exit
+    ; define-verb
+    #+end_src
+*** write-bin-number
+    #+begin_src cicada :tangle english-core.cicada
+    : write-bin-number-char (* byte -- *)
+      char 0  + write-byte
+      Exit
+    ; define-verb
+
+    : help:write-bin-number,push-chars
+      (* ... , number of small BinNumbers, fixnum --
+         ... , number of small BinNumbers *)
+      2 moddiv
+      dup zero? if
+        drop swap add1 Exit
+      then
+      xx|swap|x xx|swap|x add1 swap
+      help:write-bin-number,push-chars
+      Exit
+    ; define-verb
+
+    : help:write-bin-number,write-bytes
+      (* ... , number of small BinNumbers -- *)
+      dup zero? if drop Exit
+      then
+      sub1 swap write-bin-number-char
+      help:write-bin-number,write-bytes
+      Exit
+    ; define-verb
+
+    : write-bin-number,unsign (* fixnum -- *)
+      0 swap
+      help:write-bin-number,push-chars
+      help:write-bin-number,write-bytes
+      Exit
+    ; define-verb
+
+    : write-bin-number,sign (* fixnum -- *)
+      dup 0 < if
+        char -  write-byte
+        negate
+      then
+      write-bin-number,unsign
+      Exit
+    ; define-verb
+
+    : write-bin-number
+      write-bin-number,sign
+      Exit
+    ; define-verb
+    #+end_src
+*** write-oct-number
+    #+begin_src cicada :tangle english-core.cicada
+    : write-oct-number-char (* byte -- *)
+      char 0  + write-byte
+      Exit
+    ; define-verb
+
+    : help:write-oct-number,push-chars
+      (* ... , number of small OctNumbers, fixnum --
+         ... , number of small OctNumbers *)
+      8 moddiv
+      dup zero? if
+        drop swap add1 Exit
+      then
+      xx|swap|x xx|swap|x add1 swap
+      help:write-oct-number,push-chars
+      Exit
+    ; define-verb
+
+    : help:write-oct-number,write-bytes
+      (* ... , number of small OctNumbers -- *)
+      dup zero? if drop Exit
+      then
+      sub1 swap write-oct-number-char
+      help:write-oct-number,write-bytes
+      Exit
+    ; define-verb
+
+    : write-oct-number,unsign (* fixnum -- *)
+      0 swap
+      help:write-oct-number,push-chars
+      help:write-oct-number,write-bytes
+      Exit
+    ; define-verb
+
+    : write-oct-number,sign (* fixnum -- *)
+      dup 0 < if
+        char -  write-byte
+        negate
+      then
+      write-oct-number,unsign
+      Exit
+    ; define-verb
+
+    : write-oct-number
+      write-oct-number,sign
+      Exit
+    ; define-verb
+    #+end_src
+*** write-hex-number
+    #+begin_src cicada :tangle english-core.cicada
+    : write-hex-number-char (* byte -- *)
+      dup 10 < if
+        char 0  + write-byte Exit
+      then
+      10 -
+      char a  + write-byte
+      Exit
+    ; define-verb
+
+    : write-hex-number-char,capital (* byte -- *)
+      dup 10 < if
+        char 0  + write-byte Exit
+      then
+      10 -
+      char A  + write-byte
+      Exit
+    ; define-verb
+
+    : help:write-hex-number,push-chars
+      (* ... , number of small HexNumbers, fixnum --
+         ... , number of small HexNumbers *)
+      16 moddiv
+      dup zero? if
+        drop swap add1 Exit
+      then
+      xx|swap|x xx|swap|x add1 swap
+      help:write-hex-number,push-chars
+      Exit
+    ; define-verb
+
+    : help:write-hex-number,write-bytes
+      (* ... , number of small HexNumbers -- *)
+      dup zero? if drop Exit
+      then
+      sub1 swap write-hex-number-char
+      help:write-hex-number,write-bytes
+      Exit
+    ; define-verb
+
+    : help:write-hex-number,write-bytes,capital
+      (* ... , number of small HexNumbers -- *)
+      dup zero? if drop Exit
+      then
+      sub1 swap write-hex-number-char,capital
+      help:write-hex-number,write-bytes,capital
+      Exit
+    ; define-verb
+
+    : write-hex-number,unsign (* fixnum -- *)
+      0 swap
+      help:write-hex-number,push-chars
+      help:write-hex-number,write-bytes
+      Exit
+    ; define-verb
+
+    : write-hex-number,capital (* fixnum -- *)
+      0 swap
+      help:write-hex-number,push-chars
+      help:write-hex-number,write-bytes,capital
+      Exit
+    ; define-verb
+
+    : write-hex-number,sign (* fixnum -- *)
+      dup 0 < if
+        char -  write-byte
+        negate
+      then
+      write-hex-number,unsign
+      Exit
+    ; define-verb
+
+    : write-hex-number,sign,capital (* fixnum -- *)
+      dup 0 < if
+        char -  write-byte
+        negate
+      then
+      write-hex-number,capital
+      Exit
+    ; define-verb
+
+    : write-hex-number
+      write-hex-number,sign
+      Exit
+    ; define-verb
+    #+end_src
+*** write-aph-number
+    #+begin_src cicada :tangle english-core.cicada
+    : write-aph-number-char (* byte -- *)
+      dup 10 < if
+        char 0  + write-byte Exit
+      then
+      10 -
+      char a  + write-byte
+      Exit
+    ; define-verb
+
+    : write-aph-number-char,capital (* byte -- *)
+      dup 10 < if
+        char 0  + write-byte Exit
+      then
+      10 -
+      char A  + write-byte
+      Exit
+    ; define-verb
+
+    : help:write-aph-number,push-chars
+      (* ... , number of small AphNumbers, fixnum --
+         ... , number of small AphNumbers *)
+      36 moddiv
+      dup zero? if
+        drop swap add1 Exit
+      then
+      xx|swap|x xx|swap|x add1 swap
+      help:write-aph-number,push-chars
+      Exit
+    ; define-verb
+
+    : help:write-aph-number,write-bytes
+      (* ... , number of small AphNumbers -- *)
+      dup zero? if drop Exit
+      then
+      sub1 swap write-aph-number-char
+      help:write-aph-number,write-bytes
+      Exit
+    ; define-verb
+
+    : help:write-aph-number,write-bytes,capital
+      (* ... , number of small AphNumbers -- *)
+      dup zero? if drop Exit
+      then
+      sub1 swap write-aph-number-char,capital
+      help:write-aph-number,write-bytes,capital
+      Exit
+    ; define-verb
+
+    : write-aph-number,unsign (* fixnum -- *)
+      0 swap
+      help:write-aph-number,push-chars
+      help:write-aph-number,write-bytes
+      Exit
+    ; define-verb
+
+    : write-aph-number,capital (* fixnum -- *)
+      0 swap
+      help:write-aph-number,push-chars
+      help:write-aph-number,write-bytes,capital
+      Exit
+    ; define-verb
+
+    : write-aph-number,sign (* fixnum -- *)
+      dup 0 < if
+        char -  write-byte
+        negate
+      then
+      write-aph-number,unsign
+      Exit
+    ; define-verb
+
+    : write-aph-number,sign,capital (* fixnum -- *)
+      dup 0 < if
+        char -  write-byte
+        negate
+      then
+      write-aph-number,capital
+      Exit
+    ; define-verb
+
+    : write-aph-number
+      write-aph-number,sign
+      Exit
+    ; define-verb
+    #+end_src
+*** usage
+    #+begin_src cicada :tangle english-core.cicada
+    : .unsign (* fixnum -- *)
+      write-dec-number
+      32 write-byte
+      Exit
+    ; define-verb
+
+    : .sign (* fixnum -- *)
+      write-dec-number,sign
+      32 write-byte
+      Exit
+    ; define-verb
+
+
+    : . .sign Exit ; define-verb
+
+
+    : .bin (* fixnum -- *)
+      write-bin-number
+      32 write-byte
+      Exit
+    ; define-verb
+
+    : .bin,sign (* fixnum -- *)
+      write-bin-number,sign
+      32 write-byte
+      Exit
+    ; define-verb
+
+    : .oct (* fixnum -- *)
+      write-oct-number
+      32 write-byte
+      Exit
+    ; define-verb
+
+    : .oct,sign (* fixnum -- *)
+      write-oct-number,sign
+      32 write-byte
+      Exit
+    ; define-verb
+
+    : .hex (* fixnum -- *)
+      write-hex-number
+      32 write-byte
+      Exit
+    ; define-verb
+
+    : .hex,sign (* fixnum -- *)
+      write-hex-number,sign
+      32 write-byte
+      Exit
+    ; define-verb
+
+    : .hex,capital (* fixnum -- *)
+      write-hex-number,capital
+      32 write-byte
+      Exit
+    ; define-verb
+
+    : .hex,sign,capital (* fixnum -- *)
+      write-hex-number,sign,capital
+      32 write-byte
+      Exit
+    ; define-verb
+
+
+    : .aph (* fixnum -- *)
+      write-aph-number
+      32 write-byte
+      Exit
+    ; define-verb
+
+    : .aph,sign (* fixnum -- *)
+      write-aph-number,sign
+      32 write-byte
+      Exit
+    ; define-verb
+
+    : .aph,capital (* fixnum -- *)
+      write-aph-number,capital
+      32 write-byte
+      Exit
+    ; define-verb
+
+    : .aph,sign,capital (* fixnum -- *)
+      write-aph-number,sign,capital
+      32 write-byte
+      Exit
+    ; define-verb
+
+    : write-space (* -- *)
+      32 write-byte Exit
+    ; define-verb
+
+    : write-some-space (* n -- *)
+      dup zero? if
+        drop Exit
+      then
+      sub1
+      write-space
+      write-some-space
+      Exit
+    ; define-verb
+    #+end_src
+** test
+   #+begin_src cicada
+   123 321 123321 . . .
+   -123 321 -123321 . . .
+   -123 321 -123321 .sign .sign .sign
+   -123 321 -123321 .unsign .unsign .unsign
+
+   123 321 123321 .bin .bin .bin
+   -123 321 -123321 .bin,sign .bin,sign .bin,sign
+
+   123 321 123321 .oct .oct .oct
+   -123 321 -123321 .oct,sign .oct,sign .oct,sign
+
+   123 321 123321 .hex .hex .hex
+   123 321 123321 .hex,capital .hex,capital .hex,capital
+   -123 321 -123321 .hex,sign .hex,sign .hex,sign
+   -123 321 -123321 .hex,sign,capital .hex,sign,capital .hex,sign,capital
+
+   123 321 123321 .aph .aph .aph
+   123 321 123321 .aph,capital .aph,capital .aph,capital
+   -123 321 -123321 .aph,sign .aph,sign .aph,sign
+   -123 321 -123321 .aph,sign,capital .aph,sign,capital .aph,sign,capital
+   #+end_src
 * string
 ** note
    1. I will NOT implement simple string as "aaa"
@@ -245,468 +711,12 @@
    ok
    #+end_src
 ** string
-   #+begin_src cicada
+   #+begin_src cicada  
    : string
      (* -- *)
      Exit
    ; define-key-word
-   #+end_src
-* number writer
-** note
-   1. due to the lack of the "semantic of substitution"
-      to achieve the following functions
-      I have to copy lots of code
-      instead of just using lambda-abstraction
-** implementation
-*** write-dec-number
-    #+begin_src cicada
-    : write-dec-number-char (* byte -- *)
-      '0' + write-byte
-      Exit
-    ; define-verb
-
-    : help:write-dec-number,push-chars
-      (* ... , number of small DecNumbers, fixnum --
-         ... , number of small DecNumbers *)
-      10 moddiv
-      dup zero? if
-        drop swap add1 Exit
-      then
-      xx|swap|x xx|swap|x add1 swap
-      help:write-dec-number,push-chars
-      Exit
-    ; define-verb
-
-    : help:write-dec-number,write-bytes
-      (* ... , number of small DecNumbers -- *)
-      dup zero? if drop Exit
-      then
-      sub1 swap write-dec-number-char
-      help:write-dec-number,write-bytes
-      Exit
-    ; define-verb
-
-
-    : write-dec-number,unsign (* fixnum -- *)
-      0 swap
-      help:write-dec-number,push-chars
-      help:write-dec-number,write-bytes
-      Exit
-    ; define-verb
-
-    : write-dec-number,sign (* fixnum -- *)
-      dup 0 < if
-        '-' write-byte
-        negate
-      then
-      write-dec-number,unsign
-      Exit
-    ; define-verb
-
-    : write-dec-number
-      write-dec-number,sign
-      Exit
-    ; define-verb
-    #+end_src
-*** write-bin-number
-    #+begin_src cicada
-    : write-bin-number-char (* byte -- *)
-      '0' + write-byte
-      Exit
-    ; define-verb
-
-    : help:write-bin-number,push-chars
-      (* ... , number of small BinNumbers, fixnum --
-         ... , number of small BinNumbers *)
-      2 moddiv
-      dup zero? if
-        drop swap add1 Exit
-      then
-      xx|swap|x xx|swap|x add1 swap
-      help:write-bin-number,push-chars
-      Exit
-    ; define-verb
-
-    : help:write-bin-number,write-bytes
-      (* ... , number of small BinNumbers -- *)
-      dup zero? if drop Exit
-      then
-      sub1 swap write-bin-number-char
-      help:write-bin-number,write-bytes
-      Exit
-    ; define-verb
-
-    : write-bin-number,unsign (* fixnum -- *)
-      0 swap
-      help:write-bin-number,push-chars
-      help:write-bin-number,write-bytes
-      Exit
-    ; define-verb
-
-    : write-bin-number,sign (* fixnum -- *)
-      dup 0 < if
-        '-' write-byte
-        negate
-      then
-      write-bin-number,unsign
-      Exit
-    ; define-verb
-
-    : write-bin-number
-      write-bin-number,sign
-      Exit
-    ; define-verb
-    #+end_src
-*** write-oct-number
-    #+begin_src cicada
-    : write-oct-number-char (* byte -- *)
-      '0' + write-byte
-      Exit
-    ; define-verb
-
-    : help:write-oct-number,push-chars
-      (* ... , number of small OctNumbers, fixnum --
-         ... , number of small OctNumbers *)
-      8 moddiv
-      dup zero? if
-        drop swap add1 Exit
-      then
-      xx|swap|x xx|swap|x add1 swap
-      help:write-oct-number,push-chars
-      Exit
-    ; define-verb
-
-    : help:write-oct-number,write-bytes
-      (* ... , number of small OctNumbers -- *)
-      dup zero? if drop Exit
-      then
-      sub1 swap write-oct-number-char
-      help:write-oct-number,write-bytes
-      Exit
-    ; define-verb
-
-    : write-oct-number,unsign (* fixnum -- *)
-      0 swap
-      help:write-oct-number,push-chars
-      help:write-oct-number,write-bytes
-      Exit
-    ; define-verb
-
-    : write-oct-number,sign (* fixnum -- *)
-      dup 0 < if
-        '-' write-byte
-        negate
-      then
-      write-oct-number,unsign
-      Exit
-    ; define-verb
-
-    : write-oct-number
-      write-oct-number,sign
-      Exit
-    ; define-verb
-    #+end_src
-*** write-hex-number
-    #+begin_src cicada
-    : write-hex-number-char (* byte -- *)
-      dup 10 < if
-        '0' + write-byte Exit
-      then
-      10 -
-      'a' + write-byte
-      Exit
-    ; define-verb
-
-    : write-hex-number-char,capital (* byte -- *)
-      dup 10 < if
-        '0' + write-byte Exit
-      then
-      10 -
-      'A' + write-byte
-      Exit
-    ; define-verb
-
-    : help:write-hex-number,push-chars
-      (* ... , number of small HexNumbers, fixnum --
-         ... , number of small HexNumbers *)
-      16 moddiv
-      dup zero? if
-        drop swap add1 Exit
-      then
-      xx|swap|x xx|swap|x add1 swap
-      help:write-hex-number,push-chars
-      Exit
-    ; define-verb
-
-    : help:write-hex-number,write-bytes
-      (* ... , number of small HexNumbers -- *)
-      dup zero? if drop Exit
-      then
-      sub1 swap write-hex-number-char
-      help:write-hex-number,write-bytes
-      Exit
-    ; define-verb
-
-    : help:write-hex-number,write-bytes,capital
-      (* ... , number of small HexNumbers -- *)
-      dup zero? if drop Exit
-      then
-      sub1 swap write-hex-number-char,capital
-      help:write-hex-number,write-bytes,capital
-      Exit
-    ; define-verb
-
-    : write-hex-number,unsign (* fixnum -- *)
-      0 swap
-      help:write-hex-number,push-chars
-      help:write-hex-number,write-bytes
-      Exit
-    ; define-verb
-
-    : write-hex-number,capital (* fixnum -- *)
-      0 swap
-      help:write-hex-number,push-chars
-      help:write-hex-number,write-bytes,capital
-      Exit
-    ; define-verb
-
-    : write-hex-number,sign (* fixnum -- *)
-      dup 0 < if
-        '-' write-byte
-        negate
-      then
-      write-hex-number,unsign
-      Exit
-    ; define-verb
-
-    : write-hex-number,sign,capital (* fixnum -- *)
-      dup 0 < if
-        '-' write-byte
-        negate
-      then
-      write-hex-number,capital
-      Exit
-    ; define-verb
-
-    : write-hex-number
-      write-hex-number,sign
-      Exit
-    ; define-verb
-    #+end_src
-*** write-aph-number
-    #+begin_src cicada
-    : write-aph-number-char (* byte -- *)
-      dup 10 < if
-        '0' + write-byte Exit
-      then
-      10 -
-      'a' + write-byte
-      Exit
-    ; define-verb
-
-    : write-aph-number-char,capital (* byte -- *)
-      dup 10 < if
-        '0' + write-byte Exit
-      then
-      10 -
-      'A' + write-byte
-      Exit
-    ; define-verb
-
-    : help:write-aph-number,push-chars
-      (* ... , number of small AphNumbers, fixnum --
-         ... , number of small AphNumbers *)
-      36 moddiv
-      dup zero? if
-        drop swap add1 Exit
-      then
-      xx|swap|x xx|swap|x add1 swap
-      help:write-aph-number,push-chars
-      Exit
-    ; define-verb
-
-    : help:write-aph-number,write-bytes
-      (* ... , number of small AphNumbers -- *)
-      dup zero? if drop Exit
-      then
-      sub1 swap write-aph-number-char
-      help:write-aph-number,write-bytes
-      Exit
-    ; define-verb
-
-    : help:write-aph-number,write-bytes,capital
-      (* ... , number of small AphNumbers -- *)
-      dup zero? if drop Exit
-      then
-      sub1 swap write-aph-number-char,capital
-      help:write-aph-number,write-bytes,capital
-      Exit
-    ; define-verb
-
-    : write-aph-number,unsign (* fixnum -- *)
-      0 swap
-      help:write-aph-number,push-chars
-      help:write-aph-number,write-bytes
-      Exit
-    ; define-verb
-
-    : write-aph-number,capital (* fixnum -- *)
-      0 swap
-      help:write-aph-number,push-chars
-      help:write-aph-number,write-bytes,capital
-      Exit
-    ; define-verb
-
-    : write-aph-number,sign (* fixnum -- *)
-      dup 0 < if
-        '-' write-byte
-        negate
-      then
-      write-aph-number,unsign
-      Exit
-    ; define-verb
-
-    : write-aph-number,sign,capital (* fixnum -- *)
-      dup 0 < if
-        '-' write-byte
-        negate
-      then
-      write-aph-number,capital
-      Exit
-    ; define-verb
-
-    : write-aph-number
-      write-aph-number,sign
-      Exit
-    ; define-verb
-    #+end_src
-*** usage
-    #+begin_src cicada
-    : .unsign (* fixnum -- *)
-      write-dec-number
-      'space' write-byte
-      Exit
-    ; define-verb
-
-    : .sign (* fixnum -- *)
-      write-dec-number,sign
-      'space' write-byte
-      Exit
-    ; define-verb
-
-
-    : . .sign Exit ; define-verb
-
-
-    : .bin (* fixnum -- *)
-      write-bin-number
-      'space' write-byte
-      Exit
-    ; define-verb
-
-    : .bin,sign (* fixnum -- *)
-      write-bin-number,sign
-      'space' write-byte
-      Exit
-    ; define-verb
-
-    : .oct (* fixnum -- *)
-      write-oct-number
-      'space' write-byte
-      Exit
-    ; define-verb
-
-    : .oct,sign (* fixnum -- *)
-      write-oct-number,sign
-      'space' write-byte
-      Exit
-    ; define-verb
-
-    : .hex (* fixnum -- *)
-      write-hex-number
-      'space' write-byte
-      Exit
-    ; define-verb
-
-    : .hex,sign (* fixnum -- *)
-      write-hex-number,sign
-      'space' write-byte
-      Exit
-    ; define-verb
-
-    : .hex,capital (* fixnum -- *)
-      write-hex-number,capital
-      'space' write-byte
-      Exit
-    ; define-verb
-
-    : .hex,sign,capital (* fixnum -- *)
-      write-hex-number,sign,capital
-      'space' write-byte
-      Exit
-    ; define-verb
-
-
-    : .aph (* fixnum -- *)
-      write-aph-number
-      'space' write-byte
-      Exit
-    ; define-verb
-
-    : .aph,sign (* fixnum -- *)
-      write-aph-number,sign
-      'space' write-byte
-      Exit
-    ; define-verb
-
-    : .aph,capital (* fixnum -- *)
-      write-aph-number,capital
-      'space' write-byte
-      Exit
-    ; define-verb
-
-    : .aph,sign,capital (* fixnum -- *)
-      write-aph-number,sign,capital
-      'space' write-byte
-      Exit
-    ; define-verb
-
-    : write-space (* -- *)
-      'space' write-byte Exit
-    ; define-verb
-
-    : write-some-space (* n -- *)
-      dup zero? if
-        drop Exit
-      then
-      sub1
-      write-space
-      write-some-space
-      Exit
-    ; define-verb
-    #+end_src
-** test
-   #+begin_src cicada
-   123 321 123321 . . .
-   -123 321 -123321 . . .
-   -123 321 -123321 .sign .sign .sign
-   -123 321 -123321 .unsign .unsign .unsign
-
-   123 321 123321 .bin .bin .bin
-   -123 321 -123321 .bin,sign .bin,sign .bin,sign
-
-   123 321 123321 .oct .oct .oct
-   -123 321 -123321 .oct,sign .oct,sign .oct,sign
-
-   123 321 123321 .hex .hex .hex
-   123 321 123321 .hex,capital .hex,capital .hex,capital
-   -123 321 -123321 .hex,sign .hex,sign .hex,sign
-   -123 321 -123321 .hex,sign,capital .hex,sign,capital .hex,sign,capital
-
-   123 321 123321 .aph .aph .aph
-   123 321 123321 .aph,capital .aph,capital .aph,capital
-   -123 321 -123321 .aph,sign .aph,sign .aph,sign
-   -123 321 -123321 .aph,sign,capital .aph,sign,capital .aph,sign,capital
+   ok
    #+end_src
 * debuger
 ** debuger-REPL & trace-function

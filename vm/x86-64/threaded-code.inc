@@ -471,7 +471,7 @@ def_assembly_code "xx|over|xxxx", xxoverxxxx
 
 
 def_assembly_code "x-y-over", x_y_over
-   ;; (* [x 个], [y 个], x, y -- [x 个], [y 个], [x 个] *)
+   ;; (* [x 個], [y 個], x, y -- [x 個], [y 個], [x 個] *)
    pop_argument_stack r9 ;; y
    pop_argument_stack r8 ;; x
    mov rcx, r8
@@ -481,7 +481,7 @@ def_assembly_code "x-y-over", x_y_over
    ;; rcx == x
    ;; r8 == (x+y-1)*Cell_width
    ;; r9 == y
-   ;; 我懒得优化它
+   ;; 我懶得優化它
 .loop:
    mov  rax, [Argument_stack_pointer + r8]
    push_argument_stack rax
@@ -547,7 +547,7 @@ def_assembly_code "xxx|tuck|x", xxxtuckx
    next
 
 def_verb "x-y-tuck", x_y_tuck
-   ;; (* [x 个], [y 个], x, y -- [y 个], [x 个], [y 个] *)
+   ;; (* [x 個], [y 個], x, y -- [y 個], [x 個], [y 個] *)
    xx dup2
    xx ready
    xx x_y_swap
@@ -683,7 +683,7 @@ def_assembly_code "xxxx|swap|xx", xxxxswapxx
 
 
 def_assembly_code "x-y-swap", x_y_swap
-   ;; (* [x 个], [y 个], x, y -- [y 个], [x 个] *)
+   ;; (* [x 個], [y 個], x, y -- [y 個], [x 個] *)
    pop_argument_stack r9 ;; y
    pop_argument_stack r8 ;; x
 
@@ -793,8 +793,8 @@ def_verb "pop-lambda-stack", pop_lambda_stack
    xx _literal, Cell_width, _address, Lambda_stack_pointer, add_save
    xx Exit
 def_verb_end pop_lambda_stack
-;; 如果 ready 只是和 get-back 成对使用的话
-;; 就没必要添加两个 swap 了
+;; 如果 ready 只是和 get-back 成對使用的話
+;; 就沒必要添加兩個 swap 了
 ;; but we need more than that
 
 def_verb "ready", ready
@@ -1290,9 +1290,9 @@ def_key_word_end 即
 
 
 
-;; the following handles _转 to "Exit"
+;; the following handles _轉 to "Exit"
 ;; >< alth branch to "Exit" should never be used
-def_assembly_code "_转", _转
+def_assembly_code "_轉", _轉
    ;; 1. if NOT at the end of the function body
    ;;    (* Return-stack::
    ;;         address -- address + offset * Cell_width *)
@@ -1306,33 +1306,33 @@ def_assembly_code "_转", _转
    imul rax, Cell_width
    add  rbx, rax
    cmp dword[rbx], Exit
-   je _转__meet_end
+   je _轉__meet_end
    cmp dword[rbx], 已矣
-   je _转__meet_end
+   je _轉__meet_end
    push_return_stack rbx
-_转__meet_end:
+_轉__meet_end:
    next
 
 
 
 ;; no error handling for string_full_of_blank
-def_key_word "转", 转
+def_key_word "轉", 轉
    ;; (* word-string[address, length] -- word-string[address, length] *)
    ;; (* compile::
    ;;      _即[address of explainer], number *)
-   xx _即, _转, compile_number_to_here
+   xx _即, _轉, compile_number_to_here
    xx tail_and_head_of_word_string
-   xx dup2, string_denote_integer?, _假则转, 5
+   xx dup2, string_denote_integer?, _假則轉, 5
    xx   string_to_integer__with_error, drop, compile_number_to_here
    xx   Exit
    ;; need error handling when branch followed by a non integer
    xx Exit
-def_key_word_end 转
+def_key_word_end 轉
 
-;; the following handles _假则转 to "Exit"
-def_assembly_code "_假则转", _假则转
+;; the following handles _假則轉 to "Exit"
+def_assembly_code "_假則轉", _假則轉
    ;; (* True of False -- *)
-   ;; 0. if NOT _转
+   ;; 0. if NOT _轉
    ;;    (* Return-stack::
    ;;         address -- address + Cell_width *)
    ;; 1. if NOT at the end of the function body
@@ -1345,44 +1345,44 @@ def_assembly_code "_假则转", _假则转
    ;; (could be optimize by not using "next")
    pop_argument_stack rax
    test rax, rax
-   jnz _假则转__not_to_转
+   jnz _假則轉__not_to_轉
 
    pop_return_stack rbx
    mov  rax, [rbx]
    imul rax, Cell_width
    add  rbx, rax
    cmp dword[rbx], Exit
-   je _假则转__meet_end
+   je _假則轉__meet_end
    cmp dword[rbx], 已矣
-   je _假则转__meet_end
+   je _假則轉__meet_end
    push_return_stack rbx
-_假则转__meet_end:
+_假則轉__meet_end:
    next
 
-_假则转__not_to_转:
+_假則轉__not_to_轉:
    pop_return_stack rbx
    add rbx, Cell_width
    cmp dword[rbx], Exit
-   je _假则转__not_to_转__meet_end
+   je _假則轉__not_to_轉__meet_end
    cmp dword[rbx], 已矣
-   je _假则转__not_to_转__meet_end
+   je _假則轉__not_to_轉__meet_end
    push_return_stack rbx
-_假则转__not_to_转__meet_end:
+_假則轉__not_to_轉__meet_end:
    next
 
 ;; no error handling for string_full_of_blank
-def_key_word "假则转", 假则转
+def_key_word "假則轉", 假則轉
    ;; (* word-string[address, length] -- word-string[address, length] *)
    ;; (* compile::
    ;;      _即[address of explainer], number *)
-   xx _即, _假则转, compile_number_to_here
+   xx _即, _假則轉, compile_number_to_here
    xx tail_and_head_of_word_string
-   xx dup2, string_denote_integer?, _假则转, 5
+   xx dup2, string_denote_integer?, _假則轉, 5
    xx   string_to_integer__with_error, drop, compile_number_to_here
    xx   Exit
    ;; need error handling when branch followed by a non integer
    xx Exit
-def_key_word_end 假则转
+def_key_word_end 假則轉
 def_assembly_code "", _address
    ;; (* -- address *)
    ;; 1. if NOT at the end of the function body
@@ -1472,7 +1472,7 @@ def_key_word "then", _then
    xx swap, save
    xx Exit
 def_key_word_end _then
-def_key_word "则", 则
+def_key_word "則", 則
    ;; (* word-string[address, length] -- word-string[address, length] *)
    ;; (* Lambda-stack::
    ;;       -- address after _false?branch *)
@@ -1482,9 +1482,9 @@ def_key_word "则", 则
    xx Here, push_lambda_stack
    xx _literal, 0, compile_number_to_here ;; (* leave a place *)
    xx Exit
-def_key_word_end 则
+def_key_word_end 則
 
-def_key_word "否则", 否则
+def_key_word "否則", 否則
    ;; (* word-string[address, length] -- word-string[address, length] *)
    ;; (* Lambda-stack ::
    ;;      [address after _false?branch] -- [address after _branch] *)
@@ -1499,7 +1499,7 @@ def_key_word "否则", 否则
    xx Here, over, subtraction, _literal, Cell_width, moddiv, swap, drop
    xx swap, save
    xx Exit
-def_key_word_end 否则
+def_key_word_end 否則
 
 def_key_word "再", 再
    ;; (* word-string[address, length] -- word-string[address, length] *)
@@ -1567,11 +1567,11 @@ def_verb_end compile_string_to_data_section
 def_string "Bra:cosemi", ":", Bra__cosemi
 def_string "Ket:cosemi", ";", Ket__cosemi
 
-;; 1. 为了使得 data section 的处理变得简单
-;;    即 不用去计算 function section 的长度
-;;    而使用 类似 哈佛构架的办法 把数据与函数分开
-;; 2. 利用 Current_data_section 这个变量
-;; 3. 为了处理嵌套的 ":" ";" 而对 ":" 的出现进行计数
+;; 1. 爲了使得 data section 的處理變得簡單
+;;    即 不用去計算 function section 的長度
+;;    而使用 類似 哈佛構架的辦法 把數據與函數分開
+;; 2. 利用 Current_data_section 這個變量
+;; 3. 爲了處理嵌套的 ":" ";" 而對 ":" 的出現進行計數
 ;; 4. do not copy byte by byte
 ;;    but use "copy-byte-string"
 def_key_word ":", colon
@@ -1779,27 +1779,27 @@ def_verb_end call_compiled_phrase
 ;; single-linked-list is not very good for side-effect
 ;; but I use it anyway
 
-;; 检测链表中的第二个元素 而不是第一个元素
-;; 这样就可以在 检查到 phrase 的 buffer 中的地址时
-;; 从中间消去链表的一个元素
-;; 结束递归的条件是 发现 链表是 由单个元素组成的
-;; 当链表不是由单个元素组成的 的时候
-;; 递归作用以两种方式减少 链表的长度
-;; 1. 不需要消去时 参数后移
-;; 2. 需要消去时 消去一个元素
-;; 链表的头元素始终是被处理过了的 (即 确定以需要被包含在链表内的)
-;; 空链表和链表元素个数为 1 的情形
-;; 在递归部分之外处理
-;; 其实 不应该说是 递归之外
-;; 因为这里是在用一个循环 来寻找
-;; 第一个 需要被留在链表中的元素
+;; 檢測鏈表中的第二個元素 而不是第一個元素
+;; 這樣就可以在 檢查到 phrase 的 buffer 中的地址時
+;; 從中間消去鏈表的一個元素
+;; 結束遞歸的條件是 發現 鏈表是 由單個元素組成的
+;; 當鏈表不是由單個元素組成的 的時候
+;; 遞歸作用以兩種方式減少 鏈表的長度
+;; 1. 不需要消去時 參數後移
+;; 2. 需要消去時 消去一個元素
+;; 鏈表的頭元素始終是被處理過了的 (即 確定以需要被包含在鏈表內的)
+;; 空鏈表和鏈表元素個數爲 1 的情形
+;; 在遞歸部分之外處理
+;; 其實 不應該說是 遞歸之外
+;; 因爲這裏是在用一個循環 來尋找
+;; 第一個 需要被留在鏈表中的元素
 
 def_verb "clear-waiting-symbol-list,for-phrase", clear_waiting_symbol_list__for_phrase
    ;; (* -- *)
    xx Waiting_symbol_list
 
    .main:
-   ;; (* 这个循环是为了找到第一个需要被保留在链表内的元素 *)
+   ;; (* 這個循環是爲了找到第一個需要被保留在鏈表內的元素 *)
    xx dup, _Null_waiting_symbol_entry, equal?, _false?branch, 3
    xx   drop
    xx   Exit
@@ -2399,7 +2399,7 @@ hereUnInitializedData
 Symbol_length_bytes_size = 1
 Symbol_value_bytes_size  = 16
 Symbol_string_bytes_size = 56+0
-;; 上面的量决定了 多长的字符串 能够被找会来
+;; 上面的量決定了 多長的字符串 能夠被找會來
 Symbol_max_length       = 56
 Symbol_entry_bytes_size = Symbol_value_bytes_size + Symbol_length_bytes_size + Symbol_string_bytes_size
 ;; Number_of_symbol_entrys = 1000003
@@ -2769,19 +2769,19 @@ def_verb "remove-car-of-cdr-of-waiting-symbol-list", remove_car_of_cdr_of_waitin
    xx save
    xx Exit
 def_verb_end remove_car_of_cdr_of_waiting_symbol_list
-;; 比对链表中的第二个元素 而不是第一个元素
-;; 这样就可以在 比对成功时 从中间消去链表的一个元素
-;; 结束递归的条件是 发现 链表是 由单个元素组成的
-;; 当链表不是由单个元素组成的 的时候
-;; 递归作用以两种方式减少 链表的长度
-;; 1. 不需要消去时 参数后移
-;; 2. 需要消去时 消去一个元素
-;; 链表的头元素始终是被处理过了的 (即 确定以需要被包含在链表内的)
-;; 空链表和链表元素个数为 1 的情形
-;; 在递归部分之外处理
-;; 其实 不应该说是 递归之外
-;; 因为这里是在用一个循环 来寻找
-;; 第一个 需要被留在链表中的元素
+;; 比對鏈表中的第二個元素 而不是第一個元素
+;; 這樣就可以在 比對成功時 從中間消去鏈表的一個元素
+;; 結束遞歸的條件是 發現 鏈表是 由單個元素組成的
+;; 當鏈表不是由單個元素組成的 的時候
+;; 遞歸作用以兩種方式減少 鏈表的長度
+;; 1. 不需要消去時 參數後移
+;; 2. 需要消去時 消去一個元素
+;; 鏈表的頭元素始終是被處理過了的 (即 確定以需要被包含在鏈表內的)
+;; 空鏈表和鏈表元素個數爲 1 的情形
+;; 在遞歸部分之外處理
+;; 其實 不應該說是 遞歸之外
+;; 因爲這裏是在用一個循環 來尋找
+;; 第一個 需要被留在鏈表中的元素
 
 def_verb "sub-symbol-from-waiting-symbol-list", sub_symbol_from_waiting_symbol_list
    ;; (* symbol[index] -- *)
@@ -2789,7 +2789,7 @@ def_verb "sub-symbol-from-waiting-symbol-list", sub_symbol_from_waiting_symbol_l
 
    ;; (* symbol[index], list[address] *)
    .main:
-   ;; (* 这个循环是为了找到第一个需要被保留在链表内的元素 *)
+   ;; (* 這個循環是爲了找到第一個需要被保留在鏈表內的元素 *)
    xx dup, _Null_waiting_symbol_entry, equal?, _false?branch, 4
    xx   drop, drop
    xx   Exit
@@ -2847,7 +2847,7 @@ def_verb "help:sub-symbol-from-waiting-symbol-list,try", help__sub_symbol_from_w
    xx False
    xx Exit
 def_verb_end help__sub_symbol_from_waiting_symbol_list__try
-;; 检测 list 的 长度
+;; 檢測 list 的 長度
 def_verb "help:t", help__t
    xx dup, _Null_waiting_symbol_entry, equal?, _false?branch, 5
    xx   drop, pop_lambda_stack, print_little_number
@@ -2866,9 +2866,11 @@ def_verb "t", t
 def_verb_end t
 def_verb "meet-undefined-word", meet_undefined_word
    ;; (* -- *)
-   xx Message__undefined_word, print_string, cr
+   xx Message__meet_undefined_word, print_string, cr
    xx Exit
 def_verb_end meet_undefined_word
+
+def_string "Message:meet-undefined-word", "   MEET UNDEFINED WORD", Message__meet_undefined_word
 def_assembly_code "execute", execute
    ;; ( word[address of explainer] -- )
    pop_argument_stack Explainer_pointer
@@ -2877,7 +2879,7 @@ def_assembly_code "execute", execute
 ;; when someone try to find a word in the dictionary,
 ;; the explainer of that word explains the word for him or her
 
-;; explain_verb 会贴贴一个 纸条 到 木条 上
+;; explain_verb 會貼貼一個 紙條 到 木條 上
 
 hereCode
 explain_verb:
@@ -3078,10 +3080,10 @@ def_verb "string-denote-key-word?", string_denote_key_word?
    xx Exit
 def_verb_end string_denote_key_word?
 ;; 1. the following functions are for read-phrase
-;; 2. 需要 一个 另一个版本的 read_word
-;;    来 帮助 实现 read-word-string,for-lexicographer
-;; 3. 这是必要的
-;;    因为 否则 用来读字符串的函数就实现不好
+;; 2. 需要 一個 另一個版本的 read_word
+;;    來 幫助 實現 read-word-string,for-lexicographer
+;; 3. 這是必要的
+;;    因爲 否則 用來讀字符串的函數就實現不好
 
 ;; (* helper functions *)
 def_verb "string-append-char", string_append_char
@@ -3091,7 +3093,7 @@ def_verb "string-append-char", string_append_char
    xx Exit
 def_verb_end string_append_char
 
-;; 这个版本的函数 每次读一个 char 之后 都会先把它存到字符串中
+;; 這個版本的函數 每次讀一個 char 之後 都會先把它存到字符串中
 
 def_verb "read-first-non-blank-char,while-saving-to-string", read_first_non_blank_char__while_saving_to_string
    ;; (* string[address, length] --
@@ -3165,7 +3167,7 @@ def_verb "find-word-boundary-address,end", find_word_boundary_address__end
    xx dup, zero?, _false?branch, 3
    xx   drop
    xx   Exit
-   ;; 对第一个做特殊处理 以保证 不再 word 内时 也能有效
+   ;; 對第一個做特殊處理 以保證 不再 word 內時 也能有效
    xx tail_and_head_of_string
    xx _literal, ASCII_space
    xx less_or_equal?, _false?branch, (.dup-$)/Cell_width
@@ -3236,7 +3238,7 @@ def_verb "head-of-word-string", head_of_word_string
    ;; (* word-string[address, length] -- word[address, length] *)
    xx dup2, find_word_boundary_address__begin
    ;; ><><>< need error check here in the future
-   ;; 也就是 先假设上面的函数 返回正确的 address
+   ;; 也就是 先假設上面的函數 返回正確的 address
    xx xxswapx
    xx find_word_boundary_address__end
    xx over, subtraction
@@ -3247,7 +3249,7 @@ def_verb "tail-of-word-string", tail_of_word_string
    ;; (* word-string[address, length] -- word-string[new address, length - n] *)
    xx dup2, find_word_boundary_index__end
    ;; ><><>< need error check here in the future
-   ;; 也就是 先假设上面的函数 返回正确的 address
+   ;; 也就是 先假設上面的函數 返回正確的 address
    xx tuck
    xx subtraction
    xx xxswapx
@@ -3350,17 +3352,7 @@ def_verb "compile-word-description-to-here", compile_word_description_to_here
    xx add_symbol_to_waiting_symbol_list
    xx compile_word_description_to_here
    xx Exit
-
-   ;; xx drop
-   ;; xx cr
-   ;; xx Message__undefined_word, print_string
-   ;; xx print_string, cr
-   ;; xx Message__the_rest, print_string, cr
-   ;; xx print_string, cr
-   ;; xx Exit
 def_verb_end compile_word_description_to_here
-
-def_string "Message:the-rest", "   The rest of the word string to compile is:", Message__the_rest
 def_verb "create-word-header", create_word_header
    ;; (* string[address, length] -- word[address of link] *)
    xx Here, push_lambda_stack ;; for address-of-name-string-header
@@ -3464,27 +3456,27 @@ def_verb_end call_compiled_string__for_define
 ;; single-linked-list is not very good for side-effect
 ;; but I use it anyway
 
-;; 检测链表中的第二个元素 而不是第一个元素
-;; 这样就可以在 检查到 define 的 buffer 中的地址时
-;; 从中间消去链表的一个元素
-;; 结束递归的条件是 发现 链表是 由单个元素组成的
-;; 当链表不是由单个元素组成的 的时候
-;; 递归作用以两种方式减少 链表的长度
-;; 1. 不需要消去时 参数后移
-;; 2. 需要消去时 消去一个元素
-;; 链表的头元素始终是被处理过了的 (即 确定以需要被包含在链表内的)
-;; 空链表和链表元素个数为 1 的情形
-;; 在递归部分之外处理
-;; 其实 不应该说是 递归之外
-;; 因为这里是在用一个循环 来寻找
-;; 第一个 需要被留在链表中的元素
+;; 檢測鏈表中的第二個元素 而不是第一個元素
+;; 這樣就可以在 檢查到 define 的 buffer 中的地址時
+;; 從中間消去鏈表的一個元素
+;; 結束遞歸的條件是 發現 鏈表是 由單個元素組成的
+;; 當鏈表不是由單個元素組成的 的時候
+;; 遞歸作用以兩種方式減少 鏈表的長度
+;; 1. 不需要消去時 參數後移
+;; 2. 需要消去時 消去一個元素
+;; 鏈表的頭元素始終是被處理過了的 (即 確定以需要被包含在鏈表內的)
+;; 空鏈表和鏈表元素個數爲 1 的情形
+;; 在遞歸部分之外處理
+;; 其實 不應該說是 遞歸之外
+;; 因爲這裏是在用一個循環 來尋找
+;; 第一個 需要被留在鏈表中的元素
 
 def_verb "clear-waiting-symbol-list,for-define", clear_waiting_symbol_list__for_define
    ;; (* -- *)
    xx Waiting_symbol_list
 
    .main:
-   ;; (* 这个循环是为了找到第一个需要被保留在链表内的元素 *)
+   ;; (* 這個循環是爲了找到第一個需要被保留在鏈表內的元素 *)
    xx dup, _Null_waiting_symbol_entry, equal?, _false?branch, 3
    xx   drop
    xx   Exit
@@ -3592,31 +3584,31 @@ def_verb "define-key-word", define_key_word
    xx   Verb_explainer, compile_number_to_here
    xx   compile_word_description_to_here
    xx pop_lambda_stack
-   ;; 这里 如果能够 在 Waiting_symbol_list 中找到 这个 词
-   ;; 就应该报错
-   ;; 因为此时在 用户在 使用一个 语法关键词 之前
-   ;; 没有定义这个语法关键词
-   ;; 如果 不处理这个 错误的话
-   ;; 只有当 用户定义一个
-   ;; 与 这个语法关键词 有 同样名字的 名词或动词
-   ;; 的时候 这个 等待 被定义的 位置 才会 被补上
-   ;; 我 暂时不处理这个 错误
+   ;; 這裏 如果能夠 在 Waiting_symbol_list 中找到 這個 詞
+   ;; 就應該報錯
+   ;; 因爲此時在 用戶在 使用一個 語法關鍵詞 之前
+   ;; 沒有定義這個語法關鍵詞
+   ;; 如果 不處理這個 錯誤的話
+   ;; 只有當 用戶定義一個
+   ;; 與 這個語法關鍵詞 有 同樣名字的 名詞或動詞
+   ;; 的時候 這個 等待 被定義的 位置 纔會 被補上
+   ;; 我 暫時不處理這個 錯誤
    xx dup, set_size_of_word
    xx word_to_address_of_type
    xx _literal, 1, swap, save_byte
    xx Exit
 def_verb_end define_key_word
-def_verb "动词也", 动词也
+def_verb "動詞也", 動詞也
    ;; (* words-string[address, length] -- *)
    xx define_verb
    xx Exit
-def_verb_end 动词也
+def_verb_end 動詞也
 
-def_verb "函数也", 函数也
+def_verb "函數也", 函數也
    ;; (* words-string[address, length] -- *)
    xx define_function
    xx Exit
-def_verb_end 函数也
+def_verb_end 函數也
 
 def_verb "也", 也
    ;; (* words-string[address, length] -- *)
@@ -3624,11 +3616,11 @@ def_verb "也", 也
    xx Exit
 def_verb_end 也
 
-def_verb "虚词也", 虚词也
+def_verb "虛詞也", 虛詞也
    ;; (* words-string[address, length] -- *)
    xx define_key_word
    xx Exit
-def_verb_end 虚词也
+def_verb_end 虛詞也
 ;;   (unit : byte)
 ;; ========================
 ;;   ||  1 : color     ||

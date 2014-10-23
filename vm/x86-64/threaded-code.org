@@ -507,7 +507,7 @@
 
 
     def_assembly_code "x-y-over", x_y_over
-       ;; (* [x 个], [y 个], x, y -- [x 个], [y 个], [x 个] *)
+       ;; (* [x 個], [y 個], x, y -- [x 個], [y 個], [x 個] *)
        pop_argument_stack r9 ;; y
        pop_argument_stack r8 ;; x
        mov rcx, r8
@@ -517,7 +517,7 @@
        ;; rcx == x
        ;; r8 == (x+y-1)*Cell_width
        ;; r9 == y
-       ;; 我懒得优化它
+       ;; 我懶得優化它
     .loop:
        mov  rax, [Argument_stack_pointer + r8]
        push_argument_stack rax
@@ -586,7 +586,7 @@
        next
 
     def_verb "x-y-tuck", x_y_tuck
-       ;; (* [x 个], [y 个], x, y -- [y 个], [x 个], [y 个] *)
+       ;; (* [x 個], [y 個], x, y -- [y 個], [x 個], [y 個] *)
        xx dup2
        xx ready
        xx x_y_swap
@@ -725,7 +725,7 @@
 
 
         def_assembly_code "x-y-swap", x_y_swap
-           ;; (* [x 个], [y 个], x, y -- [y 个], [x 个] *)
+           ;; (* [x 個], [y 個], x, y -- [y 個], [x 個] *)
            pop_argument_stack r9 ;; y
            pop_argument_stack r8 ;; x
 
@@ -865,8 +865,8 @@
     #+end_src
 *** ready & get-back
     #+begin_src fasm :tangle threaded-code.inc
-    ;; 如果 ready 只是和 get-back 成对使用的话
-    ;; 就没必要添加两个 swap 了
+    ;; 如果 ready 只是和 get-back 成對使用的話
+    ;; 就沒必要添加兩個 swap 了
     ;; but we need more than that
 
     def_verb "ready", ready
@@ -1475,9 +1475,9 @@
 
 
 
-   ;; the following handles _转 to "Exit"
+   ;; the following handles _轉 to "Exit"
    ;; >< alth branch to "Exit" should never be used
-   def_assembly_code "_转", _转
+   def_assembly_code "_轉", _轉
       ;; 1. if NOT at the end of the function body
       ;;    (* Return-stack::
       ;;         address -- address + offset * Cell_width *)
@@ -1491,33 +1491,33 @@
       imul rax, Cell_width
       add  rbx, rax
       cmp dword[rbx], Exit
-      je _转__meet_end
+      je _轉__meet_end
       cmp dword[rbx], 已矣
-      je _转__meet_end
+      je _轉__meet_end
       push_return_stack rbx
-   _转__meet_end:
+   _轉__meet_end:
       next
 
 
 
    ;; no error handling for string_full_of_blank
-   def_key_word "转", 转
+   def_key_word "轉", 轉
       ;; (* word-string[address, length] -- word-string[address, length] *)
       ;; (* compile::
       ;;      _即[address of explainer], number *)
-      xx _即, _转, compile_number_to_here
+      xx _即, _轉, compile_number_to_here
       xx tail_and_head_of_word_string
-      xx dup2, string_denote_integer?, _假则转, 5
+      xx dup2, string_denote_integer?, _假則轉, 5
       xx   string_to_integer__with_error, drop, compile_number_to_here
       xx   Exit
       ;; need error handling when branch followed by a non integer
       xx Exit
-   def_key_word_end 转
+   def_key_word_end 轉
 
-   ;; the following handles _假则转 to "Exit"
-   def_assembly_code "_假则转", _假则转
+   ;; the following handles _假則轉 to "Exit"
+   def_assembly_code "_假則轉", _假則轉
       ;; (* True of False -- *)
-      ;; 0. if NOT _转
+      ;; 0. if NOT _轉
       ;;    (* Return-stack::
       ;;         address -- address + Cell_width *)
       ;; 1. if NOT at the end of the function body
@@ -1530,44 +1530,44 @@
       ;; (could be optimize by not using "next")
       pop_argument_stack rax
       test rax, rax
-      jnz _假则转__not_to_转
+      jnz _假則轉__not_to_轉
 
       pop_return_stack rbx
       mov  rax, [rbx]
       imul rax, Cell_width
       add  rbx, rax
       cmp dword[rbx], Exit
-      je _假则转__meet_end
+      je _假則轉__meet_end
       cmp dword[rbx], 已矣
-      je _假则转__meet_end
+      je _假則轉__meet_end
       push_return_stack rbx
-   _假则转__meet_end:
+   _假則轉__meet_end:
       next
 
-   _假则转__not_to_转:
+   _假則轉__not_to_轉:
       pop_return_stack rbx
       add rbx, Cell_width
       cmp dword[rbx], Exit
-      je _假则转__not_to_转__meet_end
+      je _假則轉__not_to_轉__meet_end
       cmp dword[rbx], 已矣
-      je _假则转__not_to_转__meet_end
+      je _假則轉__not_to_轉__meet_end
       push_return_stack rbx
-   _假则转__not_to_转__meet_end:
+   _假則轉__not_to_轉__meet_end:
       next
 
    ;; no error handling for string_full_of_blank
-   def_key_word "假则转", 假则转
+   def_key_word "假則轉", 假則轉
       ;; (* word-string[address, length] -- word-string[address, length] *)
       ;; (* compile::
       ;;      _即[address of explainer], number *)
-      xx _即, _假则转, compile_number_to_here
+      xx _即, _假則轉, compile_number_to_here
       xx tail_and_head_of_word_string
-      xx dup2, string_denote_integer?, _假则转, 5
+      xx dup2, string_denote_integer?, _假則轉, 5
       xx   string_to_integer__with_error, drop, compile_number_to_here
       xx   Exit
       ;; need error handling when branch followed by a non integer
       xx Exit
-   def_key_word_end 假则转
+   def_key_word_end 假則轉
    #+end_src
 ** address
    #+begin_src fasm :tangle threaded-code.inc
@@ -1670,7 +1670,7 @@
    #+end_src
 ** chinese if else then
    #+begin_src fasm :tangle threaded-code.inc
-   def_key_word "则", 则
+   def_key_word "則", 則
       ;; (* word-string[address, length] -- word-string[address, length] *)
       ;; (* Lambda-stack::
       ;;       -- address after _false?branch *)
@@ -1680,9 +1680,9 @@
       xx Here, push_lambda_stack
       xx _literal, 0, compile_number_to_here ;; (* leave a place *)
       xx Exit
-   def_key_word_end 则
+   def_key_word_end 則
 
-   def_key_word "否则", 否则
+   def_key_word "否則", 否則
       ;; (* word-string[address, length] -- word-string[address, length] *)
       ;; (* Lambda-stack ::
       ;;      [address after _false?branch] -- [address after _branch] *)
@@ -1697,7 +1697,7 @@
       xx Here, over, subtraction, _literal, Cell_width, moddiv, swap, drop
       xx swap, save
       xx Exit
-   def_key_word_end 否则
+   def_key_word_end 否則
 
    def_key_word "再", 再
       ;; (* word-string[address, length] -- word-string[address, length] *)
@@ -1774,11 +1774,11 @@
    def_string "Bra:cosemi", ":", Bra__cosemi
    def_string "Ket:cosemi", ";", Ket__cosemi
 
-   ;; 1. 为了使得 data section 的处理变得简单
-   ;;    即 不用去计算 function section 的长度
-   ;;    而使用 类似 哈佛构架的办法 把数据与函数分开
-   ;; 2. 利用 Current_data_section 这个变量
-   ;; 3. 为了处理嵌套的 ":" ";" 而对 ":" 的出现进行计数
+   ;; 1. 爲了使得 data section 的處理變得簡單
+   ;;    即 不用去計算 function section 的長度
+   ;;    而使用 類似 哈佛構架的辦法 把數據與函數分開
+   ;; 2. 利用 Current_data_section 這個變量
+   ;; 3. 爲了處理嵌套的 ":" ";" 而對 ":" 的出現進行計數
    ;; 4. do not copy byte by byte
    ;;    but use "copy-byte-string"
    def_key_word ":", colon
@@ -1923,31 +1923,31 @@
       they are for the runtime function "read-phrase"
       interesting design ^_^
       but they can not even show up in comment
-   2. 新增加的 所谓 "更好的编译语义"
-      要求 在 call-compiled-phrase 之后
-      应该把 Waiting-symbol-list 中
+   2. 新增加的 所謂 "更好的編譯語義"
+      要求 在 call-compiled-phrase 之後
+      應該把 Waiting-symbol-list 中
       由 compile-phrase 引入的等待中的 symbol 清除
-      + 可以 利用 地址 的区别来做一个谓词
+      + 可以 利用 地址 的區別來做一個謂詞
         要知道在 compile-phrase 中 Here 是不同的
-      + 尽管在观念上我有点接受不了用 地址来做谓词这种行为
-        但是 这有时候是无法避免的
-        并且这也根本没有什么错
-      + 要知道除非你去用纯粹的文本来形成对数据结构的描述
-        否则 地址的差异一定会形成关键的语义的
+      + 儘管在觀念上我有點接受不了用 地址來做謂詞這種行爲
+        但是 這有時候是無法避免的
+        並且這也根本沒有什麼錯
+      + 要知道除非你去用純粹的文本來形成對數據結構的描述
+        否則 地址的差異一定會形成關鍵的語義的
    3. functions about phrase are just for runtime
       with a buffer been overwrited each time the functions run
       nested calling is not allowed
    4. nested calling needs GC about string
-   5. 没有 GC 根本就很难把东西 实现正确
-      比如在这里
-      如果 把 字符出 的 存储空间 分配在 Buffer_for_read_phrase 中的话
-      那么 两个 phrase 中给出的两个字符串 就有可能 相互 覆盖
+   5. 沒有 GC 根本就很難把東西 實現正確
+      比如在這裏
+      如果 把 字符出 的 存儲空間 分配在 Buffer_for_read_phrase 中的話
+      那麼 兩個 phrase 中給出的兩個字符串 就有可能 相互 覆蓋
    6. ><><>< BUG
-      可见必须有 GC 才能把这里处理好
-      但是我不能把 GC 写在汇编中
-      所以 这些问题 等我写出编译器之后再解决
-      现在所接受的 错误假设是
-      "当一个 phrase 结束时, 就假设其中的数据全部都无法被引用了"
+      可見必須有 GC 才能把這裏處理好
+      但是我不能把 GC 寫在彙編中
+      所以 這些問題 等我寫出編譯器之後再解決
+      現在所接受的 錯誤假設是
+      "當一個 phrase 結束時, 就假設其中的數據全部都無法被引用了"
 ** read-phrase
    #+begin_src fasm :tangle threaded-code.inc
    def_string "ok", "ok", ok
@@ -2039,27 +2039,27 @@
    ;; single-linked-list is not very good for side-effect
    ;; but I use it anyway
 
-   ;; 检测链表中的第二个元素 而不是第一个元素
-   ;; 这样就可以在 检查到 phrase 的 buffer 中的地址时
-   ;; 从中间消去链表的一个元素
-   ;; 结束递归的条件是 发现 链表是 由单个元素组成的
-   ;; 当链表不是由单个元素组成的 的时候
-   ;; 递归作用以两种方式减少 链表的长度
-   ;; 1. 不需要消去时 参数后移
-   ;; 2. 需要消去时 消去一个元素
-   ;; 链表的头元素始终是被处理过了的 (即 确定以需要被包含在链表内的)
-   ;; 空链表和链表元素个数为 1 的情形
-   ;; 在递归部分之外处理
-   ;; 其实 不应该说是 递归之外
-   ;; 因为这里是在用一个循环 来寻找
-   ;; 第一个 需要被留在链表中的元素
+   ;; 檢測鏈表中的第二個元素 而不是第一個元素
+   ;; 這樣就可以在 檢查到 phrase 的 buffer 中的地址時
+   ;; 從中間消去鏈表的一個元素
+   ;; 結束遞歸的條件是 發現 鏈表是 由單個元素組成的
+   ;; 當鏈表不是由單個元素組成的 的時候
+   ;; 遞歸作用以兩種方式減少 鏈表的長度
+   ;; 1. 不需要消去時 參數後移
+   ;; 2. 需要消去時 消去一個元素
+   ;; 鏈表的頭元素始終是被處理過了的 (即 確定以需要被包含在鏈表內的)
+   ;; 空鏈表和鏈表元素個數爲 1 的情形
+   ;; 在遞歸部分之外處理
+   ;; 其實 不應該說是 遞歸之外
+   ;; 因爲這裏是在用一個循環 來尋找
+   ;; 第一個 需要被留在鏈表中的元素
 
    def_verb "clear-waiting-symbol-list,for-phrase", clear_waiting_symbol_list__for_phrase
       ;; (* -- *)
       xx Waiting_symbol_list
 
       .main:
-      ;; (* 这个循环是为了找到第一个需要被保留在链表内的元素 *)
+      ;; (* 這個循環是爲了找到第一個需要被保留在鏈表內的元素 *)
       xx dup, _Null_waiting_symbol_entry, equal?, _false?branch, 3
       xx   drop
       xx   Exit
@@ -2211,13 +2211,13 @@
    #+end_src
 * number reader
 ** note
-   1. 现在 的 number 就只是 "integer" 而已
-      更多的跟数学有关的东西将在 cicada 中设计新的语法来实现
-   2. 在 "integer" 这个函数中 我将只支持 对四种进位制的 字符串的 阅读
-      1. 十进制 :: 10#1231 10#-1231 或者 1231 -1231
-      2. 二进制 :: 2#101001 2#-101001
-      3. 八进制 :: 8#712537 8#-712537
-      4. 十六进制 :: 16#f123acb3 16#-F123ACB3 (大写小写字母都可以)
+   1. 現在 的 number 就只是 "integer" 而已
+      更多的跟數學有關的東西將在 cicada 中設計新的語法來實現
+   2. 在 "integer" 這個函數中 我將只支持 對四種進位制的 字符串的 閱讀
+      1. 十進制 :: 10#1231 10#-1231 或者 1231 -1231
+      2. 二進制 :: 2#101001 2#-101001
+      3. 八進制 :: 8#712537 8#-712537
+      4. 十六進制 :: 16#f123acb3 16#-F123ACB3 (大寫小寫字母都可以)
    3. and still, one can use "_" to separate the number to make it more readable
       example : 2#1111_0101_0001
    4. actually, the base can be any 10 based number
@@ -2225,7 +2225,7 @@
       but when the base is greater then 36
       not all integer can be represented under this base
       for we only have 36 chars
-   5. 可以发现 这样对一个 字符串 是不是代表了一个 整数的 判断就简单多了
+   5. 可以發現 這樣對一個 字符串 是不是代表了一個 整數的 判斷就簡單多了
 ** base-of-string
    #+begin_src fasm :tangle threaded-code.inc
    ;; 1. just take the 10 based number on the left of "#" as base
@@ -2735,35 +2735,35 @@
       only first Symbol-max-length of the string is used by the hash-function
    -----------------------------
    1. string-hash->index index-hashback->string
-      这两个函数的复合 所得到的 将是一个 恒等函数
-      并且 如果 参数 是 一个 由 string-hash->index 返回的 index
-      那么 index-hashback->string string-hash->index
-      这两个函数的复合 所得到的 也将是一个 恒等函数
-   2. 也就是说 在每次系统运行的时候
-      这两个函数都会伪装成一个 无穷集上的 一对互逆映射
-      但是 要知道 这是不可能的 计算机 对无穷集的实现只能是假的
-   3. 散列表中的每一项 都有一个域
-      可以用来保存一个 大小为 Cell-width 的值
+      這兩個函數的複合 所得到的 將是一個 恆等函數
+      並且 如果 參數 是 一個 由 string-hash->index 返回的 index
+      那麼 index-hashback->string string-hash->index
+      這兩個函數的複合 所得到的 也將是一個 恆等函數
+   2. 也就是說 在每次系統運行的時候
+      這兩個函數都會僞裝成一個 無窮集上的 一對互逆映射
+      但是 要知道 這是不可能的 計算機 對無窮集的實現只能是假的
+   3. 散列表中的每一項 都有一個域
+      可以用來保存一個 大小爲 Cell-width 的值
       其使用方式如下
       (* value, index *) index->address save
-      动态类型系统 把这个 量解释为 类型的类型
+      動態類型系統 把這個 量解釋爲 類型的類型
       但是需要注意的是
-      不能用这个 域来保存 pair
-      因为 我不能让 garbage-collectior 在每个工作周期的开始时
-      扫描整个 hash-table
-      + 让这个域的大小为 2 * Cell-width
-        第一个 Cell 保存 地址
-        第二个 Cell 保存 类型
-   3. 用类似数学表达式 来表示 这里所使用的 散列函数 如下 :
+      不能用這個 域來保存 pair
+      因爲 我不能讓 garbage-collectior 在每個工作週期的開始時
+      掃描整個 hash-table
+      + 讓這個域的大小爲 2 * Cell-width
+        第一個 Cell 保存 地址
+        第二個 Cell 保存 類型
+   3. 用類似數學表達式 來表示 這裏所使用的 散列函數 如下 :
       hash-function (string)
       ==> (sum-up [byte_n * 2^n]) mod Number-of-symbol-entrys
       + 其中 :
         0 <= n < Symbol-max-length
-        并且 Number-of-symbol-entrys 是一个素数
-      在用 sum-up 相加之后 最大的可能的和 < 2^(Symbol-max-length + 8)
-      所以 我定义 Symbol-max-length == 64 - 8 == 56
-      每个字符串中 只有前 Symbol-max-length 个字符被 hash-function 使用到了
-      因此 前 Symbol-max-length 个字符 相同的两个字符串 一定会相互冲突
+        並且 Number-of-symbol-entrys 是一個素數
+      在用 sum-up 相加之後 最大的可能的和 < 2^(Symbol-max-length + 8)
+      所以 我定義 Symbol-max-length == 64 - 8 == 56
+      每個字符串中 只有前 Symbol-max-length 個字符被 hash-function 使用到了
+      因此 前 Symbol-max-length 個字符 相同的兩個字符串 一定會相互衝突
 ** memory allocation of Hash-Table-For-Symbol
    using linear probing
    so, the load factor must be lower then 0.5
@@ -2782,7 +2782,7 @@
    Symbol_length_bytes_size = 1
    Symbol_value_bytes_size  = 16
    Symbol_string_bytes_size = 56+0
-   ;; 上面的量决定了 多长的字符串 能够被找会来
+   ;; 上面的量決定了 多長的字符串 能夠被找會來
    Symbol_max_length       = 56
    Symbol_entry_bytes_size = Symbol_value_bytes_size + Symbol_length_bytes_size + Symbol_string_bytes_size
    ;; Number_of_symbol_entrys = 1000003
@@ -3177,19 +3177,19 @@
    #+end_src
 ** sub-symbol-from-waiting-symbol-list
    #+begin_src fasm :tangle threaded-code.inc
-   ;; 比对链表中的第二个元素 而不是第一个元素
-   ;; 这样就可以在 比对成功时 从中间消去链表的一个元素
-   ;; 结束递归的条件是 发现 链表是 由单个元素组成的
-   ;; 当链表不是由单个元素组成的 的时候
-   ;; 递归作用以两种方式减少 链表的长度
-   ;; 1. 不需要消去时 参数后移
-   ;; 2. 需要消去时 消去一个元素
-   ;; 链表的头元素始终是被处理过了的 (即 确定以需要被包含在链表内的)
-   ;; 空链表和链表元素个数为 1 的情形
-   ;; 在递归部分之外处理
-   ;; 其实 不应该说是 递归之外
-   ;; 因为这里是在用一个循环 来寻找
-   ;; 第一个 需要被留在链表中的元素
+   ;; 比對鏈表中的第二個元素 而不是第一個元素
+   ;; 這樣就可以在 比對成功時 從中間消去鏈表的一個元素
+   ;; 結束遞歸的條件是 發現 鏈表是 由單個元素組成的
+   ;; 當鏈表不是由單個元素組成的 的時候
+   ;; 遞歸作用以兩種方式減少 鏈表的長度
+   ;; 1. 不需要消去時 參數後移
+   ;; 2. 需要消去時 消去一個元素
+   ;; 鏈表的頭元素始終是被處理過了的 (即 確定以需要被包含在鏈表內的)
+   ;; 空鏈表和鏈表元素個數爲 1 的情形
+   ;; 在遞歸部分之外處理
+   ;; 其實 不應該說是 遞歸之外
+   ;; 因爲這裏是在用一個循環 來尋找
+   ;; 第一個 需要被留在鏈表中的元素
 
    def_verb "sub-symbol-from-waiting-symbol-list", sub_symbol_from_waiting_symbol_list
       ;; (* symbol[index] -- *)
@@ -3197,7 +3197,7 @@
 
       ;; (* symbol[index], list[address] *)
       .main:
-      ;; (* 这个循环是为了找到第一个需要被保留在链表内的元素 *)
+      ;; (* 這個循環是爲了找到第一個需要被保留在鏈表內的元素 *)
       xx dup, _Null_waiting_symbol_entry, equal?, _false?branch, 4
       xx   drop, drop
       xx   Exit
@@ -3258,7 +3258,7 @@
    #+end_src
 ** test
    #+begin_src fasm :tangle threaded-code.inc
-   ;; 检测 list 的 长度
+   ;; 檢測 list 的 長度
    def_verb "help:t", help__t
       xx dup, _Null_waiting_symbol_entry, equal?, _false?branch, 5
       xx   drop, pop_lambda_stack, print_little_number
@@ -3276,13 +3276,21 @@
       xx Exit
    def_verb_end t
    #+end_src
-** meet-undefined-word
+** >< meet-undefined-word
+   1. 使用當前的地址
+      就知道是在那個 function-body 中了
+   2. 並 利用這地址
+      來 查 Waiting_symbol_list
+      找到 相應的 symbol
+      就知道是這個函數體中的哪個 symbol 沒有被定義了
    #+begin_src fasm :tangle threaded-code.inc
    def_verb "meet-undefined-word", meet_undefined_word
       ;; (* -- *)
-      xx Message__undefined_word, print_string, cr
+      xx Message__meet_undefined_word, print_string, cr
       xx Exit
    def_verb_end meet_undefined_word
+
+   def_string "Message:meet-undefined-word", "   MEET UNDEFINED WORD", Message__meet_undefined_word
    #+end_src
 * note about type
   1. garbage-collectior needs type
@@ -3298,35 +3306,35 @@
      can denote the type of type
      thus <pair> and <non-pair> are distinguished
   3. 但是
-     其实 这些类型标签 只是 在 pair 的数组中
-     才有相对完备的 去 区分量的类型的功能
-     而在 某些情况下 它们是不充分的
-     这在于
-     因为我没有 限制所有的量都 必须是这种带有 类型标签的
-     占据 两个 Cell 的量
-     这导致了
-     在某些情况下 我还是必须使用 地址 来判断某个量是不是 <pair>
-     虽然导致了 一些不谐
-     但是 这是可以接受的
-     因为 实现 <pair> 的只不过是一个 结构化的 数组而已
-  4. 我必须做一些相对复杂的 对数组中所保存的量 的匹配
-     才能 在某些特殊的情况下 对 pair 做判断
-     比如 对于 noun
-     为了在 garbage-collectior 的工作周期的开始时 初始化被染色的 pair
-     我需要 看这个 noun 的大小是不是 大于1
-     同时 还需要在其中找 <pair>
-     当找到的时候 需要看 入栈之时 这个 <pair> 是不是在最末尾
-     如果不是 在最末尾 那么它和它之后的那个量才有可能 组成一个 带有类型标签的量
-     这是 需要看它之后 的那个量 作为一个地址 是不是 在 pair 的数组 中的合适的位置
-     如果是的话 就认为 这个 noun 中保存了一个 动态类型的量
-     此时 根据 garbage-collectior 的需要 来处理这个量 就可以了
-  5. 另外关于 garbage-collectior 的一个难点是
-     当我允许在数据段中出现 链表 的时候
-     这些 链表 必须是绝对静态的
-     并且要知道 这些 链表是在 pair 的数组之外的
-     garbage-collectior 应该以特殊的方式处理这些 东西
-     我想 这是可以实现的
-     这个问题留到具体实现的候再去考虑
+     其實 這些類型標籤 只是 在 pair 的數組中
+     纔有相對完備的 去 區分量的類型的功能
+     而在 某些情況下 它們是不充分的
+     這在於
+     因爲我沒有 限制所有的量都 必須是這種帶有 類型標籤的
+     佔據 兩個 Cell 的量
+     這導致了
+     在某些情況下 我還是必須使用 地址 來判斷某個量是不是 <pair>
+     雖然導致了 一些不諧
+     但是 這是可以接受的
+     因爲 實現 <pair> 的只不過是一個 結構化的 數組而已
+  4. 我必須做一些相對複雜的 對數組中所保存的量 的匹配
+     才能 在某些特殊的情況下 對 pair 做判斷
+     比如 對於 noun
+     爲了在 garbage-collectior 的工作週期的開始時 初始化被染色的 pair
+     我需要 看這個 noun 的大小是不是 大於1
+     同時 還需要在其中找 <pair>
+     當找到的時候 需要看 入棧之時 這個 <pair> 是不是在最末尾
+     如果不是 在最末尾 那麼它和它之後的那個量纔有可能 組成一個 帶有類型標籤的量
+     這是 需要看它之後 的那個量 作爲一個地址 是不是 在 pair 的數組 中的合適的位置
+     如果是的話 就認爲 這個 noun 中保存了一個 動態類型的量
+     此時 根據 garbage-collectior 的需要 來處理這個量 就可以了
+  5. 另外關於 garbage-collectior 的一個難點是
+     當我允許在數據段中出現 鏈表 的時候
+     這些 鏈表 必須是絕對靜態的
+     並且要知道 這些 鏈表是在 pair 的數組之外的
+     garbage-collectior 應該以特殊的方式處理這些 東西
+     我想 這是可以實現的
+     這個問題留到具體實現的候再去考慮
 * dictionary & lexicographer
 ** explainers & execute & Exit
    #+begin_src fasm :tangle threaded-code.inc
@@ -3338,7 +3346,7 @@
    ;; when someone try to find a word in the dictionary,
    ;; the explainer of that word explains the word for him or her
 
-   ;; explain_verb 会贴贴一个 纸条 到 木条 上
+   ;; explain_verb 會貼貼一個 紙條 到 木條 上
 
    hereCode
    explain_verb:
@@ -3575,26 +3583,26 @@
    def_verb_end string_denote_key_word?
    #+end_src
 ** note about distinguishing word from input
-   1. read-byte 给 input 做好了抽象
-      使得 从 input 中读字符
-      和 取一个字符串的头一个字符 不同的是
-      从 input 读字符是 有来无回的
-   2. 每次只有发现在 blank 和 non-blank 的边界的时候
-      才能知道这是一个 word 的边界
+   1. read-byte 給 input 做好了抽象
+      使得 從 input 中讀字符
+      和 取一個字符串的頭一個字符 不同的是
+      從 input 讀字符是 有來無回的
+   2. 每次只有發現在 blank 和 non-blank 的邊界的時候
+      才能知道這是一個 word 的邊界
       比如: "   kkk   "
-      开始发现 kkk 这个 word 的时候
-      处在开头的 边界位置的 "k" 一定已经从 input 中被取出来了
-      结束发现 kkk 这个 word 的时候
-      处在结尾的 边界位置的 " " 一定已经从 input 中被取出来了
-   3. 这就是 我需要 read-word,while-saving-to-string 的原因
-      即 我要 在某种程度上 改变 "有来无回" 的情况
+      開始發現 kkk 這個 word 的時候
+      處在開頭的 邊界位置的 "k" 一定已經從 input 中被取出來了
+      結束發現 kkk 這個 word 的時候
+      處在結尾的 邊界位置的 " " 一定已經從 input 中被取出來了
+   3. 這就是 我需要 read-word,while-saving-to-string 的原因
+      即 我要 在某種程度上 改變 "有來無回" 的情況
 ** read-word,while-saving-to-string
    #+begin_src fasm :tangle threaded-code.inc
    ;; 1. the following functions are for read-phrase
-   ;; 2. 需要 一个 另一个版本的 read_word
-   ;;    来 帮助 实现 read-word-string,for-lexicographer
-   ;; 3. 这是必要的
-   ;;    因为 否则 用来读字符串的函数就实现不好
+   ;; 2. 需要 一個 另一個版本的 read_word
+   ;;    來 幫助 實現 read-word-string,for-lexicographer
+   ;; 3. 這是必要的
+   ;;    因爲 否則 用來讀字符串的函數就實現不好
 
    ;; (* helper functions *)
    def_verb "string-append-char", string_append_char
@@ -3604,7 +3612,7 @@
       xx Exit
    def_verb_end string_append_char
 
-   ;; 这个版本的函数 每次读一个 char 之后 都会先把它存到字符串中
+   ;; 這個版本的函數 每次讀一個 char 之後 都會先把它存到字符串中
 
    def_verb "read-first-non-blank-char,while-saving-to-string", read_first_non_blank_char__while_saving_to_string
       ;; (* string[address, length] --
@@ -3681,7 +3689,7 @@
       xx dup, zero?, _false?branch, 3
       xx   drop
       xx   Exit
-      ;; 对第一个做特殊处理 以保证 不再 word 内时 也能有效
+      ;; 對第一個做特殊處理 以保證 不再 word 內時 也能有效
       xx tail_and_head_of_string
       xx _literal, ASCII_space
       xx less_or_equal?, _false?branch, (.dup-$)/Cell_width
@@ -3755,7 +3763,7 @@
       ;; (* word-string[address, length] -- word[address, length] *)
       xx dup2, find_word_boundary_address__begin
       ;; ><><>< need error check here in the future
-      ;; 也就是 先假设上面的函数 返回正确的 address
+      ;; 也就是 先假設上面的函數 返回正確的 address
       xx xxswapx
       xx find_word_boundary_address__end
       xx over, subtraction
@@ -3766,7 +3774,7 @@
       ;; (* word-string[address, length] -- word-string[new address, length - n] *)
       xx dup2, find_word_boundary_index__end
       ;; ><><>< need error check here in the future
-      ;; 也就是 先假设上面的函数 返回正确的 address
+      ;; 也就是 先假設上面的函數 返回正確的 address
       xx tuck
       xx subtraction
       xx xxswapx
@@ -3872,17 +3880,7 @@
       xx add_symbol_to_waiting_symbol_list
       xx compile_word_description_to_here
       xx Exit
-
-      ;; xx drop
-      ;; xx cr
-      ;; xx Message__undefined_word, print_string
-      ;; xx print_string, cr
-      ;; xx Message__the_rest, print_string, cr
-      ;; xx print_string, cr
-      ;; xx Exit
    def_verb_end compile_word_description_to_here
-
-   def_string "Message:the-rest", "   The rest of the word string to compile is:", Message__the_rest
    #+end_src
 ** note about lexicographer
    1. when after defined a word to the dictionary
@@ -3972,12 +3970,12 @@
     3. just use the global data section
     4. nested calling is not allowed
        nested calling needs GC about string
-    5. >< 这里同样也需要清理 Waiting-symbol-list 吗 ???
-    6. 没错
-       所有的 定义之后马上就被调用的函数
+    5. >< 這裏同樣也需要清理 Waiting-symbol-list 嗎 ???
+    6. 沒錯
+       所有的 定義之後馬上就被調用的函數
        都需要清理 Waiting-symbol-list
-    7. 只有对于 那些被编译到字典中的词
-       把 symbol 保留存在 Waiting-symbol-list 中才有意义
+    7. 只有對於 那些被編譯到字典中的詞
+       把 symbol 保留存在 Waiting-symbol-list 中纔有意義
 *** implementation
     #+begin_src fasm :tangle threaded-code.inc
     def_verb "eval-string,for-define", eval_string__for_define
@@ -4028,27 +4026,27 @@
     ;; single-linked-list is not very good for side-effect
     ;; but I use it anyway
 
-    ;; 检测链表中的第二个元素 而不是第一个元素
-    ;; 这样就可以在 检查到 define 的 buffer 中的地址时
-    ;; 从中间消去链表的一个元素
-    ;; 结束递归的条件是 发现 链表是 由单个元素组成的
-    ;; 当链表不是由单个元素组成的 的时候
-    ;; 递归作用以两种方式减少 链表的长度
-    ;; 1. 不需要消去时 参数后移
-    ;; 2. 需要消去时 消去一个元素
-    ;; 链表的头元素始终是被处理过了的 (即 确定以需要被包含在链表内的)
-    ;; 空链表和链表元素个数为 1 的情形
-    ;; 在递归部分之外处理
-    ;; 其实 不应该说是 递归之外
-    ;; 因为这里是在用一个循环 来寻找
-    ;; 第一个 需要被留在链表中的元素
+    ;; 檢測鏈表中的第二個元素 而不是第一個元素
+    ;; 這樣就可以在 檢查到 define 的 buffer 中的地址時
+    ;; 從中間消去鏈表的一個元素
+    ;; 結束遞歸的條件是 發現 鏈表是 由單個元素組成的
+    ;; 當鏈表不是由單個元素組成的 的時候
+    ;; 遞歸作用以兩種方式減少 鏈表的長度
+    ;; 1. 不需要消去時 參數後移
+    ;; 2. 需要消去時 消去一個元素
+    ;; 鏈表的頭元素始終是被處理過了的 (即 確定以需要被包含在鏈表內的)
+    ;; 空鏈表和鏈表元素個數爲 1 的情形
+    ;; 在遞歸部分之外處理
+    ;; 其實 不應該說是 遞歸之外
+    ;; 因爲這裏是在用一個循環 來尋找
+    ;; 第一個 需要被留在鏈表中的元素
 
     def_verb "clear-waiting-symbol-list,for-define", clear_waiting_symbol_list__for_define
        ;; (* -- *)
        xx Waiting_symbol_list
 
        .main:
-       ;; (* 这个循环是为了找到第一个需要被保留在链表内的元素 *)
+       ;; (* 這個循環是爲了找到第一個需要被保留在鏈表內的元素 *)
        xx dup, _Null_waiting_symbol_entry, equal?, _false?branch, 3
        xx   drop
        xx   Exit
@@ -4103,6 +4101,12 @@
     def_verb_end entry_in_buffer_of_function_body__for_compile_define?
     #+end_src
 ** compile-word-description-to-here,for-noun
+   1. compile-word-description-to-here,for-noun
+      於
+      compile-word-description-to-here
+      是非常不同的函數
+      前者調用後者
+   2. 動詞 與 名詞 的詮釋者 是不同的
    #+begin_src fasm :tangle threaded-code.inc
    def_noun "Mark:compile-word-description-to-here,for-noun", Mark__compile_word_description_to_here__for_noun
       xx 0
@@ -4165,15 +4169,15 @@
       xx   Verb_explainer, compile_number_to_here
       xx   compile_word_description_to_here
       xx pop_lambda_stack
-      ;; 这里 如果能够 在 Waiting_symbol_list 中找到 这个 词
-      ;; 就应该报错
-      ;; 因为此时在 用户在 使用一个 语法关键词 之前
-      ;; 没有定义这个语法关键词
-      ;; 如果 不处理这个 错误的话
-      ;; 只有当 用户定义一个
-      ;; 与 这个语法关键词 有 同样名字的 名词或动词
-      ;; 的时候 这个 等待 被定义的 位置 才会 被补上
-      ;; 我 暂时不处理这个 错误
+      ;; 這裏 如果能夠 在 Waiting_symbol_list 中找到 這個 詞
+      ;; 就應該報錯
+      ;; 因爲此時在 用戶在 使用一個 語法關鍵詞 之前
+      ;; 沒有定義這個語法關鍵詞
+      ;; 如果 不處理這個 錯誤的話
+      ;; 只有當 用戶定義一個
+      ;; 與 這個語法關鍵詞 有 同樣名字的 名詞或動詞
+      ;; 的時候 這個 等待 被定義的 位置 纔會 被補上
+      ;; 我 暫時不處理這個 錯誤
       xx dup, set_size_of_word
       xx word_to_address_of_type
       xx _literal, 1, swap, save_byte
@@ -4182,17 +4186,17 @@
    #+end_src
 * chinese lexicographer
   #+begin_src fasm :tangle threaded-code.inc
-  def_verb "动词也", 动词也
+  def_verb "動詞也", 動詞也
      ;; (* words-string[address, length] -- *)
      xx define_verb
      xx Exit
-  def_verb_end 动词也
+  def_verb_end 動詞也
 
-  def_verb "函数也", 函数也
+  def_verb "函數也", 函數也
      ;; (* words-string[address, length] -- *)
      xx define_function
      xx Exit
-  def_verb_end 函数也
+  def_verb_end 函數也
 
   def_verb "也", 也
      ;; (* words-string[address, length] -- *)
@@ -4200,11 +4204,11 @@
      xx Exit
   def_verb_end 也
 
-  def_verb "虚词也", 虚词也
+  def_verb "虛詞也", 虛詞也
      ;; (* words-string[address, length] -- *)
      xx define_key_word
      xx Exit
-  def_verb_end 虚词也
+  def_verb_end 虛詞也
   #+end_src
 * --------------------------------------------------
 * memory allocation
