@@ -7,7 +7,7 @@
   it is a stack-based and functional language,
   the design of cicada is influenced by scheme and forth and joy.
 
-* what is the purpose cicada project ?
+* the purpose
   the purpose of the cicada project is
   - to provide support
   - about programming language and *math*
@@ -30,16 +30,14 @@
 
   by "the creative spirit",
   I mean that cicada is very easy to be
-  entirely understanded by anyone who has that curiosity,
-  even my 14 years old little brother.
-  and then one can use cicada to program his/her "programmable devices".
+  entirely understanded by anyone who has that curiosity.
 
   I added "math" above,
   simply for I love math ^_^,
   and I will use cicada to do some math experiments,
   to gratify my curiosity about math.
 
-* on which platforms ?
+* platforms
   * cicada for linux :
        =vm/x86-64/linux/=
        only for 64 bits linux.
@@ -59,7 +57,7 @@
   * operating system for ARM [not written yet] :
        which will be running on raspberry pi.
 
-* how to install and run ?
+* run
   please type =make help= or just =make=
   or read the Makefile.
 
@@ -70,21 +68,22 @@
      you should go to =vm/x86-64/baremetal/= to find the binary image file =cicada-image.bin=.
      and back to the main directory, you can type =make qemu-x86-64-kernel= to test it.
 
-* where can I find more documentations ?
-  please visit
+* documentations
   http://cicada-language.github.io
 
-* where to visit this open source project ?
+* open source project
   https://github.com/cicada-language
 
+* about us
+  http://cicada-language.github.io/about-us
+
 * ------------------------------------
-* 什麼是 cicada ?
-  cicada language 的中文名字叫 蟬語.
+* 何爲蟬語 ?
   蟬語 是一個非常簡單的程序語言.
   它是 一個以明顯地方式運用棧的 函數式編程語言.
   蟬語 的設計靈感來源於 scheme 和 forth 還有 joy 這另外三個有趣的程序語言.
 
-* 蟬語項目的目的何在 ?
+* 目的
   蟬語 的目的是
   爲每個人靈魂中渴望創造的精靈提供程序語言和數學上的支持
   以使其能夠爲身邊的可編程設備編程
@@ -101,14 +100,12 @@
   而且 蟬語 的開發環境將是 簡單而功能強大的文本編輯器,
   它將在不同的平臺和硬件上保持統一的視覺和操作感受.
 
-  "渴望創造的精靈" 這在於 蟬語 能夠很容易地被 有足夠好奇心的人 透徹地掌握,
-  有了中文語法的支持之後,
-  就連我上中學的弟弟 謝雨田 也能在很段的時間內學會它.
+  "渴望創造的精靈" 這在於 蟬語 能夠很容易地被 有足夠好奇心的人 透徹地掌握.
 
   "數學支持" 則在於我很喜歡數學,
   我將用 蟬語 來實踐一些我的關於數學的有趣的想法.
 
-* 在什麼平臺上能用呢 ?
+* 平臺
   * x86_64上的linux操作系統
     =vm/x86-64/linux/=
     其實現在只能在 linux操作系統 上使用.
@@ -119,7 +116,7 @@
   * 直接運行於 x86_64 上而不依賴於其他操作系統
   * 直接運行於 raspberry pi 上而不依賴於其他操作系統
 
-* 如何安裝和運行 ?
+* 運行
   沒有複雜的安裝過程,
   請在在終端中輸入 =make help= 或 =make= 或 直接閱讀 Makefile 來看 蟬語 是如何被編譯的.
 
@@ -127,20 +124,11 @@
   1. 在輸入 =make linux= 之後,
      去 =vm/x86-64/linux/= 路徑下你就能找到 ELF 格式的 可執行文件 =cicada=.
 
-* 蟬語有各種版本嗎 ?
-  沒有.
-  這個程序語言的代碼都託管在 github 上.
-  git 提供了對程序的版本的管理.
-  你可以把這個程序理解成是滾動升級的,
-  新的信息的發佈將是非常頻繁的.
-  實驗性的性狀也經常會被加入,
-  如果希望的話,
-  你可以停留在整個版本的樹狀圖中的任何一個你希望的點上來使用蟬語.
-
-* 去哪兒能找到更多的文檔 ?
-  請訪問 :
+* 文檔
   http://cicada-language.github.io
 
-* 去哪兒能找到這個開源項目 ?
-  請訪問 :
+* 開源項目
   https://github.com/cicada-language
+
+* 關於我們
+  http://cicada-language.github.io/about-us
