@@ -432,10 +432,18 @@ ok
 
 : help,:"
   (* word-string[address, length] -- word-string[address, length] *)
+  (* Lambda-stack ::
+       address to compile the address of string --  *)
   (* compile ::
-       string[address, length] *)
+   *   _literal address
+   *   _literal length
+   *)
   (* compile to [data section] ::
-       string-header and string ended by 0 *)
+   *   1 unit  string-header
+   *   n byte  string
+   *   1 byte  0
+   *)
+  (* char by char compile *)
   tail-and-head-of-string
   dup char " == if
     drop
@@ -466,13 +474,141 @@ ok
 : :"
   (* word-string[address, length] -- word-string[address, length] *)
   (* compile ::
-       string[address, length] *)
+   *   _literal address
+   *   _literal length
+   *)
   (* compile to [data section] ::
-       string-header and string ended by 0 *)
+   *   1 unit  string-header
+   *   n byte  string
+   *   1 byte  0
+   *)
   Cell-width address Current-data-section add-save (* for string header *)
   Current-data-section push-lambda-stack (* for compile to here *)
+  (* drop a whitespace *)
+  tail-and-head-of-string
+  drop
   help,:"
   Exit
 ; define-key-word
 ok
+: string-of-many-dash?
+  (* string[address, length] -- True or False *)
+  0 push-lambda-stack (* counter *)
+  help:string-of-many-dash?
+  Exit
+; define-verb
+
+: help:string-of-many-dash?
+  (* string[address, length] -- True or False *)
+  (* Lambda-stack ::
+       counter -- *)
+  dup zero? if
+    drop2
+    pop-lambda-stack
+    6 >= if True
+         else False
+         then Exit
+  then
+  tail-and-head-of-string
+  char -  =/= if
+    drop2
+    pop-lambda-stack drop
+    False Exit
+  then
+  pop-lambda-stack add1 push-lambda-stack
+  help:string-of-many-dash?
+  Exit
+; define-verb
+(* for multi line string *)
+
+: string
+  (* word-string[address, length] -- word-string[address, length] *)
+  (* compile ::
+   *  | _literal | address |
+   *  | _literal | length  |
+   *)
+  (* compile to [data section] ::
+   *  | 1 unit | string-header |
+   *  | n byte | string        |
+   *  | 1 byte | 0             |
+   *)
+  (* leave place for string header *)
+     Cell-width address Current-data-section add-save
+  (* for copy to data-section *)
+     help:string,find-cr
+     over push-lambda-stack
+  help:string
+  Exit
+; define-key-word
+ok
+
+: help:string,find-cr
+  (* word-string[address, length] -- word-string[address, length] *)
+  tail-and-head-of-string
+  10 (* cr *) == if
+    Exit
+  then
+  help:string,find-cr
+  Exit
+; define-verb
+
+: help:string,find-address-of-cr,backward
+  (* address -- address *)
+  dup fetch-byte 10 (* cr *) == if
+    add1
+    Exit
+  then
+  sub1
+  help:string,find-address-of-cr,backward
+  Exit
+; define-verb
+
+: help:string
+  (* word-string[address, length] -- word-string[address, length] *)
+  (* Lambda-stack ::
+       [address of the begin of the source string] --  *)
+  (* compile ::
+   *   | _literal | address |
+   *   | _literal | length  |
+   *)
+  (* compile to [data section] ::
+   *   | 1 unit : string-header |
+   *   | n byte : string        |
+   *   | 1 byte : 0             |
+   *)
+  (* find the end and copy *)
+  tail-and-head-of-word-string
+  dup2 string-of-many-dash? if
+    drop
+    help:string,find-address-of-cr,backward
+    (* copy to data-section *)
+    pop-lambda-stack tuck sub
+    (* source, length *)
+    Current-data-section dup push-lambda-stack
+    swap dup push-lambda-stack (* length *)
+    copy-byte-string
+    (* update Current-data-section *)
+    pop-lambda-stack dup push-lambda-stack
+    address Current-data-section add-save
+    (* and add a tailing 0 *)
+    0 compile-byte-to-data-section
+    (* set the string header in data-section *)
+    pop-lambda-stack
+    pop-lambda-stack dup push-lambda-stack
+    Cell-width sub save
+    (* compile address to here *)
+    literal _literal compile-number-to-here
+      pop-lambda-stack dup push-lambda-stack
+    compile-number-to-here
+    (* compile length to here *)
+    literal _literal compile-number-to-here
+      pop-lambda-stack
+      Cell-width sub fetch
+    compile-number-to-here
+    Exit
+  then
+  drop2
+  help:string
+  Exit
+; define-verb
 ok

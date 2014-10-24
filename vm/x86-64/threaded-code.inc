@@ -1563,6 +1563,20 @@ def_verb "compile-string-to-data-section", compile_string_to_data_section
    xx _address, Current_data_section, save
    xx Exit
 def_verb_end compile_string_to_data_section
+
+;; note that:
+;; a pure string in stack is string[address, length]
+;; a pure string in memory is ||  n byte : string  ||
+def_verb "compile-pure-string-to-data-section", compile_pure_string_to_data_section
+   ;; (* string[address, length] -- *)
+   ;; for update Current_data_section
+   xx dup, push_lambda_stack
+   xx   Current_data_section, swap, copy_byte_string
+   ;; update Current_data_section
+   xx pop_lambda_stack
+   xx _address, Current_data_section, add_save
+   xx Exit
+def_verb_end compile_pure_string_to_data_section
 ;; cosemi = colon + semicolon
 def_string "Bra:cosemi", ":", Bra__cosemi
 def_string "Ket:cosemi", ";", Ket__cosemi
@@ -1580,15 +1594,20 @@ def_key_word ":", colon
    ;;      string[address, length] *)
    ;; (* compile to [data section] ::
    ;;      string-header and string ended by 0 *)
-   xx dup2
    xx _literal, 0, push_lambda_stack ;; ":" counter
+   xx dup2
    .tail_and_head_of_word_string:
    xx tail_and_head_of_word_string
-   xx dup2, Bra__cosemi, equal_string?, _false?branch, (.dup2-$)/Cell_width
+   xx dup2, Bra__comment, equal_string?, _false?branch, (.Bra__cosemi-$)/Cell_width
+   xx   drop2
+   xx   ignore_comment
+   xx   _branch, (.tail_and_head_of_word_string-$)/Cell_width
+   .Bra__cosemi:
+   xx dup2, Bra__cosemi, equal_string?, _false?branch, (.Ket__cosemi-$)/Cell_width
    xx   drop2
    xx   pop_lambda_stack, add1, push_lambda_stack
    xx   _branch, (.tail_and_head_of_word_string-$)/Cell_width
-   .dup2:
+   .Ket__cosemi:
    xx dup2, Ket__cosemi, equal_string?, _false?branch, (.drop2-$)/Cell_width
    xx   drop2
    xx   pop_lambda_stack
@@ -1632,15 +1651,20 @@ def_key_word "夫", 夫
    ;;      string[address, length] *)
    ;; (* compile to [data section] ::
    ;;      string-header and string ended by 0 *)
-   xx dup2
    xx _literal, 0, push_lambda_stack ;; counter
+   xx dup2
    .tail_and_head_of_word_string:
    xx tail_and_head_of_word_string
-   xx dup2, Bra__fuzhe, equal_string?, _false?branch, (.dup2-$)/Cell_width
+   xx dup2, Bra__comment, equal_string?, _false?branch, (.Bra__fuzhe-$)/Cell_width
+   xx   drop2
+   xx   ignore_comment
+   xx   _branch, (.tail_and_head_of_word_string-$)/Cell_width
+   .Bra__fuzhe:
+   xx dup2, Bra__fuzhe, equal_string?, _false?branch, (.Ket__fuzhe-$)/Cell_width
    xx   drop2
    xx   pop_lambda_stack, add1, push_lambda_stack
    xx   _branch, (.tail_and_head_of_word_string-$)/Cell_width
-   .dup2:
+   .Ket__fuzhe:
    xx dup2, Ket__fuzhe, equal_string?, _false?branch, (.drop2-$)/Cell_width
    xx   drop2
    xx   pop_lambda_stack

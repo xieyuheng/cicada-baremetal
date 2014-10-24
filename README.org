@@ -2,41 +2,11 @@
 #+EMAIL:     xyheme@gmail.com
 
 
-* what is cicada ?
-  cicada is a very simple programming language,
+* what is cicada language ?
+  cicada language is a very simple programming language,
   it is a stack-based and functional language,
   the design of cicada is influenced by scheme and forth and joy.
-
-* the purpose
-  the purpose of the cicada project is
-  - to provide support
-  - about programming language and *math*
-  - to *programmable devices*
-  - for *the creative spirit* in everyone's mind ^_^
-
-  ------------------------
-
-  by "programmable devices",
-  I intend to capture the most general concept.
-  devices better be programmable,
-  for they are stupid and can do less if we do not program them,
-  and in my point of view,
-  the more creative smart people program them,
-  the better the world will be ^_^.
-  cicada suits this generalized purpose,
-  for it is very easy to port cicada to any CPU,
-  and the IDE of cicada will be a simple yet powerful text-editor,
-  which will be used as an uniform programming platform across different hardwares.
-
-  by "the creative spirit",
-  I mean that cicada is very easy to be
-  entirely understanded by anyone who has that curiosity.
-
-  I added "math" above,
-  simply for I love math ^_^,
-  and I will use cicada to do some math experiments,
-  to gratify my curiosity about math.
-
+  
 * platforms
   * cicada for linux :
        =vm/x86-64/linux/=
@@ -82,28 +52,6 @@
   蟬語 是一個非常簡單的程序語言.
   它是 一個以明顯地方式運用棧的 函數式編程語言.
   蟬語 的設計靈感來源於 scheme 和 forth 還有 joy 這另外三個有趣的程序語言.
-
-* 目的
-  蟬語 的目的是
-  爲每個人靈魂中渴望創造的精靈提供程序語言和數學上的支持
-  以使其能夠爲身邊的可編程設備編程
-
-  ------------------------
-
-  "可編程設備" 這個詞意在泛化所指,
-  你知道 設備最好是可編程的 這樣纔有趣,
-  而且在我看來,
-  有越多的有創造精神的聰明的人給它們編程,
-  這個世界就越美好 ^_^.
-  蟬語 很適合這個泛化的目的,
-  因爲我很容易把它快速地向各種 處理器 移植,
-  而且 蟬語 的開發環境將是 簡單而功能強大的文本編輯器,
-  它將在不同的平臺和硬件上保持統一的視覺和操作感受.
-
-  "渴望創造的精靈" 這在於 蟬語 能夠很容易地被 有足夠好奇心的人 透徹地掌握.
-
-  "數學支持" 則在於我很喜歡數學,
-  我將用 蟬語 來實踐一些我的關於數學的有趣的想法.
 
 * 平臺
   * x86_64上的linux操作系統

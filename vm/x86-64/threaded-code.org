@@ -1767,8 +1767,24 @@
       xx _address, Current_data_section, save
       xx Exit
    def_verb_end compile_string_to_data_section
+
+   ;; note that:
+   ;; a pure string in stack is string[address, length]
+   ;; a pure string in memory is ||  n byte : string  ||
+   def_verb "compile-pure-string-to-data-section", compile_pure_string_to_data_section
+      ;; (* string[address, length] -- *)
+      ;; for update Current_data_section
+      xx dup, push_lambda_stack
+      xx   Current_data_section, swap, copy_byte_string
+      ;; update Current_data_section
+      xx pop_lambda_stack
+      xx _address, Current_data_section, add_save
+      xx Exit
+   def_verb_end compile_pure_string_to_data_section
    #+end_src
 ** colon
+   1. 許在 : ; 內 出現 (* *)
+      這需要特殊處理
    #+begin_src fasm :tangle threaded-code.inc
    ;; cosemi = colon + semicolon
    def_string "Bra:cosemi", ":", Bra__cosemi
@@ -1787,15 +1803,20 @@
       ;;      string[address, length] *)
       ;; (* compile to [data section] ::
       ;;      string-header and string ended by 0 *)
-      xx dup2
       xx _literal, 0, push_lambda_stack ;; ":" counter
+      xx dup2
       .tail_and_head_of_word_string:
       xx tail_and_head_of_word_string
-      xx dup2, Bra__cosemi, equal_string?, _false?branch, (.dup2-$)/Cell_width
+      xx dup2, Bra__comment, equal_string?, _false?branch, (.Bra__cosemi-$)/Cell_width
+      xx   drop2
+      xx   ignore_comment
+      xx   _branch, (.tail_and_head_of_word_string-$)/Cell_width
+      .Bra__cosemi:
+      xx dup2, Bra__cosemi, equal_string?, _false?branch, (.Ket__cosemi-$)/Cell_width
       xx   drop2
       xx   pop_lambda_stack, add1, push_lambda_stack
       xx   _branch, (.tail_and_head_of_word_string-$)/Cell_width
-      .dup2:
+      .Ket__cosemi:
       xx dup2, Ket__cosemi, equal_string?, _false?branch, (.drop2-$)/Cell_width
       xx   drop2
       xx   pop_lambda_stack
@@ -1842,15 +1863,20 @@
       ;;      string[address, length] *)
       ;; (* compile to [data section] ::
       ;;      string-header and string ended by 0 *)
-      xx dup2
       xx _literal, 0, push_lambda_stack ;; counter
+      xx dup2
       .tail_and_head_of_word_string:
       xx tail_and_head_of_word_string
-      xx dup2, Bra__fuzhe, equal_string?, _false?branch, (.dup2-$)/Cell_width
+      xx dup2, Bra__comment, equal_string?, _false?branch, (.Bra__fuzhe-$)/Cell_width
+      xx   drop2
+      xx   ignore_comment
+      xx   _branch, (.tail_and_head_of_word_string-$)/Cell_width
+      .Bra__fuzhe:
+      xx dup2, Bra__fuzhe, equal_string?, _false?branch, (.Ket__fuzhe-$)/Cell_width
       xx   drop2
       xx   pop_lambda_stack, add1, push_lambda_stack
       xx   _branch, (.tail_and_head_of_word_string-$)/Cell_width
-      .dup2:
+      .Ket__fuzhe:
       xx dup2, Ket__fuzhe, equal_string?, _false?branch, (.drop2-$)/Cell_width
       xx   drop2
       xx   pop_lambda_stack
@@ -3256,7 +3282,7 @@
       xx Exit
    def_verb_end help__sub_symbol_from_waiting_symbol_list__try
    #+end_src
-** test
+** test : print the length of waiting-symbol-list
    #+begin_src fasm :tangle threaded-code.inc
    ;; 檢測 list 的 長度
    def_verb "help:t", help__t
@@ -4159,6 +4185,8 @@
    def_verb_end _define
    #+end_src
 ** define-key-word
+   1. key-word 之特殊在於其不調用
+      sub_symbol_from_waiting_symbol_list
    #+begin_src fasm :tangle threaded-code.inc
    def_verb "define-key-word", define_key_word
       ;; (* words-string[address, length] -- *)
