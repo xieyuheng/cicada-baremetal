@@ -867,108 +867,129 @@
   ok
   #+end_src
 * debuger
-** debuger-REPL & trace-function
+** debuger-REPL & trace
 *** note
-    1. "debuger" should be placed in Function-body
-       when called, it pause the calculation of the function
+    1. debuger pause the calculation of the function
        bring you into the debuger-REPL
-    2. after type tag encoding
+    2. after type system
        we should handle type error as possible as we could
-    3. the ``IdentificationOf#Word'' in ``def*'' macros is for ``debuger''
-*** implementation
+    3. the "IdentificationOf#Word" in "def*" macros
+       is for "debuger"
+*** x & k 關於 除錯器
+    - x :: 這裏一個值得注意的特點是
+           在新的實現中 對輸入的讀取是以 phrase 爲單位的
+           debuger 的行爲要反映系統的實現方式才行
+    - k :: debuger-REPL 所需要實現的特性是
+           當在其中修改完錯誤時 可以重新啓動之前的計算
+    - k :: trace 所需要實現的特性是
+           以可讀性較強的方式 打印出 出錯的函數
+           目的是 讓用戶定義出錯的位置
+    - x :: 當一個錯誤出現時
+           在以前的實現中
+           基本輸入中的 其後的代碼還會被執行
+           在 debuger-REPL 中 引起一連串的錯誤
+           新的實現應該解決這個問題
+    - x :: ??? 我是否需要區分
+           殼層的函數 與 詞典中的函數
+           對 debuger 的調用
+    - k :: 設想一下 在新的實現中 調用 debuger 時的情況吧
+    - x :: 好的
+           首先來考慮 在一般的函數中調用 debuger 時的情況
+           我總覺得此時的行爲與 在 殼層中調用 debuger 時有區別
+           我發現 現在實現棧機的方式 使得對出錯位置的探查更爲精確
+           當 調用 debuger 時
+           如果不是尾部調用
+           那麼 返回棧 棧頂所保存的是 調用 debuger 的函數的
+           函數體數組的一個子數組
+           debuger 會打印出一些信息
+           然後 進入 debuger-REPL
+    - x :: 在一個新的 REPL 中
+           每一個 loop 會把之前的返回棧中的東西保護起來
+           使得我有機會去追蹤被保護起來的某個紙條
+           並且使得我有機會在希望的時候 回到原來的計算中
+    - x :: 這裏需要 有顏色的輸出
+           但是 如果我使用有顏色的輸出的話
+           我就必須定義統一的 關於顏色輸出的接口
+           並且在每個想要重用這段代碼 版本中 實現這些接口
+           所以
+           我先把目前的精力集中在 linux 版本上
+           以後在慢慢改
+    - x :: ??? 格式輸出又如何呢 ???
+*** debuger-REPL
     #+begin_src cicada
-    : count-return-stack (* -- the length of ReturnStack *)
+    : debuger
+      (* unknown -- unknown *)
+
+      string
+    debuger said:  Welcome! Hope you find what's wrong.
+      --------------
+      print-string
+
+      :"    the length of Return-stack is: " print-string
+        count-return-stack write-dec-number cr
+
+      :"    the length of Argument-stack is: " print-string
+        count-argument-stack write-dec-number cr
+
+      (*
+       ,* fetch-return-stack-pointer Return-stack-position save
+       ,* fetch-argument-stack-pointer Argument-stack-position save
+       ,*
+       ,* Input-buffer Current-reading save
+       ,* Input-buffer Reading-boundary save
+       ,*)
+
+      basic-REPL
+
+      string
+    debuger said:  Good bye! The computation will go on!
+      --------------
+      print-string
+
+      Exit
+    ; define-verb
+
+
+    : Return-stack-position   0 ; define
+    : Argument-stack-position 0 ; define
+
+
+    : count-return-stack
+      (* -- the length of Return-stack *)
       Return-stack-top fetch-return-stack-pointer -
       Cell-width /
-      sub1 (* for we are in this function call *)
+      sub1
       Exit
     ; define-verb
 
-    : count-argument-stack (* -- the length of ArgumentStack *)
+    : count-argument-stack
+      (* -- the length of Argument-stack *)
       Argument-stack-top fetch-argument-stack-pointer -
       Cell-width /
+      sub1
       Exit
     ; define-verb
 
 
-    0 : Return-stack-position   ; define-variable
-    0 : Argument-stack-position ; define-variable
-
     (* the following two function are as interface *)
-    : debuger,fetch-from-return-stack (* n -- *)
+    : debuger,fetch-from-return-stack
+      (* n -- *)
       sub1 Cell-width *
       Return-stack-position fetch +
       fetch
       Exit
     ; define-verb
 
-    : debuger,fetch-from-argument-stack (* n -- *)
+    : debuger,fetch-from-argument-stack
+      (* n -- *)
       sub1 Cell-width *
       Argument-stack-position fetch +
       fetch
       Exit
     ; define-verb
-
-
-    :" bye"
-    : Message:bye ; define-constant-string
-
-    : execute-word (* string[address, length] -- unknown *)
-      dup2
-      string-denote-integer? if
-        string->integer,with-error drop
-        Exit
-      then
-      dup2 find dup zero? false? if
-        xx|swap|x drop2
-        word->explainer execute
-        Exit
-      then
-      drop
-      Message:undefined-word print-string
-      print-string cr
-      Exit
-    ; define-verb
-
-    : debuger-REPL (* unknown -- unknown *)
-      read-word-for-runtime
-      dup2
-      Message:bye equal-string? if
-        drop2
-        Exit
-      then
-      execute-word
-      debuger-REPL
-      Exit
-    ; define-verb
-
-    :" debuger said: ``Welcome! Hope you find what's wrong.''"
-    : Message:debuger,welcome ; define-constant-string
-
-    :" the length of Return-stack is: "
-    : Message:debuger,the-length-of-returnstack ; define-constant-string
-
-    :" the length of Argument-stack is: "
-    : Message:debuger,the-length-of-argument-stack ; define-constant-string
-
-    :" debuger said: ``Good bye! The computation will go on!''"
-    : Message:debuger,goodbye ; define-constant-string
-
-    : debuger (* unknown -- unknown *)
-      Message:debuger,welcome print-string cr
-      3 write-some-space Message:debuger,the-length-of-returnstack print-string
-        count-return-stack write-dec-number cr
-      3 write-some-space Message:debuger,the-length-of-argument-stack print-string
-        count-argument-stack write-dec-number cr
-      fetch-return-stack-pointer Return-stack-position save
-      fetch-argument-stack-pointer Argument-stack-position save
-      Input-buffer Current-reading save
-      Input-buffer Reading-boundary save
-      debuger-REPL
-      Message:debuger,goodbye print-string cr
-      Exit
-    ; define-verb
-
+    #+end_src
+*** trace
+    #+begin_src cicada
     (* ><><>< bug ><><>< *)
     (* ``1 fetch'' will cause core dump *)
     : identification-of-word? (* an address in a word -- *)
@@ -977,15 +998,15 @@
     ; define-verb
 
     (* ||  1 : name-string-header-which-contains-the-length-of-name-string  ||
-     * || m(bytes) : name-string  ||
-     * ||  1 : size of function body  ||
-     * ||  1 : identification  ||
-     * ||  1 : link  ||
-     * ||  1 : type  ||
-     * ||  1 : address-of-name-string-header  ||
-     * ||  1 : address-of-explainer  ||
-     * ||  n : body  ||
-     *)
+     ,* || m(bytes) : name-string  ||
+     ,* ||  1 : size of function body  ||
+     ,* ||  1 : identification  ||
+     ,* ||  1 : link  ||
+     ,* ||  1 : type  ||
+     ,* ||  1 : address-of-name-string-header  ||
+     ,* ||  1 : address-of-explainer  ||
+     ,* ||  n : body  ||
+     ,*)
 
     : word,body->id
       (* [an address of a cell in a word] -- word[identification] *)
@@ -1109,6 +1130,8 @@
     ; define-verb
 
 
+
+
     :" trace-function said: ``Ya! Let's trace a function!''"
     : Message:trace-function,welcome ; define-constant-string
 
@@ -1146,9 +1169,7 @@
       Message:trace-function,goodbye print-string cr
       Exit
     ; define-verb
-    #+end_src
-*** simple trace
-    #+begin_src cicada
+
     : trace (* n -- *)
       debuger,fetch-from-return-stack
       trace-function

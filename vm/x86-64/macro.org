@@ -117,6 +117,29 @@
        jmp qword[Explainer_pointer]
        }
 
+
+    ;; macro next { jmp help__next }
+    ;; help__next:
+    ;;    ;; 1. if NOT at the end of the function body
+    ;;    ;;    (* Return-stack::
+    ;;    ;;         [address of explainer] -- [address of explainer] + Cell_width *)
+    ;;    ;; 2. if at the end of the function body
+    ;;    ;;    (* Return-stack::
+    ;;    ;;         [address of explainer] -- *)
+    ;;    ;; and jump to the explainer of the [address of explainer]
+    ;;    pop_return_stack rbx
+    ;;    mov Explainer_pointer, qword[rbx]
+    ;;    add rbx, Cell_width
+    ;;    cmp dword[rbx], Exit
+    ;;    je .at_the_end_of_function_body
+    ;;    cmp dword[rbx], 已矣
+    ;;    je .at_the_end_of_function_body
+    ;;    push_return_stack rbx
+    ;; .at_the_end_of_function_body:
+    ;;    jmp qword[Explainer_pointer]
+
+
+
     ;; initial Link to point to NULL
     Link = 0
 

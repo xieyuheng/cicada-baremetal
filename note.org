@@ -4,9 +4,9 @@
 
 
 * ==================================================
-* 設計字符串的格式輸出
-  我要實現一種最靈活的格式輸出
-* 設計新的打印數字的語法 [關於打印的語法]
+* better string reading support
+* better string writing support
+* better number writing support
 * write a better meet-undefined-word
   1. 如果我想要在 cicada 的代碼中重寫這個函數
      那麼 只要用一個變量
@@ -433,7 +433,7 @@
      我 作爲 開源硬件的銷售商之一 而盈利
   3. cicada-idea 擁有 開源的 基於結構化文本編輯器的 操作系統界面
      cicada-idea 以 cicada language 爲主要的編程語言
-     cicada-idea 有 以 cicada language 爲主要語言 而開發的 編碼環境     
+     cicada-idea 有 以 cicada language 爲主要語言 而開發的 編碼環境
 * ==================================================
 * 記
 ** 直觀 與 抽象
@@ -467,4 +467,3 @@
       它們應該完全相同 因爲它們是 "同樣的" 編譯器編譯
       編譯 同一份源代碼 所得到的二進制文件
 * ==================================================
-
