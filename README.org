@@ -5,38 +5,11 @@
 * what is cicada language ?
   cicada language is a very simple programming language,
   it is a stack-based and functional language,
-  the design of cicada is influenced by scheme and forth and joy.
-  
-* platforms
-  * cicada for linux :
-       =vm/x86-64/linux/=
-       only for 64 bits linux.
-       when the development environments of cicada operating systems have not been written,
-       GNU/linux operating system will be used as the main development environment.
-  * cicada for windows [not written yet] :
-       =vm/x86-64/windows/=
-       only for 64 bits windows.
-       which is developed under linux with the help of [[https://www.winehq.org/][wine]],
-       and tested under my friends' windows operating system.
-  * operating system for x86_64 [need to fix some bug] :
-       =vm/x86-64/baremetal=
-       single user operating system.
-       dynamic type support, users can define their own types.
-       memory management was done by an incremental garbage collector.
-       all code shared a single address space.
-  * operating system for ARM [not written yet] :
-       which will be running on raspberry pi.
+  the design of cicada is influenced by scheme and forth and joy and smalltalk.
 
-* run
-  please type =make help= or just =make=
-  or read the Makefile.
-
-  for examples :
-  1. after type =make linux=,
-     you should go to =vm/x86-64/linux/= to find the executable ELF file =cicada=.
-  2. after type =make x86-64-kernel=,
-     you should go to =vm/x86-64/baremetal/= to find the binary image file =cicada-image.bin=.
-     and back to the main directory, you can type =make qemu-x86-64-kernel= to test it.
+* platforms and running
+  please do NOT use cicada language for now,
+  and waiting for my announcement about a stable version.
 
 * documentations
   http://cicada-language.github.io
@@ -51,26 +24,11 @@
 * 何爲蟬語 ?
   蟬語 是一個非常簡單的程序語言.
   它是 一個以明顯地方式運用棧的 函數式編程語言.
-  蟬語 的設計靈感來源於 scheme 和 forth 還有 joy 這另外三個有趣的程序語言.
+  蟬語 的設計靈感來源於 scheme 和 forth 和 joy 和 smalltalk.
 
-* 平臺
-  * x86_64上的linux操作系統
-    =vm/x86-64/linux/=
-    其實現在只能在 linux操作系統 上使用.
-    而且是限於在 64 位的 x86_64 處理器上允許的 linux操作系統.
-    我和我的朋友 曹雨 很快就會改變這種情況.
-    目前 請不要嘗試 linux 版本 之外的其他版本.
-  * x86_64上的windows操作系統
-  * 直接運行於 x86_64 上而不依賴於其他操作系統
-  * 直接運行於 raspberry pi 上而不依賴於其他操作系統
-
-* 運行
-  沒有複雜的安裝過程,
-  請在在終端中輸入 =make help= 或 =make= 或 直接閱讀 Makefile 來看 蟬語 是如何被編譯的.
-
-  例如 :
-  1. 在輸入 =make linux= 之後,
-     去 =vm/x86-64/linux/= 路徑下你就能找到 ELF 格式的 可執行文件 =cicada=.
+* 平臺 與 運行
+  請暫時**不要**使用蟬語,
+  請耐心等待我宣佈整個系統的設計已經穩定.
 
 * 文檔
   http://cicada-language.github.io
