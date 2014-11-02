@@ -22,7 +22,6 @@
      並且在 不同的 語言核下
      所希望使用的 處理函數可能是不同的
   4. 但是這種全局變量的使用可能並不是很好到的編程實踐
-* 文案工作
 * redesign the debuger
   1. as the "debuger" is defined in cicada code
      it is hard to do good error handling in assembly code
