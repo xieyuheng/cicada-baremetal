@@ -57,43 +57,6 @@
           }
    #+end_src
 ** word-types & next
-*** note
-    1. notations :
-       1) "the dictionary" as a datastructure is a single-linked-list
-       2) an entry in "the dictionary" is "a word"
-       3) "a word" as a datastructure looks like the following :
-          (unit : Cell_width)
-          | 1 | name-string-header            |
-          | m | name-string                   |
-          | 1 | SizeOfFunctionBody            |
-          | 1 | identification                |
-          | 1 | link                          |
-          | 1 | type                          |
-          | 1 | address-of-name-string-header |
-          | 1 | address-of-explainer          |
-          | n | body                          |
-       4) so, I adopt two notations to represent "a word" :
-          word[link]      == address in a word where the link is stored
-          word[explainer] == address in a word where the address-of-explainer is stored
-          word[explainer] == address in a word before the function-body
-          word[explainer] == address in a word as the head of a function-body
-    2. this "next" do tail-call-optimization
-    3. every word-type needs a explainer (or elucidator)
-    4. a explainer may explain more then one word-types
-    5. note that, for now there are only two ways to jump to a explainer
-       1) next
-       2) execute
-    6. not matter what way you use to set :
-       [Explainer_pointer] == address-of-explainer (of a word you want to jump to)
-       then :
-       jmp qword[Explainer_pointer]
-       it will works just well
-    7. "next" will "pop_return_stack"
-       1) on the other hand,
-          explain_verb is the only explainer
-          who "push_return_stack"
-       2) so, it is these two functions, "next" and "explain_verb"
-          which handle the nested function calls
 *** implementation
     #+begin_src fasm :tangle macro.inc
     macro next {
