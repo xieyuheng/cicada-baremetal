@@ -2882,12 +2882,12 @@ def_verb "help:t", help__t
    xx Exit
 def_verb_end help__t
 
-def_verb "t", t
-   xx Waiting_symbol_list
-   xx _literal, 0, push_lambda_stack
-   xx help__t
-   xx Exit
-def_verb_end t
+;; def_verb "t", t
+;;    xx Waiting_symbol_list
+;;    xx _literal, 0, push_lambda_stack
+;;    xx help__t
+;;    xx Exit
+;; def_verb_end t
 def_verb "meet-undefined-word", meet_undefined_word
    ;; (* -- *)
    xx Message__meet_undefined_word, print_string, cr
@@ -2903,7 +2903,7 @@ def_assembly_code "execute", execute
 ;; when someone try to find a word in the dictionary,
 ;; the explainer of that word explains the word for him or her
 
-;; explain_verb 會貼貼一個 紙條 到 木條 上
+;; explain_verb 會貼一個 紙條兒 到 布條兒 上
 
 hereCode
 explain_verb:

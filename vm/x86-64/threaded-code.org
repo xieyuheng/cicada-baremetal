@@ -3295,12 +3295,12 @@
       xx Exit
    def_verb_end help__t
 
-   def_verb "t", t
-      xx Waiting_symbol_list
-      xx _literal, 0, push_lambda_stack
-      xx help__t
-      xx Exit
-   def_verb_end t
+   ;; def_verb "t", t
+   ;;    xx Waiting_symbol_list
+   ;;    xx _literal, 0, push_lambda_stack
+   ;;    xx help__t
+   ;;    xx Exit
+   ;; def_verb_end t
    #+end_src
 ** >< meet-undefined-word
    1. 使用當前的地址
