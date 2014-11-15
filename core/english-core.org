@@ -5744,27 +5744,25 @@
        for we need to define ``sqrt'' *)
 
     (*
-     ,* the following shows the problem that people argued at:
-     ,* http://lambda-the-ultimate.org/node/900
+     * the following shows the problem that people argued at:
+     * http://lambda-the-ultimate.org/node/900
 
-     ,* -b  +/- sqrt(b^2 - 4 * a * c)
-     ,* -----------------------------
-     ,*            2 * a
-     ,*)
-
-
-    (*
-     ,* [              :b negate
-     ,*     4 :a :c * *
-     ,*         :b :b *  -  sqrt  +
-     ,*                     2 :a  *  / ] dup2 write
-     ,* ( :a :b :c ) dup2 write
-     ,* λ ready
-     ,*
-     ,* 1 <:a  2 <:b  1 <:c
-     ,*
-     ,* apply write-dec-number cr (\* -1 *\)
+     * -b  +/- sqrt(b^2 - 4 * a * c)
+     * -----------------------------
+     *            2 * a
      *)
+
+
+    [              :b negate
+        4 :a :c * *
+            :b :b *  -  sqrt  +
+                        2 :a  *  / ] dup2 write
+    ( :a :b :c ) dup2 write
+    λ ready
+
+    1 <:a  2 <:b  1 <:c
+
+    apply write-dec-number cr (* -1 *)
     #+end_src
 ** play with lambda
 *** note

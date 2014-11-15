@@ -1,0 +1,39 @@
+
+task :default => :help
+
+desc "print help info"
+task :help do
+   puts <<HELP_INFO
+   dependencies
+     fasm   to compile
+
+   Makefile functions
+     cicada
+     clean
+
+   please read the Makefile for more informations
+
+   I wish you happy making ^_^
+HELP_INFO
+end
+
+
+desc "build cicada"
+task :cicada do  
+  sh "cd vm/x86-64/linux/ && fasm -m 500000 cicada.fasm cicada"
+end
+
+
+desc "clean up" 
+task :clean => [:clean_emacs, :clean_bin] do
+  sh "rm -f vm/x86-64/linux/cicada"
+  puts "[ok] clean directory"
+end
+
+task :clean_emacs do
+  sh "rm -f *~ */*~ */*/*~ */*/*/*~ */*/*/*/*~  */*/*/*/*/*~"
+end
+
+task :clean_bin do
+  sh "rm -f *.bin */*.bin */*/*.bin */*/*/*.bin */*/*/*/*.bin  */*/*/*/*/*.bin"
+end
