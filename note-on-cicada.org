@@ -1,4 +1,4 @@
-#+TITLE: report on cicada language
+#+TITLE: note on cicada
 #+AUTHOR: XIE Yuheng
 #+EMAIL: xyheme@gmail.com
 
@@ -11,6 +11,160 @@
   5. 關於多棧的新語法的設計
   6. 關於類型系統的新語法的設計
   7. 虛擬機的設計
+* TODO old
+** better string reading support
+** better string writing support
+** better number writing support
+** write a better meet-undefined-word
+   1. 如果我想要在 cicada 的代碼中重寫這個函數
+      那麼 只要用一個變量
+      讓這個函數調用這個變量中所保存的函數就行了
+      這樣我就能以相當精確的方式 重新設置處理未定義的位置的函數了
+   2. 另外的使得對某個函數的動態改變稱爲可能的方式是
+      直接從 symbol 找到找新的 symbol 所對應的 函數值
+      當更新 一個 symbol 所對應的函數之後
+      就能 重新設置處理未定義的位置的函數了
+      但是這種方式並不是很精確
+   3. 那麼我需不需要在 cicada 的代碼中重寫這個函數呢 ??
+      也許是需要的
+      並且在 不同的 語言核下
+      所希望使用的 處理函數可能是不同的
+   4. 但是這種全局變量的使用可能並不是很好到的編程實踐
+** redesign the debuger
+   1. as the "debuger" is defined in cicada code
+      it is hard to do good error handling in assembly code
+      這是因爲我沒法在出錯的時候即使調用 debuger 來報錯
+      - 比如 通常的函數類型的錯誤
+        我應該 及時的 調用 debuger 來報告錯誤
+        而在不利的條件下 我必須 返回一個出錯碼
+        來表示函數 所接受的數據類型不對
+** re-writing garbage-collectior
+   1. ??? 對於新的 define 要更改 GC
+      整個 GC 都應該被重寫了嗎 ???
+** make good use of indentation
+   1. for wodili 應該 在 wodili 的已有的 解析器 的基礎上
+      增加一個 好好 利用 indentation 的解析器
+      兩種解析器各自有各自的用處
+   2. 把 利用"支撐樹" 來進行相對引用的 性質加到 yaml 中
+      就能 形成 我想要的 digrap 的語法
+** write a cross compiler
+   1. 從最簡單 的 babystep 開始
+   2. 編譯 bootloader
+   3. 注意要保持設計的靈活性
+      或者直接從 文檔開始
+      用中文寫文檔 以加快速度
+   -----------------------------
+   1. 需要 cicada-assembler 的理由:
+      1) 統一 命名規則
+      2) 讓我 能夠探索一些關於編譯的技術
+      3) 有些 小的 CPU 並沒有 類似 fasm 的 合適的編譯器的
+         當我有 cicada-assembler 的時候
+         我就能不受限制於這個事實了
+      4) 當我調整代碼的結構
+         以讓我方便地 維護兩個彙編版本的時候
+         我就發現 其中有很多重複的部分
+         想要消除這些重複
+         我可以通過 更多的 把文件 分開來實現
+         但是如果我想保持
+         我的 類文學編程 組織代碼的風格的話
+         也許 創造一些新的東西來支持 我的風格就是必須的了
+   2. 不需要 cicada-assembler 的理由:
+      1) 一個人認爲 一個語言需要這種東西
+         可能只是因爲 當這個語言的編譯器能夠自己編譯自己的時候
+         看起來很 cool 而已
+      2) 爲了 實現 一個 x86-64 的彙編器
+         有太多的 關於 CPU 的底層細節需要 被掌握
+** erlang's bit syntax
+   在於讓人方便地處理 bit fields
+   這在於 能 用模式匹配
+** about UI
+   我可以把那幾個 核心的棧 的圖示 放在 左邊的一個窗口裏
+   在這之後 我就能設計 debuger 的更好的使用方式
+   但是一個問題是 當我的界面不再是一個簡單的解釋器的時候
+   我就不能 直接利用 emacs 了
+   也就是必須 要先寫自己的 文本編輯器
+   之後才能考慮窗口 之類的問題
+** learn from isforth
+   ??? switch from fasm back to nasm ???
+   for better linux support
+** word boundary
+   1. ><><>< the note about word boundary is wrong ???
+** branch
+   1. 是否對 branch 給更好的支持 ?
+      用 label 來計算 offset ???
+** english-core
+   1. use hash-table to lookup dictionary
+      then mutually recursive call
+   2. 用hash-table來find
+      這些不必實現在彙編代碼中
+      因爲 list還是必要的
+      因爲這樣就能保持對字典的靈活控制
+      所以 需要寫一些函數把
+      字典重新加載到 hash-table 中
+   3. need to redesign the way to do test
+      should tangle test to separated file
+      for i do not have my org-mode now
+   4. wodyli processing
+      then digrap in cicada
+   5. tab completion in the REPL
+      (or in text editor)
+   6. let functions in assembly-code
+      be able to call functions in cicada-style-assembly-code
+   7. >< 實現對多種實現技術的定製
+   8. >< 重新思考某些術語和命名方式
+   9. cicada should design it's own abstractions of IO
+      this can help cicada to be portable
+      現在 有的只是 read-char 和 write-char 兩個基礎的東西而已
+      這樣太貧乏了
+   10. memory allocation
+   11. flow-point number
+   12. >< maybe substitute word to execute in lambda-body
+   13. >< maybe syntax-check
+   14. >< modern pattern-match  HOW ???
+   15. better interface for debuger
+   16. TAIL-CALL-OPTIMIZATION in apply lambda-body
+   17. more protection on allocated memory
+       maybe use paging
+   18. cicada-assembler
+   19. cicada-editor
+   20. APL-like array-processing
+   21. needs better sexp-reader&write
+       design a better way
+       to use local-label to from list-with-circuit
+** baremetal
+   1. 作爲一個使用純粹釋性語言
+      我應該 重新 思考 對 公共的 函數庫的使用方式
+   2. in lmode, how to set up the "attributes-and-type" field in an entry of IDT ?
+   3. SMP support
+      作爲一個以棧爲基礎的語言
+      我應該重新思考 利用 多核 的方式
+   4. learn more from baremetal-OS
+   5. convert the code about storage & BMFS from old-asm to forth-like-asm
+      to examine the bug of "readsectors"
+   6. fix "bye"
+   7. design game-like UI in text mode
+   8. rewrite cicada to make it standard and portable
+      (this will always be TODO)
+   9. to allow executables to dynamically access external functionality at run time
+      and thereby reduce their overall memory footprint
+      在我的操作系統中 我可以以我的方式來完成上面的這種特性
+      我只需要一個 "need" 函數 來聲明 某段被解釋的代碼 所需要的 sub-dictionary
+      我還需要一些 處理 sub-dictionary 的函數
+      sub-dictionary 的性質 是 :
+      - 它可以有很多個
+      - 並且它所佔用的 內存可以被回收的
+      - 內存的回收 可以用 類似字符串的 垃圾回收器 來完成
+      - 當全面地使用 hash 來實現 dictionary 時
+        內存的回收 也可以用 類似鏈表的 垃圾回收器 來完成
+** cicada-idea
+   1. cicada-idea 本身是一種開源硬件
+      它是專門爲 編碼者 和 開源硬件hacker 而設計的 編程終端
+      有專門爲 控制和編碼開源硬件 而設計的 硬件接口
+   2. 作爲開源硬件 對 cicada-idea 的銷售和重新設計 不需要被 我 授權
+      我 作爲 開源硬件的銷售商之一 而盈利
+   3. cicada-idea 擁有 開源的 基於結構化文本編輯器的 操作系統界面
+      cicada-idea 以 cicada language 爲主要的編程語言
+      cicada-idea 有 以 cicada language 爲主要語言 而開發的 編碼環境
 * 記
 ** 蟬語之優
    1. 某些性質被我認爲是優點
