@@ -2574,3 +2574,62 @@ x:a ͱ (λ y:b . x) : b -> a
 
 *** >< detour elimination
 *** >< consistency
+* ><
+  `if ... then ...'
+  is different form
+  `thus' `therefore' `so' `hence' `since'
+  in mathematical reasoning (about the rules of inference)
+
+  converse and contraposition
+
+  bi-tree of proposition
+  =connectives=>
+  proposition
+
+  open proposition
+  =quantifiers=>
+  less-open proposition
+
+  quantifiers:
+  if is there is no set theory at first
+  how can there be quantifiers ?
+  by inference-rules of course
+  and by the following sugar
+  ∃x∈A(...) :=sugar= ∃x(Ax∧...)
+  ∀x∈A(...) :=sugar= ∀x(Ax∧...)
+  and there are matter of scope
+  just as in the case of λ-abstraction
+
+  function:
+  f: X -> Y
+  ∀x∈X∃!y∈Y(xfy)
+  here comes another kind of scope problem
+  about dependence
+  ∀x∈X∃!y=y(x)∈Y(xfy(x))
+
+  scope problem should always solved by graph theory
+
+  inference-rules:
+  (A A→B) ==> B
+  C→A(x) ==> C→∀xA(x)
+  A(x)→C ==> ∃xA(x)→C
+
+
+  rewrite-rules are about computation
+  but inference-rules are not
+  >< do not have a computational nature ??
+  >< yes ???
+
+  ``the quantiers usually range over
+  an infinite set and therefore one loses decidability''
+
+  ``Aristotle had already remarked that it is often hard to find proofs
+  but the verification of a putative one can be done in a relatively easy way''
+
+  so i should write something to help to show a math proof
+
+  A more eficient way to represent proofs employs typed lambda terms
+  and is called the propositions-as-types
+  which maps propositions into types
+  and proofs into the corresponding inhabitants
+  >< how about axioms ?
