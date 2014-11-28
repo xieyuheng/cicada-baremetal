@@ -1,0 +1,9 @@
+#+TITLE: note on vm
+#+AUTHOR: XIE Yuheng
+#+EMAIL: xyheme@gmail.com
+
+
+* TODO
+  1. 需要設計一個能被各社區的人使用到的 threaded-code-VM
+     尤其是 RPN 社區
+     尤其是要開放文檔
