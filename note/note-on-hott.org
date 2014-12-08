@@ -3,6 +3,13 @@
 #+EMAIL: xyheme@gmail.com
 
 
+* 新記
+  1. 所有 lambda-term 所構成的有向圖中     
+     等詞 =b= 是一個無向路
+     對等詞的肯定是對一條具體的路的展示[一段[或多段]計算]
+  2. 每個路的性質是不同的
+     並且其實其不同的性質是需要被注意的
+     因爲每一條路都代表計算
 * 動機
 去以構建一個機器輔助證明系統爲目的
 也許能幫助人理解這裏的工作
@@ -589,4 +596,3 @@ only need weak factorization system of it
 
 沒有範疇論的基礎weak factorization system我還沒法理解
 只知道weak factorization system與上面的四個推理規則完全契合
-
