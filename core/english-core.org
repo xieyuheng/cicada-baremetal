@@ -5903,9 +5903,10 @@
     (* in cicada: *)
 
 
-    [ [ [ ::x <::x ::x @ ] null λ <::rec ::y @ ]  ( ::x ) λ <::x
-      [ [ ::x <::x ::x @ ] null λ <::rec ::y @ ]  ( ::x ) λ @ ]
+    [ [ [ ::x <::x ::x @ ] null λ <::rec  ::y @ ] ( ::x ) λ <::x
+      [ [ ::x <::x ::x @ ] null λ <::rec  ::y @ ] ( ::x ) λ @ ]
     ( ::y ) λ
+
     : Var,Y ; define
     : Y Var,Y fetch2 Exit ; define-verb
 
@@ -5916,6 +5917,7 @@
         :n one? <:if apply ]
       ( :n ) λ ]
     ( ::rec ) λ  <::y  Y @
+
     : Var,factorial ; define
     : factorial Var,factorial fetch2 Exit ; define-verb
 
@@ -5930,7 +5932,8 @@
     cr
 
     (* ================================================== *)
-    (* TODO the heuristic about Y *)
+    (* TODO *)
+    (* the heuristic about Y *)
 
     [ [ 1 ] null λ <::true
       [ :n :n sub1

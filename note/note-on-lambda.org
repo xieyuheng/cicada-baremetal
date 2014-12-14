@@ -6,7 +6,10 @@
 * TODO
   1. 用從 EDW 那裏學到的風格
      形成一次 lambda-calculus 的理論
-* 舊筆記
+  2. 需要重寫筆記啊~~~
+     現在筆記太亂了
+     需要好好分類整理一下
+* 舊記
 ** [the-lambda-calculus--its-syntax-and-semantics]
    1. 好的講授方式是先在非形式化的語言下試着描述
       以發現對理論的哪部分作嚴格的形式化是有必要的
@@ -116,6 +119,10 @@
       - 上面只考慮了相容性
       當形式語言就某個數學結構而言具有完備性的時候
       應該怎麼說??
+* 新記
+** 關於等詞
+   1. 基本等詞的存在性
+      計算機利用它[0和1]來做計算[保存信息][傳遞信息]
 * lecture-by-henk
 ** type-free-λ-cal
 *** symbol
@@ -2377,4 +2384,22 @@ x:σ ͱ x:σ
   which maps propositions into types
   and proofs into the corresponding inhabitants
   >< how about axioms ?
-* ===========================
+* curry-howard-correspondence
+** 動機
+   1. 想要完全用 lambda-calculus 來理解邏輯推理
+      這樣對我來說數學基礎就齊活了
+   2. 其實 需要仔細回顧一下邏輯理論
+      因爲在進行證明的時候
+      某些步驟使用地太自然了
+      都忘記推理規則的存在了
+** 記
+   1. 命題演算 可以被趣稱爲 "謂詞使用方法總結"
+      也就是說我還是不想引入新的理論
+      而想直接把它理解爲布爾代數的性質
+   2. 對邏輯演算[推理規則]的需要
+      是因爲無窮集的出現嗎 ?
+** formulae as types
+   1. 對一個形式命題[formulae]的證明
+      就[將]是去尋找一個屬於所對應類型的 λ-term
+** 推理規則
+   1. 所謂 推理規則 就是[樹狀]數據結構的構造子
