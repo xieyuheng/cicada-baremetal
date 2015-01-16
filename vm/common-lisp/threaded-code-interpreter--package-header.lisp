@@ -1,7 +1,5 @@
 (defpackage #:threaded-code-interpreter
-  (:use #:common-lisp
-        #:xyh-lib
-        #:name-table)
+  (:use #:common-lisp)
   (:nicknames #:cicada-vm)
   (:export
 

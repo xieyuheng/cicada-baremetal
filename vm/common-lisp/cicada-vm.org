@@ -19,7 +19,31 @@
     and high-level language as common-lisp
   * an image file is as an executable [linkable] format
 * -----------------------------------
-* xyh-lib
+* header
+** system declaration
+   #+begin_src lisp :tangle threaded-code-interpreter.asd
+   (defsystem #:threaded-code-interpreter
+     :description "threaded-code interpreter of cicada language"
+     :author "XIE Yuheng <xyheme@gmail.com>"
+     :depends-on ()
+     :serial t
+     :components ((:file "threaded-code-interpreter--package-header")
+                  (:file "threaded-code-interpreter")))
+   #+end_src
+** threaded-code-interpreter--package-header
+   #+begin_src lisp :tangle threaded-code-interpreter--package-header.lisp
+   (defpackage #:threaded-code-interpreter
+     (:use #:common-lisp)
+     (:nicknames #:cicada-vm)
+     (:export
+
+      ))
+   #+end_src
+** (in-package #:threaded-code-interpreter)
+   #+begin_src lisp :tangle threaded-code-interpreter.lisp
+   (in-package #:threaded-code-interpreter)
+   #+end_src
+* basic
 ** note
    * a subset of syntax
    * naming convention
@@ -55,57 +79,51 @@
           to make sure that
           the structure of data is regular
           [this will make the intention of code clear]
-** header
-*** system declaration
-    #+begin_src lisp :tangle xyh-lib.asd
-    (defsystem #:xyh-lib
-      :description "XIE Yuheng's library for common lisp language"
-      :author "XIE Yuheng <xyheme@gmail.com>"
-      ;; :depends-on ()
-      :serial t
-      :components ((:file "xyh-lib--package-header")
-                   (:file "xyh-lib")))
-    #+end_src
-*** xyh-lib--package-header
-    #+begin_src lisp :tangle xyh-lib--package-header.lisp
-    (defpackage #:xyh-lib
-      (:use #:common-lisp)
-      (:export
-
-       #:nil?
-       #:add1
-       #:sub1
-
-       #:read#line
-       #:read#char
-       #:newline
-
-       #:char#space?
-       #:string->head#word
-       #:string->tail#word
-       #:string#space?
-       #:string->list#word
-
-       #:group
-       ))
-    #+end_src
-*** (in-package #:xyh-lib)
-    #+begin_src lisp :tangle xyh-lib.lisp
-    (in-package #:xyh-lib)
-    #+end_src
-** basic
-   #+begin_src lisp :tangle xyh-lib.lisp
+** predicate
+   #+begin_src lisp :tangle threaded-code-interpreter.lisp
    (defun nil? (x)
      (null x))
 
+   (defun integer? (x)
+     (integerp x))
+
+   (defun natural-number? (x)
+     (and (integerp x)
+          (<= 0 x)))
+
+   ;; (natural-number? 0)
+   ;; (natural-number? 1)
+   ;; (natural-number? -1)
+   ;; (natural-number? 1.1)
+
+
+   (defun array? (x)
+     (arrayp x))
+   #+end_src
+** add1 sub1
+   #+begin_src lisp :tangle threaded-code-interpreter.lisp
    (defun add1 (x)
      (+ x 1))
 
    (defun sub1 (x)
      (- x 1))
    #+end_src
+** >< array
+   #+begin_src lisp
+   (make-array '(2 3 4) :initial-element nil)
+
+   (array-dimension
+    (make-array '(2 3 4) :initial-element nil)
+    0)
+
+   (array-rank
+    (make-array '(2 3 4) :initial-element nil))
+
+   (aref (make-array '(2 3 4) :initial-element nil)
+         0 0 0)
+   #+end_src
 ** io
-   #+begin_src lisp :tangle xyh-lib.lisp
+   #+begin_src lisp :tangle threaded-code-interpreter.lisp
    (defun read#line (&key
                        (from *standard-input*)
                        (eof-as-error? t)
@@ -125,10 +143,18 @@
             (newline :many (sub1 many)))
            (:else :nothing)))
    #+end_src
-** string processing
-   #+begin_src lisp :tangle xyh-lib.lisp
+** char->code code->char
+   #+begin_src lisp :tangle threaded-code-interpreter.lisp
+   (defun char->code (char)
+     (char-code char))
+
+   (defun code->char (code)
+     (code-char code))
+   #+end_src
+** [char|string]#space? string#empty?
+   #+begin_src lisp :tangle threaded-code-interpreter.lisp
    (defun char#space? (char)
-     (let ((code (char-code char)))
+     (let ((code (char->code char)))
        (cond ((= code 32) t)
              ((= code 10) t)
              (:else nil))))
@@ -136,9 +162,29 @@
    ;; (char#space? #\newline)
    ;; (char#space? #\space)
 
+   (defun string#empty? (string)
+     (equal string ""))
 
+   (defun string#space? (string)
+     (not (position-if
+           (lambda (char) (not (char#space? char)))
+           string)))
 
+   ;; (string#space? " 123 ")
+   ;; (string#space? "  ")
+   ;; (string#space? "")
+   #+end_src
+** string->[head|tail|list]#word
+   #+begin_src lisp :tangle threaded-code-interpreter.lisp
    (defun string->head#word (string)
+     ;; interface:
+     ;; (multiple-value-bind
+     ;;       (head#word
+     ;;        index-end
+     ;;        index-start
+     ;;        string)
+     ;;     (string->head#word string)
+     ;;   ><><><)
      (let* ((index-start (position-if
                           (lambda (char) (not (char#space? char)))
                           string))
@@ -153,14 +199,6 @@
                index-start
                string)))
 
-   ;; (multiple-value-bind
-   ;;       (head#word
-   ;;        index-end
-   ;;        index-start
-   ;;        string)
-   ;;     (string->head#word string)
-   ;;   ><><><)
-
    ;; (string->head#word " kkk took my baby away! ")
    ;; (string->head#word "k")
    ;; (string->head#word " k")
@@ -168,6 +206,7 @@
 
    ;; the argument applied to string->head#word
    ;; must not be space-string
+   ;; one should use string#space? to ensure this
 
    ;; just do not handle the error
    ;; let the debuger do its job
@@ -190,16 +229,6 @@
 
 
 
-   (defun string#space? (string)
-     (not (position-if
-           (lambda (char) (not (char#space? char)))
-           string)))
-
-   ;; (string#space? " 123 ")
-   ;; (string#space? "  ")
-   ;; (string#space? "")
-
-
 
    (defun string->list#word (string &key (base-list '()))
      (cond
@@ -214,8 +243,91 @@
    ;; (string->list#word " ")
    ;; (string->list#word "")
    #+end_src
-** list processing
-   #+begin_src lisp :tangle xyh-lib.lisp
+** string->[head|tail|list]#char
+   #+begin_src lisp :tangle threaded-code-interpreter.lisp
+   (defun string->head#char (string)
+     ;; interface:
+     ;; (multiple-value-bind
+     ;;       (head#char
+     ;;        tail#char
+     ;;        string)
+     ;;     (string->head#char string)
+     ;;   ><><><)
+     (values (char string 0)
+             (subseq string
+                     1)
+             string))
+
+   ;; (string->head#char " kkk took my baby away! ")
+   ;; (string->head#char "k")
+   ;; (string->head#char " k")
+   ;; (string->head#char "k ")
+
+   ;; the argument applied to string->head#char
+   ;; must not be ""
+   ;; one should use string#empty? to ensure this
+
+   ;; just do not handle the error
+   ;; let the debuger do its job
+   ;; (string->head#char "")
+
+
+
+   (defun string->tail#char (string)
+     (multiple-value-bind
+           (head#char
+            tail#char
+            string)
+         (string->head#char string)
+       tail#char))
+
+   ;; (string->tail#char " kkk took my baby away! ")
+   ;; (string->tail#char "")
+
+
+
+   (defun string->list#char (string &key (base-list '()))
+     (cond
+       ((string#empty? string) base-list)
+       (:else
+        (cons (string->head#char string)
+              (string->list#char (string->tail#char string))))))
+
+   ;; (string->list#char " kkk took my baby away! ")
+   ;; (string->list#char " kkk")
+   ;; (string->list#char "kkk ")
+   ;; (string->list#char " ")
+   ;; (string->list#char "")
+   #+end_src
+** shift#[left|right]
+   #+begin_src lisp :tangle threaded-code-interpreter.lisp
+   (defun shift#left (&key
+                        (step 1)
+                        number)
+     (* number
+        (expt 2 step)))
+
+   ;; (shift#left
+   ;;  :step 2
+   ;;  :number 10)
+   ;; (shift#left
+   ;;  :number 10)
+
+
+   (defun shift#right (&key
+                         (step 1)
+                         number)
+     (/ number
+        (expt 2 step)))
+
+   ;; (shift#right
+   ;;  :step 2
+   ;;  :number 64)
+   ;; (shift#right
+   ;;  :number 64)
+   #+end_src
+** group
+   #+begin_src lisp :tangle threaded-code-interpreter.lisp
    (defun group (list
                  &key
                    (number 2)
@@ -246,43 +358,103 @@
      或它們的某個 域 同一
      這是爲了實現對多種人類語言的支持
      比如 英文 漢文 異體字
-** header
-*** system declaration
-    #+begin_src lisp :tangle name-table.asd
-    (defsystem #:name-table
-      :description "cicada language's hash table of string"
-      :author "XIE Yuheng <xyheme@gmail.com>"
-      :depends-on (#:xyh-lib)
-      :serial t
-      :components ((:file "name-table--package-header")
-                   (:file "name-table")))
-    #+end_src
-*** name-table--package-header
-    #+begin_src lisp :tangle name-table--package-header.lisp
-    (defpackage #:name-table
-      (:use #:common-lisp
-            #:xyh-lib)
-      (:export
+** the table
+   #+begin_src lisp :tangle threaded-code-interpreter.lisp
+   ;; must be a prime number
 
-       ))
-    #+end_src
-*** (in-package #:name-table)
-    #+begin_src lisp :tangle name-table.lisp
-    (in-package #:name-table)
-    #+end_src
-** ><
-   #+begin_src lisp :tangle name-table.lisp
-   (defparameter *max-carry-position* 26)
+   ;; 1000003  ;; about 976 k
+   ;; 1000033
+   ;; 1000333
+   ;; 100003   ;; about 97 k
+   ;; 100333
+   ;; 997
+   ;; 499
+   ;; 230      ;; for a special test
 
-   (defun string->natural-number (string)
-     ())
+   (defparameter *size#name-table*
+     100333)
 
-   (defparameter *max-index* ><)
+   (defparameter *size#entry#name-table*
+     100)
 
+   (defparameter *name-table*
+     (make-array
+      (list *size#name-table* *size#entry#name-table*)
+      :initial-element nil))
+   #+end_src
+** string->natural-number
+   #+begin_src lisp :tangle threaded-code-interpreter.lisp
+   (defparameter *max-carry-position* 22)
+
+   (defun string->natural-number (string
+                                  &key
+                                    (counter 0)
+                                    (sum 0))
+     (if (string#empty? string)
+         sum
+         (multiple-value-bind
+               (head#char
+                tail#char
+                string)
+             (string->head#char string)
+           (string->natural-number
+            tail#char
+            :counter (if (< counter *max-carry-position*)
+                         (add1 counter)
+                         0)
+            :sum (+ sum
+                    (shift#left
+                     :step counter
+                     :number (char->code head#char)))))))
+
+   ;; (string->natural-number "")
+   ;; (string->natural-number "@")
+   ;; (string->natural-number "@@@")
+   #+end_src
+** natural-number->index
+   #+begin_src lisp :tangle threaded-code-interpreter.lisp
    (defun natural-number->index (natural-number)
+     (if (not (natural-number? natural-number))
+         (error "argument of natural-number->index must be a natural-number")
+         (mod natural-number *size#name-table*)))
+
+   ;; (natural-number->index 0)
+   ;; (natural-number->index 123)
+   ;; (natural-number->index 123.123)
+   #+end_src
+** string->name name->string
+   #+begin_src lisp :tangle threaded-code-interpreter.lisp
+   (defun name? (x)
+     (and (array? x)
+          (= 1 (array-rank x))
+          (= 2 (array-dimension x
+                                0))
+          (equal :<name>
+                 (aref x
+                       0))))
+
+   (name? #(:<name> "123"))
+
+   (defun print-name (name
+                      &key (stream t))
+     (format stream
+             "#name: ~A"
+             '><))
+
+
+   (defun help#string->symbol#find-old-or-creat-new
+       ())
+
+   (defun string->name (string)
+     (let ((index
+            (natural-number->index
+             (string->natural-number string))))
+       ()
+       ))
+
+
+   (defun symbol->string (index)
      ())
-
-
    #+end_src
 * threaded-code interpreter
 ** note
@@ -307,33 +479,6 @@
      儘管
      之後
      這些處理函數都會被暴露出來
-** header
-*** system declaration
-    #+begin_src lisp :tangle threaded-code-interpreter.asd
-    (defsystem #:threaded-code-interpreter
-      :description "threaded-code interpreter of cicada language"
-      :author "XIE Yuheng <xyheme@gmail.com>"
-      :depends-on (#:xyh-lib
-                   #:name-table)
-      :serial t
-      :components ((:file "threaded-code-interpreter--package-header")
-                   (:file "threaded-code-interpreter")))
-    #+end_src
-*** threaded-code-interpreter--package-header
-    #+begin_src lisp :tangle threaded-code-interpreter--package-header.lisp
-    (defpackage #:threaded-code-interpreter
-      (:use #:common-lisp
-            #:xyh-lib
-            #:name-table)
-      (:nicknames #:cicada-vm)
-      (:export
-
-       ))
-    #+end_src
-*** (in-package #:threaded-code-interpreter)
-    #+begin_src lisp :tangle threaded-code-interpreter.lisp
-    (in-package #:threaded-code-interpreter)
-    #+end_src
 ** ><
    #+begin_src lisp :tangle threaded-code-interpreter.lisp
 
@@ -342,7 +487,9 @@
 * test
   #+begin_src lisp
   (progn
-    ;;(asdf:operate 'asdf:load-op 'threaded-code-interpreter)
+
     (asdf:load-system 'threaded-code-interpreter)
-    (in-package #:threaded-code-interpreter))
+    (in-package :threaded-code-interpreter)
+
+    )
   #+end_src
