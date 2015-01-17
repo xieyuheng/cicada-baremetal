@@ -437,7 +437,6 @@ hereInitializedData
 Initial_files_to_load:
    file "../../../core/english-core.cicada"
    file "../../../core/chinese-core.cicada"
-   file "../../../lib/x86-64/linux/print-with-color.cicada"
    ;; file "../../../lib/x86-64/linux/compiler.cicada"
 Size_of_initial_files_to_load = ($ - Initial_files_to_load) ;; unit :: byte
 ;; /usr/include/asm-generic/termbits.h

@@ -2,6 +2,18 @@
 (defun nil? (x)
   (null x))
 
+(defun ture? (x)
+  (eq t x))
+
+(defun false? (x)
+  (eq nil x))
+
+(defun eq? (x y)
+  (eq x y))
+
+(defun equal? (x y)
+  (equal x y))
+
 (defun integer? (x)
   (integerp x))
 
@@ -17,11 +29,41 @@
 
 (defun array? (x)
   (arrayp x))
+
+(defun string? (x)
+  (stringp x))
 (defun add1 (x)
   (+ x 1))
 
 (defun sub1 (x)
   (- x 1))
+;; (make-array '(2 3 4) :initial-element nil)
+
+;; (array-dimension
+;;  (make-array '(2 3 4) :initial-element nil)
+;;  0)
+
+;; (array-rank
+;;  (make-array '(2 3 4) :initial-element nil))
+
+;; (aref (make-array '(2 3 4) :initial-element nil)
+;;       0 0 0)
+
+(defun fetch#array (&key array index-list)
+  (apply (function aref)
+         (cons array index-list)))
+
+;; (fetch#array :array (make-array '(2 3 4) :initial-element nil)
+;;              :index-list '(0 0 0))
+
+(defun save#array (&key value array index-list)
+  (eval
+   `(setf ,(cons 'aref (cons array index-list))
+          ,value)))
+
+;; (save#array :value 1
+;;             :array (make-array '(2 3 4) :initial-element nil)
+;;             :index-list '(0 0 0))
 (defun read#line (&key
                     (from *standard-input*)
                     (eof-as-error? t)
@@ -55,7 +97,7 @@
 ;; (char#space? #\space)
 
 (defun string#empty? (string)
-  (equal string ""))
+  (equal? string ""))
 
 (defun string#space? (string)
   (not (position-if
@@ -208,6 +250,11 @@
 ;;  :number 64)
 ;; (shift#right
 ;;  :number 64)
+(defun symbol->string (symbol)
+  (symbol-name symbol)) 
+
+(defun string->symbol (string)
+  (intern string))
 (defun group (list
               &key
                 (number 2)
@@ -225,7 +272,7 @@
 ;; 1000033
 ;; 1000333
 ;; 100003   ;; about 97 k
-;; 100333   
+;; 100333
 ;; 997
 ;; 499
 ;; 230      ;; for a special test
@@ -240,6 +287,10 @@
   (make-array
    (list *size#name-table* *size#entry#name-table*)
    :initial-element nil))
+
+(defun index-within-name-table? (index)
+  (and (natural-number? index)
+       (< index *size#name-table*)))
 (defparameter *max-carry-position* 22)
 
 (defun string->natural-number (string
@@ -279,30 +330,92 @@
        (= 1 (array-rank x))
        (= 2 (array-dimension x
                              0))
-       (equal :<name>
-              (aref x
-                    0))))
+       (equal? '<name>
+               (fetch#array :array x
+                            :index-list '(0)))
+       (index-within-name-table?
+        (fetch#array :array x
+                     :index-list '(1)))))
 
-(name? #(:<name> "123"))
-
-(defun print-name (name
-                   &key (stream t))
-  (format stream
-          "#name: ~A"
-          '><))
+;; (name? #(<name> 0))
 
 
-(defun help#string->symbol#find-old-or-creat-new
-    ())
-
+(defun <name> (x)
+  (if (not (index-within-name-table? x))
+      (error "the argument of <name> must be checked by index-within-name-table?")
+      (vector '<name> x)))
 (defun string->name (string)
   (let ((index
          (natural-number->index
           (string->natural-number string))))
-    ()
+    (help#string->name#find-old-or-creat-new string
+                                             index)))
+
+
+(defun help#string->name#find-old-or-creat-new (string index)
+  (cond
+    ((not (name-table-index#used? index))
+     (help#string->name#creat-new string
+                                  index)
+     (<name> index))
+
+    ((equal? string
+             (fetch#array :array *name-table*
+                          :index-list `(,index 0)))
+     (<name> index))
+
+    (:else
+     (help#string->name#find-old-or-creat-new
+      string
+      (name-table-index#next index)))
     ))
 
 
-(defun symbol->string (index)
+(defun help#string->name#creat-new (string index)
+ (save#array :value string
+             :array *name-table*
+             :index-list `(,index 0)))
+
+
+(defun name-table-index#used? (index)
+  (string? (fetch#array :array *name-table*
+                        :index-list `(,index 0))))
+
+(defun name-table-index#next (index)
+  (if (= index *size#name-table*)
+      0
+      (add1 index)))
+
+
+(defun name->index (name)
+  (cond ((not (name? name))
+         (error "argument of name->index must be a name"))
+        (:else
+         (fetch#array :array name
+                      :index-list '(1)))))
+
+(defun name->string (name)
+  (cond ((not (name? name))
+         (error "argument of name->string must be a name"))
+        (:else
+         (let ((index (name->index name)))
+           (cond ((not (name-table-index#used? index))
+                  (error "this name does not have a string"))
+                 (:else
+                  (fetch#array :array *name-table*
+                               :index-list `(,index 0)))
+                 )))
+        ))
+
+
+;; (name->string (string->name "kkk took my baby away!"))
+(defun print-name (name
+                   &key (stream t))
+  (format stream
+          "#name: ~A"
+          (name->string name)))
+
+;; (print-name (string->name "kkk took my baby away!"))
+(defun explain (&key name as)
   ())
 
