@@ -4,14 +4,15 @@
 
 
 * TODO
-  * first version
-    without parsing the image file
   * parse image file
+  * first version complete
+  * cicada-rhapsody
+* -----------------------------------
 * note
   * cicada vm is
     a threaded-code interpreter
     with a hash-table of string which is called name-table
-  * the method used to implement
+  * the way used to implement
     a forth inner interpreter in assembly language
     is used to design this vm
   * it will be easy to implement this vm in both
@@ -21,44 +22,29 @@
 * -----------------------------------
 * header
 ** system declaration
-   #+begin_src lisp :tangle threaded-code-interpreter.asd
-   (defsystem #:threaded-code-interpreter
-     :description "threaded-code interpreter of cicada language"
+   #+begin_src lisp :tangle cicada-vm.asd
+   (defsystem #:cicada-vm
+     :description "virtual machine of cicada language"
      :author "XIE Yuheng <xyheme@gmail.com>"
      :depends-on ()
      :serial t
-     :components ((:file "threaded-code-interpreter--package-header")
-                  (:file "threaded-code-interpreter")))
+     :components ((:file "cicada-vm--package-header")
+                  (:file "cicada-vm")))
    #+end_src
-** threaded-code-interpreter--package-header
-   #+begin_src lisp :tangle threaded-code-interpreter--package-header.lisp
-   (defpackage #:threaded-code-interpreter
+** cicada-vm--package-header
+   #+begin_src lisp :tangle cicada-vm--package-header.lisp
+   (defpackage #:cicada-vm
      (:use #:common-lisp)
-     (:nicknames #:cicada-vm)
      (:export
 
       ))
    #+end_src
-** (in-package #:threaded-code-interpreter)
-   #+begin_src lisp :tangle threaded-code-interpreter.lisp
-   (in-package #:threaded-code-interpreter)
+** (in-package #:cicada-vm)
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (in-package #:cicada-vm)
    #+end_src
 * basic
 ** note
-   * a subset of syntax
-   * naming convention
-     * rename functions
-     * to use "#"
-       to introduce symbol
-       as prefix and postfix of other symbol
-     * a "#" denotes an word such as
-       "of" "'s" "is" "are" "for" "to" "from" and so on
-       in Chinese
-       this kind of words are called unfilled-word
-       i.e. word which is not filled by a precise meaning
-       the meaning of it should be infered from context
-     * when wish to stress that a symbol is used as a bounded-variable
-       use "." as its prefix
    * you should respect the function
      * when a calculation is done
        it is not respectful
@@ -79,8 +65,18 @@
           to make sure that
           the structure of data is regular
           [this will make the intention of code clear]
+** naming convention
+   * to use "#" to introduce symbol prefix and postfix
+   * a "#" denotes an word such as
+     "of" "'s" "is" "are" "for" "to" "from" and so on
+     in Chinese
+     this kind of words are called unfilled-word
+     i.e. word which is not filled by a precise meaning
+     the meaning of it should be infered from context
+   * when wish to stress that a symbol is used as a bounded-variable
+     use "." as its prefix
 ** predicate
-   #+begin_src lisp :tangle threaded-code-interpreter.lisp
+   #+begin_src lisp :tangle cicada-vm.lisp
    (defun nil? (x)
      (null x))
 
@@ -115,8 +111,8 @@
    (defun string? (x)
      (stringp x))
    #+end_src
-** add1 sub1
-   #+begin_src lisp :tangle threaded-code-interpreter.lisp
+** math
+   #+begin_src lisp :tangle cicada-vm.lisp
    (defun add1 (x)
      (+ x 1))
 
@@ -124,7 +120,7 @@
      (- x 1))
    #+end_src
 ** array
-   #+begin_src lisp :tangle threaded-code-interpreter.lisp
+   #+begin_src lisp :tangle cicada-vm.lisp
    ;; (make-array '(2 3 4) :initial-element nil)
 
    ;; (array-dimension
@@ -137,6 +133,8 @@
    ;; (aref (make-array '(2 3 4) :initial-element nil)
    ;;       0 0 0)
 
+
+
    (defun fetch#array (&key array index-list)
      (apply (function aref)
             (cons array index-list)))
@@ -144,28 +142,44 @@
    ;; (fetch#array :array (make-array '(2 3 4) :initial-element nil)
    ;;              :index-list '(0 0 0))
 
+
+
    (defun save#array (&key value array index-list)
-     (eval
-      `(setf ,(cons 'aref (cons array index-list))
-             ,value)))
+     (setf
+      (apply #'aref array index-list) value))
 
    ;; (save#array :value 1
    ;;             :array (make-array '(2 3 4) :initial-element nil)
    ;;             :index-list '(0 0 0))
    #+end_src
+** multi reture value
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (defun reture-zero-value ()
+     (values))
+   #+end_src
 ** io
-   #+begin_src lisp :tangle threaded-code-interpreter.lisp
+   #+begin_src lisp :tangle cicada-vm.lisp
    (defun read#line (&key
                        (from *standard-input*)
                        (eof-as-error? t)
-                       (read-eof-as 'eof))
-     (read-line from eof-as-error? read-eof-as))
+                       (read-eof-as 'eof)
+                       (recursive-call-to-reader? nil))
+     (read-line from
+                eof-as-error?
+                read-eof-as
+                recursive-call-to-reader?))
+
 
    (defun read#char (&key
                        (from *standard-input*)
                        (eof-as-error? t)
-                       (read-eof-as 'eof))
-     (read-char from eof-as-error? read-eof-as))
+                       (read-eof-as 'eof)
+                       (recursive-call-to-reader? nil))
+     (read-char from
+                eof-as-error?
+                read-eof-as
+                recursive-call-to-reader?))
+
 
    (defun newline (&key (many 1))
      (cond ((= 0 many) :nothing)
@@ -174,8 +188,24 @@
             (newline :many (sub1 many)))
            (:else :nothing)))
    #+end_src
-** char->code code->char
-   #+begin_src lisp :tangle threaded-code-interpreter.lisp
+** reader
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (defun bind-char-to-reader (char reader)
+     (set-macro-character char reader))
+
+   (defun find-reader-from-char (char)
+     (get-macro-character char))
+   #+end_src
+** character
+   #+begin_src lisp :tangle cicada-vm.lisp
+   ;; (character "1")
+   ;; (character "中")
+
+   ;; error, length of string must be 1
+   ;; (character "12")
+   #+end_src
+** char->code & code->char
+   #+begin_src lisp :tangle cicada-vm.lisp
    (defun char->code (char)
      (char-code char))
 
@@ -183,12 +213,12 @@
      (code-char code))
    #+end_src
 ** string#empty?
-   #+begin_src lisp :tangle threaded-code-interpreter.lisp
+   #+begin_src lisp :tangle cicada-vm.lisp
    (defun string#empty? (string)
      (equal? string ""))
    #+end_src
-** [char|string]#space? string#empty?
-   #+begin_src lisp :tangle threaded-code-interpreter.lisp
+** [char|string]#space? & string#empty?
+   #+begin_src lisp :tangle cicada-vm.lisp
    (defun char#space? (char)
      (let ((code (char->code char)))
        (cond ((= code 32) t)
@@ -209,7 +239,7 @@
    ;; (string#space? "")
    #+end_src
 ** string->[head|tail|list]#word
-   #+begin_src lisp :tangle threaded-code-interpreter.lisp
+   #+begin_src lisp :tangle cicada-vm.lisp
    (defun string->head#word (string)
      ;; interface:
      ;; (multiple-value-bind
@@ -278,7 +308,7 @@
    ;; (string->list#word "")
    #+end_src
 ** string->[head|tail|list]#char
-   #+begin_src lisp :tangle threaded-code-interpreter.lisp
+   #+begin_src lisp :tangle cicada-vm.lisp
    (defun string->head#char (string)
      ;; interface:
      ;; (multiple-value-bind
@@ -334,7 +364,7 @@
    ;; (string->list#char "")
    #+end_src
 ** shift#[left|right]
-   #+begin_src lisp :tangle threaded-code-interpreter.lisp
+   #+begin_src lisp :tangle cicada-vm.lisp
    (defun shift#left (&key
                         (step 1)
                         number)
@@ -360,8 +390,8 @@
    ;; (shift#right
    ;;  :number 64)
    #+end_src
-** string->symbol symbol->string
-   #+begin_src lisp :tangle threaded-code-interpreter.lisp
+** string->symbol & symbol->string
+   #+begin_src lisp :tangle cicada-vm.lisp
    (defun symbol->string (symbol)
      (symbol-name symbol))
 
@@ -369,7 +399,7 @@
      (intern string))
    #+end_src
 ** group
-   #+begin_src lisp :tangle threaded-code-interpreter.lisp
+   #+begin_src lisp :tangle cicada-vm.lisp
    (defun group (list
                  &key
                    (number 2)
@@ -396,12 +426,15 @@
      * type
      * string
      * instruction
-   * 需要能夠聲明兩個 symbol 完全同一
+** number theory and hash function
+   * 也許 hash function 可以動態地改變自己
+     例如
+     需要能夠聲明兩個 symbol 完全同一
      或它們的某個 域 同一
      這是爲了實現對多種人類語言的支持
      比如 英文 漢文 異體字
 ** the table
-   #+begin_src lisp :tangle threaded-code-interpreter.lisp
+   #+begin_src lisp :tangle cicada-vm.lisp
    ;; must be a prime number
 
    ;; 1000003  ;; about 976 k
@@ -429,7 +462,7 @@
           (< index *size#name-table*)))
    #+end_src
 ** string->natural-number
-   #+begin_src lisp :tangle threaded-code-interpreter.lisp
+   #+begin_src lisp :tangle cicada-vm.lisp
    (defparameter *max-carry-position* 22)
 
    (defun string->natural-number (string
@@ -458,7 +491,7 @@
    ;; (string->natural-number "@@@")
    #+end_src
 ** natural-number->index
-   #+begin_src lisp :tangle threaded-code-interpreter.lisp
+   #+begin_src lisp :tangle cicada-vm.lisp
    (defun natural-number->index (natural-number)
      (if (not (natural-number? natural-number))
          (error "argument of natural-number->index must be a natural-number")
@@ -469,7 +502,7 @@
    ;; (natural-number->index 123.123)
    #+end_src
 ** name?
-   #+begin_src lisp :tangle threaded-code-interpreter.lisp
+   #+begin_src lisp :tangle cicada-vm.lisp
    (defun name? (x)
      (and (array? x)
           (= 1 (array-rank x))
@@ -483,15 +516,9 @@
                         :index-list '(1)))))
 
    ;; (name? #(<name> 0))
-
-
-   (defun <name> (x)
-     (if (not (index-within-name-table? x))
-         (error "the argument of <name> must be checked by index-within-name-table?")
-         (vector '<name> x)))
    #+end_src
-** string->name name->string
-   #+begin_src lisp :tangle threaded-code-interpreter.lisp
+** string->name & name->string
+   #+begin_src lisp :tangle cicada-vm.lisp
    (defun string->name (string)
      (let ((index
             (natural-number->index
@@ -505,12 +532,12 @@
        ((not (name-table-index#used? index))
         (help#string->name#creat-new string
                                      index)
-        (<name> index))
+        `#(<name> ,index))
 
        ((equal? string
                 (fetch#array :array *name-table*
                              :index-list `(,index 0)))
-        (<name> index))
+        `#(<name> ,index))
 
        (:else
         (help#string->name#find-old-or-creat-new
@@ -559,54 +586,215 @@
    ;; (name->string (string->name "kkk took my baby away!"))
    #+end_src
 ** print-name
-   #+begin_src lisp :tangle threaded-code-interpreter.lisp
+   #+begin_src lisp :tangle cicada-vm.lisp
    (defun print-name (name
                       &key (stream t))
      (format stream
-             "#name: ~A"
+             "[~A]"
              (name->string name)))
 
    ;; (print-name (string->name "kkk took my baby away!"))
    #+end_src
-** >< explain
-   #+begin_src lisp :tangle threaded-code-interpreter.lisp
-   (defun explain (&key name as)
-     ())
+** be & explain
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (defun be (&key
+                name
+                as
+                mean)
+     ;; interface:
+     ;; (multiple-value-bind
+     ;;       (field
+     ;;        update?
+     ;;        old-mean)
+     ;;     (be :name name
+     ;;         :as as
+     ;;         :mean mean)
+     ;;   ><><><)
+     (if (or (not (name? name))
+             (not (name? as)))
+         (error "the argument :name and :as of (be) must be checked by (name?)")
+         (let ((name-index (name->index name))
+               (as-index (name->index as)))
+           (help#be :name-index name-index
+                    :as-index as-index
+                    :mean mean))))
+
+
+
+   (defun help#be (&key
+                     name-index
+                     as-index
+                     mean
+                     (field 1))
+     (let ((content-of-field
+            (fetch#array :array *name-table*
+                         :index-list `(,name-index ,field))))
+       (cond
+         ((nil? content-of-field)
+          (save#array :value (cons as-index mean)
+                      :array *name-table*
+                      :index-list `(,name-index ,field))
+          (values field
+                  nil
+                  nil))
+
+         ((equal? as-index
+                  (car content-of-field))
+          (save#array :value (cons as-index mean)
+                      :array *name-table*
+                      :index-list `(,name-index ,field))
+          (values field
+                  t
+                  (cdr content-of-field)))
+
+         ((< field *size#entry#name-table*)
+          (help#be :name-index name-index
+                   :as-index as-index
+                   :mean mean
+                   :field (add1 field)))
+
+         (:else
+          (error "the meaning of this name is too filled"))
+         )))
+
+
+
+
+
+   (defun explain (&key
+                     name
+                     as)
+     ;; interface:
+     ;; (multiple-value-bind
+     ;;       (mean
+     ;;        find?)
+     ;;     (explain :name name
+     ;;              :as as)
+     ;;   ><><><)
+     (if (or (not (name? name))
+             (not (name? as)))
+         (error "the argument :name and :as of (explain) must be checked by (name?)")
+         (let ((name-index (name->index name))
+               (as-index (name->index as)))
+           (help#explain :name-index name-index
+                         :as-index as-index))))
+
+
+
+   (defun help#explain (&key
+                          name-index
+                          as-index
+                          (field 1))
+     (let ((content-of-field
+            (fetch#array :array *name-table*
+                         :index-list `(,name-index ,field))))
+       (cond
+         ((nil? content-of-field)
+          (values nil
+                  nil))
+
+         ((equal? as-index
+                  (car content-of-field))
+          (values (cdr content-of-field)
+                  t))
+
+         ((< field *size#entry#name-table*)
+          (help#explain :name-index name-index
+                        :as-index as-index
+                        :field (add1 field)))
+
+         (:else
+          (error (concatenate
+                  'string
+                  "can not explain the name in the way you wish~%"
+                  "and the meaning of this name is too filled")))
+         )))
+
+
+
+   ;; (be :name (string->name "kkk")
+   ;;     :as (string->name "took")
+   ;;     :mean "my baby away!")
+
+   ;; (explain :name (string->name "kkk")
+   ;;          :as (string->name "took"))
    #+end_src
 * threaded-code interpreter
 ** note
-   * 只有 對 threaded-code 的解釋 內置在虛擬機中的
-     也就是說
-     這裏需要處理的 structure 有
-     1. primitive-function
-     2. vector-function
-     3. return-stack
-     4. argument-stack
-     5. frame-stack
-        也就是說專門有一個 stack
-        專注於約束變元
-        而 argument-stack 還是以 古典的 forth 的方式工作
-   * 其實這些 stack 是爲了 完成函數調用語義 而設計的
-     那麼這裏就遇到了
-     用 小的 structure
-     組成 大的 structure 的問題
-     但是 在實現 threaded-code interpreter 的時候
-     還不能使用 structure 的機制
-     因爲這個機制還沒實現呢
-     儘管
-     之後
-     這些處理函數都會被暴露出來
+   * primitive-function set
+     instruction set
+   * return-stack
+     argument-stack
+     frame-stack
+   * 也就是說專門有一個 stack
+     專注於約束變元
+     而 argument-stack 還是以 古典的 forth 的方式工作
 ** ><
-   #+begin_src lisp :tangle threaded-code-interpreter.lisp
+   #+begin_src lisp
+   (progn
+    ;; form a (file . buffer) pair
+    (setf stream (open (make-pathname :name "cicada-image-file-test~")
+                       :direction ':output
+                       :if-exists ':supersede))
+    ;; edit the buffer
+    (format stream "cicada ~%")
+    ;; save-buffer-to-file
+    (close stream))
 
+   (defparameter *cicada-image-stream*
+     (open (make-pathname :name "cicada-image-file-test~")
+           :element-type '(unsigned-byte 8)
+           :direction ':input))
+
+   (defparameter *cicada-image-buffer*
+     (make-array '(100)
+                 :element-type '(unsigned-byte 8)
+                 :initial-element 0))
+
+   (values
+    (read-sequence *cicada-image-buffer*
+                   ,*cicada-image-stream*)
+    ,*cicada-image-buffer*)
    #+end_src
+* >< cicada-rhapsody
+  #+begin_src lisp
+  (defun name-reader (stream char-bound-with-this-function)
+    (read#char :from stream
+               :recursive-call-to-reader? nil))
+
+  (bind-char-to-reader
+   (character "[")
+   (function name-reader))
+
+  ;; (find-reader-from-char (character "["))
+  (values [123])
+
+
+  (readtablep *readtable*)
+  (setq zvar 123)
+  (set-syntax-from-char
+   #\z #\'
+   (setq table2 (copy-readtable)))
+
+  (setq *readtable* table2)
+  ;; zvar =>  VAR
+  (setq *readtable* (copy-readtable nil))
+  ;; zvar =>  123
+
+  [ (cicada)
+
+  ]
+
+  ## cicada
+  ## end cicada
+
+  cicada.cicada
+  cicada.iaa
+  #+end_src
 * -----------------------------------
 * test
   #+begin_src lisp
   (progn
-
-    (asdf:load-system 'threaded-code-interpreter)
-    (in-package :threaded-code-interpreter)
-
-    )
+    (asdf:load-system 'cicada-vm)
+    (in-package :cicada-vm))
   #+end_src

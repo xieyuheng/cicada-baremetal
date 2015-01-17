@@ -1,4 +1,4 @@
-(in-package #:threaded-code-interpreter)
+(in-package #:cicada-vm)
 (defun nil? (x)
   (null x))
 
@@ -49,6 +49,8 @@
 ;; (aref (make-array '(2 3 4) :initial-element nil)
 ;;       0 0 0)
 
+
+
 (defun fetch#array (&key array index-list)
   (apply (function aref)
          (cons array index-list)))
@@ -56,25 +58,38 @@
 ;; (fetch#array :array (make-array '(2 3 4) :initial-element nil)
 ;;              :index-list '(0 0 0))
 
+
+
 (defun save#array (&key value array index-list)
-  (eval
-   `(setf ,(cons 'aref (cons array index-list))
-          ,value)))
+  (setf
+   (apply #'aref array index-list) value))
 
 ;; (save#array :value 1
 ;;             :array (make-array '(2 3 4) :initial-element nil)
 ;;             :index-list '(0 0 0))
+(defun reture-zero-value ()
+  (values))
 (defun read#line (&key
                     (from *standard-input*)
                     (eof-as-error? t)
-                    (read-eof-as 'eof))
-  (read-line from eof-as-error? read-eof-as))
+                    (read-eof-as 'eof)
+                    (recursive-call-to-reader? nil))
+  (read-line from
+             eof-as-error?
+             read-eof-as
+             recursive-call-to-reader?))
+
 
 (defun read#char (&key
                     (from *standard-input*)
                     (eof-as-error? t)
-                    (read-eof-as 'eof))
-  (read-char from eof-as-error? read-eof-as))
+                    (read-eof-as 'eof)
+                    (recursive-call-to-reader? nil))
+  (read-char from
+             eof-as-error?
+             read-eof-as
+             recursive-call-to-reader?))
+
 
 (defun newline (&key (many 1))
   (cond ((= 0 many) :nothing)
@@ -82,11 +97,23 @@
         ((< 1 many) (format t "~%")
          (newline :many (sub1 many)))
         (:else :nothing)))
+(defun bind-char-to-reader (char reader)
+  (set-macro-character char reader))
+
+(defun find-reader-from-char (char)
+  (get-macro-character char))
+;; (character "1")
+;; (character "中")
+
+;; error, length of string must be 1
+;; (character "12")
 (defun char->code (char)
   (char-code char))
 
 (defun code->char (code)
   (code-char code))
+(defun string#empty? (string)
+  (equal? string ""))
 (defun char#space? (char)
   (let ((code (char->code char)))
     (cond ((= code 32) t)
@@ -96,8 +123,6 @@
 ;; (char#space? #\newline)
 ;; (char#space? #\space)
 
-(defun string#empty? (string)
-  (equal? string ""))
 
 (defun string#space? (string)
   (not (position-if
@@ -251,7 +276,7 @@
 ;; (shift#right
 ;;  :number 64)
 (defun symbol->string (symbol)
-  (symbol-name symbol)) 
+  (symbol-name symbol))
 
 (defun string->symbol (string)
   (intern string))
@@ -338,12 +363,6 @@
                      :index-list '(1)))))
 
 ;; (name? #(<name> 0))
-
-
-(defun <name> (x)
-  (if (not (index-within-name-table? x))
-      (error "the argument of <name> must be checked by index-within-name-table?")
-      (vector '<name> x)))
 (defun string->name (string)
   (let ((index
          (natural-number->index
@@ -357,12 +376,12 @@
     ((not (name-table-index#used? index))
      (help#string->name#creat-new string
                                   index)
-     (<name> index))
+     `#(<name> ,index))
 
     ((equal? string
              (fetch#array :array *name-table*
                           :index-list `(,index 0)))
-     (<name> index))
+     `#(<name> ,index))
 
     (:else
      (help#string->name#find-old-or-creat-new
@@ -412,10 +431,128 @@
 (defun print-name (name
                    &key (stream t))
   (format stream
-          "#name: ~A"
+          "[~A]"
           (name->string name)))
 
 ;; (print-name (string->name "kkk took my baby away!"))
-(defun explain (&key name as)
-  ())
+(defun be (&key
+             name
+             as
+             mean)
+  ;; interface:
+  ;; (multiple-value-bind
+  ;;       (field
+  ;;        update?
+  ;;        old-mean)
+  ;;     (be :name name
+  ;;         :as as
+  ;;         :mean mean)
+  ;;   ><><><)
+  (if (or (not (name? name))
+          (not (name? as)))
+      (error "the argument :name and :as of (be) must be checked by (name?)")
+      (let ((name-index (name->index name))
+            (as-index (name->index as)))
+        (help#be :name-index name-index
+                 :as-index as-index
+                 :mean mean))))
 
+
+
+(defun help#be (&key
+                  name-index
+                  as-index
+                  mean
+                  (field 1))
+  (let ((content-of-field
+         (fetch#array :array *name-table*
+                      :index-list `(,name-index ,field))))
+    (cond
+      ((nil? content-of-field)
+       (save#array :value (cons as-index mean)
+                   :array *name-table*
+                   :index-list `(,name-index ,field))
+       (values field
+               nil
+               nil))
+
+      ((equal? as-index
+               (car content-of-field))
+       (save#array :value (cons as-index mean)
+                   :array *name-table*
+                   :index-list `(,name-index ,field))
+       (values field
+               t
+               (cdr content-of-field)))
+
+      ((< field *size#entry#name-table*)
+       (help#be :name-index name-index
+                :as-index as-index
+                :mean mean
+                :field (add1 field)))
+
+      (:else
+       (error "the meaning of this name is too filled"))
+      )))
+
+
+
+
+
+(defun explain (&key
+                  name
+                  as)
+  ;; interface:
+  ;; (multiple-value-bind
+  ;;       (mean
+  ;;        find?)
+  ;;     (explain :name name
+  ;;              :as as)
+  ;;   ><><><)
+  (if (or (not (name? name))
+          (not (name? as)))
+      (error "the argument :name and :as of (explain) must be checked by (name?)")
+      (let ((name-index (name->index name))
+            (as-index (name->index as)))
+        (help#explain :name-index name-index
+                      :as-index as-index))))
+
+
+
+(defun help#explain (&key
+                       name-index
+                       as-index
+                       (field 1))
+  (let ((content-of-field
+         (fetch#array :array *name-table*
+                      :index-list `(,name-index ,field))))
+    (cond
+      ((nil? content-of-field)
+       (values nil
+               nil))
+
+      ((equal? as-index
+               (car content-of-field))
+       (values (cdr content-of-field)
+               t))
+
+      ((< field *size#entry#name-table*)
+       (help#explain :name-index name-index
+                     :as-index as-index
+                     :field (add1 field)))
+
+      (:else
+       (error (concatenate
+               'string
+               "can not explain the name in the way you wish~%"
+               "and the meaning of this name is too filled")))
+      )))
+
+
+
+;; (be :name (string->name "kkk")
+;;     :as (string->name "took")
+;;     :mean "my baby away!")
+
+;; (explain :name (string->name "kkk")
+;;          :as (string->name "took"))
