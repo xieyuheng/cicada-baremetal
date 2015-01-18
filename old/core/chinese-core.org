@@ -1,6 +1,6 @@
-#+TITLE: 蟬語之漢語核
-#+AUTHOR: XIE Yuheng
-#+EMAIL: xyheme@gmail.com
+#+TITLE:  蟬語之漢語核
+#+AUTHOR: 謝宇恆 / XIE Yuheng
+#+EMAIL:  xyheme@gmail.com
 
 
 * ==================================================

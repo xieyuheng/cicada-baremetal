@@ -2,17 +2,24 @@
 (defun nil? (x)
   (null x))
 
+
 (defun ture? (x)
   (eq t x))
 
 (defun false? (x)
   (eq nil x))
 
+
 (defun eq? (x y)
   (eq x y))
 
 (defun equal? (x y)
   (equal x y))
+
+
+(defun zero? (x)
+  (and (integerp x)
+       (zerop x)))
 
 (defun integer? (x)
   (integerp x))
@@ -29,6 +36,7 @@
 
 (defun array? (x)
   (arrayp x))
+
 
 (defun string? (x)
   (stringp x))
@@ -67,7 +75,7 @@
 ;; (save#array :value 1
 ;;             :array (make-array '(2 3 4) :initial-element nil)
 ;;             :index-list '(0 0 0))
-(defun reture-zero-value ()
+(defun return-zero-value ()
   (values))
 (defun read#line (&key
                     (from *standard-input*)
@@ -291,6 +299,21 @@
                (group (cddr list)
                       :number number)))))
 ;; (defun help#group ())
+(defun object? (x)
+  (and (array? x)
+       (= 1 (array-rank x))
+       (= 3 (array-dimension x
+                             0))
+       (equal? '<object>
+               (fetch#array :array x
+                            :index-list '(0)))
+       (title? (fetch#array :array x
+                            :index-list '(1)))))
+
+;; (object? #(<object>
+;;            #(<title> 0)
+;;            #(<name> 0)))
+;; ==> T
 ;; must be a prime number
 
 ;; 1000003  ;; about 976 k
@@ -363,13 +386,19 @@
                      :index-list '(1)))))
 
 ;; (name? #(<name> 0))
+;; ==> T
+(defun name->index (name)
+  (cond ((not (name? name))
+         (error "argument of name->index must be a name"))
+        (:else
+         (fetch#array :array name
+                      :index-list '(1)))))
 (defun string->name (string)
   (let ((index
          (natural-number->index
           (string->natural-number string))))
     (help#string->name#find-old-or-creat-new string
                                              index)))
-
 
 (defun help#string->name#find-old-or-creat-new (string index)
   (cond
@@ -406,12 +435,6 @@
       (add1 index)))
 
 
-(defun name->index (name)
-  (cond ((not (name? name))
-         (error "argument of name->index must be a name"))
-        (:else
-         (fetch#array :array name
-                      :index-list '(1)))))
 
 (defun name->string (name)
   (cond ((not (name? name))
@@ -435,19 +458,31 @@
           (name->string name)))
 
 ;; (print-name (string->name "kkk took my baby away!"))
+;; <name
+;; <as
+;; <mean
+;; (be)
+
+;; <name
+;; <as
+;; (explain)
+
+
+
+;; interface:
+;; (multiple-value-bind
+;;       (field
+;;        update?
+;;        old-mean)
+;;     (be :name
+;;         :as
+;;         :mean )
+;;   ><><><)
+
 (defun be (&key
              name
              as
              mean)
-  ;; interface:
-  ;; (multiple-value-bind
-  ;;       (field
-  ;;        update?
-  ;;        old-mean)
-  ;;     (be :name name
-  ;;         :as as
-  ;;         :mean mean)
-  ;;   ><><><)
   (if (or (not (name? name))
           (not (name? as)))
       (error "the argument :name and :as of (be) must be checked by (name?)")
@@ -482,7 +517,7 @@
                    :array *name-table*
                    :index-list `(,name-index ,field))
        (values field
-               t
+               :updated!!!
                (cdr content-of-field)))
 
       ((< field *size#entry#name-table*)
@@ -497,18 +532,17 @@
 
 
 
-
+;; interface:
+;; (multiple-value-bind
+;;       (mean
+;;        find?)
+;;     (explain :name
+;;              :as )
+;;   ><><><)
 
 (defun explain (&key
                   name
                   as)
-  ;; interface:
-  ;; (multiple-value-bind
-  ;;       (mean
-  ;;        find?)
-  ;;     (explain :name name
-  ;;              :as as)
-  ;;   ><><><)
   (if (or (not (name? name))
           (not (name? as)))
       (error "the argument :name and :as of (explain) must be checked by (name?)")
@@ -534,7 +568,7 @@
       ((equal? as-index
                (car content-of-field))
        (values (cdr content-of-field)
-               t))
+               :found!!!))
 
       ((< field *size#entry#name-table*)
        (help#explain :name-index name-index
@@ -544,7 +578,7 @@
       (:else
        (error (concatenate
                'string
-               "can not explain the name in the way you wish~%"
+               "can not explain the name as the way you wish~%"
                "and the meaning of this name is too filled")))
       )))
 
@@ -556,3 +590,335 @@
 
 ;; (explain :name (string->name "kkk")
 ;;          :as (string->name "took"))
+
+
+
+(defun meaningful? (&key
+                      name
+                      as)
+    (multiple-value-bind
+          (mean
+           find?)
+        (explain :name name
+                 :as as)
+      find?))
+
+;; (meaningful? :name (string->name "kkk")
+;;              :as (string->name "took"))
+(defparameter *size#title-table*
+  1000)
+
+(defparameter *size#entry#title-table*
+  100)
+
+(defparameter *title-table*
+  (make-array
+   (list *size#title-table* *size#entry#title-table*)
+   :initial-element nil))
+
+(defun index-within-title-table? (index)
+  (and (natural-number? index)
+       (< index *size#title-table*)))
+
+(defparameter *pointer#title-table* 0)
+(defun string->title (string)
+  (let ((name (string->name string))
+        (name#title (string->name "title")))
+    (cond
+      ((meaningful? :name name
+                    :as name#title)
+       `#(<title>
+          ,(explain :name name
+                    :as name#title)))
+
+      ((< *pointer#title-table*
+          *size#title-table*)
+       ;; to create a new title is
+       ;; to allocate a new index in the title-table
+       (be :name name
+           :as name#title
+           :mean *pointer#title-table*)
+       (setf *pointer#title-table*
+             (add1 *pointer#title-table*))
+       `#(<title>
+          ,(sub1 *pointer#title-table*)))
+
+      (:else
+       (error "title-table is filled, can not make new title")))))
+(defun title? (x)
+  (and (array? x)
+       (= 1 (array-rank x))
+       (= 2 (array-dimension x
+                             0))
+       (equal? '<title>
+               (fetch#array :array x
+                            :index-list '(0)))
+       (index-within-title-table?
+        (fetch#array :array x
+                     :index-list '(1)))))
+
+;; (title? #(<title> 0))
+;; ==> T
+;; (title? (string->title "testing#title?"))
+;; ==> T
+(defun title->index (title)
+  (cond ((not (title? title))
+         (error "argument of title->index must be a title"))
+        (:else
+         (fetch#array :array title
+                      :index-list '(1)))))
+
+;; (title->index (string->title "testing#1#title->index"))
+;; (title->index (string->title "testing#2#title->index"))
+;; <title
+;; <name
+;; <object
+;; (entitle)
+
+;; <title
+;; <name
+;; (ask)
+
+
+
+;; interface:
+;; (multiple-value-bind
+;;       (field
+;;        update?
+;;        old-object)
+;;     (entitle :title
+;;              :name
+;;              :object )
+;;   ><><><)
+
+(defun entitle (&key
+                  title
+                  name
+                  object)
+  (if (or (not (title? title))
+          (not (name? name))
+          (not (object? object)))
+      (error "one or more the arguments of (entitle) is of wrong type")
+      (let ((title-index (title->index title))
+            (name-index (name->index name)))
+        (help#entitle :title-index title-index
+                      :name-index name-index
+                      :object object))))
+
+
+
+(defun help#entitle (&key
+                       title-index
+                       name-index
+                       object
+                       (field 1))
+  (let ((content-of-field
+         (fetch#array :array *title-table*
+                      :index-list `(,title-index ,field))))
+    (cond
+      ((nil? content-of-field)
+       (save#array :value (cons name-index object)
+                   :array *title-table*
+                   :index-list `(,title-index ,field))
+       (values field
+               nil
+               nil))
+
+      ((equal? name-index
+               (car content-of-field))
+       (save#array :value (cons name-index object)
+                   :array *title-table*
+                   :index-list `(,title-index ,field))
+       (values field
+               :updated!!!
+               (cdr content-of-field)))
+
+      ((< field *size#entry#title-table*)
+       (help#entitle :title-index title-index
+                     :name-index name-index
+                     :object object
+                     :field (add1 field)))
+
+      (:else
+       (error "the names under this title is too filled"))
+      )))
+
+
+
+;; interface:
+;; (multiple-value-bind
+;;       (object
+;;        find?)
+;;     (ask :title
+;;          :name )
+;;   ><><><)
+
+
+(defun ask (&key
+              title
+              name)
+  (if (or (not (title? title))
+          (not (name? name)))
+      (error "one or more the arguments of (ask) is of wrong type")
+      (let ((title-index (title->index title))
+            (name-index (name->index name)))
+        (help#ask :title-index title-index
+                  :name-index name-index))))
+
+
+
+(defun help#ask (&key
+                   title-index
+                   name-index
+                   (field 1))
+  (let ((content-of-field
+         (fetch#array :array *title-table*
+                      :index-list `(,title-index ,field))))
+    (cond
+      ((nil? content-of-field)
+       (values nil
+               nil))
+
+      ((equal? name-index
+               (car content-of-field))
+       (values (cdr content-of-field)
+               :found!!!))
+
+      ((< field *size#entry#title-table*)
+       (help#ask :title-index title-index
+                 :name-index name-index
+                 :field (add1 field)))
+
+      (:else
+       (error (concatenate
+               'string
+               "can not ask for the object under the name as you wish~%"
+               "and the names under this title is too filled")))
+      )))
+
+
+
+;; (entitle :title (string->title "kkk")
+;;          :name (string->name "took")
+;;          :object `#(<object>
+;;                    ,(string->title "my")
+;;                    "baby away!"))
+
+;; (ask :title (string->title "kkk")
+;;      :name (string->name "took"))
+
+
+
+(defun entitled? (&key
+                    title
+                    name)
+  (multiple-value-bind
+        (object
+         find?)
+      (ask :title title
+           :name name)
+    find?))
+
+;; (entitled? :title (string->title "kkk")
+;;            :name (string->name "took"))
+(string->title "title")
+(string->title "primitive-instruction")
+(string->title "primitive-function")
+;; call#primitive-function
+;; tail-call#primitive-function#
+(defparameter *size#return-stack* 1024)
+
+(defparameter *return-stack*
+  (make-array `(,*size#return-stack*) :initial-element nil))
+
+(defparameter *pointer#return-stack* 0)
+
+(defun push#return-stack (object)
+  (if (not (< *pointer#return-stack*
+              *size#return-stack*))
+      (error "can not push anymore *return-stack* is filled")
+      (let ()
+        (save#array :value object
+                    :array *return-stack*
+                    :index-list `(,*pointer#return-stack*))
+        (setf *pointer#return-stack*
+              (add1 *pointer#return-stack*))
+        (values *pointer#return-stack*
+                object))))
+
+(defun pop#return-stack ()
+  (if (zero? *pointer#return-stack*)
+      (error "can not pop anymore *return-stack* is empty")
+      (let ()
+        (setf *pointer#return-stack*
+              (sub1 *pointer#return-stack*))
+        (values (fetch#array :array *return-stack*
+                             :index-list `(,*pointer#return-stack*))
+                *pointer#return-stack*))))
+
+;; (push#return-stack 123)
+;; (pop#return-stack)
+(defparameter *size#argument-stack* 1024)
+
+(defparameter *argument-stack*
+  (make-array `(,*size#argument-stack*) :initial-element nil))
+
+(defparameter *pointer#argument-stack* 0)
+
+(defun push#argument-stack (object)
+  (if (not (< *pointer#argument-stack*
+              *size#argument-stack*))
+      (error "can not push anymore *argument-stack* is filled")
+      (let ()
+        (save#array :value object
+                    :array *argument-stack*
+                    :index-list `(,*pointer#argument-stack*))
+        (setf *pointer#argument-stack*
+              (add1 *pointer#argument-stack*))
+        (values *pointer#argument-stack*
+                object))))
+
+(defun pop#argument-stack ()
+  (if (zero? *pointer#argument-stack*)
+      (error "can not pop anymore *argument-stack* is empty")
+      (let ()
+        (setf *pointer#argument-stack*
+              (sub1 *pointer#argument-stack*))
+        (values (fetch#array :array *argument-stack*
+                             :index-list `(,*pointer#argument-stack*))
+                *pointer#argument-stack*))))
+
+;; (push#argument-stack 123)
+;; (pop#argument-stack)
+(defparameter *size#frame-stack* 1024)
+
+(defparameter *frame-stack*
+  (make-array `(,*size#frame-stack*) :initial-element nil))
+
+(defparameter *pointer#frame-stack* 0)
+
+(defun push#frame-stack (object)
+  (if (not (< *pointer#frame-stack*
+              *size#frame-stack*))
+      (error "can not push anymore *frame-stack* is filled")
+      (let ()
+        (save#array :value object
+                    :array *frame-stack*
+                    :index-list `(,*pointer#frame-stack*))
+        (setf *pointer#frame-stack*
+              (add1 *pointer#frame-stack*))
+        (values *pointer#frame-stack*
+                object))))
+
+(defun pop#frame-stack ()
+  (if (zero? *pointer#frame-stack*)
+      (error "can not pop anymore *frame-stack* is empty")
+      (let ()
+        (setf *pointer#frame-stack*
+              (sub1 *pointer#frame-stack*))
+        (values (fetch#array :array *frame-stack*
+                             :index-list `(,*pointer#frame-stack*))
+                *pointer#frame-stack*))))
+
+;; (push#frame-stack 123)
+;; (pop#frame-stack)

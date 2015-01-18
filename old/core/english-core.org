@@ -1,6 +1,6 @@
-#+TITLE: cicada english core
-#+AUTHOR: XIE Yuheng
-#+EMAIL: xyheme@gmail.com
+#+TITLE:  cicada english core
+#+AUTHOR: 謝宇恆 / XIE Yuheng
+#+EMAIL:  xyheme@gmail.com
 
 
 * ==================================================
