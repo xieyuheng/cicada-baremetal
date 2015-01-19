@@ -34,22 +34,84 @@
 ;; (natural-number? 1.1)
 
 
+(defun list? (x)
+  (listp x))
+
 (defun array? (x)
   (arrayp x))
+
+(defun vector? (x)
+  (vectorp x))
 
 
 (defun string? (x)
   (stringp x))
+
+(defun pair? (x)
+  (consp x))
 (defun add1 (x)
   (+ x 1))
 
 (defun sub1 (x)
   (- x 1))
+(defun fetch#bits (&key
+                     bits
+                     (size 1)
+                     index)
+  (ldb (byte size index) bits))
+
+(defun save#bits (&key
+                    value
+                    bits
+                    (size 1)
+                    index)
+  (setf (ldb (byte size index) bits) value)
+  (values bits
+          value))
+
+
+;; (fetch#bits :bits #b0010
+;;             :size 1
+;;             :index 1)
+;; ==> 1
+(defun fetch#bytes (&key
+                      bytes
+                      (size 1)
+                      index)
+  (fetch#bits :bits bytes
+              :size (* 8 size)
+              :index (* 8 index)))
+
+;; (fetch#byte :number #xff  :index 0) ;; 255
+;; (fetch#byte :number #xff  :index 1) ;; 0
+;; (fetch#byte :number #x100 :index 0) ;; 0
+;; (fetch#byte :number #x100 :index 1) ;; 1
+
+
+(defun save#bytes (&key
+                     value
+                     bytes
+                     (size 1)
+                     index)
+  (save#bits :value value
+             :bits bytes
+             :size (* 8 size)
+             :index (* 8 index)))
+(defun list->vector (list)
+  (if (not (list? list))
+      (error "the argument of (list->vector) must be a list")
+      (coerce list 'vector)))
+
+
+(defun vector->list (vector)
+  (if (not (vector? vector))
+      (error "the argument of (vector->list) must be a vector")
+      (coerce vector 'list)))
 ;; (make-array '(2 3 4) :initial-element nil)
 
 ;; (array-dimension
 ;;  (make-array '(2 3 4) :initial-element nil)
-;;  0)
+;;  2)
 
 ;; (array-rank
 ;;  (make-array '(2 3 4) :initial-element nil))
@@ -59,22 +121,374 @@
 
 
 
-(defun fetch#array (&key array index-list)
-  (apply (function aref)
-         (cons array index-list)))
+(defun fetch#array (&key
+                      array
+                      index-vector)
+  (let ((index-list (vector->list index-vector)))
+    (apply (function aref)
+           array index-list)))
+
 
 ;; (fetch#array :array (make-array '(2 3 4) :initial-element nil)
-;;              :index-list '(0 0 0))
+;;              :index-vector '#(0 0 0))
 
 
 
-(defun save#array (&key value array index-list)
-  (setf
-   (apply #'aref array index-list) value))
+(defun save#array (&key
+                     value
+                     array
+                     index-vector)
+  (let ((index-list (vector->list index-vector)))
+    (setf
+     (apply #'aref array index-list) value)
+    (values array
+            value)))
 
 ;; (save#array :value 1
 ;;             :array (make-array '(2 3 4) :initial-element nil)
-;;             :index-list '(0 0 0))
+;;             :index-vector '#(0 0 0))
+(defun fetch#vector (&key
+                       vector
+                       index)
+  (fetch#array :array vector
+               :index-vector `#(,index)))
+
+
+
+(defun save#vector (&key
+                      value
+                      vector
+                      index)
+  (save#array :value value
+              :array vector
+              :index-vector `#(,index)))
+
+
+
+(defun copy-vector (vector)
+  (if (not (vector? vector))
+      (error "the argument of copy-vector must be a vector")
+      (copy-seq vector)))
+(defun fetch#byte-array
+    (&key
+       byte-array
+       (size 1)
+       index-vector
+       (endian 'little))
+  (cond
+    ((not (<= (+ (fetch#vector :vector index-vector
+                               :index (sub1 (array-rank byte-array)))
+                 size)
+              (array-dimension byte-array
+                               (sub1 (array-rank byte-array)))))
+     (error "the size of the value you wish to fetch is out of the index of the byte-array"))
+
+    ((equal? endian 'little)
+     (help#little-endian#fetch#byte-array
+      :byte-array byte-array
+      :size size
+      :index-vector index-vector))
+
+    ((equal? endian 'big)
+     (help#big-endian#fetch#byte-array
+      :byte-array byte-array
+      :size size
+      :index-vector index-vector))
+
+    (:else
+     (error "the argument :endian of (fetch#byte-array) must be 'little or 'big"))
+    ))
+
+
+(defun help#little-endian#fetch#byte-array
+    (&key
+       byte-array
+       size
+       index-vector
+       (counter 0)
+       (sum 0))
+  (cond
+    ((not (< counter
+             size))
+     sum)
+
+    (:else
+     (let* ((last-index (fetch#vector
+                         :vector index-vector
+                         :index (sub1 (array-rank byte-array))))
+            (value-for-shift (fetch#array
+                              :array byte-array
+                              :index-vector index-vector))
+            (value-for-sum (shift#left
+                            :step (* 8 counter)
+                            :number value-for-shift)))
+       ;; update index-vector
+       (save#vector :value (add1 last-index)
+                    :vector index-vector
+                    :index (sub1 (array-rank byte-array)))
+       ;; loop
+       (help#little-endian#fetch#byte-array
+        :byte-array byte-array
+        :size size
+        :index-vector index-vector
+        :counter (add1 counter)
+        :sum (+ sum value-for-sum))))
+    ))
+
+;; (let ((k (make-array `(,*cicada-object-size*)
+;;                      :element-type '(unsigned-byte 8)
+;;                      :initial-element 1)))
+;;   (fetch#byte-array :byte-array k
+;;                     :size 2
+;;                     :index-vector #(0)))
+;; ==> 257
+
+
+
+;; (add1) change to (sub1)
+;; new index-vector-for-fetch
+(defun help#big-endian#fetch#byte-array
+    (&key
+       byte-array
+       size
+       index-vector
+       (counter 0)
+       (sum 0))
+  (cond
+    ((not (< counter
+             size))
+     sum)
+
+    (:else
+     (let* ((last-index (fetch#vector
+                         :vector index-vector
+                         :index (sub1 (array-rank byte-array))))
+            ;; new index-vector-for-fetch
+            (index-vector-for-fetch (save#vector
+                                     :value (+ last-index
+                                               (sub1 size))
+                                     :vector (copy-vector index-vector)
+                                     :index (sub1 (array-rank byte-array))))
+            (value-for-shift (fetch#array
+                              :array byte-array
+                              :index-vector index-vector-for-fetch))
+            (value-for-sum (shift#left
+                            :step (* 8 counter)
+                            :number value-for-shift)))
+       ;; update index-vector
+       ;; (add1) change to (sub1)
+       (save#vector :value (sub1 last-index)
+                    :vector index-vector
+                    :index (sub1 (array-rank byte-array)))
+       ;; loop
+       (help#big-endian#fetch#byte-array
+        :byte-array byte-array
+        :size size
+        :index-vector index-vector
+        :counter (add1 counter)
+        :sum (+ sum value-for-sum))))
+    ))
+
+;; (let ((k (make-array `(,*cicada-object-size*)
+;;                      :element-type '(unsigned-byte 8)
+;;                      :initial-element 1)))
+;;   (fetch#byte-array :byte-array k
+;;                     :size 2
+;;                     :index-vector #(0)
+;;                     :endian 'big))
+;; ==> 257
+
+
+
+
+(defun save#byte-array
+    (&key
+       value
+       byte-array
+       (size 1)
+       index-vector
+       (endian 'little))
+  (cond
+    ((not (<= (+ (fetch#vector :vector index-vector
+                               :index (sub1 (array-rank byte-array)))
+                 size)
+              (array-dimension byte-array
+                               (sub1 (array-rank byte-array)))))
+     (error "the size of the value you wish to save is out of the index of the byte-array"))
+
+    ((equal? endian 'little)
+     (help#little-endian#save#byte-array
+      :value value
+      :byte-array byte-array
+      :size size
+      :index-vector index-vector))
+
+    ((equal? endian 'big)
+     (help#big-endian#save#byte-array
+      :value value
+      :byte-array byte-array
+      :size size
+      :index-vector index-vector))
+
+    (:else
+     (error "the argument :endian of (save#byte-array) must be 'little or 'big"))
+    ))
+
+
+(defun help#little-endian#save#byte-array
+    (&key
+       value
+       byte-array
+       size
+       index-vector
+       (counter 0))
+  (cond
+    ((not (< counter
+             size))
+     (values byte-array
+             value))
+
+    (:else
+     (let* ((last-index (fetch#vector
+                         :vector index-vector
+                         :index (sub1 (array-rank byte-array)))))
+       ;; save to byte-array
+       (save#array :value (fetch#bytes :bytes value
+                                       :size 1
+                                       :index counter)
+                   :array byte-array
+                   :index-vector index-vector)
+       ;; update index-vector
+       (save#vector :value (add1 last-index)
+                    :vector index-vector
+                    :index (sub1 (array-rank byte-array)))
+       ;; loop
+       (help#little-endian#save#byte-array
+        :value value
+        :byte-array byte-array
+        :size size
+        :index-vector index-vector
+        :counter (add1 counter))))
+    ))
+
+
+
+;; (let ((k (make-array `(,*cicada-object-size*)
+;;                      :element-type '(unsigned-byte 8)
+;;                      :initial-element 1)))
+;;   (save#byte-array :value 1234
+;;                    :byte-array k
+;;                    :size 2
+;;                    :index-vector #(0))
+;;   (fetch#byte-array :byte-array k
+;;                     :size 2
+;;                     :index-vector #(0)))
+;; ==> 1234
+
+
+
+;; (add1) change to (sub1)
+;; new index-vector-for-save
+(defun help#big-endian#save#byte-array
+    (&key
+       value
+       byte-array
+       size
+       index-vector
+       (counter 0))
+  (cond
+    ((not (< counter
+             size))
+     (values byte-array
+             value))
+
+    (:else
+     (let* ((last-index (fetch#vector
+                         :vector index-vector
+                         :index (sub1 (array-rank byte-array))))
+            ;; new index-vector-for-save
+            (index-vector-for-save (save#vector
+                                    :value (+ last-index
+                                              (sub1 size))
+                                    :vector (copy-vector index-vector)
+                                    :index (sub1 (array-rank byte-array)))))
+       ;; save to byte-array
+       (save#array :value (fetch#bytes :bytes value
+                                       :size 1
+                                       :index counter)
+                   :array byte-array
+                   :index-vector index-vector-for-save)
+       ;; update index-vector
+       ;; (add1) change to (sub1)
+       (save#vector :value (sub1 last-index)
+                    :vector index-vector
+                    :index (sub1 (array-rank byte-array)))
+       ;; loop
+       (help#big-endian#save#byte-array
+        :value value
+        :byte-array byte-array
+        :size size
+        :index-vector index-vector
+        :counter (add1 counter))))
+    ))
+
+
+
+;; (let ((k (make-array `(,*cicada-object-size*)
+;;                      :element-type '(unsigned-byte 8)
+;;                      :initial-element 1)))
+;;   (save#byte-array :value 1234
+;;                    :byte-array k
+;;                    :size 2
+;;                    :index-vector #(0)
+;;                    :endian 'big)
+;;   (fetch#byte-array :byte-array k
+;;                     :size 2
+;;                     :index-vector #(0)
+;;                     :endian 'big))
+;; ==> 1234
+(defun fetch#byte-vector (&key
+                            byte-vector
+                            (size 1)
+                            index
+                            (endian 'little))
+  (fetch#byte-array :byte-array byte-vector
+                    :size size
+                    :index-vector `#(,index)
+                    :endian endian))
+
+;; (let ((k (make-array `(,*cicada-object-size*)
+;;                      :element-type '(unsigned-byte 8)
+;;                      :initial-element 1)))
+;;   (fetch#byte-vector :byte-vector k
+;;                      :size 2
+;;                      :index 0))
+;; ==> 257
+
+
+(defun save#byte-vector (&key
+                           value
+                           byte-vector
+                           (size 1)
+                           index
+                           (endian 'little))
+  (save#byte-array :value value
+                   :byte-array byte-vector
+                   :size size
+                   :index-vector `#(,index)
+                   :endian endian))
+
+;; (let ((k (make-array `(,*cicada-object-size*)
+;;                      :element-type '(unsigned-byte 8)
+;;                      :initial-element 1)))
+;;   (save#byte-vector :value 1234
+;;                     :byte-vector k
+;;                     :size 2
+;;                     :index 0)
+;;   (fetch#byte-vector :byte-vector k
+;;                      :size 2
+;;                      :index 0))
+;; ==> 1234
 (defun return-zero-value ()
   (values))
 (defun read#line (&key
@@ -299,21 +713,51 @@
                (group (cddr list)
                       :number number)))))
 ;; (defun help#group ())
+(defun end-of-list (list)
+  (cond
+    ((not (pair? list))
+     (error "the argument of (end-of-list) must be a list"))
+    (:else
+     (help#loop#end-of-list list))
+    ))
+
+(defun help#loop#end-of-list (list)
+  (let ((cdr#list (cdr list)))
+    (cond
+      ((nil? cdr#list)
+       (car list))
+      ((not (pair? cdr#list))
+       (error (concatenate
+               'string
+               "the argument of (end-of-list) must be not only a list~%"
+               "but also a proper-list")))
+      (:else
+       (help#loop#end-of-list cdr#list))
+      )))
+
+;; (end-of-list '(1 2 3))
+;; (end-of-list '(1 2 . 3))
+;; (end-of-list 3)
+(defparameter *cell-unit* 4) ;; 4 bytes
+(defparameter *cicada-object-size*
+  (* 2 *cell-unit*))
 (defun object? (x)
   (and (array? x)
        (= 1 (array-rank x))
        (= 3 (array-dimension x
                              0))
        (equal? '<object>
-               (fetch#array :array x
-                            :index-list '(0)))
-       (title? (fetch#array :array x
-                            :index-list '(1)))))
+               (fetch#vector :vector x
+                             :index 0))
+       (title? (fetch#vector :vector x
+                             :index 1))))
 
 ;; (object? #(<object>
 ;;            #(<title> 0)
 ;;            #(<name> 0)))
 ;; ==> T
+(defun cicada-object->host-object (cicada-object)
+  ())
 ;; must be a prime number
 
 ;; 1000003  ;; about 976 k
@@ -379,11 +823,11 @@
        (= 2 (array-dimension x
                              0))
        (equal? '<name>
-               (fetch#array :array x
-                            :index-list '(0)))
+               (fetch#vector :vector x
+                             :index 0))
        (index-within-name-table?
-        (fetch#array :array x
-                     :index-list '(1)))))
+        (fetch#vector :vector x
+                      :index 1))))
 
 ;; (name? #(<name> 0))
 ;; ==> T
@@ -391,8 +835,8 @@
   (cond ((not (name? name))
          (error "argument of name->index must be a name"))
         (:else
-         (fetch#array :array name
-                      :index-list '(1)))))
+         (fetch#vector :vector name
+                       :index 1))))
 (defun string->name (string)
   (let ((index
          (natural-number->index
@@ -409,7 +853,7 @@
 
     ((equal? string
              (fetch#array :array *name-table*
-                          :index-list `(,index 0)))
+                          :index-vector `#(,index 0)))
      `#(<name> ,index))
 
     (:else
@@ -422,12 +866,12 @@
 (defun help#string->name#creat-new (string index)
  (save#array :value string
              :array *name-table*
-             :index-list `(,index 0)))
+             :index-vector `#(,index 0)))
 
 
 (defun name-table-index#used? (index)
   (string? (fetch#array :array *name-table*
-                        :index-list `(,index 0))))
+                        :index-vector `#(,index 0))))
 
 (defun name-table-index#next (index)
   (if (= index *size#name-table*)
@@ -445,7 +889,7 @@
                   (error "this name does not have a string"))
                  (:else
                   (fetch#array :array *name-table*
-                               :index-list `(,index 0)))
+                               :index-vector `#(,index 0)))
                  )))
         ))
 
@@ -501,12 +945,12 @@
                   (field 1))
   (let ((content-of-field
          (fetch#array :array *name-table*
-                      :index-list `(,name-index ,field))))
+                      :index-vector `#(,name-index ,field))))
     (cond
       ((nil? content-of-field)
        (save#array :value (cons as-index mean)
                    :array *name-table*
-                   :index-list `(,name-index ,field))
+                   :index-vector `#(,name-index ,field))
        (values field
                nil
                nil))
@@ -515,7 +959,7 @@
                (car content-of-field))
        (save#array :value (cons as-index mean)
                    :array *name-table*
-                   :index-list `(,name-index ,field))
+                   :index-vector `#(,name-index ,field))
        (values field
                :updated!!!
                (cdr content-of-field)))
@@ -559,7 +1003,7 @@
                        (field 1))
   (let ((content-of-field
          (fetch#array :array *name-table*
-                      :index-list `(,name-index ,field))))
+                      :index-vector `#(,name-index ,field))))
     (cond
       ((nil? content-of-field)
        (values nil
@@ -651,11 +1095,11 @@
        (= 2 (array-dimension x
                              0))
        (equal? '<title>
-               (fetch#array :array x
-                            :index-list '(0)))
+               (fetch#vector :vector x
+                             :index 0))
        (index-within-title-table?
-        (fetch#array :array x
-                     :index-list '(1)))))
+        (fetch#vector :vector x
+                      :index 1))))
 
 ;; (title? #(<title> 0))
 ;; ==> T
@@ -665,8 +1109,8 @@
   (cond ((not (title? title))
          (error "argument of title->index must be a title"))
         (:else
-         (fetch#array :array title
-                      :index-list '(1)))))
+         (fetch#vector :vector title
+                       :index 1))))
 
 ;; (title->index (string->title "testing#1#title->index"))
 ;; (title->index (string->title "testing#2#title->index"))
@@ -714,12 +1158,12 @@
                        (field 1))
   (let ((content-of-field
          (fetch#array :array *title-table*
-                      :index-list `(,title-index ,field))))
+                      :index-vector `#(,title-index ,field))))
     (cond
       ((nil? content-of-field)
        (save#array :value (cons name-index object)
                    :array *title-table*
-                   :index-list `(,title-index ,field))
+                   :index-vector `#(,title-index ,field))
        (values field
                nil
                nil))
@@ -728,7 +1172,7 @@
                (car content-of-field))
        (save#array :value (cons name-index object)
                    :array *title-table*
-                   :index-list `(,title-index ,field))
+                   :index-vector `#(,title-index ,field))
        (values field
                :updated!!!
                (cdr content-of-field)))
@@ -773,7 +1217,7 @@
                    (field 1))
   (let ((content-of-field
          (fetch#array :array *title-table*
-                      :index-list `(,title-index ,field))))
+                      :index-vector `#(,title-index ,field))))
     (cond
       ((nil? content-of-field)
        (values nil
@@ -822,10 +1266,7 @@
 ;; (entitled? :title (string->title "kkk")
 ;;            :name (string->name "took"))
 (string->title "title")
-(string->title "primitive-instruction")
-(string->title "primitive-function")
-;; call#primitive-function
-;; tail-call#primitive-function#
+(string->title "return-stack")
 (defparameter *size#return-stack* 1024)
 
 (defparameter *return-stack*
@@ -838,9 +1279,9 @@
               *size#return-stack*))
       (error "can not push anymore *return-stack* is filled")
       (let ()
-        (save#array :value object
-                    :array *return-stack*
-                    :index-list `(,*pointer#return-stack*))
+        (save#vector :value object
+                     :vector *return-stack*
+                     :index *pointer#return-stack*)
         (setf *pointer#return-stack*
               (add1 *pointer#return-stack*))
         (values *pointer#return-stack*
@@ -852,8 +1293,8 @@
       (let ()
         (setf *pointer#return-stack*
               (sub1 *pointer#return-stack*))
-        (values (fetch#array :array *return-stack*
-                             :index-list `(,*pointer#return-stack*))
+        (values (fetch#vector :vector *return-stack*
+                              :index *pointer#return-stack*)
                 *pointer#return-stack*))))
 
 ;; (push#return-stack 123)
@@ -870,9 +1311,9 @@
               *size#argument-stack*))
       (error "can not push anymore *argument-stack* is filled")
       (let ()
-        (save#array :value object
-                    :array *argument-stack*
-                    :index-list `(,*pointer#argument-stack*))
+        (save#vector :value object
+                     :vector *argument-stack*
+                     :index *pointer#argument-stack*)
         (setf *pointer#argument-stack*
               (add1 *pointer#argument-stack*))
         (values *pointer#argument-stack*
@@ -884,8 +1325,8 @@
       (let ()
         (setf *pointer#argument-stack*
               (sub1 *pointer#argument-stack*))
-        (values (fetch#array :array *argument-stack*
-                             :index-list `(,*pointer#argument-stack*))
+        (values (fetch#vector :vector *argument-stack*
+                              :index *pointer#argument-stack*)
                 *pointer#argument-stack*))))
 
 ;; (push#argument-stack 123)
@@ -902,9 +1343,9 @@
               *size#frame-stack*))
       (error "can not push anymore *frame-stack* is filled")
       (let ()
-        (save#array :value object
-                    :array *frame-stack*
-                    :index-list `(,*pointer#frame-stack*))
+        (save#vector :value object
+                     :vector *frame-stack*
+                     :index *pointer#frame-stack*)
         (setf *pointer#frame-stack*
               (add1 *pointer#frame-stack*))
         (values *pointer#frame-stack*
@@ -916,9 +1357,13 @@
       (let ()
         (setf *pointer#frame-stack*
               (sub1 *pointer#frame-stack*))
-        (values (fetch#array :array *frame-stack*
-                             :index-list `(,*pointer#frame-stack*))
+        (values (fetch#vector :vector *frame-stack*
+                              :index *pointer#frame-stack*)
                 *pointer#frame-stack*))))
 
 ;; (push#frame-stack 123)
 ;; (pop#frame-stack)
+(string->title "primitive-instruction")
+(string->title "primitive-function")
+;; call#primitive-function
+;; tail-call#primitive-function#
