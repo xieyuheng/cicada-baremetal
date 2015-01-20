@@ -741,23 +741,81 @@
 (defparameter *cell-unit* 4) ;; 4 bytes
 (defparameter *cicada-object-size*
   (* 2 *cell-unit*))
-(defun object? (x)
-  (and (array? x)
-       (= 1 (array-rank x))
+(defun host-object? (x)
+  (and (vector? x)
        (= 3 (array-dimension x
                              0))
-       (equal? '<object>
+       (equal? '<host-object>
                (fetch#vector :vector x
                              :index 0))
        (title? (fetch#vector :vector x
                              :index 1))))
 
-;; (object? #(<object>
+;; (host-object? #(<host-object>
 ;;            #(<title> 0)
 ;;            #(<name> 0)))
 ;; ==> T
-(defun cicada-object->host-object (cicada-object)
-  ())
+(defun make-cicada-object (&key
+                             title
+                             value)
+  (if (not (title? title))
+      (error "the agument :title of (make-cicada-object) must be checked by title?")
+      (let ((cicada-object (make-array `(,*cicada-object-size*)
+                                       :element-type '(unsigned-byte 8)
+                                       :initial-element 0)))
+        (save#byte-vector :value (title->index title)
+                          :byte-vector cicada-object
+                          :size *cell-unit*
+                          :index 0)
+        (save#byte-vector :value value
+                          :byte-vector cicada-object
+                          :size *cell-unit*
+                          :index *cell-unit*))))
+
+;; (fetch#byte-vector
+;;  :byte-vector (make-cicada-object :title (string->title "kkk")
+;;                                   :value 666)
+;;  :size *cell-unit*
+;;  :index *cell-unit*)
+;; ==> 666
+
+;; (equal? (array-element-type
+;;          (make-cicada-object :title (string->title "kkk")
+;;                              :value 666))
+;;         '(unsigned-byte 8))
+(defun cicada-object? (x)
+  (and (vector? x)
+       (equal? '(unsigned-byte 8)
+               (array-element-type x))
+       (= *cicada-object-size*
+          (array-dimension x 0))
+       (not
+        (nil?
+         (fetch#array
+          :array *title-table*
+          :index-vector (vector (fetch#byte-vector
+                                 :byte-vector x
+                                 :size *cell-unit*
+                                 :index 0)
+                                0))))
+       ))
+
+;; (cicada-object?
+;;  (make-cicada-object :title (string->title "kkk")
+;;                      :value 666))
+;; ==> T
+(defun host-object->cicada-object (host-object)
+  (if (not (host-object? host-object))
+      (error "the argument of (host-object->cicada-object) must be checked by host-object?")
+      (make-cicada-object :title (fetch#vector :vector host-object
+                                               :index 1)
+                          :value (fetch#vector :vector host-object
+                                               :index 2))))
+
+;; (host-object->cicada-object
+;;  `#(<host-object>
+;;     ,(string->title "testing#host-object->cicada-object")
+;;     #b10000000))
 ;; must be a prime number
 
 ;; 1000003  ;; about 976 k
@@ -818,8 +876,7 @@
 ;; (natural-number->index 123)
 ;; (natural-number->index 123.123)
 (defun name? (x)
-  (and (array? x)
-       (= 1 (array-rank x))
+  (and (vector? x)
        (= 2 (array-dimension x
                              0))
        (equal? '<name>
@@ -1079,9 +1136,14 @@
           *size#title-table*)
        ;; to create a new title is
        ;; to allocate a new index in the title-table
+       ;; and save the name#title to the field number 0 of the entry
        (be :name name
            :as name#title
            :mean *pointer#title-table*)
+       (save#array :value name#title
+                   :array *title-table*
+                   :index-vector (vector *pointer#title-table* 0))
+       ;; update *pointer#title-table*
        (setf *pointer#title-table*
              (add1 *pointer#title-table*))
        `#(<title>
@@ -1090,8 +1152,7 @@
       (:else
        (error "title-table is filled, can not make new title")))))
 (defun title? (x)
-  (and (array? x)
-       (= 1 (array-rank x))
+  (and (vector? x)
        (= 2 (array-dimension x
                              0))
        (equal? '<title>
@@ -1141,7 +1202,7 @@
                   object)
   (if (or (not (title? title))
           (not (name? name))
-          (not (object? object)))
+          (not (host-object? object)))
       (error "one or more the arguments of (entitle) is of wrong type")
       (let ((title-index (title->index title))
             (name-index (name->index name)))
@@ -1244,7 +1305,7 @@
 
 ;; (entitle :title (string->title "kkk")
 ;;          :name (string->name "took")
-;;          :object `#(<object>
+;;          :object `#(<host-object>
 ;;                    ,(string->title "my")
 ;;                    "baby away!"))
 
@@ -1265,104 +1326,69 @@
 
 ;; (entitled? :title (string->title "kkk")
 ;;            :name (string->name "took"))
+(defun print-title (title)
+  (if (not (title? title))
+      (error "the argument of (print-title) must be checked by title?")
+      (print-name (fetch#array :array *title-table*
+                               :index-vector `#(,(title->index title) 0)))))
+
+;; (print-title (string->title "kkk"))
 (string->title "title")
 (string->title "return-stack")
 (defparameter *size#return-stack* 1024)
 
 (defparameter *return-stack*
-  (make-array `(,*size#return-stack*) :initial-element nil))
+  (make-array `(,(*  *cicada-object-size*
+                     *size#return-stack*))
+              :element-type '(unsigned-byte 8)
+              :initial-element 0))
 
+;; pointer is an index into *return-stack*
+;; one step of push pop is *cicada-object-size*
 (defparameter *pointer#return-stack* 0)
 
-(defun push#return-stack (object)
-  (if (not (< *pointer#return-stack*
+(defun push#return-stack (cicada-object)
+  (cond
+    ((not (cicada-object? cicada-object))
+     (error "the argument of (push#return-stack) must be checked by cicada-object?"))
+
+    ((not (<  (*  *pointer#return-stack*
+                  *cicada-object-size*)
               *size#return-stack*))
-      (error "can not push anymore *return-stack* is filled")
-      (let ()
-        (save#vector :value object
-                     :vector *return-stack*
-                     :index *pointer#return-stack*)
-        (setf *pointer#return-stack*
-              (add1 *pointer#return-stack*))
-        (values *pointer#return-stack*
-                object))))
+     (error "can not push anymore *return-stack* is filled"))
+
+    (:else
+     (let ()
+       (save#vector :value cicada-object
+                    :vector *return-stack*
+                    :index (*  *pointer#return-stack*
+                               *cicada-object-size*))
+       (setf *pointer#return-stack*
+             (add1 *pointer#return-stack*))
+       (values *pointer#return-stack*
+               cicada-object)))))
 
 (defun pop#return-stack ()
-  (if (zero? *pointer#return-stack*)
-      (error "can not pop anymore *return-stack* is empty")
-      (let ()
-        (setf *pointer#return-stack*
-              (sub1 *pointer#return-stack*))
-        (values (fetch#vector :vector *return-stack*
-                              :index *pointer#return-stack*)
-                *pointer#return-stack*))))
+  (cond
+    ((not (cicada-object? cicada-object))
+     (error "the argument of (pop#return-stack) must be checked by cicada-object?"))
 
-;; (push#return-stack 123)
+    ((zero? *pointer#return-stack*)
+     (error "can not pop anymore *return-stack* is empty"))
+
+    (let ()
+      (setf *pointer#return-stack*
+            (sub1 *pointer#return-stack*))
+      (values (fetch#vector :vector *return-stack*
+                            :index (*  *pointer#return-stack*
+                                       *cicada-object-size*))
+              *pointer#return-stack*))))
+
+
+;; (push#return-stack
+;;  (make-cicada-object :title (string->title "kkk")
+;;                      :value 666))
 ;; (pop#return-stack)
-(defparameter *size#argument-stack* 1024)
-
-(defparameter *argument-stack*
-  (make-array `(,*size#argument-stack*) :initial-element nil))
-
-(defparameter *pointer#argument-stack* 0)
-
-(defun push#argument-stack (object)
-  (if (not (< *pointer#argument-stack*
-              *size#argument-stack*))
-      (error "can not push anymore *argument-stack* is filled")
-      (let ()
-        (save#vector :value object
-                     :vector *argument-stack*
-                     :index *pointer#argument-stack*)
-        (setf *pointer#argument-stack*
-              (add1 *pointer#argument-stack*))
-        (values *pointer#argument-stack*
-                object))))
-
-(defun pop#argument-stack ()
-  (if (zero? *pointer#argument-stack*)
-      (error "can not pop anymore *argument-stack* is empty")
-      (let ()
-        (setf *pointer#argument-stack*
-              (sub1 *pointer#argument-stack*))
-        (values (fetch#vector :vector *argument-stack*
-                              :index *pointer#argument-stack*)
-                *pointer#argument-stack*))))
-
-;; (push#argument-stack 123)
-;; (pop#argument-stack)
-(defparameter *size#frame-stack* 1024)
-
-(defparameter *frame-stack*
-  (make-array `(,*size#frame-stack*) :initial-element nil))
-
-(defparameter *pointer#frame-stack* 0)
-
-(defun push#frame-stack (object)
-  (if (not (< *pointer#frame-stack*
-              *size#frame-stack*))
-      (error "can not push anymore *frame-stack* is filled")
-      (let ()
-        (save#vector :value object
-                     :vector *frame-stack*
-                     :index *pointer#frame-stack*)
-        (setf *pointer#frame-stack*
-              (add1 *pointer#frame-stack*))
-        (values *pointer#frame-stack*
-                object))))
-
-(defun pop#frame-stack ()
-  (if (zero? *pointer#frame-stack*)
-      (error "can not pop anymore *frame-stack* is empty")
-      (let ()
-        (setf *pointer#frame-stack*
-              (sub1 *pointer#frame-stack*))
-        (values (fetch#vector :vector *frame-stack*
-                              :index *pointer#frame-stack*)
-                *pointer#frame-stack*))))
-
-;; (push#frame-stack 123)
-;; (pop#frame-stack)
 (string->title "primitive-instruction")
 (string->title "primitive-function")
 ;; call#primitive-function
