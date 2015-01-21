@@ -1,7 +1,17 @@
-(defsystem #:cicada-vm
-  :description "virtual machine of cicada language"
-  :author "XIE Yuheng <xyheme@gmail.com>"
+(push :with-little-test *features*)
+
+(defsystem :cicada-vm
   :depends-on ()
   :serial t
-  :components ((:file "cicada-vm--package-header")
-               (:file "cicada-vm")))
+  :components
+  ((:module :package-header
+            :components
+            ((:file "package-header")))
+   (:module :basic
+            :components
+            ((:file "basic")
+             (:file "basic.test"
+                    :if-feature :with-little-test)))
+   (:file "cicada-vm")
+   (:file "cicada-vm.test"
+          :if-feature :with-little-test)))

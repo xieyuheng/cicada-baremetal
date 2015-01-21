@@ -1,743 +1,4 @@
-(in-package #:cicada-vm)
-(defun nil? (x)
-  (null x))
-
-
-(defun ture? (x)
-  (eq t x))
-
-(defun false? (x)
-  (eq nil x))
-
-
-(defun eq? (x y)
-  (eq x y))
-
-(defun equal? (x y)
-  (equal x y))
-
-
-(defun zero? (x)
-  (and (integerp x)
-       (zerop x)))
-
-(defun integer? (x)
-  (integerp x))
-
-(defun natural-number? (x)
-  (and (integerp x)
-       (<= 0 x)))
-
-;; (natural-number? 0)
-;; (natural-number? 1)
-;; (natural-number? -1)
-;; (natural-number? 1.1)
-
-
-(defun list? (x)
-  (listp x))
-
-(defun array? (x)
-  (arrayp x))
-
-(defun vector? (x)
-  (vectorp x))
-
-
-(defun string? (x)
-  (stringp x))
-
-(defun pair? (x)
-  (consp x))
-(defun add1 (x)
-  (+ x 1))
-
-(defun sub1 (x)
-  (- x 1))
-(defun fetch#bits (&key
-                     bits
-                     (size 1)
-                     index)
-  (ldb (byte size index) bits))
-
-(defun save#bits (&key
-                    value
-                    bits
-                    (size 1)
-                    index)
-  (setf (ldb (byte size index) bits) value)
-  (values bits
-          value))
-
-
-;; (fetch#bits :bits #b0010
-;;             :size 1
-;;             :index 1)
-;; ==> 1
-(defun fetch#bytes (&key
-                      bytes
-                      (size 1)
-                      index)
-  (fetch#bits :bits bytes
-              :size (* 8 size)
-              :index (* 8 index)))
-
-;; (fetch#byte :number #xff  :index 0) ;; 255
-;; (fetch#byte :number #xff  :index 1) ;; 0
-;; (fetch#byte :number #x100 :index 0) ;; 0
-;; (fetch#byte :number #x100 :index 1) ;; 1
-
-
-(defun save#bytes (&key
-                     value
-                     bytes
-                     (size 1)
-                     index)
-  (save#bits :value value
-             :bits bytes
-             :size (* 8 size)
-             :index (* 8 index)))
-(defun list->vector (list)
-  (if (not (list? list))
-      (error "the argument of (list->vector) must be a list")
-      (coerce list 'vector)))
-
-
-(defun vector->list (vector)
-  (if (not (vector? vector))
-      (error "the argument of (vector->list) must be a vector")
-      (coerce vector 'list)))
-;; (make-array '(2 3 4) :initial-element nil)
-
-;; (array-dimension
-;;  (make-array '(2 3 4) :initial-element nil)
-;;  2)
-
-;; (array-rank
-;;  (make-array '(2 3 4) :initial-element nil))
-
-;; (aref (make-array '(2 3 4) :initial-element nil)
-;;       0 0 0)
-
-
-
-(defun fetch#array (&key
-                      array
-                      index-vector)
-  (let ((index-list (vector->list index-vector)))
-    (apply (function aref)
-           array index-list)))
-
-
-;; (fetch#array :array (make-array '(2 3 4) :initial-element nil)
-;;              :index-vector '#(0 0 0))
-
-
-
-(defun save#array (&key
-                     value
-                     array
-                     index-vector)
-  (let ((index-list (vector->list index-vector)))
-    (setf
-     (apply #'aref array index-list) value)
-    (values array
-            value)))
-
-;; (save#array :value 1
-;;             :array (make-array '(2 3 4) :initial-element nil)
-;;             :index-vector '#(0 0 0))
-(defun fetch#vector (&key
-                       vector
-                       index)
-  (fetch#array :array vector
-               :index-vector `#(,index)))
-
-
-
-(defun save#vector (&key
-                      value
-                      vector
-                      index)
-  (save#array :value value
-              :array vector
-              :index-vector `#(,index)))
-
-
-
-(defun copy-vector (vector)
-  (if (not (vector? vector))
-      (error "the argument of copy-vector must be a vector")
-      (copy-seq vector)))
-(defun fetch#byte-array
-    (&key
-       byte-array
-       (size 1)
-       index-vector
-       (endian 'little))
-  (cond
-    ((not (<= (+ (fetch#vector :vector index-vector
-                               :index (sub1 (array-rank byte-array)))
-                 size)
-              (array-dimension byte-array
-                               (sub1 (array-rank byte-array)))))
-     (error "the size of the value you wish to fetch is out of the index of the byte-array"))
-
-    ((equal? endian 'little)
-     (help#little-endian#fetch#byte-array
-      :byte-array byte-array
-      :size size
-      :index-vector index-vector))
-
-    ((equal? endian 'big)
-     (help#big-endian#fetch#byte-array
-      :byte-array byte-array
-      :size size
-      :index-vector index-vector))
-
-    (:else
-     (error "the argument :endian of (fetch#byte-array) must be 'little or 'big"))
-    ))
-
-
-(defun help#little-endian#fetch#byte-array
-    (&key
-       byte-array
-       size
-       index-vector
-       (counter 0)
-       (sum 0))
-  (cond
-    ((not (< counter
-             size))
-     sum)
-
-    (:else
-     (let* ((last-index (fetch#vector
-                         :vector index-vector
-                         :index (sub1 (array-rank byte-array))))
-            (value-for-shift (fetch#array
-                              :array byte-array
-                              :index-vector index-vector))
-            (value-for-sum (shift#left
-                            :step (* 8 counter)
-                            :number value-for-shift)))
-       ;; update index-vector
-       (save#vector :value (add1 last-index)
-                    :vector index-vector
-                    :index (sub1 (array-rank byte-array)))
-       ;; loop
-       (help#little-endian#fetch#byte-array
-        :byte-array byte-array
-        :size size
-        :index-vector index-vector
-        :counter (add1 counter)
-        :sum (+ sum value-for-sum))))
-    ))
-
-;; (let ((k (make-array `(,*cicada-object-size*)
-;;                      :element-type '(unsigned-byte 8)
-;;                      :initial-element 1)))
-;;   (fetch#byte-array :byte-array k
-;;                     :size 2
-;;                     :index-vector #(0)))
-;; ==> 257
-
-
-
-;; (add1) change to (sub1)
-;; new index-vector-for-fetch
-(defun help#big-endian#fetch#byte-array
-    (&key
-       byte-array
-       size
-       index-vector
-       (counter 0)
-       (sum 0))
-  (cond
-    ((not (< counter
-             size))
-     sum)
-
-    (:else
-     (let* ((last-index (fetch#vector
-                         :vector index-vector
-                         :index (sub1 (array-rank byte-array))))
-            ;; new index-vector-for-fetch
-            (index-vector-for-fetch (save#vector
-                                     :value (+ last-index
-                                               (sub1 size))
-                                     :vector (copy-vector index-vector)
-                                     :index (sub1 (array-rank byte-array))))
-            (value-for-shift (fetch#array
-                              :array byte-array
-                              :index-vector index-vector-for-fetch))
-            (value-for-sum (shift#left
-                            :step (* 8 counter)
-                            :number value-for-shift)))
-       ;; update index-vector
-       ;; (add1) change to (sub1)
-       (save#vector :value (sub1 last-index)
-                    :vector index-vector
-                    :index (sub1 (array-rank byte-array)))
-       ;; loop
-       (help#big-endian#fetch#byte-array
-        :byte-array byte-array
-        :size size
-        :index-vector index-vector
-        :counter (add1 counter)
-        :sum (+ sum value-for-sum))))
-    ))
-
-;; (let ((k (make-array `(,*cicada-object-size*)
-;;                      :element-type '(unsigned-byte 8)
-;;                      :initial-element 1)))
-;;   (fetch#byte-array :byte-array k
-;;                     :size 2
-;;                     :index-vector #(0)
-;;                     :endian 'big))
-;; ==> 257
-
-
-
-
-(defun save#byte-array
-    (&key
-       value
-       byte-array
-       (size 1)
-       index-vector
-       (endian 'little))
-  (cond
-    ((not (<= (+ (fetch#vector :vector index-vector
-                               :index (sub1 (array-rank byte-array)))
-                 size)
-              (array-dimension byte-array
-                               (sub1 (array-rank byte-array)))))
-     (error "the size of the value you wish to save is out of the index of the byte-array"))
-
-    ((equal? endian 'little)
-     (help#little-endian#save#byte-array
-      :value value
-      :byte-array byte-array
-      :size size
-      :index-vector index-vector))
-
-    ((equal? endian 'big)
-     (help#big-endian#save#byte-array
-      :value value
-      :byte-array byte-array
-      :size size
-      :index-vector index-vector))
-
-    (:else
-     (error "the argument :endian of (save#byte-array) must be 'little or 'big"))
-    ))
-
-
-(defun help#little-endian#save#byte-array
-    (&key
-       value
-       byte-array
-       size
-       index-vector
-       (counter 0))
-  (cond
-    ((not (< counter
-             size))
-     (values byte-array
-             value))
-
-    (:else
-     (let* ((last-index (fetch#vector
-                         :vector index-vector
-                         :index (sub1 (array-rank byte-array)))))
-       ;; save to byte-array
-       (save#array :value (fetch#bytes :bytes value
-                                       :size 1
-                                       :index counter)
-                   :array byte-array
-                   :index-vector index-vector)
-       ;; update index-vector
-       (save#vector :value (add1 last-index)
-                    :vector index-vector
-                    :index (sub1 (array-rank byte-array)))
-       ;; loop
-       (help#little-endian#save#byte-array
-        :value value
-        :byte-array byte-array
-        :size size
-        :index-vector index-vector
-        :counter (add1 counter))))
-    ))
-
-
-
-;; (let ((k (make-array `(,*cicada-object-size*)
-;;                      :element-type '(unsigned-byte 8)
-;;                      :initial-element 1)))
-;;   (save#byte-array :value 1234
-;;                    :byte-array k
-;;                    :size 2
-;;                    :index-vector #(0))
-;;   (fetch#byte-array :byte-array k
-;;                     :size 2
-;;                     :index-vector #(0)))
-;; ==> 1234
-
-
-
-;; (add1) change to (sub1)
-;; new index-vector-for-save
-(defun help#big-endian#save#byte-array
-    (&key
-       value
-       byte-array
-       size
-       index-vector
-       (counter 0))
-  (cond
-    ((not (< counter
-             size))
-     (values byte-array
-             value))
-
-    (:else
-     (let* ((last-index (fetch#vector
-                         :vector index-vector
-                         :index (sub1 (array-rank byte-array))))
-            ;; new index-vector-for-save
-            (index-vector-for-save (save#vector
-                                    :value (+ last-index
-                                              (sub1 size))
-                                    :vector (copy-vector index-vector)
-                                    :index (sub1 (array-rank byte-array)))))
-       ;; save to byte-array
-       (save#array :value (fetch#bytes :bytes value
-                                       :size 1
-                                       :index counter)
-                   :array byte-array
-                   :index-vector index-vector-for-save)
-       ;; update index-vector
-       ;; (add1) change to (sub1)
-       (save#vector :value (sub1 last-index)
-                    :vector index-vector
-                    :index (sub1 (array-rank byte-array)))
-       ;; loop
-       (help#big-endian#save#byte-array
-        :value value
-        :byte-array byte-array
-        :size size
-        :index-vector index-vector
-        :counter (add1 counter))))
-    ))
-
-
-
-;; (let ((k (make-array `(,*cicada-object-size*)
-;;                      :element-type '(unsigned-byte 8)
-;;                      :initial-element 1)))
-;;   (save#byte-array :value 1234
-;;                    :byte-array k
-;;                    :size 2
-;;                    :index-vector #(0)
-;;                    :endian 'big)
-;;   (fetch#byte-array :byte-array k
-;;                     :size 2
-;;                     :index-vector #(0)
-;;                     :endian 'big))
-;; ==> 1234
-(defun fetch#byte-vector (&key
-                            byte-vector
-                            (size 1)
-                            index
-                            (endian 'little))
-  (fetch#byte-array :byte-array byte-vector
-                    :size size
-                    :index-vector `#(,index)
-                    :endian endian))
-
-;; (let ((k (make-array `(,*cicada-object-size*)
-;;                      :element-type '(unsigned-byte 8)
-;;                      :initial-element 1)))
-;;   (fetch#byte-vector :byte-vector k
-;;                      :size 2
-;;                      :index 0))
-;; ==> 257
-
-
-(defun save#byte-vector (&key
-                           value
-                           byte-vector
-                           (size 1)
-                           index
-                           (endian 'little))
-  (save#byte-array :value value
-                   :byte-array byte-vector
-                   :size size
-                   :index-vector `#(,index)
-                   :endian endian))
-
-;; (let ((k (make-array `(,*cicada-object-size*)
-;;                      :element-type '(unsigned-byte 8)
-;;                      :initial-element 1)))
-;;   (save#byte-vector :value 1234
-;;                     :byte-vector k
-;;                     :size 2
-;;                     :index 0)
-;;   (fetch#byte-vector :byte-vector k
-;;                      :size 2
-;;                      :index 0))
-;; ==> 1234
-(defun return-zero-value ()
-  (values))
-(defun read#line (&key
-                    (from *standard-input*)
-                    (eof-as-error? t)
-                    (read-eof-as 'eof)
-                    (recursive-call-to-reader? nil))
-  (read-line from
-             eof-as-error?
-             read-eof-as
-             recursive-call-to-reader?))
-
-
-(defun read#char (&key
-                    (from *standard-input*)
-                    (eof-as-error? t)
-                    (read-eof-as 'eof)
-                    (recursive-call-to-reader? nil))
-  (read-char from
-             eof-as-error?
-             read-eof-as
-             recursive-call-to-reader?))
-
-
-(defun newline (&key (many 1))
-  (cond ((= 0 many) :nothing)
-        ((= 1 many) (format t "~%"))
-        ((< 1 many) (format t "~%")
-         (newline :many (sub1 many)))
-        (:else :nothing)))
-(defun bind-char-to-reader (char reader)
-  (set-macro-character char reader))
-
-(defun find-reader-from-char (char)
-  (get-macro-character char))
-;; (character "1")
-;; (character "中")
-
-;; error, length of string must be 1
-;; (character "12")
-(defun char->code (char)
-  (char-code char))
-
-(defun code->char (code)
-  (code-char code))
-(defun string#empty? (string)
-  (equal? string ""))
-(defun char#space? (char)
-  (let ((code (char->code char)))
-    (cond ((= code 32) t)
-          ((= code 10) t)
-          (:else nil))))
-
-;; (char#space? #\newline)
-;; (char#space? #\space)
-
-
-(defun string#space? (string)
-  (not (position-if
-        (lambda (char) (not (char#space? char)))
-        string)))
-
-;; (string#space? " 123 ")
-;; (string#space? "  ")
-;; (string#space? "")
-(defun string->head#word (string)
-  ;; interface:
-  ;; (multiple-value-bind
-  ;;       (head#word
-  ;;        index-end
-  ;;        index-start
-  ;;        string)
-  ;;     (string->head#word string)
-  ;;   ><><><)
-  (let* ((index-start (position-if
-                       (lambda (char) (not (char#space? char)))
-                       string))
-         (index-end (position-if
-                     (lambda (char) (char#space? char))
-                     string
-                     :start index-start)))
-    (values (subseq string
-                    index-start
-                    index-end)
-            index-end
-            index-start
-            string)))
-
-;; (string->head#word " kkk took my baby away! ")
-;; (string->head#word "k")
-;; (string->head#word " k")
-;; (string->head#word "k ")
-
-;; the argument applied to string->head#word
-;; must not be space-string
-;; one should use string#space? to ensure this
-
-;; just do not handle the error
-;; let the debuger do its job
-;; (string->head#word " ")
-
-
-
-(defun string->tail#word (string)
-  (multiple-value-bind
-        (head#word
-         index-end
-         index-start
-         string)
-      (string->head#word string)
-    (if (nil? index-end)
-        ""
-        (subseq string index-end))))
-
-;; (string->tail#word " kkk took my baby away! ")
-
-
-
-
-(defun string->list#word (string &key (base-list '()))
-  (cond
-    ((string#space? string) base-list)
-    (:else
-     (cons (string->head#word string)
-           (string->list#word (string->tail#word string))))))
-
-;; (string->list#word " kkk took my baby away! ")
-;; (string->list#word " kkk")
-;; (string->list#word "kkk ")
-;; (string->list#word " ")
-;; (string->list#word "")
-(defun string->head#char (string)
-  ;; interface:
-  ;; (multiple-value-bind
-  ;;       (head#char
-  ;;        tail#char
-  ;;        string)
-  ;;     (string->head#char string)
-  ;;   ><><><)
-  (values (char string 0)
-          (subseq string
-                  1)
-          string))
-
-;; (string->head#char " kkk took my baby away! ")
-;; (string->head#char "k")
-;; (string->head#char " k")
-;; (string->head#char "k ")
-
-;; the argument applied to string->head#char
-;; must not be ""
-;; one should use string#empty? to ensure this
-
-;; just do not handle the error
-;; let the debuger do its job
-;; (string->head#char "")
-
-
-
-(defun string->tail#char (string)
-  (multiple-value-bind
-        (head#char
-         tail#char
-         string)
-      (string->head#char string)
-    tail#char))
-
-;; (string->tail#char " kkk took my baby away! ")
-;; (string->tail#char "")
-
-
-
-(defun string->list#char (string &key (base-list '()))
-  (cond
-    ((string#empty? string) base-list)
-    (:else
-     (cons (string->head#char string)
-           (string->list#char (string->tail#char string))))))
-
-;; (string->list#char " kkk took my baby away! ")
-;; (string->list#char " kkk")
-;; (string->list#char "kkk ")
-;; (string->list#char " ")
-;; (string->list#char "")
-(defun shift#left (&key
-                     (step 1)
-                     number)
-  (* number
-     (expt 2 step)))
-
-;; (shift#left
-;;  :step 2
-;;  :number 10)
-;; (shift#left
-;;  :number 10)
-
-
-(defun shift#right (&key
-                      (step 1)
-                      number)
-  (/ number
-     (expt 2 step)))
-
-;; (shift#right
-;;  :step 2
-;;  :number 64)
-;; (shift#right
-;;  :number 64)
-(defun symbol->string (symbol)
-  (symbol-name symbol))
-
-(defun string->symbol (string)
-  (intern string))
-(defun group (list
-              &key
-                (number 2)
-                ;; (pattern '())
-                (base-list '()))
-  (cond ((< (length list) 2) base-list)
-        (:else
-         (cons (list (first list) (second list))
-               (group (cddr list)
-                      :number number)))))
-;; (defun help#group ())
-(defun end-of-list (list)
-  (cond
-    ((not (pair? list))
-     (error "the argument of (end-of-list) must be a list"))
-    (:else
-     (help#loop#end-of-list list))
-    ))
-
-(defun help#loop#end-of-list (list)
-  (let ((cdr#list (cdr list)))
-    (cond
-      ((nil? cdr#list)
-       (car list))
-      ((not (pair? cdr#list))
-       (error (concatenate
-               'string
-               "the argument of (end-of-list) must be not only a list~%"
-               "but also a proper-list")))
-      (:else
-       (help#loop#end-of-list cdr#list))
-      )))
-
-;; (end-of-list '(1 2 3))
-;; (end-of-list '(1 2 . 3))
-;; (end-of-list 3)
+(in-package :cicada-vm)
 (defparameter *cell-unit* 4) ;; 4 bytes
 (defparameter *cicada-object-size*
   (* 2 *cell-unit*))
@@ -750,11 +11,6 @@
                              :index 0))
        (title? (fetch#vector :vector x
                              :index 1))))
-
-;; (host-object? #(<host-object>
-;;            #(<title> 0)
-;;            #(<name> 0)))
-;; ==> T
 (defun make-cicada-object (&key
                              title
                              value)
@@ -771,18 +27,6 @@
                           :byte-vector cicada-object
                           :size *cell-unit*
                           :index *cell-unit*))))
-
-;; (fetch#byte-vector
-;;  :byte-vector (make-cicada-object :title (string->title "kkk")
-;;                                   :value 666)
-;;  :size *cell-unit*
-;;  :index *cell-unit*)
-;; ==> 666
-
-;; (equal? (array-element-type
-;;          (make-cicada-object :title (string->title "kkk")
-;;                              :value 666))
-;;         '(unsigned-byte 8))
 (defun cicada-object? (x)
   (and (vector? x)
        (equal? '(unsigned-byte 8)
@@ -799,11 +43,6 @@
                                  :index 0)
                                 0))))
        ))
-
-;; (cicada-object?
-;;  (make-cicada-object :title (string->title "kkk")
-;;                      :value 666))
-;; ==> T
 (defun host-object->cicada-object (host-object)
   (if (not (host-object? host-object))
       (error "the argument of (host-object->cicada-object) must be checked by host-object?")
@@ -811,11 +50,19 @@
                                                :index 1)
                           :value (fetch#vector :vector host-object
                                                :index 2))))
-
-;; (host-object->cicada-object
-;;  `#(<host-object>
-;;     ,(string->title "testing#host-object->cicada-object")
-;;     #b10000000))
+(defun cicada-object->host-object (cicada-object)
+  (cond ((not (cicada-object? cicada-object))
+         (error "the argument of (cicada-object->host-object) must be checked by cicada-object?"))
+        (:else
+         `#(<host-object>
+            ,(vector '<title>
+                     (fetch#byte-vector :byte-vector cicada-object
+                                        :size *cell-unit*
+                                        :index 0))
+            ,(fetch#byte-vector :byte-vector cicada-object
+                                :size *cell-unit*
+                                :index *cell-unit*)))
+        ))
 ;; must be a prime number
 
 ;; 1000003  ;; about 976 k
@@ -863,18 +110,10 @@
                  (shift#left
                   :step counter
                   :number (char->code head#char)))))))
-
-;; (string->natural-number "")
-;; (string->natural-number "@")
-;; (string->natural-number "@@@")
 (defun natural-number->index (natural-number)
   (if (not (natural-number? natural-number))
       (error "argument of natural-number->index must be a natural-number")
       (mod natural-number *size#name-table*)))
-
-;; (natural-number->index 0)
-;; (natural-number->index 123)
-;; (natural-number->index 123.123)
 (defun name? (x)
   (and (vector? x)
        (= 2 (array-dimension x
@@ -885,9 +124,6 @@
        (index-within-name-table?
         (fetch#vector :vector x
                       :index 1))))
-
-;; (name? #(<name> 0))
-;; ==> T
 (defun name->index (name)
   (cond ((not (name? name))
          (error "argument of name->index must be a name"))
@@ -949,16 +185,11 @@
                                :index-vector `#(,index 0)))
                  )))
         ))
-
-
-;; (name->string (string->name "kkk took my baby away!"))
 (defun print-name (name
                    &key (stream t))
   (format stream
           "[~A]"
           (name->string name)))
-
-;; (print-name (string->name "kkk took my baby away!"))
 ;; <name
 ;; <as
 ;; <mean
@@ -1082,18 +313,6 @@
                "can not explain the name as the way you wish~%"
                "and the meaning of this name is too filled")))
       )))
-
-
-
-;; (be :name (string->name "kkk")
-;;     :as (string->name "took")
-;;     :mean "my baby away!")
-
-;; (explain :name (string->name "kkk")
-;;          :as (string->name "took"))
-
-
-
 (defun meaningful? (&key
                       name
                       as)
@@ -1103,9 +322,6 @@
         (explain :name name
                  :as as)
       find?))
-
-;; (meaningful? :name (string->name "kkk")
-;;              :as (string->name "took"))
 (defparameter *size#title-table*
   1000)
 
@@ -1161,20 +377,12 @@
        (index-within-title-table?
         (fetch#vector :vector x
                       :index 1))))
-
-;; (title? #(<title> 0))
-;; ==> T
-;; (title? (string->title "testing#title?"))
-;; ==> T
 (defun title->index (title)
   (cond ((not (title? title))
          (error "argument of title->index must be a title"))
         (:else
          (fetch#vector :vector title
                        :index 1))))
-
-;; (title->index (string->title "testing#1#title->index"))
-;; (title->index (string->title "testing#2#title->index"))
 ;; <title
 ;; <name
 ;; <object
@@ -1300,20 +508,6 @@
                "can not ask for the object under the name as you wish~%"
                "and the names under this title is too filled")))
       )))
-
-
-
-;; (entitle :title (string->title "kkk")
-;;          :name (string->name "took")
-;;          :object `#(<host-object>
-;;                    ,(string->title "my")
-;;                    "baby away!"))
-
-;; (ask :title (string->title "kkk")
-;;      :name (string->name "took"))
-
-
-
 (defun entitled? (&key
                     title
                     name)
@@ -1323,16 +517,12 @@
       (ask :title title
            :name name)
     find?))
-
-;; (entitled? :title (string->title "kkk")
-;;            :name (string->name "took"))
-(defun print-title (title)
+(defun print-title (title &key (stream t))
   (if (not (title? title))
       (error "the argument of (print-title) must be checked by title?")
       (print-name (fetch#array :array *title-table*
-                               :index-vector `#(,(title->index title) 0)))))
-
-;; (print-title (string->title "kkk"))
+                               :index-vector `#(,(title->index title) 0))
+                  :stream stream)))
 (string->title "title")
 (string->title "return-stack")
 (defparameter *size#return-stack* 1024)
@@ -1359,10 +549,12 @@
 
     (:else
      (let ()
-       (save#vector :value cicada-object
-                    :vector *return-stack*
-                    :index (*  *pointer#return-stack*
-                               *cicada-object-size*))
+       (copy#byte-vector :from cicada-object
+                         :from-index 0
+                         :to *return-stack*
+                         :to-index (*  *pointer#return-stack*
+                                       *cicada-object-size*)
+                         :size *cicada-object-size*)
        (setf *pointer#return-stack*
              (add1 *pointer#return-stack*))
        (values *pointer#return-stack*
@@ -1370,26 +562,17 @@
 
 (defun pop#return-stack ()
   (cond
-    ((not (cicada-object? cicada-object))
-     (error "the argument of (pop#return-stack) must be checked by cicada-object?"))
-
     ((zero? *pointer#return-stack*)
      (error "can not pop anymore *return-stack* is empty"))
 
-    (let ()
-      (setf *pointer#return-stack*
-            (sub1 *pointer#return-stack*))
-      (values (fetch#vector :vector *return-stack*
-                            :index (*  *pointer#return-stack*
-                                       *cicada-object-size*))
-              *pointer#return-stack*))))
-
-
-;; (push#return-stack
-;;  (make-cicada-object :title (string->title "kkk")
-;;                      :value 666))
-;; (pop#return-stack)
-(string->title "primitive-instruction")
-(string->title "primitive-function")
+    (:else
+     (setf *pointer#return-stack*
+           (sub1 *pointer#return-stack*))
+     (values (fetch#byte-vector :byte-vector *return-stack*
+                                :index (*  *pointer#return-stack*
+                                           *cicada-object-size*))
+             *pointer#return-stack*))))
+;; (string->title "primitive-instruction")
+;; (string->title "primitive-function")
 ;; call#primitive-function
-;; tail-call#primitive-function#
+;; tail-call#primitive-function
