@@ -11,6 +11,25 @@
             t
             nil
             nil)))
+(deftest shift#left
+    (basic)
+  (ensure
+      (list (shift#left :number 10)
+            (shift#left :step 2
+                        :number 10))
+      ==>
+      (list 20
+            40)))
+
+(deftest shift#right
+    (basic)
+  (ensure
+      (list (shift#right :number 64)
+            (shift#right :step 2
+                         :number 64))
+      ==>
+      (list 32
+            16)))
 (deftest fetch#bits
     (basic)
   (ensure
@@ -136,6 +155,27 @@
                            :index 0))
       ==>
       1234))
+(deftest cat
+    (basic)
+  (ensure
+      (cat ()
+        ("~A" 123)
+        ("~A" 456))
+      ==>
+      "123456"))
+
+;; (cat ()
+;;   ("~A" 123)
+;;   ("~A" 456))
+
+;; (cat (:to *standard-output*)
+;;   ("~%")
+;;   ("~A~%" 123)
+;;   ("~A~%" 456))
+
+;; (let ((x 123))
+;;   (cat (:to *standard-output*)
+;;     ("~A~%" x)))
 (deftest char#space?
     (basic)
   (ensure
@@ -158,7 +198,7 @@
 (deftest string->head#word
     (basic)
   (and (ensure
-           (list (multiple-value-list  (string->head#word " kkk took my baby away! "))
+           (list (multiple-value-list (string->head#word " kkk took my baby away! "))
                  (multiple-value-list (string->head#word "k"))
                  (multiple-value-list (string->head#word " k"))
                  (multiple-value-list (string->head#word "k ")))
@@ -184,9 +224,11 @@
 (deftest string->tail#word
     (basic)
   (ensure
-      (string->tail#word " kkk took my baby away! ")
+      (list (string->tail#word " kkk took my baby away! ")
+            (string->tail#word "just-kkk"))
       ==>
-      " took my baby away! "))
+      (list " took my baby away! "
+            nil)))
 
 
 (deftest string->list#word
@@ -203,6 +245,51 @@
             `("kkk")
             `nil
             `nil)))
+(deftest string->head#line
+    (basic)
+  (ensure
+      (list (string->head#line "123")
+            (string->head#line (format nil "~%123"))
+            (string->head#line (format nil "123~%")))
+      ==>
+      `("123"
+        ""
+        "123")))
+
+
+(deftest string->tail#line
+    (basic)
+  (ensure
+      (list (string->tail#line "123")
+            (string->tail#line (format nil "~%123"))
+            (string->tail#line (format nil "123~%")))
+      ==>
+      `(nil
+        "123"
+        "")))
+
+
+(deftest string->list#line
+    (basic)
+  (ensure
+      (string->list#line
+       (cat (:postfix (cat () ("~%")))
+         ("kkk")
+         ("took")
+         ("")
+         ("my baby")
+         ("")
+         ("away!")
+         ("")))
+      ==>
+      `("kkk"
+        "took"
+        ""
+        "my baby"
+        ""
+        "away!"
+        ""
+        "")))
 (deftest string->head#char
     (basic)
   (and (ensure
@@ -258,25 +345,11 @@
             `(#\k #\k #\k #\ )
             `(#\ )
             `nil)))
-(deftest shift#left
-    (basic)
-  (ensure
-      (list (shift#left :number 10)
-            (shift#left :step 2
-                        :number 10))
-      ==>
-      (list 20
-            40)))
+(defun pair? (x)
+  (consp x))
 
-(deftest shift#right
-    (basic)
-  (ensure
-      (list (shift#right :number 64)
-            (shift#right :step 2
-                         :number 64))
-      ==>
-      (list 32
-            16)))
+(defun list? (x)
+  (listp x))
 (deftest end-of-list
     (basic)
   (and (ensure
@@ -291,3 +364,29 @@
            (end-of-list 3)
            signals
            simple-error)))
+(deftest edit#line-list
+    (basic)
+  (ensure
+      (edit#line-list
+       :indent 2
+       :prefix "* "
+       :postfix "|^-^"
+       :function-list
+       `(,(lambda (string) (string-trim '(#\space) string)))
+       :line-list
+       `("  123"
+         "456  "))
+      ==>
+      `("  * 123|^-^"
+        "  * 456|^-^")))
+
+;; (edit#line-list
+;;  :indent 2
+;;  :print-to *standard-output*
+;;  :prefix "* "
+;;  :postfix "|^-^"
+;;  :function-list
+;;  `(,(lambda (string) (string-trim '(#\space) string)))
+;;  :line-list
+;;  `("  123"
+;;    "456  "))

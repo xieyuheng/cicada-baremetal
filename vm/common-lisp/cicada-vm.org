@@ -2,8 +2,6 @@
 #+AUTHOR: 謝宇恆 / XIE Yuheng
 #+EMAIL:  xyheme@gmail.com
 
-
-* ===================================
 * TODO
   * reading & writing image file
   * vector-function
@@ -13,7 +11,7 @@
     without resolving system
   * parsing image file
   * cicada-rhapsody
-* -----------------------------------
+* ===================================
 * note
   * cicada vm is
     a threaded-code interpreter
@@ -49,6 +47,8 @@
   (push :with-little-test *features*)
 
   (defsystem :cicada-vm
+    :description "virtual machine of cicada language"
+    :author "XIE Yuheng <xyheme@gmail.com>"
     :depends-on ()
     :serial t
     :components
@@ -395,7 +395,7 @@
            (fetch#vector :vector x
                          :index 1))))
    #+end_src
-**
+** test
    #+begin_src lisp :tangle cicada-vm.test.lisp
    (deftest name?
        (cicada-vm)
@@ -646,12 +646,19 @@
                 (explain :name (string->name "kkk")
                          :as (string->name "took"))))
          ==>
-         (list 2
+         (list 1
                `(2
                  :UPDATED!!!
                  "my baby away!")
                `("my baby away!"
-                 :found!!!))))
+                 :found!!!))
+       ;; (list 2
+       ;;         `(2
+       ;;           :UPDATED!!!
+       ;;           "my baby away!")
+       ;;         `("my baby away!"
+       ;;           :found!!!))
+       ))
    #+end_src
 ** meaningful?
    #+begin_src lisp :tangle cicada-vm.lisp

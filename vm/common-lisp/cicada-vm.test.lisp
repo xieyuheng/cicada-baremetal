@@ -114,12 +114,19 @@
              (explain :name (string->name "kkk")
                       :as (string->name "took"))))
       ==>
-      (list 2
+      (list 1
             `(2
               :UPDATED!!!
               "my baby away!")
             `("my baby away!"
-              :found!!!))))
+              :found!!!))
+    ;; (list 2
+    ;;         `(2
+    ;;           :UPDATED!!!
+    ;;           "my baby away!")
+    ;;         `("my baby away!"
+    ;;           :found!!!))
+    ))
 (deftest meaningful?
     (cicada-vm)
   (ensure
