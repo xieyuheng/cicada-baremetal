@@ -1155,7 +1155,7 @@
                                               (eq (cdr x) elt)))
                                         constraints)))))))
 (defvar *break-on-fail* nil)
-(defun run-tests
+(defun run-unit
     (group &key
              (skip nil)
              (break-on-fail *break-on-fail*))
@@ -1181,7 +1181,7 @@
                         (pass?
                          report-string
                          time)
-                      (do-test test)
+                      (help#do-test#run-unit test)
 
                     ;; about break-on-fail
                     (when (and break-on-fail (not pass?))
@@ -1242,9 +1242,9 @@
 ;;       (pass?
 ;;        report-string
 ;;        time)
-;;     (do-test test)
+;;     (help#do-test#run-unit test)
 ;;   '><><><)
-(defun do-test (test)
+(defun help#do-test#run-unit (test)
   (let ((time (get-internal-run-time)))
     (multiple-value-bind
           (success?

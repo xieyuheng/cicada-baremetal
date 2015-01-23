@@ -104,8 +104,8 @@
     (cicada-vm)
   (ensure
       (list (be :name (string->name "kkk")
-                 :as (string->name "took")
-                 :mean "my baby away!")
+                :as (string->name "took")
+                :mean "my baby away!")
             (multiple-value-list
              (be :name (string->name "kkk")
                  :as (string->name "took")
@@ -114,18 +114,12 @@
              (explain :name (string->name "kkk")
                       :as (string->name "took"))))
       ==>
-      (list 1
+      (list 2
             `(2
               :UPDATED!!!
               "my baby away!")
             `("my baby away!"
               :found!!!))
-    ;; (list 2
-    ;;         `(2
-    ;;           :UPDATED!!!
-    ;;           "my baby away!")
-    ;;         `("my baby away!"
-    ;;           :found!!!))
     ))
 (deftest meaningful?
     (cicada-vm)

@@ -1,0 +1,111 @@
+#+TITLE:  ghost in shell
+#+AUTHOR: 謝宇恆 / XIE Yuheng
+#+EMAIL:  xyheme@gmail.com
+
+* TODO
+  * 設計之初就需要考慮的有
+    * 顏色 (加如 cat 中)
+    * 提示符的定製
+    * 中文
+    * 有錯誤時不用出錯返回碼
+      而用更豐富的數據結構來表達錯誤
+    * 命令補全
+      [這要 hack slime 才行]
+* ===================================
+* (in-package :cicada-vm)
+** ghost-in-shell.lisp
+   #+begin_src lisp :tangle ghost-in-shell.lisp
+   (in-package :cicada-vm)
+   #+end_src
+** ghost-in-shell.test.lisp
+   #+begin_src lisp :tangle ghost-in-shell.test.lisp
+   (in-package :cicada-vm)
+   #+end_src
+* -----------------------------------
+* shell
+  #+begin_src lisp :tangle ghost-in-shell.lisp
+  (defun shell ()
+    (catch 'bye
+      (welcome)
+      (help#shell#loop)))
+
+  (defun welcome ()
+    (newline)
+    (format t "  welcome to GIS ^-^ ~%"))
+
+  (defun prompt ()
+    (newline)
+    (format t "  [*]  ")
+    (format t "~A" *default-pathname-defaults*)
+    (newline))
+
+  (defun help#shell#loop ()
+    (prompt)
+    (let* ((list#word (string->list#word (read#line)))
+           (name (car list#word))
+           (argument-list (cdr list#word)))
+      (multiple-value-bind
+            (function
+             success)
+          (gethash name *command-hash-table*)
+        (cond
+          ((eq t success)
+           (funcall function
+                    :argument-list argument-list))
+          (:else
+           (format t "nothing~%")))))
+    (help#shell#loop))
+
+  (defparameter *command-hash-table*
+    (make-hash-table :test (function equal)))
+  #+end_src
+* bye
+  #+begin_src lisp :tangle ghost-in-shell.lisp
+  (defun kkk (&key argument-list)
+    (format t "kkk took my baby away!")
+    (newline))
+
+  (defun bye (&key argument-list)
+    (format t "  bye bye ^-^")
+    (newline)
+    (throw 'bye :bye-bye!))
+  #+end_src
+* bind
+  * bind eval its argument
+    so you must defun a function first
+    then you can bind it to a name
+  #+begin_src lisp :tangle ghost-in-shell.lisp
+  ;; type chack of argument should be done
+  ;; in the following functions
+
+
+  (defun bind (name function)
+    (setf (gethash name *command-hash-table*)
+          function))
+
+  (defun bind#many (&rest list)
+    (mapcar (lambda (pattern)
+              (let ((name (first pattern))
+                    (function (second pattern)))
+                (bind name function)))
+            (group list :number 2)))
+
+
+  (defun unbind (name)
+    (remhash name *command-hash-table*))
+
+  (defun unbind#many (&rest list)
+    ;; list of string
+    (mapcar (function unbind)
+            list))
+
+
+  (bind#many "kkk" (function kkk)
+             "p" (lambda (&key argument-list)
+                   (kkk)
+                   (kkk)
+                   (kkk))
+             "bye" (function bye)
+             )
+  #+end_src
+* ===================================

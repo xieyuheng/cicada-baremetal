@@ -12,6 +12,34 @@
   * parsing image file
   * cicada-rhapsody
 * ===================================
+* system file
+  #+begin_src lisp :tangle cicada-vm.asd
+  (push :with-little-test *features*)
+
+  (defsystem :cicada-vm
+    :description "virtual machine of cicada language"
+    :author "XIE Yuheng <xyheme@gmail.com>"
+    :depends-on ()
+    :serial t
+    :components
+    ((:module :package-header
+              :components
+              ((:file "package-header")))
+     (:module :basic
+              :components
+              ((:file "basic")
+               (:file "basic.test"
+                      :if-feature :with-little-test)))
+     (:module :ghost-in-shell
+              :components
+              ((:file "ghost-in-shell")
+               (:file "ghost-in-shell.test"
+                      :if-feature :with-little-test)))
+     (:file "cicada-vm")
+     (:file "cicada-vm.test"
+            :if-feature :with-little-test)))
+  #+end_src
+* ===================================
 * note
   * cicada vm is
     a threaded-code interpreter
@@ -41,29 +69,6 @@
     meanwhile updating the database
     only after then
     the vm can begin interpreting the image file
-* -----------------------------------
-* asdf file
-  #+begin_src lisp :tangle cicada-vm.asd
-  (push :with-little-test *features*)
-
-  (defsystem :cicada-vm
-    :description "virtual machine of cicada language"
-    :author "XIE Yuheng <xyheme@gmail.com>"
-    :depends-on ()
-    :serial t
-    :components
-    ((:module :package-header
-              :components
-              ((:file "package-header")))
-     (:module :basic
-              :components
-              ((:file "basic")
-               (:file "basic.test"
-                      :if-feature :with-little-test)))
-     (:file "cicada-vm")
-     (:file "cicada-vm.test"
-            :if-feature :with-little-test)))
-  #+end_src
 * -----------------------------------
 * (in-package :cicada-vm)
 ** cicada-vm.lisp
@@ -251,7 +256,7 @@
      the image file will just be a vector-function-body
 ** ><
    #+begin_src lisp
-   (progn
+   (progn 
     ;; form a (file . buffer) pair
     (setf stream (open (make-pathname :name "cicada-image-file-test~")
                        :direction ':output
@@ -275,6 +280,12 @@
     (read-sequence *cicada-image-buffer*
                    ,*cicada-image-stream*)
     ,*cicada-image-buffer*)
+
+
+   (stream-read-byte )
+   (read-byte )
+
+   (dup#string )
    #+end_src
 * name-table
 ** note
@@ -636,8 +647,8 @@
        (cicada-vm)
      (ensure
          (list (be :name (string->name "kkk")
-                    :as (string->name "took")
-                    :mean "my baby away!")
+                   :as (string->name "took")
+                   :mean "my baby away!")
                (multiple-value-list
                 (be :name (string->name "kkk")
                     :as (string->name "took")
@@ -646,18 +657,12 @@
                 (explain :name (string->name "kkk")
                          :as (string->name "took"))))
          ==>
-         (list 1
+         (list 2
                `(2
                  :UPDATED!!!
                  "my baby away!")
                `("my baby away!"
                  :found!!!))
-       ;; (list 2
-       ;;         `(2
-       ;;           :UPDATED!!!
-       ;;           "my baby away!")
-       ;;         `("my baby away!"
-       ;;           :found!!!))
        ))
    #+end_src
 ** meaningful?
@@ -1243,11 +1248,12 @@
   cicada.iaa
   #+end_src
 * -----------------------------------
-* play
+* test
   #+begin_src lisp
-  (asdf:load-system 'cicada-vm)
+  (asdf:load-system "cicada-vm")
   (in-package :cicada-vm)
-  (run-tests 'basic)
-  (run-tests 'cicada-vm)
+  (run-unit 'basic)
+  (run-unit 'cicada-vm)
   #+end_src
 * ===================================
+

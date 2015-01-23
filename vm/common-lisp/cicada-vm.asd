@@ -14,6 +14,11 @@
             ((:file "basic")
              (:file "basic.test"
                     :if-feature :with-little-test)))
+   (:module :ghost-in-shell
+            :components
+            ((:file "ghost-in-shell")
+             (:file "ghost-in-shell.test"
+                    :if-feature :with-little-test)))
    (:file "cicada-vm")
    (:file "cicada-vm.test"
           :if-feature :with-little-test)))

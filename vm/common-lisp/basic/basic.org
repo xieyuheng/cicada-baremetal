@@ -1463,7 +1463,7 @@
      * Defines a group of tests with the given name.
        OPTS may contain the keys :before and :after,
        whose values should be functions (or lambda expressions)
-       to be called before and after all tests in the group have been run.
+       to be called before and after all tests in the group have been test.
      * If the group already exists,
        the :before and :after functions are updated;
        the docstring
@@ -1591,7 +1591,7 @@
        NIL if it fails.
        Signalling an error is also a failure.
      * The keyword arguments control the order and conditions
-       under which the test is run:
+       under which the test is test:
        * after
        * after-pass
        * after-fail
@@ -1620,8 +1620,6 @@
        so tests tend to run in the order they're defined.
      * DEFTEST defines a function named TEST-name/group,
        which can be called manually
-       to run an individual test.
-       RUN-TESTS is used to run all tests in a group.
 ** help#==>#ensure
    #+begin_src lisp :tangle basic.lisp
    (defmacro help#==>#ensure
@@ -1907,7 +1905,7 @@
      | group | a symbol naming a group of tests |
    * description:
      * Retrieve a list of the (names of) tests in the group,
-       in the order in which they will run.
+       in the order in which they will be run.
 ** *break-on-fail*
    #+begin_src lisp :tangle basic.lisp
    (defvar *break-on-fail* nil)
@@ -1918,10 +1916,10 @@
    * initial value:
      nil
    * description:
-     The default value for the break-on-fail argument to RUN-TESTS.
-** run-tests
+     The default value for the break-on-fail argument to run.
+** run-unit
    #+begin_src lisp :tangle basic.lisp
-   (defun run-tests
+   (defun run-unit
        (group &key
                 (skip nil)
                 (break-on-fail *break-on-fail*))
@@ -1947,7 +1945,7 @@
                            (pass?
                             report-string
                             time)
-                         (do-test test)
+                         (help#do-test#run-unit test)
 
                        ;; about break-on-fail
                        (when (and break-on-fail (not pass?))
@@ -2008,9 +2006,9 @@
    ;;       (pass?
    ;;        report-string
    ;;        time)
-   ;;     (do-test test)
+   ;;     (help#do-test#run-unit test)
    ;;   '><><><)
-   (defun do-test (test)
+   (defun help#do-test#run-unit (test)
      (let ((time (get-internal-run-time)))
        (multiple-value-bind
              (success?
@@ -2025,9 +2023,9 @@
 ** doc
    * syntax:
      #+begin_src lisp
-     (run-tests group
-                :skip
-                :break-on-fail )
+     (run group
+          :skip
+          :break-on-fail )
      ;; => boolean
      #+end_src
    * arguments:
