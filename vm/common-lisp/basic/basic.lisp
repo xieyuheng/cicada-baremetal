@@ -12,6 +12,14 @@
 
 (defun equal? (x y)
   (equal x y))
+(defparameter *size#fixnum* 32) ;; unit bit
+
+(defun fixnum? (x)
+  (and (natural-number? x)
+       (< x
+          (expt 2 *size#fixnum*))))
+
+
 (defun zero? (x)
   (and (integerp x)
        (zerop x)))
@@ -92,6 +100,22 @@
             value)))
 (defun vector? (x)
   (vectorp x))
+(defun make-vector
+    (&key
+       length
+       element-type
+       initial-element
+       adjustable
+       fill-pointer
+       displaced-to
+       displaced-index-offset)
+  (make-array `(,length)
+              :element-type element-type
+              :initial-element initial-element
+              :adjustable adjustable
+              :fill-pointer fill-pointer
+              :displaced-to displaced-to
+              :displaced-index-offset displaced-index-offset))
 (defun fetch#vector (&key
                        vector
                        index)

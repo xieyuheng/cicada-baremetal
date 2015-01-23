@@ -1,0 +1,54 @@
+#+TITLE:  cicada vm
+#+AUTHOR: 謝宇恆 / XIE Yuheng
+#+EMAIL:  xyheme@gmail.com
+
+* TODO
+* ===================================
+* >< note
+* -----------------------------------
+* >< (in-package :cicada-vm)
+** cicada-rhapsody.lisp
+   #+begin_src lisp 
+   (in-package :cicada-vm)
+   #+end_src
+** cicada-rhapsody.test.lisp
+   #+begin_src lisp 
+   (in-package :cicada-vm)
+   #+end_src
+* -----------------------------------
+* >< cicada-rhapsody
+  #+begin_src lisp
+  (defun name-reader (stream char-bound-with-this-function)
+    (read#char :from stream
+               :recursive-call-to-reader? nil))
+
+  (bind-char-to-reader
+   (character "[")
+   (function name-reader))
+
+  ;; (find-reader-from-char (character "["))
+  (values [123])
+
+
+  (readtablep *readtable*)
+  (setq zvar 123)
+  (set-syntax-from-char
+   #\z #\'
+   (setq table2 (copy-readtable)))
+
+  (setq *readtable* table2)
+  ;; zvar =>  VAR
+  (setq *readtable* (copy-readtable nil))
+  ;; zvar =>  123
+
+  [ (cicada)
+
+  ]
+
+  ## cicada
+  ## end cicada
+
+  cicada.cicada
+  cicada.iaa
+  #+end_src
+* ===================================

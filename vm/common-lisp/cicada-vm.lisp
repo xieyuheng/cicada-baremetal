@@ -1,16 +1,25 @@
 (in-package :cicada-vm)
-(defparameter *cell-unit* 4) ;; 4 bytes
+(defparameter *cell-unit* (/ *size#fixnum* 8)) ;; unit byte
 (defparameter *cicada-object-size*
   (* 2 *cell-unit*))
-(defun host-object? (x)
+
+(defun cicada-object? (x)
   (and (vector? x)
-       (= 3 (array-dimension x
-                             0))
-       (equal? '<host-object>
-               (fetch#vector :vector x
-                             :index 0))
-       (title? (fetch#vector :vector x
-                             :index 1))))
+       (equal? '(unsigned-byte 8) (array-element-type x))
+       (fixnum? (fetch#byte-vector :byte-vector x
+                                   :size *cell-unit*
+                                   :index 2))
+       (= *cicada-object-size*
+          (array-dimension x 0))
+       (not
+        (nil?
+         (fetch#array
+          :array *title-table*
+          :index-vector (vector (fetch#byte-vector
+                                 :byte-vector x
+                                 :size *cell-unit*
+                                 :index 0)
+                                0))))))
 (defun make-cicada-object (&key
                              title
                              value)
@@ -27,42 +36,47 @@
                           :byte-vector cicada-object
                           :size *cell-unit*
                           :index *cell-unit*))))
-(defun cicada-object? (x)
+;; these two funcitons return values to be use in host-language
+
+(defun cicada-object->title (cicada-object)
+  (cond ((not (cicada-object? cicada-object))
+         (error "the argument of (cicada-object->title) must be cicada-object"))
+        (:else
+         (fetch#byte-vector :byte-vector cicada-object
+                            :size *cell-unit*
+                            :index 0))))
+
+(defun cicada-object->value (cicada-object)
+  (cond ((not (cicada-object? cicada-object))
+         (error "the argument of (cicada-object->value) must be cicada-object"))
+        (:else
+         (fetch#byte-vector :byte-vector cicada-object
+                            :size *cell-unit*
+                            :index *cell-unit*))))
+(defun host-object? (x)
   (and (vector? x)
-       (equal? '(unsigned-byte 8)
-               (array-element-type x))
-       (= *cicada-object-size*
-          (array-dimension x 0))
-       (not
-        (nil?
-         (fetch#array
-          :array *title-table*
-          :index-vector (vector (fetch#byte-vector
-                                 :byte-vector x
-                                 :size *cell-unit*
-                                 :index 0)
-                                0))))
-       ))
+       (= 3 (array-dimension x
+                             0))
+       (equal? '<host-object>
+               (fetch#vector :vector x
+                             :index 0))
+       (title? (fetch#vector :vector x
+                             :index 1))))
 (defun host-object->cicada-object (host-object)
   (if (not (host-object? host-object))
-      (error "the argument of (host-object->cicada-object) must be checked by host-object?")
+      (error "the argument of (host-object->cicada-object) must be host-object")
       (make-cicada-object :title (fetch#vector :vector host-object
                                                :index 1)
                           :value (fetch#vector :vector host-object
                                                :index 2))))
 (defun cicada-object->host-object (cicada-object)
   (cond ((not (cicada-object? cicada-object))
-         (error "the argument of (cicada-object->host-object) must be checked by cicada-object?"))
+         (error "the argument of (cicada-object->host-object) must be cicada-object"))
         (:else
          `#(<host-object>
             ,(vector '<title>
-                     (fetch#byte-vector :byte-vector cicada-object
-                                        :size *cell-unit*
-                                        :index 0))
-            ,(fetch#byte-vector :byte-vector cicada-object
-                                :size *cell-unit*
-                                :index *cell-unit*)))
-        ))
+                     (cicada-object->title cicada-object))
+            ,(cicada-object->value cicada-object)))))
 ;; must be a prime number
 
 ;; 1000003  ;; about 976 k
@@ -74,15 +88,15 @@
 ;; 499
 ;; 230      ;; for a special test
 
-(defparameter *size#name-table*
-  100333)
+(defparameter *size#name-table* 100333)
 
-(defparameter *size#entry#name-table*
-  100)
+(defparameter *size#entry#name-table* 100)
 
 (defparameter *name-table*
   (make-array
-   (list *size#name-table* *size#entry#name-table*)
+   `(,*size#name-table* ,*size#entry#name-table*)
+   ;; note that
+   ;; this table's element can be of any type
    :initial-element nil))
 
 (defun index-within-name-table? (index)
@@ -322,15 +336,15 @@
         (explain :name name
                  :as as)
       find?))
-(defparameter *size#title-table*
-  1000)
+(defparameter *size#title-table* 1000)
 
-(defparameter *size#entry#title-table*
-  100)
+(defparameter *size#entry#title-table* 100)
 
 (defparameter *title-table*
   (make-array
-   (list *size#title-table* *size#entry#title-table*)
+   `(,*size#title-table* ,*size#entry#title-table*)
+   ;; note that
+   ;; this table's element can be of any type
    :initial-element nil))
 
 (defun index-within-title-table? (index)
@@ -537,6 +551,7 @@
 ;; one step of push pop is *cicada-object-size*
 (defparameter *pointer#return-stack* 0)
 
+;; explicitly change value to cicada-object before push
 (defun push#return-stack (cicada-object)
   (cond
     ((not (cicada-object? cicada-object))
@@ -548,31 +563,114 @@
      (error "can not push anymore *return-stack* is filled"))
 
     (:else
-     (let ()
-       (copy#byte-vector :from cicada-object
-                         :from-index 0
-                         :to *return-stack*
-                         :to-index (*  *pointer#return-stack*
-                                       *cicada-object-size*)
-                         :size *cicada-object-size*)
-       (setf *pointer#return-stack*
-             (add1 *pointer#return-stack*))
-       (values *pointer#return-stack*
-               cicada-object)))))
+     (copy#byte-vector :from cicada-object
+                       :from-index 0
+                       :to *return-stack*
+                       :to-index (*  *pointer#return-stack*
+                                     *cicada-object-size*)
+                       :size *cicada-object-size*)
+     (setf *pointer#return-stack*
+           (add1 *pointer#return-stack*))
+     (values *pointer#return-stack*
+             cicada-object))))
 
 (defun pop#return-stack ()
   (cond
     ((zero? *pointer#return-stack*)
      (error "can not pop anymore *return-stack* is empty"))
-
     (:else
-     (setf *pointer#return-stack*
-           (sub1 *pointer#return-stack*))
-     (values (fetch#byte-vector :byte-vector *return-stack*
-                                :index (*  *pointer#return-stack*
-                                           *cicada-object-size*))
-             *pointer#return-stack*))))
-;; (string->title "primitive-instruction")
+     (let ((cicada-object
+            (make-cicada-object
+             :title (string->title
+                     "pop#return-stack--make-cicada-object--to-return")
+             :value 0)))
+       (setf *pointer#return-stack*
+             (sub1 *pointer#return-stack*))
+       (copy#byte-vector :to cicada-object
+                         :to-index 0
+                         :from *return-stack*
+                         :from-index (*  *pointer#return-stack*
+                                         *cicada-object-size*)
+                         :size *cicada-object-size*)
+       (values cicada-object
+               *pointer#return-stack*)))))
+
+
+;; TOS denotes top of stack
+(defun tos#return-stack ()
+  (cond
+    ((zero? *pointer#return-stack*)
+     (error "can not pop anymore *return-stack* is empty"))
+    (:else
+     (let ((cicada-object
+            (make-cicada-object
+             :title (string->title
+                     "pop#return-stack--make-cicada-object--to-return")
+             :value 0)))
+       (copy#byte-vector :to cicada-object
+                         :to-index 0
+                         :from *return-stack*
+                         :from-index (*  (sub1 *pointer#return-stack*)
+                                         *cicada-object-size*)
+                         :size *cicada-object-size*)
+       (values cicada-object
+               (sub1 *pointer#return-stack*))))))
+(defun address->instruction (address)
+  ;; ><><>< maybe not only the function in the table's entry
+  (fetch#vector :vector *primitive-instruction-table*
+                :index address))
+(string->title "primitive-instruction")
+(defparameter *size#primitive-instruction-table* 1000)
+
+(defparameter *primitive-instruction-table*
+  (make-vector
+   :length *size#primitive-instruction-table*
+   ;; note that
+   ;; this table's element can be of any type
+   :initial-element nil))
+
+(defun index-within-primitive-instruction-table? (index)
+  (and (natural-number? index)
+       (< index *size#primitive-instruction-table*)))
+
+(defparameter *pointer#primitive-instruction-table* 0)
+(defparameter *size#cicada-image-buffer* 16)
+(defparameter *cicada-image-file* "test.image.iaa~")
+
+(defparameter *cicada-image-buffer*
+  (make-array `(,(*  *size#cicada-image-buffer*
+                     *cicada-object-size*))
+              :element-type '(unsigned-byte 8)
+              :initial-element 0))
+(progn
+  (setf stream (open (make-pathname :name *cicada-image-file*)
+                     :direction ':output
+                     :if-exists ':supersede))
+  (format stream "cicada test~%")
+  (close stream))
+
+(defun load-file (&key
+                    file
+                    buffer
+                    (buffer-boundary#lower 0)
+                    (buffer-boundary#uper nil))
+  (cond ((not (string? file))
+         (error "the argument :file of (load-file) must be a string"))
+        ((not (byte-vector? buffer))
+         (error "the argument :buffer of (load-file) must be a byte-vector"))
+        (:else
+         ;; return the index of the first byte of the buffer that was not updated
+         (read-sequence buffer
+                        (open (make-pathname :name file)
+                              :element-type '(unsigned-byte 8)
+                              :direction ':input)
+                        :start buffer-boundary#lower
+                        :end buffer-boundary#uper))))
+
+(load-file :file *cicada-image-file*
+           :buffer *cicada-image-buffer*)
+(string->title "body-pointer#vector-function")
 ;; (string->title "primitive-function")
 ;; call#primitive-function
 ;; tail-call#primitive-function
+;; push#return-stack

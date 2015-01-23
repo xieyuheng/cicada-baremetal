@@ -3,14 +3,30 @@
 #+EMAIL:  xyheme@gmail.com
 
 * TODO
-  * reading & writing image file
-  * vector-function
-  * the funciton (next)
-  * first version
-    without database of symbol usage
-    without resolving system
-  * parsing image file
-  * cicada-rhapsody
+** type check of function
+   * load-file
+     the argument :file should be of path type
+** about io
+   * 總應該使用 record 來記錄 io
+     record 是可以被作爲一等公民處理的
+   * record 應該可以被過濾
+     設計數據結構的時候需要考慮這一點
+   * 並且 record 的順序是極端重要的
+   * 輸入設備所產生的 record
+     將被作爲 消息 傳遞給 一個 底層的 loop
+     這在於 repl 並應該在回車的時候執行代碼
+     而應該有一個特殊的按鍵來控制代碼的執行
+     如果以 每次鍵盤的擊鍵爲輸入的話
+     repl 其實就是一個小型的文本編輯器了
+** note
+   * write image file
+   * vector-function
+   * the funciton (next)
+   * first version
+     without database of symbol usage
+     without resolving system
+   * parsing image file
+   * cicada-rhapsody
 * ===================================
 * system file
   #+begin_src lisp :tangle cicada-vm.asd
@@ -80,49 +96,48 @@
    (in-package :cicada-vm)
    #+end_src
 * -----------------------------------
-* cell
-** note
-   * in cicada
-     an object is two cell
-     one for title
-     one for value
-   * a cell is *cell-unit* many bytes
-     the title cell is just a index into title-table
-     the maening of the value cell is depends on its title
-   * in the host language of cicada
-     functions
-     (host-object->cicada-object)
-     (cicada-object->host-object)
-     are provided
+* cicada-object
 ** cell-unit
+   * a cell is of *cell-unit* many bytes
    #+begin_src lisp :tangle cicada-vm.lisp
-   (defparameter *cell-unit* 4) ;; 4 bytes
+   (defparameter *cell-unit* (/ *size#fixnum* 8)) ;; unit byte
+   #+end_src
+** cicada-object?
+   * an object is two cell
+     one for title (an index into title-table)
+     one for value (of which the meaning is depended on its title)
+   #+begin_src lisp :tangle cicada-vm.lisp
    (defparameter *cicada-object-size*
      (* 2 *cell-unit*))
-   #+end_src
-* interface between host and cicada
-** host-object?
-   #+begin_src lisp :tangle cicada-vm.lisp
-   (defun host-object? (x)
+
+   (defun cicada-object? (x)
      (and (vector? x)
-          (= 3 (array-dimension x
-                                0))
-          (equal? '<host-object>
-                  (fetch#vector :vector x
-                                :index 0))
-          (title? (fetch#vector :vector x
-                                :index 1))))
+          (equal? '(unsigned-byte 8) (array-element-type x))
+          (fixnum? (fetch#byte-vector :byte-vector x
+                                      :size *cell-unit*
+                                      :index 2))
+          (= *cicada-object-size*
+             (array-dimension x 0))
+          (not
+           (nil?
+            (fetch#array
+             :array *title-table*
+             :index-vector (vector (fetch#byte-vector
+                                    :byte-vector x
+                                    :size *cell-unit*
+                                    :index 0)
+                                   0))))))
    #+end_src
 ** test
    #+begin_src lisp :tangle cicada-vm.test.lisp
-   (deftest host-object?
+   (deftest cicada-object?
        (cicada-vm)
      (ensure
-         (host-object? #(<host-object>
-                         #(<title> 0)
-                         #(<name> 0)))
+         (cicada-object?
+          (make-cicada-object :title (string->title "kkk")
+                              :value 666))
          ==>
-         T))
+         t))
    #+end_src
 ** make-cicada-object
    #+begin_src lisp :tangle cicada-vm.lisp
@@ -161,41 +176,62 @@
          (list 666
                t)))
    #+end_src
-** cicada-object?
+** cicada-object->title & cicada-object->value
    #+begin_src lisp :tangle cicada-vm.lisp
-   (defun cicada-object? (x)
+   ;; these two funcitons return values to be use in host-language
+
+   (defun cicada-object->title (cicada-object)
+     (cond ((not (cicada-object? cicada-object))
+            (error "the argument of (cicada-object->title) must be cicada-object"))
+           (:else
+            (fetch#byte-vector :byte-vector cicada-object
+                               :size *cell-unit*
+                               :index 0))))
+
+   (defun cicada-object->value (cicada-object)
+     (cond ((not (cicada-object? cicada-object))
+            (error "the argument of (cicada-object->value) must be cicada-object"))
+           (:else
+            (fetch#byte-vector :byte-vector cicada-object
+                               :size *cell-unit*
+                               :index *cell-unit*))))
+   #+end_src
+* host-object
+** host-object?
+   * in host language
+     only three user defined datatypes should be provided
+   * I simply use a symbol in the host language as type-tag
+   * the three types are
+     <object>
+     <name>
+     <title>
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (defun host-object? (x)
      (and (vector? x)
-          (equal? '(unsigned-byte 8)
-                  (array-element-type x))
-          (= *cicada-object-size*
-             (array-dimension x 0))
-          (not
-           (nil?
-            (fetch#array
-             :array *title-table*
-             :index-vector (vector (fetch#byte-vector
-                                    :byte-vector x
-                                    :size *cell-unit*
-                                    :index 0)
-                                   0))))
-          ))
+          (= 3 (array-dimension x
+                                0))
+          (equal? '<host-object>
+                  (fetch#vector :vector x
+                                :index 0))
+          (title? (fetch#vector :vector x
+                                :index 1))))
    #+end_src
 ** test
    #+begin_src lisp :tangle cicada-vm.test.lisp
-   (deftest cicada-object?
+   (deftest host-object?
        (cicada-vm)
      (ensure
-         (cicada-object?
-          (make-cicada-object :title (string->title "kkk")
-                              :value 666))
+         (host-object? #(<host-object>
+                         #(<title> 0)
+                         #(<name> 0)))
          ==>
-         t))
+         T))
    #+end_src
 ** host-object->cicada-object
    #+begin_src lisp :tangle cicada-vm.lisp
    (defun host-object->cicada-object (host-object)
      (if (not (host-object? host-object))
-         (error "the argument of (host-object->cicada-object) must be checked by host-object?")
+         (error "the argument of (host-object->cicada-object) must be host-object")
          (make-cicada-object :title (fetch#vector :vector host-object
                                                   :index 1)
                              :value (fetch#vector :vector host-object
@@ -223,17 +259,12 @@
    #+begin_src lisp :tangle cicada-vm.lisp
    (defun cicada-object->host-object (cicada-object)
      (cond ((not (cicada-object? cicada-object))
-            (error "the argument of (cicada-object->host-object) must be checked by cicada-object?"))
+            (error "the argument of (cicada-object->host-object) must be cicada-object"))
            (:else
             `#(<host-object>
                ,(vector '<title>
-                        (fetch#byte-vector :byte-vector cicada-object
-                                           :size *cell-unit*
-                                           :index 0))
-               ,(fetch#byte-vector :byte-vector cicada-object
-                                   :size *cell-unit*
-                                   :index *cell-unit*)))
-           ))
+                        (cicada-object->title cicada-object))
+               ,(cicada-object->value cicada-object)))))
    #+end_src
 ** test
    #+begin_src lisp :tangle cicada-vm.test.lisp
@@ -249,43 +280,6 @@
          `#(<HOST-OBJECT>
             ,(string->title "testing#host-object->cicada-object")
             128)))
-   #+end_src
-* load image
-** note
-   * in the first few test versions
-     the image file will just be a vector-function-body
-** ><
-   #+begin_src lisp
-   (progn 
-    ;; form a (file . buffer) pair
-    (setf stream (open (make-pathname :name "cicada-image-file-test~")
-                       :direction ':output
-                       :if-exists ':supersede))
-    ;; edit the buffer
-    (format stream "cicada ~%")
-    ;; save-buffer-to-file
-    (close stream))
-
-   (defparameter *cicada-image-stream*
-     (open (make-pathname :name "cicada-image-file-test~")
-           :element-type '(unsigned-byte 8)
-           :direction ':input))
-
-   (defparameter *cicada-image-buffer*
-     (make-array '(100)
-                 :element-type '(unsigned-byte 8)
-                 :initial-element 0))
-
-   (values
-    (read-sequence *cicada-image-buffer*
-                   ,*cicada-image-stream*)
-    ,*cicada-image-buffer*)
-
-
-   (stream-read-byte )
-   (read-byte )
-
-   (dup#string )
    #+end_src
 * name-table
 ** note
@@ -307,7 +301,7 @@
      或它們的某個 域 同一
      這是爲了實現對多種人類語言的支持
      比如 英文 漢文 異體字
-** the name-table
+** name-table
    #+begin_src lisp :tangle cicada-vm.lisp
    ;; must be a prime number
 
@@ -320,15 +314,15 @@
    ;; 499
    ;; 230      ;; for a special test
 
-   (defparameter *size#name-table*
-     100333)
+   (defparameter *size#name-table* 100333)
 
-   (defparameter *size#entry#name-table*
-     100)
+   (defparameter *size#entry#name-table* 100)
 
    (defparameter *name-table*
      (make-array
-      (list *size#name-table* *size#entry#name-table*)
+      `(,*size#name-table* ,*size#entry#name-table*)
+      ;; note that
+      ;; this table's element can be of any type
       :initial-element nil))
 
    (defun index-within-name-table? (index)
@@ -708,17 +702,17 @@
        <name
        (ask)
    * every object have a title
-** the title-table
+** title-table
    #+begin_src lisp :tangle cicada-vm.lisp
-   (defparameter *size#title-table*
-     1000)
+   (defparameter *size#title-table* 1000)
 
-   (defparameter *size#entry#title-table*
-     100)
+   (defparameter *size#entry#title-table* 100)
 
    (defparameter *title-table*
      (make-array
-      (list *size#title-table* *size#entry#title-table*)
+      `(,*size#title-table* ,*size#entry#title-table*)
+      ;; note that
+      ;; this table's element can be of any type
       :initial-element nil))
 
    (defun index-within-title-table? (index)
@@ -1011,31 +1005,18 @@
    #+begin_src lisp :tangle cicada-vm.lisp
    (string->title "title")
    #+end_src
-* -----------------------------------
-* vector-function
-** note
-   * address in the vector-function zone
-** ><
-   #+begin_src lisp
-
-   #+end_src
-* pointer-into-vector-function-body
-** note
-   * with the title system
-     no (not much) global addresses will be used
-     the title of a poniter helps to make the poniter
-     become from an address to an index
 * return-stack
 ** note
    * return-stack is a stack of pointers
-     of which a pointer points into a function-body
+     a pointer points into a (one type of) function-body
    * the pointer on the top of return-stack
      always points into next instruction
-   * it is the vary callers that are moving
-     the pointer on the top of return-stack
+   * it is the vary callers
+     that are moving the pointer
+     which on the top of return-stack
      to the next instruction in a function-body
-   * it is the vary callers that are pushing or popping
-     the return-stack
+   * it is the vary callers
+     that are pushing or popping the return-stack
    * primitive-function
      1. at the begin
         the caller will move
@@ -1064,15 +1045,17 @@
      shoud contain the function-body and an index
    * vector-function 這個 title 下
      有能夠造
-     具有 pointer#vector-function-body 這個 title 的數據
+     具有 body-pointer#vector-function 這個 title
+     的數據
      的函數
-     而 pointer#vector-function-body 這個 title 下
-     有處理這個數據類型的函數
+     而 body-pointer#vector-function 這個 title 下
+     有處理這個數據類型
+     的函數
 ** (string->title "return-stack")
    #+begin_src lisp :tangle cicada-vm.lisp
    (string->title "return-stack")
    #+end_src
-** the return-stack
+** return-stack
    #+begin_src lisp :tangle cicada-vm.lisp
    (defparameter *size#return-stack* 1024)
 
@@ -1086,6 +1069,7 @@
    ;; one step of push pop is *cicada-object-size*
    (defparameter *pointer#return-stack* 0)
 
+   ;; explicitly change value to cicada-object before push
    (defun push#return-stack (cicada-object)
      (cond
        ((not (cicada-object? cicada-object))
@@ -1097,92 +1081,235 @@
         (error "can not push anymore *return-stack* is filled"))
 
        (:else
-        (let ()
-          (copy#byte-vector :from cicada-object
-                            :from-index 0
-                            :to *return-stack*
-                            :to-index (*  *pointer#return-stack*
-                                          ,*cicada-object-size*)
-                            :size *cicada-object-size*)
-          (setf *pointer#return-stack*
-                (add1 *pointer#return-stack*))
-          (values *pointer#return-stack*
-                  cicada-object)))))
+        (copy#byte-vector :from cicada-object
+                          :from-index 0
+                          :to *return-stack*
+                          :to-index (*  *pointer#return-stack*
+                                        ,*cicada-object-size*)
+                          :size *cicada-object-size*)
+        (setf *pointer#return-stack*
+              (add1 *pointer#return-stack*))
+        (values *pointer#return-stack*
+                cicada-object))))
 
    (defun pop#return-stack ()
      (cond
        ((zero? *pointer#return-stack*)
         (error "can not pop anymore *return-stack* is empty"))
-
        (:else
-        (setf *pointer#return-stack*
-              (sub1 *pointer#return-stack*))
-        (values (fetch#byte-vector :byte-vector *return-stack*
-                                   :index (*  *pointer#return-stack*
-                                              ,*cicada-object-size*))
-                ,*pointer#return-stack*))))
+        (let ((cicada-object
+               (make-cicada-object
+                :title (string->title
+                        "pop#return-stack--make-cicada-object--to-return")
+                :value 0)))
+          (setf *pointer#return-stack*
+                (sub1 *pointer#return-stack*))
+          (copy#byte-vector :to cicada-object
+                            :to-index 0
+                            :from *return-stack*
+                            :from-index (*  *pointer#return-stack*
+                                            ,*cicada-object-size*)
+                            :size *cicada-object-size*)
+          (values cicada-object
+                  ,*pointer#return-stack*)))))
 
+
+   ;; TOS denotes top of stack
+   (defun tos#return-stack ()
+     (cond
+       ((zero? *pointer#return-stack*)
+        (error "can not pop anymore *return-stack* is empty"))
+       (:else
+        (let ((cicada-object
+               (make-cicada-object
+                :title (string->title
+                        "pop#return-stack--make-cicada-object--to-return")
+                :value 0)))
+          (copy#byte-vector :to cicada-object
+                            :to-index 0
+                            :from *return-stack*
+                            :from-index (*  (sub1 *pointer#return-stack*)
+                                            ,*cicada-object-size*)
+                            :size *cicada-object-size*)
+          (values cicada-object
+                  (sub1 *pointer#return-stack*))))))
    #+end_src
 ** test
    #+begin_src lisp :tangle cicada-vm.test.lisp
    (deftest push#return-stack
        (cicada-vm)
      (ensure
-         (list (multiple-value-list
-                (push#return-stack
-                 (make-cicada-object :title (string->title "kkk")
-                                     :value 666)))
-               (multiple-value-list
-                (push#return-stack
-                 (make-cicada-object :title (string->title "kkk")
-                                     :value 666)))
-               (multiple-value-list
-                (pop#return-stack))
-               (multiple-value-list
-                (pop#return-stack)))
+         (multiple-value-bind
+               (pointer-index#1
+                cicada-object#1)
+             (push#return-stack
+              (make-cicada-object :title (string->title "kkk")
+                                  :value 666))
+           (multiple-value-bind
+                 (pointer-index#2
+                  cicada-object#2)
+               (push#return-stack
+                (make-cicada-object :title (string->title "kkk")
+                                    :value 666))
+             (list (- pointer-index#2
+                      pointer-index#1)
+                   (every (function equal?)
+                          cicada-object#1
+                          cicada-object#2)
+                   (every (function equal?)
+                          cicada-object#1
+                          (make-cicada-object :title (string->title "kkk")
+                                              :value 666))
+                   (equal? (car (cdr (multiple-value-list (pop#return-stack)))) (sub1 pointer-index#2))
+                   (equal? (car (cdr (multiple-value-list (tos#return-stack)))) (sub1 pointer-index#1))
+                   (every (function equal?)
+                          (pop#return-stack)
+                          (make-cicada-object :title (string->title "kkk")
+                                              :value 666))
+                   )))
          ==>
-         (list `(1 ,(make-cicada-object :title (string->title "kkk")
-                                        :value 666))
-               `(2 ,(make-cicada-object :title (string->title "kkk")
-                                        :value 666))
-               `(,(title->index (string->title "kkk"))
-                 1)
-               `(,(title->index (string->title "kkk"))
-                 0))))
+         (list 1
+               t
+               t
+               t
+               t
+               t)))
    #+end_src
-** >< next
-   #+begin_src lisp
-   (defun next ()
-     (let* ((pair (fetch
-                   (fetch#vector :vector *return-stack*
-                                 :index *pointer#return-stack*)))
-            (instruction-index (car pair))
-            (argument-object (cdr pair)))
-       (execute-instruction :instruction-index instruction-index
-                            :argument-object argument-object)))
+** next & execute-instruction
+   #+begin_src lisp :tangle cicada-vm.test.lisp
+   ;; the following two address#cicada-object can be index
 
-   (defun execute-instruction (&key
-                                 instruction-index
-                                 argument-object)
-     (funcall (fetch#vector :vector **
-                            :index instruction-index)
-              argument-object))
+   (defun next ()
+     (let* ((body-pointer (toc#return-stack))
+            ;; (title#body-pointer (cicada-object->title body-pointer))
+            (address#body-pointer (cicada-object->value body-pointer)))
+       (execute-instruction :instruction instruction
+                            :cicada-object cicada-object)))
+
+
+   ;; note that:
+   ;; this function defines the interface of primitive-instruction
+   ;; as:
+   ;; 1. (primitive-instruction host-object)
+   ;;    the return-stack will likely be updated by primitive-instruction
+   ;; 2. at the end of primitive-instruction 
+   ;;    the next will likely be called again
+   ;; compare this to really CPU to understand it
+
+   (defun execute-instruction
+       (&key
+          instruction
+          cicada-object)
+     (let (;; (title#instruction (cicada-object->title instruction))
+           (address#instruction (cicada-object->value instruction)))
+       (funcall (address->instruction address#instruction)
+                (cicada-object->host-object cicada-object))))
    #+end_src
-* argument-stack
-** the argument-stack
-* frame-stack
-** the frame-stack
-* instruction-return-stack
-  * in cicada language
-    you can extend the instruction set of the vm
-  * in the body of the definition of your instruction
-    when you call a cicada function
-    it will not use the return-stack to record the return point
-    but to use instruction-return-stack
-* primitive-instruction
-** create title
+** address->instruction
    #+begin_src lisp :tangle cicada-vm.lisp
-   ;; (string->title "primitive-instruction")
+   (defun address->instruction (address)
+     ;; ><><>< maybe not only the function in the table's entry
+     (fetch#vector :vector *primitive-instruction-table*
+                   :index address))
+   #+end_src
+* >< argument-stack
+* >< frame-stack
+* primitive-instruction
+** note
+   * instruction 都是在 title 下的
+     但是
+     在函數體中
+     所保存在 instruction 位置的 cicada-object
+     卻是 一個 instruction 的類型標籤
+     再加上其 address
+   * 函數體中
+     保存函數的位置也同樣如此
+     所保存的並不是名而是值
+     即 function 的 address
+   * 要注意 address 可以是 index
+     尤其是對於 instruction 而言
+     除非在匯編中用絕對地址
+     否則都只能使用 index
+     因爲 host-language 中
+     函數的絕對地址
+     不好保存在 cicada-object cell 中
+     因爲其絕對地址通常被認爲是用戶不可知的值
+** (string->title "primitive-instruction")
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (string->title "primitive-instruction")
+   #+end_src
+** primitive-instruction-table
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (defparameter *size#primitive-instruction-table* 1000)
+
+   (defparameter *primitive-instruction-table*
+     (make-vector
+      :length *size#primitive-instruction-table*
+      ;; note that
+      ;; this table's element can be of any type
+      :initial-element nil))
+
+   (defun index-within-primitive-instruction-table? (index)
+     (and (natural-number? index)
+          (< index *size#primitive-instruction-table*)))
+
+   (defparameter *pointer#primitive-instruction-table* 0)
+   #+end_src
+* load image
+** note
+   * in the first few test versions
+     the image file will just be a vector-function-body
+** *cicada-image-file* & *cicada-image-buffer*
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (defparameter *size#cicada-image-buffer* 16)
+   (defparameter *cicada-image-file* "test.image.iaa~")
+
+   (defparameter *cicada-image-buffer*
+     (make-array `(,(*  *size#cicada-image-buffer*
+                        ,*cicada-object-size*))
+                 :element-type '(unsigned-byte 8)
+                 :initial-element 0))
+   #+end_src
+** load-file
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (progn
+     (setf stream (open (make-pathname :name *cicada-image-file*)
+                        :direction ':output
+                        :if-exists ':supersede))
+     (format stream "cicada test~%")
+     (close stream))
+
+   (defun load-file (&key
+                       file
+                       buffer
+                       (buffer-boundary#lower 0)
+                       (buffer-boundary#uper nil))
+     (cond ((not (string? file))
+            (error "the argument :file of (load-file) must be a string"))
+           ((not (byte-vector? buffer))
+            (error "the argument :buffer of (load-file) must be a byte-vector"))
+           (:else
+            ;; return the index of the first byte of the buffer that was not updated
+            (read-sequence buffer
+                           (open (make-pathname :name file)
+                                 :element-type '(unsigned-byte 8)
+                                 :direction ':input)
+                           :start buffer-boundary#lower
+                           :end buffer-boundary#uper))))
+
+   (load-file :file *cicada-image-file*
+              :buffer *cicada-image-buffer*)
+   #+end_src
+* >< vector-function
+* >< body-pointer#vector-function
+** note
+   * with the title system
+     no (not much) global addresses will be used
+     the title of a poniter helps to make the poniter
+     become from an address to an index
+** (string->title "body-pointer#vector-function")
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (string->title "body-pointer#vector-function")
    #+end_src
 * primitive-function
 ** note
@@ -1198,56 +1325,19 @@
    ;; call#primitive-function
    ;; tail-call#primitive-function
    #+end_src
-* variable
-* bool
-** instruction
-   * bool#literal
-* fixnum
-** instruction
-   * fixnum#literal
-* -----------------------------------
-* compiler
-** note
-* -----------------------------------
-* threaded-code interpreter
-** note
-* -----------------------------------
-* cicada-rhapsody
-  #+begin_src lisp
-  (defun name-reader (stream char-bound-with-this-function)
-    (read#char :from stream
-               :recursive-call-to-reader? nil))
-
-  (bind-char-to-reader
-   (character "[")
-   (function name-reader))
-
-  ;; (find-reader-from-char (character "["))
-  (values [123])
-
-
-  (readtablep *readtable*)
-  (setq zvar 123)
-  (set-syntax-from-char
-   #\z #\'
-   (setq table2 (copy-readtable)))
-
-  (setq *readtable* table2)
-  ;; zvar =>  VAR
-  (setq *readtable* (copy-readtable nil))
-  ;; zvar =>  123
-
-  [ (cicada)
-
-  ]
-
-  ## cicada
-  ## end cicada
-
-  cicada.cicada
-  cicada.iaa
-  #+end_src
-* -----------------------------------
+* >< instruction-return-stack
+  * in cicada language
+    you can extend the instruction set of the vm
+  * in the body of the definition of your instruction
+    when you call a cicada function
+    it will not use the return-stack to record the return point
+    but to use instruction-return-stack
+* >< threaded-code interpreter
+** >< test
+   #+begin_src lisp :tangle cicada-vm.lisp
+   ;; push#return-stack
+   #+end_src
+* ===================================
 * test
   #+begin_src lisp
   (asdf:load-system "cicada-vm")
@@ -1256,4 +1346,3 @@
   (run-unit 'cicada-vm)
   #+end_src
 * ===================================
-

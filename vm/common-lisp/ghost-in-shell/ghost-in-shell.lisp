@@ -1,18 +1,18 @@
 (in-package :cicada-vm)
-(defun shell ()
+(defun gis ()
   (catch 'bye
     (welcome)
     (help#shell#loop)))
 
 (defun welcome ()
-  (newline)
-  (format t "  welcome to GIS ^-^ ~%"))
+  (cat (:to *standard-output*)
+    ("~%")
+    ("  welcome to GIS ^-^ ~%")))
 
 (defun prompt ()
-  (newline)
-  (format t "  [*]  ")
-  (format t "~A" *default-pathname-defaults*)
-  (newline))
+  (cat (:to *standard-output*)
+    ("~%")
+    ("   ~A~%" *default-pathname-defaults*)))
 
 (defun help#shell#loop ()
   (prompt)

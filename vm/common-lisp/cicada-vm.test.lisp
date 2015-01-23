@@ -1,12 +1,12 @@
 (in-package :cicada-vm)
-(deftest host-object?
+(deftest cicada-object?
     (cicada-vm)
   (ensure
-      (host-object? #(<host-object>
-                      #(<title> 0)
-                      #(<name> 0)))
+      (cicada-object?
+       (make-cicada-object :title (string->title "kkk")
+                           :value 666))
       ==>
-      T))
+      t))
 (deftest make-cicada-object
     (cicada-vm)
   (ensure
@@ -22,14 +22,14 @@
       ==>
       (list 666
             t)))
-(deftest cicada-object?
+(deftest host-object?
     (cicada-vm)
   (ensure
-      (cicada-object?
-       (make-cicada-object :title (string->title "kkk")
-                           :value 666))
+      (host-object? #(<host-object>
+                      #(<title> 0)
+                      #(<name> 0)))
       ==>
-      t))
+      T))
 (deftest host-object->cicada-object
     (cicada-vm)
   (ensure
@@ -190,24 +190,65 @@
 (deftest push#return-stack
     (cicada-vm)
   (ensure
-      (list (multiple-value-list
-             (push#return-stack
-              (make-cicada-object :title (string->title "kkk")
-                                  :value 666)))
-            (multiple-value-list
-             (push#return-stack
-              (make-cicada-object :title (string->title "kkk")
-                                  :value 666)))
-            (multiple-value-list
-             (pop#return-stack))
-            (multiple-value-list
-             (pop#return-stack)))
+      (multiple-value-bind
+            (pointer-index#1
+             cicada-object#1)
+          (push#return-stack
+           (make-cicada-object :title (string->title "kkk")
+                               :value 666))
+        (multiple-value-bind
+              (pointer-index#2
+               cicada-object#2)
+            (push#return-stack
+             (make-cicada-object :title (string->title "kkk")
+                                 :value 666))
+          (list (- pointer-index#2
+                   pointer-index#1)
+                (every (function equal?)
+                       cicada-object#1
+                       cicada-object#2)
+                (every (function equal?)
+                       cicada-object#1
+                       (make-cicada-object :title (string->title "kkk")
+                                           :value 666))
+                (equal? (car (cdr (multiple-value-list (pop#return-stack)))) (sub1 pointer-index#2))
+                (equal? (car (cdr (multiple-value-list (tos#return-stack)))) (sub1 pointer-index#1))
+                (every (function equal?)
+                       (pop#return-stack)
+                       (make-cicada-object :title (string->title "kkk")
+                                           :value 666))
+                )))
       ==>
-      (list `(1 ,(make-cicada-object :title (string->title "kkk")
-                                     :value 666))
-            `(2 ,(make-cicada-object :title (string->title "kkk")
-                                     :value 666))
-            `(,(title->index (string->title "kkk"))
-              1)
-            `(,(title->index (string->title "kkk"))
-              0))))
+      (list 1
+            t
+            t
+            t
+            t
+            t)))
+;; the following two address#cicada-object can be index
+
+(defun next ()
+  (let* ((body-pointer (toc#return-stack))
+         ;; (title#body-pointer (cicada-object->title body-pointer))
+         (address#body-pointer (cicada-object->value body-pointer)))
+    (execute-instruction :instruction instruction
+                         :cicada-object cicada-object)))
+
+
+;; note that:
+;; this function defines the interface of primitive-instruction
+;; as:
+;; 1. (primitive-instruction host-object)
+;;    the return-stack will likely be updated by primitive-instruction
+;; 2. at the end of primitive-instruction 
+;;    the next will likely be called again
+;; compare this to really CPU to understand it
+
+(defun execute-instruction
+    (&key
+       instruction
+       cicada-object)
+  (let (;; (title#instruction (cicada-object->title instruction))
+        (address#instruction (cicada-object->value instruction)))
+    (funcall (address->instruction address#instruction)
+             (cicada-object->host-object cicada-object))))

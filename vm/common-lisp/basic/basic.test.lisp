@@ -128,6 +128,8 @@
                           :endian 'big))
       ==>
       1234))
+(defun byte-vector? (x) 
+  (typep x '(vector (unsigned-byte 8))))
 (deftest fetch#byte-vector
     (basic)
   (ensure

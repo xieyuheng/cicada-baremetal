@@ -3,6 +3,7 @@
 #+EMAIL:  xyheme@gmail.com
 
 * TODO
+** maybe need a better fixnum?
 ** argument type check for the following functions
    * dup#string
    * edit#line-list
@@ -76,6 +77,14 @@
 * fixmun
 ** predicate
    #+begin_src lisp :tangle basic.lisp
+   (defparameter *size#fixnum* 32) ;; unit bit
+
+   (defun fixnum? (x)
+     (and (natural-number? x)
+          (< x
+             (expt 2 *size#fixnum*))))
+
+
    (defun zero? (x)
      (and (integerp x)
           (zerop x)))
@@ -267,6 +276,26 @@
    #+begin_src lisp :tangle basic.lisp
    (defun vector? (x)
      (vectorp x))
+   #+end_src
+** make-vector
+   #+begin_src lisp :tangle basic.lisp
+   (defun make-vector
+       (&key
+          length
+          element-type
+          initial-element
+          adjustable
+          fill-pointer
+          displaced-to
+          displaced-index-offset)
+     (make-array `(,length)
+                 :element-type element-type
+                 :initial-element initial-element
+                 :adjustable adjustable
+                 :fill-pointer fill-pointer
+                 :displaced-to displaced-to
+                 :displaced-index-offset displaced-index-offset))
+
    #+end_src
 ** fetch & save
    #+begin_src lisp :tangle basic.lisp
@@ -620,6 +649,11 @@
          1234))
    #+end_src
 * byte-vector
+** byte-vector?
+   #+begin_src lisp :tangle basic.test.lisp
+   (defun byte-vector? (x) 
+     (typep x '(vector (unsigned-byte 8))))
+   #+end_src
 ** fetch & save & copy
    #+begin_src lisp :tangle basic.lisp
    (defun fetch#byte-vector (&key
