@@ -204,27 +204,6 @@
   (format stream
           "[~A]"
           (name->string name)))
-;; <name
-;; <as
-;; <mean
-;; (be)
-
-;; <name
-;; <as
-;; (explain)
-
-
-
-;; interface:
-;; (multiple-value-bind
-;;       (field
-;;        update?
-;;        old-mean)
-;;     (be :name
-;;         :as
-;;         :mean )
-;;   ><><><)
-
 (defun be (&key
              name
              as
@@ -237,7 +216,6 @@
         (help#be :name-index name-index
                  :as-index as-index
                  :mean mean))))
-
 
 
 (defun help#be (&key
@@ -278,14 +256,6 @@
 
 
 
-;; interface:
-;; (multiple-value-bind
-;;       (mean
-;;        find?)
-;;     (explain :name
-;;              :as )
-;;   ><><><)
-
 (defun explain (&key
                   name
                   as)
@@ -296,7 +266,6 @@
             (as-index (name->index as)))
         (help#explain :name-index name-index
                       :as-index as-index))))
-
 
 
 (defun help#explain (&key
@@ -669,8 +638,4 @@
 
 (load-file :file *cicada-image-file*
            :buffer *cicada-image-buffer*)
-(string->title "body-pointer#vector-function")
-;; (string->title "primitive-function")
-;; call#primitive-function
-;; tail-call#primitive-function
 ;; push#return-stack

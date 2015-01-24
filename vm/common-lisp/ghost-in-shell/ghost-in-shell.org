@@ -2,7 +2,7 @@
 #+AUTHOR: 謝宇恆 / XIE Yuheng
 #+EMAIL:  xyheme@gmail.com
 
-* TODO
+* todo
   * 設計之初就需要考慮的有
     * 顏色 (加如 cat 中)
     * 提示符的定製

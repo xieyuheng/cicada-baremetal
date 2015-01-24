@@ -240,7 +240,7 @@
 ;; as:
 ;; 1. (primitive-instruction host-object)
 ;;    the return-stack will likely be updated by primitive-instruction
-;; 2. at the end of primitive-instruction 
+;; 2. at the end of primitive-instruction
 ;;    the next will likely be called again
 ;; compare this to really CPU to understand it
 

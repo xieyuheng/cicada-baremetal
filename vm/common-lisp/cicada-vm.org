@@ -2,7 +2,60 @@
 #+AUTHOR: 謝宇恆 / XIE Yuheng
 #+EMAIL:  xyheme@gmail.com
 
-* TODO
+* todo
+** 簡化接口
+   * name-table 被優化爲一維數組
+     即之讓其中有一個 title field
+     並且把其接口隱藏起來
+   * 這樣 接口就被簡化了
+     之所以這樣做的原因是
+     我發現在使用了 title 這個概念之後
+     在 name-table 中根本不會保存 title 之外的東西
+     畢竟在之後的蟬語中 所有的東西都是有 title 的
+     [除非 "所有的東西都是有 title 的" 的狀況需要被改變]
+   * 哪種纔是正確的設計決策 ?
+     優化 name-table 就能簡化實現
+     並且 簡化接口 [即使用方式]
+     並且 減少爲了理解整個系統而所需要掌握的概念的個數
+     應該做哪種決策看來是簡單的
+     解法似乎是唯一的
+   * 一個有兩個參數的數據庫
+   * 之所以要使用兩個 table 是因爲這樣可以節省內存
+** 更改命名規則
+   * 命名規則 需要體現其意義:
+     name#hash-table
+     title.name#table
+     primitive-function#table
+     這三種 table 之性質本來就不同
+     現在依其名即可知之
+   * 現在的情況是
+     每個 entry of name#hash-table 下有兩個數據與
+     一個是 string 一個是 index into title.name#table
+   * 這樣
+     接口就被簡化爲了
+   * the interface is as
+     * <title
+       <name
+       <object
+       (be)
+     * <title
+       <name
+       (ask)
+   * 注意這裏 name 和 title 還是作爲分離的兩個數據結構的
+** primitive-function#table 的合理性
+   * 我想 以 primitive 爲名的數據類型中
+     還有很多東西要被 table 來實現
+** refine the interface of each table
+   * name-table 和 title-table 中的 [0 0] 號項
+     都不用
+     這樣
+     在 low-level port 中
+     只要看一個位置是否是 0
+     就可以判斷是否這個位置已經被使用
+     也可以用以儲存 table 的 meta data
+     並不必有很大的修改
+     只要事先存入一個東西把這個位置佔住就可以了
+   * 作爲一維數組的 各個 table 也是如此
 ** type check of function
    * load-file
      the argument :file should be of path type
@@ -18,15 +71,14 @@
      而應該有一個特殊的按鍵來控制代碼的執行
      如果以 每次鍵盤的擊鍵爲輸入的話
      repl 其實就是一個小型的文本編輯器了
-** note
-   * write image file
-   * vector-function
-   * the funciton (next)
-   * first version
-     without database of symbol usage
-     without resolving system
-   * parsing image file
-   * cicada-rhapsody
+** write image file
+** vector-function
+** the funciton (next)
+** first version
+   without database of symbol usage
+   without resolving system
+** parsing image file
+** cicada-rhapsody
 * ===================================
 * system file
   #+begin_src lisp :tangle cicada-vm.asd
@@ -38,15 +90,20 @@
     :depends-on ()
     :serial t
     :components
-    ((:module :package-header
+    ((:module #:package-header
               :components
               ((:file "package-header")))
-     (:module :basic
+     (:module #:basic
               :components
-              ((:file "basic")
-               (:file "basic.test"
+              ((:file "basic")))
+     (:module #:little-tester
+              :components
+              ((:file "little-tester")))
+     (:module #:basic.test :pathname "basic"
+              :components
+              ((:file "basic.test"
                       :if-feature :with-little-test)))
-     (:module :ghost-in-shell
+     (:module #:ghost-in-shell
               :components
               ((:file "ghost-in-shell")
                (:file "ghost-in-shell.test"
@@ -97,11 +154,13 @@
    #+end_src
 * -----------------------------------
 * cicada-object
+** ----------------------------------
 ** cell-unit
    * a cell is of *cell-unit* many bytes
    #+begin_src lisp :tangle cicada-vm.lisp
    (defparameter *cell-unit* (/ *size#fixnum* 8)) ;; unit byte
    #+end_src
+** ----------------------------------
 ** cicada-object?
    * an object is two cell
      one for title (an index into title-table)
@@ -139,6 +198,7 @@
          ==>
          t))
    #+end_src
+** ----------------------------------
 ** make-cicada-object
    #+begin_src lisp :tangle cicada-vm.lisp
    (defun make-cicada-object (&key
@@ -176,6 +236,7 @@
          (list 666
                t)))
    #+end_src
+** ----------------------------------
 ** cicada-object->title & cicada-object->value
    #+begin_src lisp :tangle cicada-vm.lisp
    ;; these two funcitons return values to be use in host-language
@@ -196,7 +257,9 @@
                                :size *cell-unit*
                                :index *cell-unit*))))
    #+end_src
+** ----------------------------------
 * host-object
+** ----------------------------------
 ** host-object?
    * in host language
      only three user defined datatypes should be provided
@@ -227,6 +290,7 @@
          ==>
          T))
    #+end_src
+** ----------------------------------
 ** host-object->cicada-object
    #+begin_src lisp :tangle cicada-vm.lisp
    (defun host-object->cicada-object (host-object)
@@ -255,6 +319,7 @@
                   128 0 0 0)
                `128)))
    #+end_src
+** ----------------------------------
 ** cicada-object->host-object
    #+begin_src lisp :tangle cicada-vm.lisp
    (defun cicada-object->host-object (cicada-object)
@@ -281,8 +346,10 @@
             ,(string->title "testing#host-object->cicada-object")
             128)))
    #+end_src
+** ----------------------------------
 * name-table
-** note
+** ----------------------------------
+** note name
    * everything about name
      will be implemented by the name-table
    * a symbol is a index into name-table
@@ -291,16 +358,22 @@
        <as
        <mean
        (be)
+       <field
+       <update?
+       <old-mean
      * <name
        <as
        (explain)
-** number theory and hash function
+       <mean
+       <find?
+** note number theory and hash function
    * 也許 hash function 可以動態地改變自己
      例如
      需要能夠聲明兩個 symbol 完全同一
      或它們的某個 域 同一
      這是爲了實現對多種人類語言的支持
      比如 英文 漢文 異體字
+** ----------------------------------
 ** name-table
    #+begin_src lisp :tangle cicada-vm.lisp
    ;; must be a prime number
@@ -329,6 +402,7 @@
      (and (natural-number? index)
           (< index *size#name-table*)))
    #+end_src
+** ----------------------------------
 ** string->natural-number
    #+begin_src lisp :tangle cicada-vm.lisp
    (defparameter *max-carry-position* 22)
@@ -367,6 +441,7 @@
                64
                448)))
    #+end_src
+** ----------------------------------
 ** natural-number->index
    #+begin_src lisp :tangle cicada-vm.lisp
    (defun natural-number->index (natural-number)
@@ -387,6 +462,7 @@
                123
                0)))
    #+end_src
+** ----------------------------------
 ** name?
    #+begin_src lisp :tangle cicada-vm.lisp
    (defun name? (x)
@@ -409,6 +485,7 @@
          ==>
          t))
    #+end_src
+** ----------------------------------
 ** name->index
    #+begin_src lisp :tangle cicada-vm.lisp
    (defun name->index (name)
@@ -486,6 +563,7 @@
          ==>
          "kkk took my baby away!"))
    #+end_src
+** ----------------------------------
 ** print-name
    #+begin_src lisp :tangle cicada-vm.lisp
    (defun print-name (name
@@ -509,29 +587,9 @@
          ==>
          "[kkk took my baby away!]"))
    #+end_src
+** ----------------------------------
 ** be & explain
    #+begin_src lisp :tangle cicada-vm.lisp
-   ;; <name
-   ;; <as
-   ;; <mean
-   ;; (be)
-
-   ;; <name
-   ;; <as
-   ;; (explain)
-
-
-
-   ;; interface:
-   ;; (multiple-value-bind
-   ;;       (field
-   ;;        update?
-   ;;        old-mean)
-   ;;     (be :name
-   ;;         :as
-   ;;         :mean )
-   ;;   ><><><)
-
    (defun be (&key
                 name
                 as
@@ -544,7 +602,6 @@
            (help#be :name-index name-index
                     :as-index as-index
                     :mean mean))))
-
 
 
    (defun help#be (&key
@@ -585,14 +642,6 @@
 
 
 
-   ;; interface:
-   ;; (multiple-value-bind
-   ;;       (mean
-   ;;        find?)
-   ;;     (explain :name
-   ;;              :as )
-   ;;   ><><><)
-
    (defun explain (&key
                      name
                      as)
@@ -603,7 +652,6 @@
                (as-index (name->index as)))
            (help#explain :name-index name-index
                          :as-index as-index))))
-
 
 
    (defun help#explain (&key
@@ -659,6 +707,7 @@
                  :found!!!))
        ))
    #+end_src
+** ----------------------------------
 ** meaningful?
    #+begin_src lisp :tangle cicada-vm.lisp
    (defun meaningful? (&key
@@ -682,9 +731,11 @@
          ==>
          :found!!!))
    #+end_src
+** ----------------------------------
 * title-table
+** ----------------------------------
 ** note
-   * title is the way I used to manage name of things
+   * title is the way I used to manage nameing of things
      a title can be viewed as
      a type
      a module
@@ -702,6 +753,7 @@
        <name
        (ask)
    * every object have a title
+** ----------------------------------
 ** title-table
    #+begin_src lisp :tangle cicada-vm.lisp
    (defparameter *size#title-table* 1000)
@@ -721,6 +773,7 @@
 
    (defparameter *pointer#title-table* 0)
    #+end_src
+** ----------------------------------
 ** string->title
    #+begin_src lisp :tangle cicada-vm.lisp
    (defun string->title (string)
@@ -753,6 +806,7 @@
          (:else
           (error "title-table is filled, can not make new title")))))
    #+end_src
+** ----------------------------------
 ** title?
    #+begin_src lisp :tangle cicada-vm.lisp
    (defun title? (x)
@@ -778,6 +832,7 @@
          (list t
                t)))
    #+end_src
+** ----------------------------------
 ** title->index
    #+begin_src lisp :tangle cicada-vm.lisp
    (defun title->index (title)
@@ -798,6 +853,7 @@
          ==>
          1))
    #+end_src
+** ----------------------------------
 ** entitle & ask
    #+begin_src lisp :tangle cicada-vm.lisp
    ;; <title
@@ -955,6 +1011,7 @@
                `(#(<host-object> ,(string->title "my") "baby away!")
                   :found!!!))))
     #+end_src
+** ----------------------------------
 ** entitled?
    #+begin_src lisp :tangle cicada-vm.lisp
    (defun entitled? (&key
@@ -977,6 +1034,7 @@
          ==>
          :found!!!))
    #+end_src
+** ----------------------------------
 ** print-title
    #+begin_src lisp :tangle cicada-vm.lisp
    (defun print-title (title &key (stream t))
@@ -1001,11 +1059,14 @@
          ==>
          "[title]"))
    #+end_src
+** ----------------------------------
 ** (string->title "title")
    #+begin_src lisp :tangle cicada-vm.lisp
    (string->title "title")
    #+end_src
+** ----------------------------------
 * return-stack
+** ----------------------------------
 ** note
    * return-stack is a stack of pointers
      a pointer points into a (one type of) function-body
@@ -1051,10 +1112,12 @@
      而 body-pointer#vector-function 這個 title 下
      有處理這個數據類型
      的函數
+** ----------------------------------
 ** (string->title "return-stack")
    #+begin_src lisp :tangle cicada-vm.lisp
    (string->title "return-stack")
    #+end_src
+** ----------------------------------
 ** return-stack
    #+begin_src lisp :tangle cicada-vm.lisp
    (defparameter *size#return-stack* 1024)
@@ -1175,6 +1238,7 @@
                t
                t)))
    #+end_src
+** ----------------------------------
 ** next & execute-instruction
    #+begin_src lisp :tangle cicada-vm.test.lisp
    ;; the following two address#cicada-object can be index
@@ -1192,7 +1256,7 @@
    ;; as:
    ;; 1. (primitive-instruction host-object)
    ;;    the return-stack will likely be updated by primitive-instruction
-   ;; 2. at the end of primitive-instruction 
+   ;; 2. at the end of primitive-instruction
    ;;    the next will likely be called again
    ;; compare this to really CPU to understand it
 
@@ -1205,6 +1269,7 @@
        (funcall (address->instruction address#instruction)
                 (cicada-object->host-object cicada-object))))
    #+end_src
+** ----------------------------------
 ** address->instruction
    #+begin_src lisp :tangle cicada-vm.lisp
    (defun address->instruction (address)
@@ -1212,10 +1277,18 @@
      (fetch#vector :vector *primitive-instruction-table*
                    :index address))
    #+end_src
-* >< argument-stack
-* >< frame-stack
-* primitive-instruction
+** ----------------------------------
+* primitive-instruction-table
+** ----------------------------------
 ** note
+   * 必須用 table 來實現
+     primitive-instruction 這個數據結構
+     因爲否則就難以把它轉碼爲 cicada-object
+     或者說 只有這樣 我才能給 這個數據結構更豐富的性質
+     因爲
+     除了找到那個 primitive-instruction 本身
+     在 host language 中的位置以外
+     我還可以增加別的數據域
    * instruction 都是在 title 下的
      但是
      在函數體中
@@ -1234,10 +1307,12 @@
      函數的絕對地址
      不好保存在 cicada-object cell 中
      因爲其絕對地址通常被認爲是用戶不可知的值
+** ----------------------------------
 ** (string->title "primitive-instruction")
    #+begin_src lisp :tangle cicada-vm.lisp
    (string->title "primitive-instruction")
    #+end_src
+** ----------------------------------
 ** primitive-instruction-table
    #+begin_src lisp :tangle cicada-vm.lisp
    (defparameter *size#primitive-instruction-table* 1000)
@@ -1255,10 +1330,16 @@
 
    (defparameter *pointer#primitive-instruction-table* 0)
    #+end_src
+** ----------------------------------
+* >< primitive-function-table
+* >< argument-stack
+* >< frame-stack
 * load image
+** ----------------------------------
 ** note
    * in the first few test versions
      the image file will just be a vector-function-body
+** ----------------------------------
 ** *cicada-image-file* & *cicada-image-buffer*
    #+begin_src lisp :tangle cicada-vm.lisp
    (defparameter *size#cicada-image-buffer* 16)
@@ -1270,6 +1351,7 @@
                  :element-type '(unsigned-byte 8)
                  :initial-element 0))
    #+end_src
+** ----------------------------------
 ** load-file
    #+begin_src lisp :tangle cicada-vm.lisp
    (progn
@@ -1300,6 +1382,7 @@
    (load-file :file *cicada-image-file*
               :buffer *cicada-image-buffer*)
    #+end_src
+** ----------------------------------
 * >< vector-function
 * >< body-pointer#vector-function
 ** note
@@ -1307,33 +1390,16 @@
      no (not much) global addresses will be used
      the title of a poniter helps to make the poniter
      become from an address to an index
-** (string->title "body-pointer#vector-function")
-   #+begin_src lisp :tangle cicada-vm.lisp
-   (string->title "body-pointer#vector-function")
-   #+end_src
-* primitive-function
-** note
-   * 函數的調用 和 函數的返回值
-     argument-stack 和 return-stack 和 frame-stack
-     這裏就涉及到了不同模塊的東西之間的依賴關係
-** create title
-   #+begin_src lisp :tangle cicada-vm.lisp
-   ;; (string->title "primitive-function")
-   #+end_src
-** instruction
-   #+begin_src lisp :tangle cicada-vm.lisp
-   ;; call#primitive-function
-   ;; tail-call#primitive-function
-   #+end_src
 * >< instruction-return-stack
-  * in cicada language
-    you can extend the instruction set of the vm
-  * in the body of the definition of your instruction
-    when you call a cicada function
-    it will not use the return-stack to record the return point
-    but to use instruction-return-stack
+** note
+   * in cicada language
+     you can extend the instruction set of the vm
+   * in the body of the definition of your instruction
+     when you call a cicada function
+     it will not use the return-stack to record the return point
+     but to use instruction-return-stack
 * >< threaded-code interpreter
-** >< test
+** test
    #+begin_src lisp :tangle cicada-vm.lisp
    ;; push#return-stack
    #+end_src

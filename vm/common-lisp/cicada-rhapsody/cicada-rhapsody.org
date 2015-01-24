@@ -2,7 +2,8 @@
 #+AUTHOR: 謝宇恆 / XIE Yuheng
 #+EMAIL:  xyheme@gmail.com
 
-* TODO
+* todo
+  * 相關工作將在 cicada-vm 之後進行
 * ===================================
 * >< note
 * -----------------------------------
@@ -50,5 +51,13 @@
 
   cicada.cicada
   cicada.iaa
+  #+end_src
+* reader
+  #+begin_src lisp
+  (defun bind-char-to-reader (char reader)
+    (set-macro-character char reader))
+
+  (defun find-reader-from-char (char)
+    (get-macro-character char))
   #+end_src
 * ===================================

@@ -6,15 +6,20 @@
   :depends-on ()
   :serial t
   :components
-  ((:module :package-header
+  ((:module #:package-header
             :components
             ((:file "package-header")))
-   (:module :basic
+   (:module #:basic
             :components
-            ((:file "basic")
-             (:file "basic.test"
+            ((:file "basic")))
+   (:module #:little-tester
+            :components
+            ((:file "little-tester")))
+   (:module #:basic.test :pathname "basic"
+            :components
+            ((:file "basic.test"
                     :if-feature :with-little-test)))
-   (:module :ghost-in-shell
+   (:module #:ghost-in-shell
             :components
             ((:file "ghost-in-shell")
              (:file "ghost-in-shell.test"
