@@ -13,23 +13,24 @@
                 :name (string->name "took")
                 :title#object (string->title "my")
                 :value#object 666)
-            (multiple-value-list
-             (be :title (string->title "kkk")
-                 :name (string->name "took")
-                 :title#object (string->title "my")
-                 :value#object 666))
-            (multiple-value-list
-             (ask :title (string->title "kkk")
-                  :name (string->name "took"))))
+            (with (be :title (string->title "kkk")
+                      :name (string->name "took")
+                      :title#object (string->title "my")
+                      :value#object 666)
+                  (list .field .update?))
+            (with (ask :title (string->title "kkk")
+                       :name (string->name "took"))
+                  (list .title .value .found?)))
       ==>
       `(1
-
+     
         (1
          :UPDATED!!!)
 
         (,(string->title "my")
           666
-          :FOUND!!!)        
+          :FOUND!!!)
+     
         )))
 (deftest string->natural-number
     (cicada-vm)
@@ -65,49 +66,25 @@
             (push#return-stack
              :title (string->title "return-stack--push--test#2")
              :value 258)
-         
+
             (push#return-stack
              :title (string->title "return-stack--push--test#3")
              :value 369)
 
-            (multiple-value-bind
-                  (title
-                   value
-                   current-pointer)
-                (tos#return-stack)
-              value)
-            (multiple-value-bind
-                  (title
-                   value
-                   current-pointer)
-                (pop#return-stack)
-              value)
+            (with (tos#return-stack)
+                  .value)
+            (with (pop#return-stack)
+                  .value)
 
-            (multiple-value-bind
-                  (title
-                   value
-                   current-pointer)
-                (tos#return-stack)
-              value)
-            (multiple-value-bind
-                  (title
-                   value
-                   current-pointer)
-                (pop#return-stack)
-              value)
+            (with (tos#return-stack)
+                  .value)
+            (with (pop#return-stack)
+                  .value)
 
-            (multiple-value-bind
-                  (title
-                   value
-                   current-pointer)
-                (tos#return-stack)
-              value)
-            (multiple-value-bind
-                  (title
-                   value
-                   current-pointer)
-                (pop#return-stack)
-              value))
+            (with (tos#return-stack)
+                  .value)
+            (with (pop#return-stack)
+                  .value))
       ==>
       (list 1
             2

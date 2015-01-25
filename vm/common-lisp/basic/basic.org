@@ -920,6 +920,12 @@
      (intern string))
    #+end_src
 ** ----------------------------------
+** put
+   #+begin_src lisp :tangle basic.lisp
+   (defmacro put (symbol field-symbol value)  
+     `(setf (get ,symbol ,field-symbol) ,value))
+   #+end_src
+** ----------------------------------
 * string
 ** ----------------------------------
 ** predicate
@@ -1394,6 +1400,26 @@
    #+begin_src lisp :tangle basic.lisp
    (defun return-zero-value ()
      (values))
+
+   ;; define-interface
+   (defmacro defin
+       (function-name
+        &body
+          bounded-variable-list)
+     `(put (quote ,function-name) (quote interface)
+           (quote ,bounded-variable-list)))
+
+   (defmacro with (&body body)
+     (let* ((function-call (car body))
+            (function-name (car function-call))
+            (bounded-variable-list
+             (get function-name 'interface)))
+       (if (nil? bounded-variable-list)
+           (error "this function have no interface")
+           `(multiple-value-bind
+                  ,bounded-variable-list
+                ,function-call
+              ,@(cdr body)))))
    #+end_src
 ** ----------------------------------
 * line-list

@@ -553,6 +553,8 @@
 
 (defun string->symbol (string)
   (intern string))
+(defmacro put (symbol field-symbol value)  
+  `(setf (get ,symbol ,field-symbol) ,value))
 (defun string? (x)
   (stringp x))
 
@@ -766,6 +768,26 @@
               list)))))
 (defun return-zero-value ()
   (values))
+
+;; define-interface
+(defmacro defin
+    (function-name
+     &body
+       bounded-variable-list)
+  `(put (quote ,function-name) (quote interface)
+        (quote ,bounded-variable-list)))
+
+(defmacro with (&body body)
+  (let* ((function-call (car body))
+         (function-name (car function-call))
+         (bounded-variable-list
+          (get function-name 'interface)))
+    (if (nil? bounded-variable-list)
+        (error "this function have no interface")
+        `(multiple-value-bind
+               ,bounded-variable-list
+             ,function-call
+           ,@(cdr body)))))
 ;; note the order
 (defun edit#line-list
     (&key

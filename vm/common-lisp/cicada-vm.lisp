@@ -12,7 +12,7 @@
     (&key
        title
        cicada-object-vector
-       index)  
+       index)
   (save#byte-vector :value title
                     :byte-vector cicada-object-vector
                     :size *cell-unit*
@@ -23,7 +23,7 @@
     (&key
        value
        cicada-object-vector
-       index) 
+       index)
   (save#byte-vector :value value
                     :byte-vector cicada-object-vector
                     :size *cell-unit*
@@ -33,9 +33,9 @@
 
 
 (defun fetch#title#cicada-object-vector
-    (&key       
+    (&key
        cicada-object-vector
-       index)  
+       index)
   (fetch#byte-vector :byte-vector cicada-object-vector
                      :size *cell-unit*
                      :index (mul *cicada-object-size*
@@ -44,7 +44,7 @@
 (defun fetch#value#cicada-object-vector
     (&key
        cicada-object-vector
-       index) 
+       index)
   (fetch#byte-vector :byte-vector cicada-object-vector
                      :size *cell-unit*
                      :index (add *cell-unit*
@@ -127,6 +127,9 @@
       (error "the argument of (print-title) must be a title")
       (print-name (title->name title)
                   :stream stream)))
+(defin be
+  .field ;; index
+  .update?)
 (defun be
     (&key
        title
@@ -193,14 +196,10 @@
       ;; filled
       (:else
        (error "the names under this title is too filled (be) can not do")))))
-`interface
-`(multiple-value-bind
-       (title
-        value
-        found?)
-     (ask :title
-          :name )
-   ><><><)
+(defin ask
+  .title
+  .value
+  .found?)
 (defun ask
     (&key
        title
@@ -409,13 +408,10 @@
            *pointer#return-stack*)))
 
 
-`interface
-`(multiple-value-bind
-       (title
-        value
-        current-pointer)
-     (pop#return-stack)
-   ><><><)
+(defin pop#return-stack
+  .title
+  .value
+  .current-pointer)
 (defun pop#return-stack ()
   (cond
     ((zero? *pointer#return-stack*)
@@ -423,7 +419,7 @@
               ("when call (pop#return-stack)~%")
               ("the *return-stack* must not be empty"))))
     (:else
-     (sub1! *pointer#return-stack*)           
+     (sub1! *pointer#return-stack*)
      (values (fetch#title#cicada-object-vector
               :cicada-object-vector *return-stack*
               :index *pointer#return-stack*)
@@ -435,20 +431,17 @@
 
 
 ;; TOS denotes top of stack
-`interface
-`(multiple-value-bind
-       (title
-        value
-        current-pointer)
-     (tos#return-stack)
-   ><><><)
+(defin tos#return-stack
+  .title
+  .value
+  .current-pointer)
 (defun tos#return-stack ()
   (cond
     ((zero? *pointer#return-stack*)
      (error (cat ()
               ("when call (tos#return-stack)~%")
               ("the *return-stack* must not be empty"))))
-    (:else                
+    (:else
      (values (fetch#title#cicada-object-vector
               :cicada-object-vector *return-stack*
               :index (sub1 *pointer#return-stack*))

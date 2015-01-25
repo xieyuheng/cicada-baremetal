@@ -3,6 +3,7 @@
 #+EMAIL:  xyheme@gmail.com
 
 * todo
+** interface to cicada image buffer
 ** primitive-function-table 的合理性
    * 我想 以 primitive 爲名的數據類型中
      還有很多東西要被 table 來實現
@@ -188,6 +189,8 @@
                                          index))))
    #+end_src
 ** ----------------------------------
+** cicada-object-pointer?
+** ----------------------------------
 * title.name-table
 ** ----------------------------------
 ** note title
@@ -324,6 +327,9 @@
 ** ----------------------------------
 ** be
    #+begin_src lisp :tangle cicada-vm.lisp
+   (defin be
+     .field ;; index
+     .update?)
    (defun be
        (&key
           title
@@ -393,14 +399,10 @@
    #+end_src
 ** ask
    #+begin_src lisp :tangle cicada-vm.lisp
-   `interface
-   `(multiple-value-bind
-          (title
-           value
-           found?)
-        (ask :title
-             :name )
-      ><><><)
+   (defin ask
+     .title
+     .value
+     .found?)
    (defun ask
        (&key
           title
@@ -459,14 +461,14 @@
                    :name (string->name "took")
                    :title#object (string->title "my")
                    :value#object 666)
-               (multiple-value-list
-                (be :title (string->title "kkk")
-                    :name (string->name "took")
-                    :title#object (string->title "my")
-                    :value#object 666))
-               (multiple-value-list
-                (ask :title (string->title "kkk")
-                     :name (string->name "took"))))
+               (with (be :title (string->title "kkk")
+                         :name (string->name "took")
+                         :title#object (string->title "my")
+                         :value#object 666)
+                 (list .field .update?))
+               (with (ask :title (string->title "kkk")
+                          :name (string->name "took"))
+                 (list .title .value .found?)))
          ==>
          `(1
 
@@ -476,6 +478,7 @@
            (,(string->title "my")
              666
              :FOUND!!!)
+
            )))
     #+end_src
 ** ----------------------------------
@@ -712,7 +715,7 @@
      有處理這個數據類型
      的函數
 ** ----------------------------------
-** return-stack
+** the return-stack
    * the following functions
      should be used like assembly macro
    #+begin_src lisp :tangle cicada-vm.lisp
@@ -726,7 +729,9 @@
    ;; pointer is an index into *return-stack*
    ;; one step of push pop is *cicada-object-size*
    (defparameter *pointer#return-stack* 0)
-
+   #+end_src
+** push#return-stack
+   #+begin_src lisp :tangle cicada-vm.lisp
    (defun push#return-stack
        (&key
           title
@@ -754,15 +759,13 @@
               (add1! *pointer#return-stack*)
               ;; return current-pointer
               ,*pointer#return-stack*)))
-
-
-   `interface
-   `(multiple-value-bind
-          (title
-           value
-           current-pointer)
-        (pop#return-stack)
-      ><><><)
+   #+end_src
+** pop#return-stack & tos#return-stack
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (defin pop#return-stack
+     .title
+     .value
+     .current-pointer)
    (defun pop#return-stack ()
      (cond
        ((zero? *pointer#return-stack*)
@@ -782,13 +785,10 @@
 
 
    ;; TOS denotes top of stack
-   `interface
-   `(multiple-value-bind
-          (title
-           value
-           current-pointer)
-        (tos#return-stack)
-      ><><><)
+   (defin tos#return-stack
+     .title
+     .value
+     .current-pointer)
    (defun tos#return-stack ()
      (cond
        ((zero? *pointer#return-stack*)
@@ -821,44 +821,20 @@
                 :title (string->title "return-stack--push--test#3")
                 :value 369)
 
-               (multiple-value-bind
-                     (title
-                      value
-                      current-pointer)
-                   (tos#return-stack)
-                 value)
-               (multiple-value-bind
-                     (title
-                      value
-                      current-pointer)
-                   (pop#return-stack)
-                 value)
+               (with (tos#return-stack)
+                 .value)
+               (with (pop#return-stack)
+                 .value)
 
-               (multiple-value-bind
-                     (title
-                      value
-                      current-pointer)
-                   (tos#return-stack)
-                 value)
-               (multiple-value-bind
-                     (title
-                      value
-                      current-pointer)
-                   (pop#return-stack)
-                 value)
+               (with (tos#return-stack)
+                 .value)
+               (with (pop#return-stack)
+                 .value)
 
-               (multiple-value-bind
-                     (title
-                      value
-                      current-pointer)
-                   (tos#return-stack)
-                 value)
-               (multiple-value-bind
-                     (title
-                      value
-                      current-pointer)
-                   (pop#return-stack)
-                 value))
+               (with (tos#return-stack)
+                 .value)
+               (with (pop#return-stack)
+                 .value))
          ==>
          (list 1
                2
@@ -875,12 +851,13 @@
 ** >< next & execute-instruction
    #+begin_src lisp
    (defun next ()
-     (let* ((body-pointer (toc#return-stack))
-            (title)
-            (address))
-       (execute-instruction :instruction instruction
-                            ><><><)))
+     (with (tos#return-stack)
+       (fetch#value# )
+       (execute-instruction
+        :instruction .value
+        :)
 
+       ))
 
    ;; note that:
    ;; this function defines the interface of primitive-instruction
@@ -971,6 +948,8 @@
      (make-vector :length (mul *size#cicada-image-buffer* *cicada-object-size*)
                   :element-type '(unsigned-byte 8)
                   :initial-element 0))
+
+   (defparameter *pointer#cicada-image-buffer* 0)
    #+end_src
 ** ----------------------------------
 ** >< load-file
