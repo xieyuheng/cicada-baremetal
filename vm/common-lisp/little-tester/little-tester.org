@@ -601,9 +601,17 @@
       (group &key
                (skip nil)
                (break-on-fail *break-on-fail*))
-    (let ((group (find-test-group group))
-          (passed '())
-          (failed '()))
+    (let* ((group (find-test-group group)) 
+           (passed '())
+           (failed '())
+           (report-file-name (make-pathname
+                              :name (cat ()
+                                      ("~A" (test-group-name group))
+                                      (".unit.test.report.org"))))
+           (report-stream
+            (open report-file-name
+                  :direction :output
+                  :if-exists :supersede)))    
       (when (test-group-pre group)
         (funcall (test-group-pre group)))
       (unwind-protect
@@ -637,18 +645,18 @@
                       ;; main report
                       (cond ((not pass?)
                              (push name failed)
-                             (cat (:to *standard-output*
+                             (cat (:to report-stream
                                        :postfix (cat () ("~%")))
                                ("* >< ~A" name)
                                ("  * failed"))
                              (edit#line-list
-                              :print-to *standard-output*
+                              :print-to report-stream
                               :indent 4
                               :line-list
                               (string->list#line (cat () ("~A" report-string)))))
                             (:else
                              (push name passed)
-                             (cat (:to *standard-output*
+                             (cat (:to report-stream
                                        :postfix (cat () ("~%")))
                                ("* ~A" name))))
 
@@ -666,13 +674,23 @@
       (let ((pass (length passed))
             (fail (length failed))
             (total (hash-table-count (test-group-tests group))))
-        (format t "~2&Ran ~D of ~D test~:P in group ~S~%" (+ pass fail) total
-                (test-group-name group))
+
+        (cat (:to *standard-output*)
+          ("~%")
+          ("in unit ~S~%"
+           (test-group-name group)))
         (when failed
-          (format t "~&The following tests failed:~%  ~S~%" failed))
-        (format t "~2&Totals -- Passed: ~D~25T~3D%~&~10TFailed: ~D~25T~3D%~%"
-                pass (round (* 100 pass) total)
-                fail (round (* 100 fail) total)))
+          (cat (:to *standard-output*)
+            ("The following tests failed:~%")
+            ("~S~%" failed)))      
+        (cat (:to *standard-output*)
+          ("Totals -- Passed: ~D~25T~3D%~&~10TFailed: ~D~25T~3D%~%"
+           pass
+           (round (* 100 pass) total)         
+           fail
+           (round (* 100 fail) total))))
+
+      (close report-stream)
 
       (null failed)
       ))

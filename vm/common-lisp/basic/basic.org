@@ -671,7 +671,7 @@
 * byte-vector
 ** ----------------------------------
 ** byte-vector?
-   #+begin_src lisp :tangle basic.test.lisp
+   #+begin_src lisp :tangle basic.lisp
    (defun byte-vector? (x) 
      (typep x '(vector (unsigned-byte 8))))
    #+end_src

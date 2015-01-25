@@ -396,6 +396,8 @@
         :index-vector index-vector
         :counter (add1 counter))))
     ))
+(defun byte-vector? (x) 
+  (typep x '(vector (unsigned-byte 8))))
 (defun fetch#byte-vector (&key
                             byte-vector
                             (size 1)

@@ -3,59 +3,9 @@
 #+EMAIL:  xyheme@gmail.com
 
 * todo
-** 簡化接口
-   * name-table 被優化爲一維數組
-     即之讓其中有一個 title field
-     並且把其接口隱藏起來
-   * 這樣 接口就被簡化了
-     之所以這樣做的原因是
-     我發現在使用了 title 這個概念之後
-     在 name-table 中根本不會保存 title 之外的東西
-     畢竟在之後的蟬語中 所有的東西都是有 title 的
-     [除非 "所有的東西都是有 title 的" 的狀況需要被改變]
-   * 哪種纔是正確的設計決策 ?
-     優化 name-table 就能簡化實現
-     並且 簡化接口 [即使用方式]
-     並且 減少爲了理解整個系統而所需要掌握的概念的個數
-     應該做哪種決策看來是簡單的
-     解法似乎是唯一的
-   * 一個有兩個參數的數據庫
-   * 之所以要使用兩個 table 是因爲這樣可以節省內存
-** 更改命名規則
-   * 命名規則 需要體現其意義:
-     name#hash-table
-     title.name#table
-     primitive-function#table
-     這三種 table 之性質本來就不同
-     現在依其名即可知之
-   * 現在的情況是
-     每個 entry of name#hash-table 下有兩個數據與
-     一個是 string 一個是 index into title.name#table
-   * 這樣
-     接口就被簡化爲了
-   * the interface is as
-     * <title
-       <name
-       <object
-       (be)
-     * <title
-       <name
-       (ask)
-   * 注意這裏 name 和 title 還是作爲分離的兩個數據結構的
 ** primitive-function#table 的合理性
    * 我想 以 primitive 爲名的數據類型中
      還有很多東西要被 table 來實現
-** refine the interface of each table
-   * name-table 和 title-table 中的 [0 0] 號項
-     都不用
-     這樣
-     在 low-level port 中
-     只要看一個位置是否是 0
-     就可以判斷是否這個位置已經被使用
-     也可以用以儲存 table 的 meta data
-     並不必有很大的修改
-     只要事先存入一個東西把這個位置佔住就可以了
-   * 作爲一維數組的 各個 table 也是如此
 ** type check of function
    * load-file
      the argument :file should be of path type
@@ -74,11 +24,12 @@
 ** write image file
 ** vector-function
 ** the funciton (next)
-** first version
-   without database of symbol usage
-   without resolving system
 ** parsing image file
 ** cicada-rhapsody
+** first version
+   * without database of symbol usage
+   * without resolving symbols
+   * move let modules become packages
 * ===================================
 * system file
   #+begin_src lisp :tangle cicada-vm.asd
@@ -114,34 +65,42 @@
   #+end_src
 * ===================================
 * note
-  * cicada vm is
-    a threaded-code interpreter
-    with a hash-table of string which is called name-table
-  * the way used to implement
-    a forth inner interpreter in assembly language
-    is used to design this vm
-  * it will be easy to implement this vm in both
-    low-level language as assembly
-    and high-level language as common-lisp
-  * an image file is as an executable [linkable] format
-  * when a image file is loaded to *cicada-image-buffer*
-    host language can provide many run-time supports
-    but run-time independent compile must be supported too
-  * when compiling to cicada language to image file
-    the compiler maintains a database of symbol-address binding
-    the database records all the use of every symbol
-    the database helps one to
-    NOT care about the encoding of instruction and title
-  * value of symbol
-    need to be updateed
-    address of primitive-function and primitive-instruction
-    need to be updateed
-  * when vm interpreting image file
-    it reads the database first
-    and resolves the symbol in the image file
-    meanwhile updating the database
-    only after then
-    the vm can begin interpreting the image file
+** cicada vm
+   * cicada vm is
+     a threaded-code interpreter
+     with a hash-table of string which is called name-table
+   * the way used to implement
+     a forth inner interpreter in assembly language
+     is used to design this vm
+   * it will be easy to implement this vm in both
+     low-level language as assembly
+     and high-level language as common-lisp
+   * an image file is as an executable [linkable] format
+   * when a image file is loaded to *cicada-image-buffer*
+     host language can provide many run-time supports
+     but run-time independent compile must be supported too
+   * when compiling to cicada language to image file
+     the compiler maintains a database of symbol-address binding
+     the database records all the use of every symbol
+     the database helps one to
+     NOT care about the encoding of instruction and title
+   * value of symbol
+     need to be updateed
+     address of primitive-function and primitive-instruction
+     need to be updateed
+   * when vm interpreting image file
+     it reads the database first
+     and resolves the symbol in the image file
+     meanwhile updating the database
+     only after then
+     the vm can begin interpreting the image file
+** number theory and hash function
+   * 也許 hash function 可以動態地改變自己
+     例如
+     需要能夠聲明兩個 symbol 完全同一
+     或它們的某個 域 同一
+     這是爲了實現對多種人類語言的支持
+     比如 英文 漢文 異體字
 * -----------------------------------
 * (in-package :cicada-vm)
 ** cicada-vm.lisp
@@ -153,228 +112,345 @@
    (in-package :cicada-vm)
    #+end_src
 * -----------------------------------
-* cicada-object
+* title.name-table
 ** ----------------------------------
-** cell-unit
-   * a cell is of *cell-unit* many bytes
-   #+begin_src lisp :tangle cicada-vm.lisp
-   (defparameter *cell-unit* (/ *size#fixnum* 8)) ;; unit byte
-   #+end_src
-** ----------------------------------
-** cicada-object?
-   * an object is two cell
-     one for title (an index into title-table)
-     one for value (of which the meaning is depended on its title)
-   #+begin_src lisp :tangle cicada-vm.lisp
-   (defparameter *cicada-object-size*
-     (* 2 *cell-unit*))
-
-   (defun cicada-object? (x)
-     (and (vector? x)
-          (equal? '(unsigned-byte 8) (array-element-type x))
-          (fixnum? (fetch#byte-vector :byte-vector x
-                                      :size *cell-unit*
-                                      :index 2))
-          (= *cicada-object-size*
-             (array-dimension x 0))
-          (not
-           (nil?
-            (fetch#array
-             :array *title-table*
-             :index-vector (vector (fetch#byte-vector
-                                    :byte-vector x
-                                    :size *cell-unit*
-                                    :index 0)
-                                   0))))))
-   #+end_src
-** test
-   #+begin_src lisp :tangle cicada-vm.test.lisp
-   (deftest cicada-object?
-       (cicada-vm)
-     (ensure
-         (cicada-object?
-          (make-cicada-object :title (string->title "kkk")
-                              :value 666))
-         ==>
-         t))
-   #+end_src
-** ----------------------------------
-** make-cicada-object
-   #+begin_src lisp :tangle cicada-vm.lisp
-   (defun make-cicada-object (&key
-                                title
-                                value)
-     (if (not (title? title))
-         (error "the agument :title of (make-cicada-object) must be checked by title?")
-         (let ((cicada-object (make-array `(,*cicada-object-size*)
-                                          :element-type '(unsigned-byte 8)
-                                          :initial-element 0)))
-           (save#byte-vector :value (title->index title)
-                             :byte-vector cicada-object
-                             :size *cell-unit*
-                             :index 0)
-           (save#byte-vector :value value
-                             :byte-vector cicada-object
-                             :size *cell-unit*
-                             :index *cell-unit*))))
-   #+end_src
-** test
-   #+begin_src lisp :tangle cicada-vm.test.lisp
-   (deftest make-cicada-object
-       (cicada-vm)
-     (ensure
-         (list (fetch#byte-vector
-                :byte-vector (make-cicada-object :title (string->title "kkk")
-                                                 :value 666)
-                :size *cell-unit*
-                :index *cell-unit*)
-               (equal? (array-element-type
-                        (make-cicada-object :title (string->title "kkk")
-                                            :value 666))
-                       '(unsigned-byte 8)))
-         ==>
-         (list 666
-               t)))
-   #+end_src
-** ----------------------------------
-** cicada-object->title & cicada-object->value
-   #+begin_src lisp :tangle cicada-vm.lisp
-   ;; these two funcitons return values to be use in host-language
-
-   (defun cicada-object->title (cicada-object)
-     (cond ((not (cicada-object? cicada-object))
-            (error "the argument of (cicada-object->title) must be cicada-object"))
-           (:else
-            (fetch#byte-vector :byte-vector cicada-object
-                               :size *cell-unit*
-                               :index 0))))
-
-   (defun cicada-object->value (cicada-object)
-     (cond ((not (cicada-object? cicada-object))
-            (error "the argument of (cicada-object->value) must be cicada-object"))
-           (:else
-            (fetch#byte-vector :byte-vector cicada-object
-                               :size *cell-unit*
-                               :index *cell-unit*))))
-   #+end_src
-** ----------------------------------
-* host-object
-** ----------------------------------
-** host-object?
-   * in host language
-     only three user defined datatypes should be provided
-   * I simply use a symbol in the host language as type-tag
-   * the three types are
-     <object>
-     <name>
-     <title>
-   #+begin_src lisp :tangle cicada-vm.lisp
-   (defun host-object? (x)
-     (and (vector? x)
-          (= 3 (array-dimension x
-                                0))
-          (equal? '<host-object>
-                  (fetch#vector :vector x
-                                :index 0))
-          (title? (fetch#vector :vector x
-                                :index 1))))
-   #+end_src
-** test
-   #+begin_src lisp :tangle cicada-vm.test.lisp
-   (deftest host-object?
-       (cicada-vm)
-     (ensure
-         (host-object? #(<host-object>
-                         #(<title> 0)
-                         #(<name> 0)))
-         ==>
-         T))
-   #+end_src
-** ----------------------------------
-** host-object->cicada-object
-   #+begin_src lisp :tangle cicada-vm.lisp
-   (defun host-object->cicada-object (host-object)
-     (if (not (host-object? host-object))
-         (error "the argument of (host-object->cicada-object) must be host-object")
-         (make-cicada-object :title (fetch#vector :vector host-object
-                                                  :index 1)
-                             :value (fetch#vector :vector host-object
-                                                  :index 2))))
-   #+end_src
-** test
-   #+begin_src lisp :tangle cicada-vm.test.lisp
-   (deftest host-object->cicada-object
-       (cicada-vm)
-     (ensure
-         (multiple-value-list
-          (host-object->cicada-object
-           `#(<host-object>
-              ,(string->title "testing#host-object->cicada-object")
-              #b10000000)))
-         ==>
-         (list `#(,(title->index
-                    (string->title
-                     "testing#host-object->cicada-object"))
-                  0 0 0
-                  128 0 0 0)
-               `128)))
-   #+end_src
-** ----------------------------------
-** cicada-object->host-object
-   #+begin_src lisp :tangle cicada-vm.lisp
-   (defun cicada-object->host-object (cicada-object)
-     (cond ((not (cicada-object? cicada-object))
-            (error "the argument of (cicada-object->host-object) must be cicada-object"))
-           (:else
-            `#(<host-object>
-               ,(vector '<title>
-                        (cicada-object->title cicada-object))
-               ,(cicada-object->value cicada-object)))))
-   #+end_src
-** test
-   #+begin_src lisp :tangle cicada-vm.test.lisp
-   (deftest cicada-object->host-object
-       (cicada-vm)
-     (ensure
-         (cicada-object->host-object
-          (host-object->cicada-object
-           `#(<host-object>
-              ,(string->title "testing#host-object->cicada-object")
-              #b10000000)))
-         ==>
-         `#(<HOST-OBJECT>
-            ,(string->title "testing#host-object->cicada-object")
-            128)))
-   #+end_src
-** ----------------------------------
-* name-table
-** ----------------------------------
-** note name
-   * everything about name
-     will be implemented by the name-table
-   * a symbol is a index into name-table
-     the interface is as
-     * <name
-       <as
-       <mean
+** note title
+   * every object have a title
+     title is the way I used to manage nameing of things
+     a title could be viewed as
+     a type
+     a module
+     a structure
+   * a title is a index into title.name-table
+     the index is used as the encoding of that title
+     there is only one title.name-table
+     so the encoding works will
+   * the interface is as
+     * <title
+       <name
+       <object
        (be)
        <field
        <update?
-       <old-mean
-     * <name
-       <as
-       (explain)
-       <mean
+     * <title
+       <name
+       (ask)
+       <object
        <find?
-** note number theory and hash function
-   * 也許 hash function 可以動態地改變自己
-     例如
-     需要能夠聲明兩個 symbol 完全同一
-     或它們的某個 域 同一
-     這是爲了實現對多種人類語言的支持
-     比如 英文 漢文 異體字
 ** ----------------------------------
-** name-table
+** title-table
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (defparameter *size#title.name-table* 1000)
+
+   (defparameter *size#entry#title.name-table* 100)
+
+   (defparameter *title.name-table*
+     ;; should be a byte-vector in assembly version 
+     (make-array
+      `(,*size#title.name-table* ,*size#entry#title.name-table*)
+      ;; note that
+      ;; this table's element can be of any type
+      ;; but actually
+      ;; (i 0) must be an name[index] to name-hash-table
+      ;; (i n) must be a vector of
+      ;; #( name[index] title[index] value )
+      :initial-element 0))
+
+   ;; the first entry of *title.name-table* reserved
+   ;; for *name-hash-table*
+   ;; to test if a name in *name-hash-table*
+   ;; is used as title or not
+   (defparameter *pointer#title.name-table* 1)
+   #+end_src
+** index-within-title.name-table?
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (defun index-within-title.name-table? (index)
+     (and (natural-number? index)
+          (< index *size#title.name-table*)))   
+   #+end_src
+** title?
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (defun title? (vector)
+     (and (vector? vector)
+          (= 2 (length vector))
+          (equal? '<title>
+                  (fetch#vector :vector vector
+                                :index 0))
+          (index-within-title.name-table?
+           (fetch#vector :vector vector
+                         :index 1))))
+   #+end_src
+** test
+   #+begin_src lisp :tangle cicada-vm.test.lisp
+   (deftest title?
+       (cicada-vm)
+     (ensure
+         (list (title? #(<title> 0))
+
+               (title? (string->title "testing#title?")))
+         ==>
+         (list t
+               t)))
+   #+end_src
+** ----------------------------------
+** string->title
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (defun string->title (string)
+     (let* ((name-index
+             (name->index (string->name string)))
+            (index-for-title
+             (fetch#vector :vector *name-hash-table#index-for-title*
+                           :index name-index)))
+       (cond
+         ((not (zero? index-for-title))       
+          `#(<title> ,index-for-title))
+
+         ((< *pointer#title.name-table*
+             ,*size#title.name-table*)
+          ;; now
+          ;; *pointer#title.name-table* is pointing to
+          ;; the next free to use index
+          ;; in the *title.name-table*
+
+          ;; save title[index] to *name-hash-table#index-for-title*
+          (save#vector :value *pointer#title.name-table*
+                       :vector *name-hash-table#index-for-title*
+                       :index name-index)
+
+          ;; save name[index] to *title.name-table*
+          (save#array :value name-index
+                      :array *title.name-table*
+                      :index-vector (vector *pointer#title.name-table* 0))       
+
+          ;; to update *pointer#title.name-table*
+          ;; is to allocate a new index in the *title.name-table*
+          (setf *pointer#title.name-table* 
+                (add1 *pointer#title.name-table*))
+
+          ;; return value
+          `#(<title>
+             ,(sub1 *pointer#title.name-table*)))
+
+         (:else
+          (error "title.name-table is filled, (string->title) can not make new title")))))
+   #+end_src
+** title->index
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (defun title->index (title)
+     (if (not (title? title))
+         (error "argument of (title->index) must be a title")
+         (fetch#vector :vector title
+                       :index 1)))
+   #+end_src
+** title->name
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (defun title->name (title)
+     (if (not (title? title))
+         (error "argument of (title->name) must be a title")
+         `#(<name>
+            ,(fetch#array
+              :array *title.name-table*
+              :index-vector
+              (vector (title->index title) 0)))))
+   #+end_src
+** title->string
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (defun title->string (title)
+     (if (not (title? title))
+         (error "argument of (title->string) must be a title")
+         (name->string (title->name title))))
+   #+end_src
+** print-title
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (defun print-title (title &key (stream t))
+     (if (not (title? title))
+         (error "the argument of (print-title) must be checked by title?")
+         (print-name (title->name title)
+                     :stream stream)))
+   #+end_src
+** test
+   #+begin_src lisp :tangle cicada-vm.test.lisp
+   (deftest title->index
+       (cicada-vm)
+     (ensure
+         (let ((test1 (title->index (string->title "testing#1#title->index")))
+               (test2 (title->index (string->title "testing#2#title->index"))))
+           (- test2 test1))
+         ==>
+         1))
+
+   (deftest print-title
+       (cicada-vm)
+     (ensure
+         (print-title (string->title "kkk")
+                      :stream nil)
+         ==>
+         "[kkk]"))
+   #+end_src
+** ----------------------------------
+** be 
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (defun be (&key
+                title
+                name
+                cicada-object)
+     (cond
+       ((not (title? title))
+        (error "the argument :title of (be) must be a title"))
+       ((not (name? name))
+        (error "the argument :name of (be) must be a name"))
+       ((not (cicada-object? cicada-object))
+        (error "the argument :cicada-object of (be) must be a cicada-object?"))
+       (:else    
+        (let ((title-index (title->index title))
+              (name-index (name->index name)))
+          (be#low-level :title-index title-index
+                        :name-index name-index
+                        :cicada-byte-vector (cicada-object->cicada-byte-vector
+                                             cicada-object))))))
+
+
+   (defun be#low-level (&key
+                          title-index
+                          name-index
+                          cicada-byte-vector
+                          (field 1))
+     (let ((content-of-field
+            (fetch#array :array *title.name-table*
+                         :index-vector `#(,title-index ,field))))
+       (cond
+         ;; creat new
+         ((zero? content-of-field) 
+          (save#array :value (vector name-index
+                                     (cicada-byte-vector->title-index cicada-byte-vector)
+                                     (cicada-byte-vector->value cicada-byte-vector))
+                      :array *title.name-table*
+                      :index-vector `#(,title-index ,field))
+          (values field
+                  nil))
+         ;; update
+         ((equal? name-index
+                  (fetch#vector :vector content-of-field
+                                :index 0))
+          (save#array :value (vector name-index
+                                     (cicada-byte-vector->title-index cicada-byte-vector)
+                                     (cicada-byte-vector->value cicada-byte-vector))
+                      :array *title.name-table*
+                      :index-vector `#(,title-index ,field))
+          (values field
+                  :updated!!!))
+         ;; next
+         ((< field *size#entry#title.name-table*)
+          (be#low-level :title-index title-index
+                        :name-index name-index
+                        :cicada-byte-vector cicada-byte-vector
+                        :field (add1 field)))
+         ;; filled
+         (:else
+          (error "the names under this title is too filled (be) can not do")))))
+   #+end_src
+** ask
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (defun ask (&key
+                 title
+                 name)
+     (cond ((not (title? title))
+            (error "the argument :title of (ask) must be a title"))
+           ((not (name? name))
+            (error "the argument :name of (ask) must be a name"))
+           (:else
+            (let ((title-index (title->index title))
+                  (name-index (name->index name)))
+              (multiple-value-bind
+                    (cicada-byte-vector
+                     found?)
+                  (ask#low-level :title-index title-index
+                                 :name-index name-index)
+                (values (cicada-byte-vector->cicada-object
+                         cicada-byte-vector)
+                        found?))))))
+
+
+   (defun ask#low-level (&key
+                           title-index
+                           name-index
+                           (field 1))
+     (let ((content-of-field
+            (fetch#array :array *title.name-table*
+                         :index-vector `#(,title-index ,field))))
+       (cond
+         ;; not found
+         ((zero? content-of-field)
+          (values nil
+                  nil))
+         ;; found
+         ((equal? name-index
+                  (fetch#vector :vector content-of-field
+                                :index 0))
+          (let ((vector-of-name-title-value
+                 (fetch#array :array *title.name-table*
+                              :index-vector `#(,title-index ,field))))
+            (values (make-cicada-byte-vector-with#title-index&value
+                     :title-index (fetch#vector :vector vector-of-name-title-value
+                                                :index 1)
+                     :value (fetch#vector :vector vector-of-name-title-value
+                                          :index 2)
+                     ) ;; this bar-ket is to stress that the next key-word values                 
+                    :found!!!)))
+         ;; next
+         ((< field *size#entry#title.name-table*)
+          (ask#low-level :title-index title-index
+                         :name-index name-index
+                         :field (add1 field)))
+         ;; filled
+         (:else
+          (error (cat ()
+                   ("can not ask for the object under the name as you wish~%")
+                   ("and the names under this title is too filled")))))))
+   #+end_src
+** test
+   #+begin_src lisp :tangle cicada-vm.test.lisp
+   (deftest be--and--ask
+       (cicada-vm)
+     (ensure
+         (list (be :title (string->title "kkk")
+                   :name (string->name "took")
+                   :cicada-object (make-cicada-object
+                                   :title (string->title "my")
+                                   :value 666))
+               (multiple-value-list
+                (be :title (string->title "kkk")
+                    :name (string->name "took")
+                    :cicada-object (make-cicada-object
+                                    :title (string->title "my")
+                                    :value 666)))
+               (multiple-value-list
+                (ask :title (string->title "kkk")
+                     :name (string->name "took"))))
+         ==>
+         (list `1
+               `(1
+                 :updated!!!)
+               `(,(vector '<cicada-object>
+                         (cicada-object->cicada-byte-vector
+                          (make-cicada-object
+                           :title (string->title "my")
+                           :value 666)))
+                 :found!!!))))
+    #+end_src
+** ----------------------------------
+* name-hash-table
+** ----------------------------------
+** note name
+   * not name value binding in name-hash-table
+     name-hash-table is used to
+     1. provide the name datatype 
+     2. implement title.name-table
+   * binding will be done in title.name-table     
+     an object [value with title]
+     will be bound to a title name pair
+** ----------------------------------
+** name-hash-table
    #+begin_src lisp :tangle cicada-vm.lisp
    ;; must be a prime number
 
@@ -387,20 +463,45 @@
    ;; 499
    ;; 230      ;; for a special test
 
-   (defparameter *size#name-table* 100333)
+   (defparameter *size#name-hash-table* 100333)
 
-   (defparameter *size#entry#name-table* 100)
+   (defparameter *name-hash-table#string*
+     (make-vector
+      :length *size#name-hash-table*
+      :initial-element 0))
 
-   (defparameter *name-table*
-     (make-array
-      `(,*size#name-table* ,*size#entry#name-table*)
-      ;; note that
-      ;; this table's element can be of any type
-      :initial-element nil))
-
-   (defun index-within-name-table? (index)
+   (defparameter *name-hash-table#index-for-title*
+     (make-vector
+      :length *size#name-hash-table*
+      :element-type `(integer 0 ,*size#title.name-table*)
+      :initial-element 0))
+   #+end_src
+** index-within-name-hash-table?
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (defun index-within-name-hash-table? (index)
      (and (natural-number? index)
-          (< index *size#name-table*)))
+          (< index *size#name-hash-table*)))
+   #+end_src
+** name?
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (defun name? (vector)
+     (and (vector? vector)
+          (= 2 (length vector))
+          (equal? '<name>
+                  (fetch#vector :vector vector
+                                :index 0))
+          (index-within-name-hash-table?
+           (fetch#vector :vector vector
+                         :index 1))))
+   #+end_src
+** test
+   #+begin_src lisp :tangle cicada-vm.test.lisp
+   (deftest name?
+       (cicada-vm)
+     (ensure
+         (name? #(<name> 0))
+         ==>
+         t))
    #+end_src
 ** ----------------------------------
 ** string->natural-number
@@ -428,6 +529,19 @@
                      :step counter
                      :number (char->code head#char)))))))
    #+end_src
+** natural-number->index
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (defun natural-number->index (natural-number)
+     (if (not (natural-number? natural-number))
+         (error "argument of natural-number->index must be a natural-number")
+         (mod natural-number *size#name-hash-table*)))
+   #+end_src
+** string->index
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (defun string->index (string)
+     (natural-number->index
+      (string->natural-number string)))
+   #+end_src
 ** test
    #+begin_src lisp :tangle cicada-vm.test.lisp
    (deftest string->natural-number
@@ -440,119 +554,99 @@
          (list 0
                64
                448)))
-   #+end_src
-** ----------------------------------
-** natural-number->index
-   #+begin_src lisp :tangle cicada-vm.lisp
-   (defun natural-number->index (natural-number)
-     (if (not (natural-number? natural-number))
-         (error "argument of natural-number->index must be a natural-number")
-         (mod natural-number *size#name-table*)))
-   #+end_src
-** test
-   #+begin_src lisp :tangle cicada-vm.test.lisp
+
    (deftest natural-number->index
        (cicada-vm)
      (ensure
          (list (natural-number->index 0)
                (natural-number->index 123)
-               (natural-number->index *size#name-table*))
+               (natural-number->index *size#name-hash-table*))
          ==>
          (list 0
                123
                0)))
    #+end_src
 ** ----------------------------------
-** name?
-   #+begin_src lisp :tangle cicada-vm.lisp
-   (defun name? (x)
-     (and (vector? x)
-          (= 2 (array-dimension x
-                                0))
-          (equal? '<name>
-                  (fetch#vector :vector x
-                                :index 0))
-          (index-within-name-table?
-           (fetch#vector :vector x
-                         :index 1))))
-   #+end_src
-** test
-   #+begin_src lisp :tangle cicada-vm.test.lisp
-   (deftest name?
-       (cicada-vm)
-     (ensure
-         (name? #(<name> 0))
-         ==>
-         t))
-   #+end_src
-** ----------------------------------
-** name->index
-   #+begin_src lisp :tangle cicada-vm.lisp
-   (defun name->index (name)
-     (cond ((not (name? name))
-            (error "argument of name->index must be a name"))
-           (:else
-            (fetch#vector :vector name
-                          :index 1))))
-   #+end_src
-** string->name & name->string
+** note
+   * name is not only a index
+     but also have a type-tag
+** string->name 
    #+begin_src lisp :tangle cicada-vm.lisp
    (defun string->name (string)
-     (let ((index
-            (natural-number->index
-             (string->natural-number string))))
-       (help#string->name#find-old-or-creat-new string
-                                                index)))
+     (help#string->name#find-old-or-creat-new
+      string
+      (string->index string)))
 
    (defun help#string->name#find-old-or-creat-new (string index)
      (cond
-       ((not (name-table-index#used? index))
+       ((not (name-hash-table-index#used? index))
         (help#string->name#creat-new string
                                      index)
         `#(<name> ,index))
 
        ((equal? string
-                (fetch#array :array *name-table*
-                             :index-vector `#(,index 0)))
+                (fetch#vector :vector *name-hash-table#string*
+                              :index index))
         `#(<name> ,index))
 
        (:else
         (help#string->name#find-old-or-creat-new
          string
-         (name-table-index#next index)))
+         (name-hash-table-index#next index)))
        ))
 
+   (defun name-hash-table-index#used? (index)
+     (not (equal? 0
+                  (fetch#vector :vector *name-hash-table#string*
+                                :index index))))
 
    (defun help#string->name#creat-new (string index)
-    (save#array :value string
-                :array *name-table*
-                :index-vector `#(,index 0)))
+     (save#vector :value string
+                  :vector *name-hash-table#string*
+                  :index index))
 
-
-   (defun name-table-index#used? (index)
-     (string? (fetch#array :array *name-table*
-                           :index-vector `#(,index 0))))
-
-   (defun name-table-index#next (index)
-     (if (= index *size#name-table*)
+   (defun name-hash-table-index#next (index)
+     (if (= index *size#name-hash-table*)
          0
          (add1 index)))
-
-
-
-   (defun name->string (name)
+   #+end_src
+** to reverse index 0
+   * the first entry of *name-hash-table* is reserved 
+     for *title.name-table*
+     to test if a title name pair in *title.name-table*
+     is bound to any object or not
+   #+begin_src lisp :tangle cicada-vm.lisp
+   ;; (string->name "")
+   #+end_src
+** name->index
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (defun name->index (name)
      (cond ((not (name? name))
-            (error "argument of name->string must be a name"))
+            (error "argument of (name->index) must be a name"))
            (:else
-            (let ((index (name->index name)))
-              (cond ((not (name-table-index#used? index))
-                     (error "this name does not have a string"))
-                    (:else
-                     (fetch#array :array *name-table*
-                                  :index-vector `#(,index 0)))
-                    )))
-           ))
-
+            (fetch#vector :vector name
+                          :index 1))))
+   #+end_src
+** name->string
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (defun name->string (name)
+     (if (not (name? name))
+         (error "argument of name->string must be a name")
+         (let ((index (name->index name)))
+           (cond ((not (name-hash-table-index#used? index))
+                  (error "this name does not have a string"))
+                 (:else
+                  (fetch#vector :vector *name-hash-table#string*
+                                :index index))
+                 ))))
+   #+end_src
+** print-name
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (defun print-name (name
+                      &key (stream t))
+     (format stream
+             "[~A]"
+             (name->string name)))
    #+end_src
 ** test
    #+begin_src lisp :tangle cicada-vm.test.lisp
@@ -562,507 +656,215 @@
          (name->string (string->name "kkk took my baby away!"))
          ==>
          "kkk took my baby away!"))
-   #+end_src
-** ----------------------------------
-** print-name
-   #+begin_src lisp :tangle cicada-vm.lisp
-   (defun print-name (name
-                      &key (stream t))
-     (format stream
-             "[~A]"
-             (name->string name)))
 
-   #+end_src
-** test
-   #+begin_src lisp :tangle cicada-vm.test.lisp
    (deftest print-name
        (cicada-vm)
      (ensure
-         ;; (let ((test-stream (make-string-output-stream)))
-         ;;   (print-name (string->name "kkk took my baby away!")
-         ;;               :stream test-stream)
-         ;;   (get-output-stream-string test-stream))
          (print-name (string->name "kkk took my baby away!")
                      :stream nil)
          ==>
          "[kkk took my baby away!]"))
    #+end_src
 ** ----------------------------------
-** be & explain
+* cicada-byte-vector
+** ----------------------------------
+** note 
+   * this is low-level interface
+** ----------------------------------
+** cell-unit
+   * a cell is of *cell-unit* many bytes
    #+begin_src lisp :tangle cicada-vm.lisp
-   (defun be (&key
-                name
-                as
-                mean)
-     (if (or (not (name? name))
-             (not (name? as)))
-         (error "the argument :name and :as of (be) must be checked by (name?)")
-         (let ((name-index (name->index name))
-               (as-index (name->index as)))
-           (help#be :name-index name-index
-                    :as-index as-index
-                    :mean mean))))
-
-
-   (defun help#be (&key
-                     name-index
-                     as-index
-                     mean
-                     (field 1))
-     (let ((content-of-field
-            (fetch#array :array *name-table*
-                         :index-vector `#(,name-index ,field))))
-       (cond
-         ((nil? content-of-field)
-          (save#array :value (cons as-index mean)
-                      :array *name-table*
-                      :index-vector `#(,name-index ,field))
-          (values field
-                  nil
-                  nil))
-
-         ((equal? as-index
-                  (car content-of-field))
-          (save#array :value (cons as-index mean)
-                      :array *name-table*
-                      :index-vector `#(,name-index ,field))
-          (values field
-                  :updated!!!
-                  (cdr content-of-field)))
-
-         ((< field *size#entry#name-table*)
-          (help#be :name-index name-index
-                   :as-index as-index
-                   :mean mean
-                   :field (add1 field)))
-
-         (:else
-          (error "the meaning of this name is too filled"))
-         )))
-
-
-
-   (defun explain (&key
-                     name
-                     as)
-     (if (or (not (name? name))
-             (not (name? as)))
-         (error "the argument :name and :as of (explain) must be checked by (name?)")
-         (let ((name-index (name->index name))
-               (as-index (name->index as)))
-           (help#explain :name-index name-index
-                         :as-index as-index))))
-
-
-   (defun help#explain (&key
-                          name-index
-                          as-index
-                          (field 1))
-     (let ((content-of-field
-            (fetch#array :array *name-table*
-                         :index-vector `#(,name-index ,field))))
-       (cond
-         ((nil? content-of-field)
-          (values nil
-                  nil))
-
-         ((equal? as-index
-                  (car content-of-field))
-          (values (cdr content-of-field)
-                  :found!!!))
-
-         ((< field *size#entry#name-table*)
-          (help#explain :name-index name-index
-                        :as-index as-index
-                        :field (add1 field)))
-
-         (:else
-          (error (concatenate
-                  'string
-                  "can not explain the name as the way you wish~%"
-                  "and the meaning of this name is too filled")))
-         )))
-   #+end_src
-** test
-   #+begin_src lisp :tangle cicada-vm.test.lisp
-   (deftest be--and--explain
-       (cicada-vm)
-     (ensure
-         (list (be :name (string->name "kkk")
-                   :as (string->name "took")
-                   :mean "my baby away!")
-               (multiple-value-list
-                (be :name (string->name "kkk")
-                    :as (string->name "took")
-                    :mean "my baby away!"))
-               (multiple-value-list
-                (explain :name (string->name "kkk")
-                         :as (string->name "took"))))
-         ==>
-         (list 2
-               `(2
-                 :UPDATED!!!
-                 "my baby away!")
-               `("my baby away!"
-                 :found!!!))
-       ))
+   (defparameter *cell-unit* (/ *size#fixnum* 8)) ;; unit byte
    #+end_src
 ** ----------------------------------
-** meaningful?
+** cicada-byte-vector?
+   * an object is two cell
+     one for title (an index into title-table)
+     one for value (of which the meaning is depended on its title)
    #+begin_src lisp :tangle cicada-vm.lisp
-   (defun meaningful? (&key
-                         name
-                         as)
-       (multiple-value-bind
-             (mean
-              find?)
-           (explain :name name
-                    :as as)
-         find?))
+   (defparameter *cicada-object-size*
+     (* 2 *cell-unit*))   
 
+   (defun cicada-byte-vector? (byte-vector)
+     (and (equal? '(unsigned-byte 8)
+                  (array-element-type byte-vector))
+          (fixnum? (fetch#byte-vector :byte-vector byte-vector
+                                      :size *cell-unit*
+                                      :index 2))
+          (= *cicada-object-size*
+             ;; (array-dimension byte-vector 0)
+             (length byte-vector))
+          (not (zero? (fetch#array
+                       :array *title.name-table*
+                       :index-vector `#(,(fetch#byte-vector
+                                          :byte-vector byte-vector
+                                          :size *cell-unit*
+                                          :index 0)
+                                        0))))))
    #+end_src
-** test
-   #+begin_src lisp :tangle cicada-vm.test.lisp
-   (deftest meaningful?
-       (cicada-vm)
-     (ensure
-         (meaningful? :name (string->name "kkk")
-                      :as (string->name "took"))
-         ==>
-         :found!!!))
-   #+end_src
 ** ----------------------------------
-* title-table
-** ----------------------------------
-** note
-   * title is the way I used to manage nameing of things
-     a title can be viewed as
-     a type
-     a module
-     a structure
-   * a title is a index into title-table
-     the index is used as the encoding of that title
-     there is only one title-table
-     so the encoding works will
-   * the interface is as
-     * <title
-       <name
-       <object
-       (entitle)
-     * <title
-       <name
-       (ask)
-   * every object have a title
-** ----------------------------------
-** title-table
+** make-cicada-byte-vector-with#title-index&value
    #+begin_src lisp :tangle cicada-vm.lisp
-   (defparameter *size#title-table* 1000)
-
-   (defparameter *size#entry#title-table* 100)
-
-   (defparameter *title-table*
-     (make-array
-      `(,*size#title-table* ,*size#entry#title-table*)
-      ;; note that
-      ;; this table's element can be of any type
-      :initial-element nil))
-
-   (defun index-within-title-table? (index)
-     (and (natural-number? index)
-          (< index *size#title-table*)))
-
-   (defparameter *pointer#title-table* 0)
+   (defun make-cicada-byte-vector-with#title-index&value
+       (&key
+          title-index
+          value)
+     (if (not (index-within-title.name-table? title-index))
+         (error (cat ()
+                  ("the agument :title-index of~%")
+                  ("  (make-cicada-byte-vector-with#title-index&value)~%")
+                  ("must be an index-within-title.name-table")))
+         (let ((cicada-object#byte-vector
+                (make-vector :length *cicada-object-size*
+                             :element-type '(unsigned-byte 8)
+                             :initial-element 0)))
+           (save#byte-vector :value title-index
+                             :byte-vector cicada-object#byte-vector
+                             :size *cell-unit*
+                             :index 0)
+           ;; save#byte-vector returns the byte-vector
+           (save#byte-vector :value value
+                             :byte-vector cicada-object#byte-vector
+                             :size *cell-unit*
+                             :index *cell-unit*))))
    #+end_src
 ** ----------------------------------
-** string->title
+** cicada-byte-vector->title-index
    #+begin_src lisp :tangle cicada-vm.lisp
-   (defun string->title (string)
-     (let ((name (string->name string))
-           (name#title (string->name "title")))
-       (cond
-         ((meaningful? :name name
-                       :as name#title)
-          `#(<title>
-             ,(explain :name name
-                       :as name#title)))
-
-         ((< *pointer#title-table*
-             ,*size#title-table*)
-          ;; to create a new title is
-          ;; to allocate a new index in the title-table
-          ;; and save the name#title to the field number 0 of the entry
-          (be :name name
-              :as name#title
-              :mean *pointer#title-table*)
-          (save#array :value name#title
-                      :array *title-table*
-                      :index-vector (vector *pointer#title-table* 0))
-          ;; update *pointer#title-table*
-          (setf *pointer#title-table*
-                (add1 *pointer#title-table*))
-          `#(<title>
-             ,(sub1 *pointer#title-table*)))
-
-         (:else
-          (error "title-table is filled, can not make new title")))))
+   (defun cicada-byte-vector->title-index (cicada-byte-vector)
+     (cond ((not (cicada-byte-vector? cicada-byte-vector))
+            (error "the argument of (cicada-byte-vector->title-index) must be cicada-byte-vector"))
+           (:else
+            (fetch#byte-vector :byte-vector cicada-byte-vector
+                               :size *cell-unit*
+                               :index 0))))   
+   #+end_src
+** cicada-byte-vector->value
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (defun cicada-byte-vector->value (cicada-byte-vector)
+     (cond ((not (cicada-byte-vector? cicada-byte-vector))
+            (error "the argument of (cicada-byte-vector->value) must be cicada-byte-vector"))
+           (:else
+            (fetch#byte-vector :byte-vector cicada-byte-vector
+                               :size *cell-unit*
+                               :index *cell-unit*))))   
    #+end_src
 ** ----------------------------------
-** title?
+* cicada-object
+** ----------------------------------
+** cicada-object?
    #+begin_src lisp :tangle cicada-vm.lisp
-   (defun title? (x)
-     (and (vector? x)
-          (= 2 (array-dimension x
-                                0))
-          (equal? '<title>
-                  (fetch#vector :vector x
+   (defun cicada-object? (vector)
+     (and (vector? vector)
+          (equal? 2 (length vector))
+          (equal? '<cicada-object>
+                  (fetch#vector :vector vector
                                 :index 0))
-          (index-within-title-table?
-           (fetch#vector :vector x
-                         :index 1))))
+          (cicada-byte-vector?
+           (fetch#vector :vector vector
+                         :index 1))))   
    #+end_src
 ** test
    #+begin_src lisp :tangle cicada-vm.test.lisp
-   (deftest title?
+   (deftest cicada-object?
        (cicada-vm)
      (ensure
-         (list (title? #(<title> 0))
-
-               (title? (string->title "testing#title?")))
+         (cicada-object?
+          (make-cicada-object :title (string->title "kkk")
+                              :value 666))
          ==>
-         (list t
+         t))
+   #+end_src
+** ----------------------------------
+** cicada-byte-vector->cicada-object
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (defun cicada-byte-vector->cicada-object (cicada-byte-vector)
+     (if (not (cicada-byte-vector? cicada-byte-vector))
+         (error "argument of (cicada-byte-vector->cicada-object) must be a cicada-byte-vector")
+         `#(<cicada-object>
+            ,cicada-byte-vector)))   
+   #+end_src
+** make-cicada-object
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (defun make-cicada-object
+       (&key
+          title
+          value)
+     (if (not (title? title))
+         (error (cat ()
+                  ("the agument :title of~%")
+                  ("  (make-cicada-object)~%")
+                  ("must be an title")))
+         `#(<cicada-object>
+            ,(make-cicada-byte-vector-with#title-index&value
+              :title-index (title->index title)
+              :value value))))
+   #+end_src
+** cicada-object->cicada-byte-vector
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (defun cicada-object->cicada-byte-vector (cicada-object)
+     (if (not (cicada-object? cicada-object))
+         (error "argument of (cicada-object->cicada-byte-vector) must be a cicada-object")
+         (fetch#vector :vector cicada-object
+                       :index 1)))
+   #+end_src
+** test
+   #+begin_src lisp :tangle cicada-vm.test.lisp
+   (deftest make-cicada-object
+       (cicada-vm)
+     (ensure
+         (list (fetch#byte-vector
+                :byte-vector
+                (cicada-object->cicada-byte-vector
+                 (make-cicada-object :title (string->title "kkk")
+                                     :value 666))
+                :size *cell-unit*
+                :index *cell-unit*)
+               (equal? (array-element-type
+                        (cicada-object->cicada-byte-vector
+                         (make-cicada-object :title (string->title "kkk")
+                                             :value 666)))
+                       '(unsigned-byte 8)))
+         ==>
+         (list 666
                t)))
    #+end_src
 ** ----------------------------------
-** title->index
+** cicada-object->cicada-byte-vector
    #+begin_src lisp :tangle cicada-vm.lisp
-   (defun title->index (title)
-     (cond ((not (title? title))
-            (error "argument of title->index must be a title"))
+   (defun cicada-object->cicada-byte-vector (cicada-object)
+     (cond ((not (cicada-object? cicada-object))
+            (error "the argument of (cicada-object->cicada-byte-vector) must be cicada-object"))
            (:else
-            (fetch#vector :vector title
-                          :index 1))))
+            (fetch#vector :vector cicada-object                            
+                          :index 1))))   
    #+end_src
-** test
-   #+begin_src lisp :tangle cicada-vm.test.lisp
-   (deftest title->index
-       (cicada-vm)
-     (ensure
-         (let ((test1 (title->index (string->title "testing#1#title->index")))
-               (test2 (title->index (string->title "testing#2#title->index"))))
-           (- test2 test1))
-         ==>
-         1))
-   #+end_src
-** ----------------------------------
-** entitle & ask
+** cicada-object->title-index
    #+begin_src lisp :tangle cicada-vm.lisp
-   ;; <title
-   ;; <name
-   ;; <object
-   ;; (entitle)
-
-   ;; <title
-   ;; <name
-   ;; (ask)
-
-
-
-   ;; interface:
-   ;; (multiple-value-bind
-   ;;       (field
-   ;;        update?
-   ;;        old-object)
-   ;;     (entitle :title
-   ;;              :name
-   ;;              :object )
-   ;;   ><><><)
-
-   (defun entitle (&key
-                     title
-                     name
-                     object)
-     (if (or (not (title? title))
-             (not (name? name))
-             (not (host-object? object)))
-         (error "one or more the arguments of (entitle) is of wrong type")
-         (let ((title-index (title->index title))
-               (name-index (name->index name)))
-           (help#entitle :title-index title-index
-                         :name-index name-index
-                         :object object))))
-
-
-
-   (defun help#entitle (&key
-                          title-index
-                          name-index
-                          object
-                          (field 1))
-     (let ((content-of-field
-            (fetch#array :array *title-table*
-                         :index-vector `#(,title-index ,field))))
-       (cond
-         ((nil? content-of-field)
-          (save#array :value (cons name-index object)
-                      :array *title-table*
-                      :index-vector `#(,title-index ,field))
-          (values field
-                  nil
-                  nil))
-
-         ((equal? name-index
-                  (car content-of-field))
-          (save#array :value (cons name-index object)
-                      :array *title-table*
-                      :index-vector `#(,title-index ,field))
-          (values field
-                  :updated!!!
-                  (cdr content-of-field)))
-
-         ((< field *size#entry#title-table*)
-          (help#entitle :title-index title-index
-                        :name-index name-index
-                        :object object
-                        :field (add1 field)))
-
-         (:else
-          (error "the names under this title is too filled"))
-         )))
-
-
-
-   ;; interface:
-   ;; (multiple-value-bind
-   ;;       (object
-   ;;        find?)
-   ;;     (ask :title
-   ;;          :name )
-   ;;   ><><><)
-
-
-   (defun ask (&key
-                 title
-                 name)
-     (if (or (not (title? title))
-             (not (name? name)))
-         (error "one or more the arguments of (ask) is of wrong type")
-         (let ((title-index (title->index title))
-               (name-index (name->index name)))
-           (help#ask :title-index title-index
-                     :name-index name-index))))
-
-
-
-   (defun help#ask (&key
-                      title-index
-                      name-index
-                      (field 1))
-     (let ((content-of-field
-            (fetch#array :array *title-table*
-                         :index-vector `#(,title-index ,field))))
-       (cond
-         ((nil? content-of-field)
-          (values nil
-                  nil))
-
-         ((equal? name-index
-                  (car content-of-field))
-          (values (cdr content-of-field)
-                  :found!!!))
-
-         ((< field *size#entry#title-table*)
-          (help#ask :title-index title-index
-                    :name-index name-index
-                    :field (add1 field)))
-
-         (:else
-          (error (concatenate
-                  'string
-                  "can not ask for the object under the name as you wish~%"
-                  "and the names under this title is too filled")))
-         )))
-
-
+   (defun cicada-object->title-index (cicada-object)
+     (cond ((not (cicada-object? cicada-object))
+            (error "the argument of (cicada-object->title-index) must be cicada-object"))
+           (:else
+            (cicada-byte-vector->title-index
+              (cicada-object->cicada-byte-vector cicada-object)))))   
    #+end_src
-** test
-   #+begin_src lisp :tangle cicada-vm.test.lisp
-   (deftest entitle--and--ask
-       (cicada-vm)
-     (ensure
-         (list (entitle :title (string->title "kkk")
-                        :name (string->name "took")
-                        :object `#(<host-object>
-                                   ,(string->title "my")
-                                   "baby away!"))
-               (multiple-value-list
-                (entitle :title (string->title "kkk")
-                         :name (string->name "took")
-                         :object `#(<host-object>
-                                    ,(string->title "my")
-                                    "baby away!")))
-               (multiple-value-list
-                (ask :title (string->title "kkk")
-                     :name (string->name "took"))))
-         ==>
-         (list `1
-               `(1
-                 :updated!!!
-                 #(<host-object> ,(string->title "my") "baby away!"))
-               `(#(<host-object> ,(string->title "my") "baby away!")
-                  :found!!!))))
-    #+end_src
-** ----------------------------------
-** entitled?
+** cicada-object->title
    #+begin_src lisp :tangle cicada-vm.lisp
-   (defun entitled? (&key
-                       title
-                       name)
-     (multiple-value-bind
-           (object
-            find?)
-         (ask :title title
-              :name name)
-       find?))
+   (defun cicada-object->title (cicada-object)
+     (cond ((not (cicada-object? cicada-object))
+            (error "the argument of (cicada-object->title) must be cicada-object"))
+           (:else
+            `#(<title>
+               ,(cicada-object->title-index cicada-object)))))
    #+end_src
-** test
-   #+begin_src lisp :tangle cicada-vm.test.lisp
-   (deftest entitled?
-       (cicada-vm)
-     (ensure
-         (entitled? :title (string->title "kkk")
-                    :name (string->name "took"))
-         ==>
-         :found!!!))
-   #+end_src
-** ----------------------------------
-** print-title
+** cicada-object->value
    #+begin_src lisp :tangle cicada-vm.lisp
-   (defun print-title (title &key (stream t))
-     (if (not (title? title))
-         (error "the argument of (print-title) must be checked by title?")
-         (print-name (fetch#array :array *title-table*
-                                  :index-vector `#(,(title->index title) 0))
-                     :stream stream)))
-
-   #+end_src
-** test
-   #+begin_src lisp :tangle cicada-vm.test.lisp
-   (deftest print-title
-       (cicada-vm)
-     (ensure
-         ;; (let ((test-stream (make-string-output-stream)))
-         ;;   (print-title (string->title "kkk")
-         ;;                :stream test-stream)
-         ;;   (get-output-stream-string test-stream))
-         (print-title (string->title "kkk")
-                      :stream nil)
-         ==>
-         "[title]"))
-   #+end_src
-** ----------------------------------
-** (string->title "title")
-   #+begin_src lisp :tangle cicada-vm.lisp
-   (string->title "title")
+   (defun cicada-object->value (cicada-object)
+     (cond ((not (cicada-object? cicada-object))
+            (error "the argument of (cicada-object->value) must be cicada-object"))
+           (:else
+            (cicada-byte-vector->value
+             (cicada-object->cicada-byte-vector cicada-object)))))   
    #+end_src
 ** ----------------------------------
 * return-stack
@@ -1115,7 +917,7 @@
 ** ----------------------------------
 ** (string->title "return-stack")
    #+begin_src lisp :tangle cicada-vm.lisp
-   (string->title "return-stack")
+   ;; (string->title "return-stack")
    #+end_src
 ** ----------------------------------
 ** return-stack
@@ -1123,20 +925,19 @@
    (defparameter *size#return-stack* 1024)
 
    (defparameter *return-stack*
-     (make-array `(,(*  *cicada-object-size*
-                        ,*size#return-stack*))
-                 :element-type '(unsigned-byte 8)
-                 :initial-element 0))
+     (make-vector :length (* *cicada-object-size* *size#return-stack*)
+                  :element-type '(unsigned-byte 8)
+                  :initial-element 0))
 
    ;; pointer is an index into *return-stack*
    ;; one step of push pop is *cicada-object-size*
    (defparameter *pointer#return-stack* 0)
 
-   ;; explicitly change value to cicada-object before push
-   (defun push#return-stack (cicada-object)
+   ;; explicitly change value to cicada-byte-vector before push
+   (defun push#return-stack (cicada-byte-vector)
      (cond
-       ((not (cicada-object? cicada-object))
-        (error "the argument of (push#return-stack) must be checked by cicada-object?"))
+       ((not (cicada-byte-vector? cicada-byte-vector))
+        (error "the argument of (push#return-stack) must cicada-byte-vector?"))
 
        ((not (<  (*  *pointer#return-stack*
                      ,*cicada-object-size*)
@@ -1144,7 +945,7 @@
         (error "can not push anymore *return-stack* is filled"))
 
        (:else
-        (copy#byte-vector :from cicada-object
+        (copy#byte-vector :from cicada-byte-vector
                           :from-index 0
                           :to *return-stack*
                           :to-index (*  *pointer#return-stack*
@@ -1153,27 +954,26 @@
         (setf *pointer#return-stack*
               (add1 *pointer#return-stack*))
         (values *pointer#return-stack*
-                cicada-object))))
+                cicada-byte-vector))))
 
    (defun pop#return-stack ()
      (cond
        ((zero? *pointer#return-stack*)
         (error "can not pop anymore *return-stack* is empty"))
        (:else
-        (let ((cicada-object
-               (make-cicada-object
-                :title (string->title
-                        "pop#return-stack--make-cicada-object--to-return")
+       (let ((cicada-byte-vector
+               (make-cicada-byte-vector-with#title-index&value
+                :title-index 0 ;; place holder
                 :value 0)))
           (setf *pointer#return-stack*
                 (sub1 *pointer#return-stack*))
-          (copy#byte-vector :to cicada-object
+          (copy#byte-vector :to cicada-byte-vector
                             :to-index 0
                             :from *return-stack*
                             :from-index (*  *pointer#return-stack*
                                             ,*cicada-object-size*)
                             :size *cicada-object-size*)
-          (values cicada-object
+          (values cicada-byte-vector
                   ,*pointer#return-stack*)))))
 
 
@@ -1183,18 +983,17 @@
        ((zero? *pointer#return-stack*)
         (error "can not pop anymore *return-stack* is empty"))
        (:else
-        (let ((cicada-object
-               (make-cicada-object
-                :title (string->title
-                        "pop#return-stack--make-cicada-object--to-return")
+        (let ((cicada-byte-vector
+               (make-cicada-byte-vector-with#title-index&value
+                :title-index 0 ;; place holder
                 :value 0)))
-          (copy#byte-vector :to cicada-object
+          (copy#byte-vector :to cicada-byte-vector
                             :to-index 0
                             :from *return-stack*
                             :from-index (*  (sub1 *pointer#return-stack*)
                                             ,*cicada-object-size*)
                             :size *cicada-object-size*)
-          (values cicada-object
+          (values cicada-byte-vector
                   (sub1 *pointer#return-stack*))))))
    #+end_src
 ** test
@@ -1206,14 +1005,16 @@
                (pointer-index#1
                 cicada-object#1)
              (push#return-stack
-              (make-cicada-object :title (string->title "kkk")
-                                  :value 666))
+              (cicada-object->cicada-byte-vector
+               (make-cicada-object :title (string->title "kkk")
+                                   :value 666)))
            (multiple-value-bind
                  (pointer-index#2
                   cicada-object#2)
                (push#return-stack
-                (make-cicada-object :title (string->title "kkk")
-                                    :value 666))
+                (cicada-object->cicada-byte-vector
+                 (make-cicada-object :title (string->title "kkk")
+                                     :value 666)))
              (list (- pointer-index#2
                       pointer-index#1)
                    (every (function equal?)
@@ -1221,14 +1022,16 @@
                           cicada-object#2)
                    (every (function equal?)
                           cicada-object#1
-                          (make-cicada-object :title (string->title "kkk")
-                                              :value 666))
+                          (cicada-object->cicada-byte-vector
+                           (make-cicada-object :title (string->title "kkk")
+                                               :value 666)))
                    (equal? (car (cdr (multiple-value-list (pop#return-stack)))) (sub1 pointer-index#2))
                    (equal? (car (cdr (multiple-value-list (tos#return-stack)))) (sub1 pointer-index#1))
                    (every (function equal?)
                           (pop#return-stack)
-                          (make-cicada-object :title (string->title "kkk")
-                                              :value 666))
+                          (cicada-object->cicada-byte-vector
+                           (make-cicada-object :title (string->title "kkk")
+                                               :value 666)))
                    )))
          ==>
          (list 1
@@ -1239,8 +1042,8 @@
                t)))
    #+end_src
 ** ----------------------------------
-** next & execute-instruction
-   #+begin_src lisp :tangle cicada-vm.test.lisp
+** >< next & execute-instruction
+   #+begin_src lisp
    ;; the following two address#cicada-object can be index
 
    (defun next ()
@@ -1253,7 +1056,8 @@
 
    ;; note that:
    ;; this function defines the interface of primitive-instruction
-   ;; as:
+   ;; as: 
+   ;; ><><><
    ;; 1. (primitive-instruction host-object)
    ;;    the return-stack will likely be updated by primitive-instruction
    ;; 2. at the end of primitive-instruction
@@ -1267,7 +1071,7 @@
      (let (;; (title#instruction (cicada-object->title instruction))
            (address#instruction (cicada-object->value instruction)))
        (funcall (address->instruction address#instruction)
-                (cicada-object->host-object cicada-object))))
+                (><><>< cicada-object))))
    #+end_src
 ** ----------------------------------
 ** address->instruction
@@ -1310,7 +1114,7 @@
 ** ----------------------------------
 ** (string->title "primitive-instruction")
    #+begin_src lisp :tangle cicada-vm.lisp
-   (string->title "primitive-instruction")
+   ;; (string->title "primitive-instruction")
    #+end_src
 ** ----------------------------------
 ** primitive-instruction-table
@@ -1408,6 +1212,7 @@
   #+begin_src lisp
   (asdf:load-system "cicada-vm")
   (in-package :cicada-vm)
+  (setf *print-pretty* t)
   (run-unit 'basic)
   (run-unit 'cicada-vm)
   #+end_src

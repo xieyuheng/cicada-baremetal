@@ -1,82 +1,211 @@
 (in-package :cicada-vm)
-(defparameter *cell-unit* (/ *size#fixnum* 8)) ;; unit byte
-(defparameter *cicada-object-size*
-  (* 2 *cell-unit*))
+(defparameter *size#title.name-table* 1000)
 
-(defun cicada-object? (x)
-  (and (vector? x)
-       (equal? '(unsigned-byte 8) (array-element-type x))
-       (fixnum? (fetch#byte-vector :byte-vector x
-                                   :size *cell-unit*
-                                   :index 2))
-       (= *cicada-object-size*
-          (array-dimension x 0))
-       (not
-        (nil?
-         (fetch#array
-          :array *title-table*
-          :index-vector (vector (fetch#byte-vector
-                                 :byte-vector x
-                                 :size *cell-unit*
-                                 :index 0)
-                                0))))))
-(defun make-cicada-object (&key
-                             title
-                             value)
-  (if (not (title? title))
-      (error "the agument :title of (make-cicada-object) must be checked by title?")
-      (let ((cicada-object (make-array `(,*cicada-object-size*)
-                                       :element-type '(unsigned-byte 8)
-                                       :initial-element 0)))
-        (save#byte-vector :value (title->index title)
-                          :byte-vector cicada-object
-                          :size *cell-unit*
-                          :index 0)
-        (save#byte-vector :value value
-                          :byte-vector cicada-object
-                          :size *cell-unit*
-                          :index *cell-unit*))))
-;; these two funcitons return values to be use in host-language
+(defparameter *size#entry#title.name-table* 100)
 
-(defun cicada-object->title (cicada-object)
-  (cond ((not (cicada-object? cicada-object))
-         (error "the argument of (cicada-object->title) must be cicada-object"))
-        (:else
-         (fetch#byte-vector :byte-vector cicada-object
-                            :size *cell-unit*
-                            :index 0))))
+(defparameter *title.name-table*
+  ;; should be a byte-vector in assembly version 
+  (make-array
+   `(,*size#title.name-table* ,*size#entry#title.name-table*)
+   ;; note that
+   ;; this table's element can be of any type
+   ;; but actually
+   ;; (i 0) must be an name[index] to name-hash-table
+   ;; (i n) must be a vector of
+   ;; #( name[index] title[index] value )
+   :initial-element 0))
 
-(defun cicada-object->value (cicada-object)
-  (cond ((not (cicada-object? cicada-object))
-         (error "the argument of (cicada-object->value) must be cicada-object"))
-        (:else
-         (fetch#byte-vector :byte-vector cicada-object
-                            :size *cell-unit*
-                            :index *cell-unit*))))
-(defun host-object? (x)
-  (and (vector? x)
-       (= 3 (array-dimension x
-                             0))
-       (equal? '<host-object>
-               (fetch#vector :vector x
+;; the first entry of *title.name-table* reserved
+;; for *name-hash-table*
+;; to test if a name in *name-hash-table*
+;; is used as title or not
+(defparameter *pointer#title.name-table* 1)
+(defun index-within-title.name-table? (index)
+  (and (natural-number? index)
+       (< index *size#title.name-table*)))
+(defun title? (vector)
+  (and (vector? vector)
+       (= 2 (length vector))
+       (equal? '<title>
+               (fetch#vector :vector vector
                              :index 0))
-       (title? (fetch#vector :vector x
-                             :index 1))))
-(defun host-object->cicada-object (host-object)
-  (if (not (host-object? host-object))
-      (error "the argument of (host-object->cicada-object) must be host-object")
-      (make-cicada-object :title (fetch#vector :vector host-object
-                                               :index 1)
-                          :value (fetch#vector :vector host-object
-                                               :index 2))))
-(defun cicada-object->host-object (cicada-object)
-  (cond ((not (cicada-object? cicada-object))
-         (error "the argument of (cicada-object->host-object) must be cicada-object"))
+       (index-within-title.name-table?
+        (fetch#vector :vector vector
+                      :index 1))))
+(defun string->title (string)
+  (let* ((name-index
+          (name->index (string->name string)))
+         (index-for-title
+          (fetch#vector :vector *name-hash-table#index-for-title*
+                        :index name-index)))
+    (cond
+      ((not (zero? index-for-title))       
+       `#(<title> ,index-for-title))
+
+      ((< *pointer#title.name-table*
+          *size#title.name-table*)
+       ;; now
+       ;; *pointer#title.name-table* is pointing to
+       ;; the next free to use index
+       ;; in the *title.name-table*
+
+       ;; save title[index] to *name-hash-table#index-for-title*
+       (save#vector :value *pointer#title.name-table*
+                    :vector *name-hash-table#index-for-title*
+                    :index name-index)
+
+       ;; save name[index] to *title.name-table*
+       (save#array :value name-index
+                   :array *title.name-table*
+                   :index-vector (vector *pointer#title.name-table* 0))       
+
+       ;; to update *pointer#title.name-table*
+       ;; is to allocate a new index in the *title.name-table*
+       (setf *pointer#title.name-table* 
+             (add1 *pointer#title.name-table*))
+
+       ;; return value
+       `#(<title>
+          ,(sub1 *pointer#title.name-table*)))
+
+      (:else
+       (error "title.name-table is filled, (string->title) can not make new title")))))
+(defun title->index (title)
+  (if (not (title? title))
+      (error "argument of (title->index) must be a title")
+      (fetch#vector :vector title
+                    :index 1)))
+(defun title->name (title)
+  (if (not (title? title))
+      (error "argument of (title->name) must be a title")
+      `#(<name>
+         ,(fetch#array
+           :array *title.name-table*
+           :index-vector
+           (vector (title->index title) 0)))))
+(defun title->string (title)
+  (if (not (title? title))
+      (error "argument of (title->string) must be a title")
+      (name->string (title->name title))))
+(defun print-title (title &key (stream t))
+  (if (not (title? title))
+      (error "the argument of (print-title) must be checked by title?")
+      (print-name (title->name title)
+                  :stream stream)))
+(defun be (&key
+             title
+             name
+             cicada-object)
+  (cond
+    ((not (title? title))
+     (error "the argument :title of (be) must be a title"))
+    ((not (name? name))
+     (error "the argument :name of (be) must be a name"))
+    ((not (cicada-object? cicada-object))
+     (error "the argument :cicada-object of (be) must be a cicada-object?"))
+    (:else    
+     (let ((title-index (title->index title))
+           (name-index (name->index name)))
+       (be#low-level :title-index title-index
+                     :name-index name-index
+                     :cicada-byte-vector (cicada-object->cicada-byte-vector
+                                          cicada-object))))))
+
+
+(defun be#low-level (&key
+                       title-index
+                       name-index
+                       cicada-byte-vector
+                       (field 1))
+  (let ((content-of-field
+         (fetch#array :array *title.name-table*
+                      :index-vector `#(,title-index ,field))))
+    (cond
+      ;; creat new
+      ((zero? content-of-field) 
+       (save#array :value (vector name-index
+                                  (cicada-byte-vector->title-index cicada-byte-vector)
+                                  (cicada-byte-vector->value cicada-byte-vector))
+                   :array *title.name-table*
+                   :index-vector `#(,title-index ,field))
+       (values field
+               nil))
+      ;; update
+      ((equal? name-index
+               (fetch#vector :vector content-of-field
+                             :index 0))
+       (save#array :value (vector name-index
+                                  (cicada-byte-vector->title-index cicada-byte-vector)
+                                  (cicada-byte-vector->value cicada-byte-vector))
+                   :array *title.name-table*
+                   :index-vector `#(,title-index ,field))
+       (values field
+               :updated!!!))
+      ;; next
+      ((< field *size#entry#title.name-table*)
+       (be#low-level :title-index title-index
+                     :name-index name-index
+                     :cicada-byte-vector cicada-byte-vector
+                     :field (add1 field)))
+      ;; filled
+      (:else
+       (error "the names under this title is too filled (be) can not do")))))
+(defun ask (&key
+              title
+              name)
+  (cond ((not (title? title))
+         (error "the argument :title of (ask) must be a title"))
+        ((not (name? name))
+         (error "the argument :name of (ask) must be a name"))
         (:else
-         `#(<host-object>
-            ,(vector '<title>
-                     (cicada-object->title cicada-object))
-            ,(cicada-object->value cicada-object)))))
+         (let ((title-index (title->index title))
+               (name-index (name->index name)))
+           (multiple-value-bind
+                 (cicada-byte-vector
+                  found?)
+               (ask#low-level :title-index title-index
+                              :name-index name-index)
+             (values (cicada-byte-vector->cicada-object
+                      cicada-byte-vector)
+                     found?))))))
+
+
+(defun ask#low-level (&key
+                        title-index
+                        name-index
+                        (field 1))
+  (let ((content-of-field
+         (fetch#array :array *title.name-table*
+                      :index-vector `#(,title-index ,field))))
+    (cond
+      ;; not found
+      ((zero? content-of-field)
+       (values nil
+               nil))
+      ;; found
+      ((equal? name-index
+               (fetch#vector :vector content-of-field
+                             :index 0))
+       (let ((vector-of-name-title-value
+              (fetch#array :array *title.name-table*
+                           :index-vector `#(,title-index ,field))))
+         (values (make-cicada-byte-vector-with#title-index&value
+                  :title-index (fetch#vector :vector vector-of-name-title-value
+                                             :index 1)
+                  :value (fetch#vector :vector vector-of-name-title-value
+                                       :index 2)
+                  ) ;; this bar-ket is to stress that the next key-word values                 
+                 :found!!!)))
+      ;; next
+      ((< field *size#entry#title.name-table*)
+       (ask#low-level :title-index title-index
+                      :name-index name-index
+                      :field (add1 field)))
+      ;; filled
+      (:else
+       (error (cat ()
+                ("can not ask for the object under the name as you wish~%")
+                ("and the names under this title is too filled")))))))
 ;; must be a prime number
 
 ;; 1000003  ;; about 976 k
@@ -88,20 +217,30 @@
 ;; 499
 ;; 230      ;; for a special test
 
-(defparameter *size#name-table* 100333)
+(defparameter *size#name-hash-table* 100333)
 
-(defparameter *size#entry#name-table* 100)
+(defparameter *name-hash-table#string*
+  (make-vector
+   :length *size#name-hash-table*
+   :initial-element 0))
 
-(defparameter *name-table*
-  (make-array
-   `(,*size#name-table* ,*size#entry#name-table*)
-   ;; note that
-   ;; this table's element can be of any type
-   :initial-element nil))
-
-(defun index-within-name-table? (index)
+(defparameter *name-hash-table#index-for-title*
+  (make-vector
+   :length *size#name-hash-table*
+   :element-type `(integer 0 ,*size#title.name-table*)
+   :initial-element 0))
+(defun index-within-name-hash-table? (index)
   (and (natural-number? index)
-       (< index *size#name-table*)))
+       (< index *size#name-hash-table*)))
+(defun name? (vector)
+  (and (vector? vector)
+       (= 2 (length vector))
+       (equal? '<name>
+               (fetch#vector :vector vector
+                             :index 0))
+       (index-within-name-hash-table?
+        (fetch#vector :vector vector
+                      :index 1))))
 (defparameter *max-carry-position* 22)
 
 (defun string->natural-number (string
@@ -127,404 +266,198 @@
 (defun natural-number->index (natural-number)
   (if (not (natural-number? natural-number))
       (error "argument of natural-number->index must be a natural-number")
-      (mod natural-number *size#name-table*)))
-(defun name? (x)
-  (and (vector? x)
-       (= 2 (array-dimension x
-                             0))
-       (equal? '<name>
-               (fetch#vector :vector x
-                             :index 0))
-       (index-within-name-table?
-        (fetch#vector :vector x
-                      :index 1))))
-(defun name->index (name)
-  (cond ((not (name? name))
-         (error "argument of name->index must be a name"))
-        (:else
-         (fetch#vector :vector name
-                       :index 1))))
+      (mod natural-number *size#name-hash-table*)))
+(defun string->index (string)
+  (natural-number->index
+   (string->natural-number string)))
 (defun string->name (string)
-  (let ((index
-         (natural-number->index
-          (string->natural-number string))))
-    (help#string->name#find-old-or-creat-new string
-                                             index)))
+  (help#string->name#find-old-or-creat-new
+   string
+   (string->index string)))
 
 (defun help#string->name#find-old-or-creat-new (string index)
   (cond
-    ((not (name-table-index#used? index))
+    ((not (name-hash-table-index#used? index))
      (help#string->name#creat-new string
                                   index)
      `#(<name> ,index))
 
     ((equal? string
-             (fetch#array :array *name-table*
-                          :index-vector `#(,index 0)))
+             (fetch#vector :vector *name-hash-table#string*
+                           :index index))
      `#(<name> ,index))
 
     (:else
      (help#string->name#find-old-or-creat-new
       string
-      (name-table-index#next index)))
+      (name-hash-table-index#next index)))
     ))
 
+(defun name-hash-table-index#used? (index)
+  (not (equal? 0
+               (fetch#vector :vector *name-hash-table#string*
+                             :index index))))
 
 (defun help#string->name#creat-new (string index)
- (save#array :value string
-             :array *name-table*
-             :index-vector `#(,index 0)))
+  (save#vector :value string
+               :vector *name-hash-table#string*
+               :index index))
 
-
-(defun name-table-index#used? (index)
-  (string? (fetch#array :array *name-table*
-                        :index-vector `#(,index 0))))
-
-(defun name-table-index#next (index)
-  (if (= index *size#name-table*)
+(defun name-hash-table-index#next (index)
+  (if (= index *size#name-hash-table*)
       0
       (add1 index)))
-
-
-
-(defun name->string (name)
+;; (string->name "")
+(defun name->index (name)
   (cond ((not (name? name))
-         (error "argument of name->string must be a name"))
+         (error "argument of (name->index) must be a name"))
         (:else
-         (let ((index (name->index name)))
-           (cond ((not (name-table-index#used? index))
-                  (error "this name does not have a string"))
-                 (:else
-                  (fetch#array :array *name-table*
-                               :index-vector `#(,index 0)))
-                 )))
-        ))
+         (fetch#vector :vector name
+                       :index 1))))
+(defun name->string (name)
+  (if (not (name? name))
+      (error "argument of name->string must be a name")
+      (let ((index (name->index name)))
+        (cond ((not (name-hash-table-index#used? index))
+               (error "this name does not have a string"))
+              (:else
+               (fetch#vector :vector *name-hash-table#string*
+                             :index index))
+              ))))
 (defun print-name (name
                    &key (stream t))
   (format stream
           "[~A]"
           (name->string name)))
-(defun be (&key
-             name
-             as
-             mean)
-  (if (or (not (name? name))
-          (not (name? as)))
-      (error "the argument :name and :as of (be) must be checked by (name?)")
-      (let ((name-index (name->index name))
-            (as-index (name->index as)))
-        (help#be :name-index name-index
-                 :as-index as-index
-                 :mean mean))))
+(defparameter *cell-unit* (/ *size#fixnum* 8)) ;; unit byte
+(defparameter *cicada-object-size*
+  (* 2 *cell-unit*))   
 
-
-(defun help#be (&key
-                  name-index
-                  as-index
-                  mean
-                  (field 1))
-  (let ((content-of-field
-         (fetch#array :array *name-table*
-                      :index-vector `#(,name-index ,field))))
-    (cond
-      ((nil? content-of-field)
-       (save#array :value (cons as-index mean)
-                   :array *name-table*
-                   :index-vector `#(,name-index ,field))
-       (values field
-               nil
-               nil))
-
-      ((equal? as-index
-               (car content-of-field))
-       (save#array :value (cons as-index mean)
-                   :array *name-table*
-                   :index-vector `#(,name-index ,field))
-       (values field
-               :updated!!!
-               (cdr content-of-field)))
-
-      ((< field *size#entry#name-table*)
-       (help#be :name-index name-index
-                :as-index as-index
-                :mean mean
-                :field (add1 field)))
-
-      (:else
-       (error "the meaning of this name is too filled"))
-      )))
-
-
-
-(defun explain (&key
-                  name
-                  as)
-  (if (or (not (name? name))
-          (not (name? as)))
-      (error "the argument :name and :as of (explain) must be checked by (name?)")
-      (let ((name-index (name->index name))
-            (as-index (name->index as)))
-        (help#explain :name-index name-index
-                      :as-index as-index))))
-
-
-(defun help#explain (&key
-                       name-index
-                       as-index
-                       (field 1))
-  (let ((content-of-field
-         (fetch#array :array *name-table*
-                      :index-vector `#(,name-index ,field))))
-    (cond
-      ((nil? content-of-field)
-       (values nil
-               nil))
-
-      ((equal? as-index
-               (car content-of-field))
-       (values (cdr content-of-field)
-               :found!!!))
-
-      ((< field *size#entry#name-table*)
-       (help#explain :name-index name-index
-                     :as-index as-index
-                     :field (add1 field)))
-
-      (:else
-       (error (concatenate
-               'string
-               "can not explain the name as the way you wish~%"
-               "and the meaning of this name is too filled")))
-      )))
-(defun meaningful? (&key
-                      name
-                      as)
-    (multiple-value-bind
-          (mean
-           find?)
-        (explain :name name
-                 :as as)
-      find?))
-(defparameter *size#title-table* 1000)
-
-(defparameter *size#entry#title-table* 100)
-
-(defparameter *title-table*
-  (make-array
-   `(,*size#title-table* ,*size#entry#title-table*)
-   ;; note that
-   ;; this table's element can be of any type
-   :initial-element nil))
-
-(defun index-within-title-table? (index)
-  (and (natural-number? index)
-       (< index *size#title-table*)))
-
-(defparameter *pointer#title-table* 0)
-(defun string->title (string)
-  (let ((name (string->name string))
-        (name#title (string->name "title")))
-    (cond
-      ((meaningful? :name name
-                    :as name#title)
-       `#(<title>
-          ,(explain :name name
-                    :as name#title)))
-
-      ((< *pointer#title-table*
-          *size#title-table*)
-       ;; to create a new title is
-       ;; to allocate a new index in the title-table
-       ;; and save the name#title to the field number 0 of the entry
-       (be :name name
-           :as name#title
-           :mean *pointer#title-table*)
-       (save#array :value name#title
-                   :array *title-table*
-                   :index-vector (vector *pointer#title-table* 0))
-       ;; update *pointer#title-table*
-       (setf *pointer#title-table*
-             (add1 *pointer#title-table*))
-       `#(<title>
-          ,(sub1 *pointer#title-table*)))
-
-      (:else
-       (error "title-table is filled, can not make new title")))))
-(defun title? (x)
-  (and (vector? x)
-       (= 2 (array-dimension x
-                             0))
-       (equal? '<title>
-               (fetch#vector :vector x
-                             :index 0))
-       (index-within-title-table?
-        (fetch#vector :vector x
-                      :index 1))))
-(defun title->index (title)
-  (cond ((not (title? title))
-         (error "argument of title->index must be a title"))
+(defun cicada-byte-vector? (byte-vector)
+  (and (equal? '(unsigned-byte 8)
+               (array-element-type byte-vector))
+       (fixnum? (fetch#byte-vector :byte-vector byte-vector
+                                   :size *cell-unit*
+                                   :index 2))
+       (= *cicada-object-size*
+          ;; (array-dimension byte-vector 0)
+          (length byte-vector))
+       (not (zero? (fetch#array
+                    :array *title.name-table*
+                    :index-vector `#(,(fetch#byte-vector
+                                       :byte-vector byte-vector
+                                       :size *cell-unit*
+                                       :index 0)
+                                     0))))))
+(defun make-cicada-byte-vector-with#title-index&value
+    (&key
+       title-index
+       value)
+  (if (not (index-within-title.name-table? title-index))
+      (error (cat ()
+               ("the agument :title-index of~%")
+               ("  (make-cicada-byte-vector-with#title-index&value)~%")
+               ("must be an index-within-title.name-table")))
+      (let ((cicada-object#byte-vector
+             (make-vector :length *cicada-object-size*
+                          :element-type '(unsigned-byte 8)
+                          :initial-element 0)))
+        (save#byte-vector :value title-index
+                          :byte-vector cicada-object#byte-vector
+                          :size *cell-unit*
+                          :index 0)
+        ;; save#byte-vector returns the byte-vector
+        (save#byte-vector :value value
+                          :byte-vector cicada-object#byte-vector
+                          :size *cell-unit*
+                          :index *cell-unit*))))
+(defun cicada-byte-vector->title-index (cicada-byte-vector)
+  (cond ((not (cicada-byte-vector? cicada-byte-vector))
+         (error "the argument of (cicada-byte-vector->title-index) must be cicada-byte-vector"))
         (:else
-         (fetch#vector :vector title
-                       :index 1))))
-;; <title
-;; <name
-;; <object
-;; (entitle)
-
-;; <title
-;; <name
-;; (ask)
-
-
-
-;; interface:
-;; (multiple-value-bind
-;;       (field
-;;        update?
-;;        old-object)
-;;     (entitle :title
-;;              :name
-;;              :object )
-;;   ><><><)
-
-(defun entitle (&key
-                  title
-                  name
-                  object)
-  (if (or (not (title? title))
-          (not (name? name))
-          (not (host-object? object)))
-      (error "one or more the arguments of (entitle) is of wrong type")
-      (let ((title-index (title->index title))
-            (name-index (name->index name)))
-        (help#entitle :title-index title-index
-                      :name-index name-index
-                      :object object))))
-
-
-
-(defun help#entitle (&key
-                       title-index
-                       name-index
-                       object
-                       (field 1))
-  (let ((content-of-field
-         (fetch#array :array *title-table*
-                      :index-vector `#(,title-index ,field))))
-    (cond
-      ((nil? content-of-field)
-       (save#array :value (cons name-index object)
-                   :array *title-table*
-                   :index-vector `#(,title-index ,field))
-       (values field
-               nil
-               nil))
-
-      ((equal? name-index
-               (car content-of-field))
-       (save#array :value (cons name-index object)
-                   :array *title-table*
-                   :index-vector `#(,title-index ,field))
-       (values field
-               :updated!!!
-               (cdr content-of-field)))
-
-      ((< field *size#entry#title-table*)
-       (help#entitle :title-index title-index
-                     :name-index name-index
-                     :object object
-                     :field (add1 field)))
-
-      (:else
-       (error "the names under this title is too filled"))
-      )))
-
-
-
-;; interface:
-;; (multiple-value-bind
-;;       (object
-;;        find?)
-;;     (ask :title
-;;          :name )
-;;   ><><><)
-
-
-(defun ask (&key
-              title
-              name)
-  (if (or (not (title? title))
-          (not (name? name)))
-      (error "one or more the arguments of (ask) is of wrong type")
-      (let ((title-index (title->index title))
-            (name-index (name->index name)))
-        (help#ask :title-index title-index
-                  :name-index name-index))))
-
-
-
-(defun help#ask (&key
-                   title-index
-                   name-index
-                   (field 1))
-  (let ((content-of-field
-         (fetch#array :array *title-table*
-                      :index-vector `#(,title-index ,field))))
-    (cond
-      ((nil? content-of-field)
-       (values nil
-               nil))
-
-      ((equal? name-index
-               (car content-of-field))
-       (values (cdr content-of-field)
-               :found!!!))
-
-      ((< field *size#entry#title-table*)
-       (help#ask :title-index title-index
-                 :name-index name-index
-                 :field (add1 field)))
-
-      (:else
-       (error (concatenate
-               'string
-               "can not ask for the object under the name as you wish~%"
-               "and the names under this title is too filled")))
-      )))
-(defun entitled? (&key
-                    title
-                    name)
-  (multiple-value-bind
-        (object
-         find?)
-      (ask :title title
-           :name name)
-    find?))
-(defun print-title (title &key (stream t))
+         (fetch#byte-vector :byte-vector cicada-byte-vector
+                            :size *cell-unit*
+                            :index 0))))
+(defun cicada-byte-vector->value (cicada-byte-vector)
+  (cond ((not (cicada-byte-vector? cicada-byte-vector))
+         (error "the argument of (cicada-byte-vector->value) must be cicada-byte-vector"))
+        (:else
+         (fetch#byte-vector :byte-vector cicada-byte-vector
+                            :size *cell-unit*
+                            :index *cell-unit*))))
+(defun cicada-object? (vector)
+  (and (vector? vector)
+       (equal? 2 (length vector))
+       (equal? '<cicada-object>
+               (fetch#vector :vector vector
+                             :index 0))
+       (cicada-byte-vector?
+        (fetch#vector :vector vector
+                      :index 1))))
+(defun cicada-byte-vector->cicada-object (cicada-byte-vector)
+  (if (not (cicada-byte-vector? cicada-byte-vector))
+      (error "argument of (cicada-byte-vector->cicada-object) must be a cicada-byte-vector")
+      `#(<cicada-object>
+         ,cicada-byte-vector)))
+(defun make-cicada-object
+    (&key
+       title
+       value)
   (if (not (title? title))
-      (error "the argument of (print-title) must be checked by title?")
-      (print-name (fetch#array :array *title-table*
-                               :index-vector `#(,(title->index title) 0))
-                  :stream stream)))
-(string->title "title")
-(string->title "return-stack")
+      (error (cat ()
+               ("the agument :title of~%")
+               ("  (make-cicada-object)~%")
+               ("must be an title")))
+      `#(<cicada-object>
+         ,(make-cicada-byte-vector-with#title-index&value
+           :title-index (title->index title)
+           :value value))))
+(defun cicada-object->cicada-byte-vector (cicada-object)
+  (if (not (cicada-object? cicada-object))
+      (error "argument of (cicada-object->cicada-byte-vector) must be a cicada-object")
+      (fetch#vector :vector cicada-object
+                    :index 1)))
+(defun cicada-object->cicada-byte-vector (cicada-object)
+  (cond ((not (cicada-object? cicada-object))
+         (error "the argument of (cicada-object->cicada-byte-vector) must be cicada-object"))
+        (:else
+         (fetch#vector :vector cicada-object                            
+                       :index 1))))
+(defun cicada-object->title-index (cicada-object)
+  (cond ((not (cicada-object? cicada-object))
+         (error "the argument of (cicada-object->title-index) must be cicada-object"))
+        (:else
+         (cicada-byte-vector->title-index
+           (cicada-object->cicada-byte-vector cicada-object)))))
+(defun cicada-object->title (cicada-object)
+  (cond ((not (cicada-object? cicada-object))
+         (error "the argument of (cicada-object->title) must be cicada-object"))
+        (:else
+         `#(<title>
+            ,(cicada-object->title-index cicada-object)))))
+(defun cicada-object->value (cicada-object)
+  (cond ((not (cicada-object? cicada-object))
+         (error "the argument of (cicada-object->value) must be cicada-object"))
+        (:else
+         (cicada-byte-vector->value
+          (cicada-object->cicada-byte-vector cicada-object)))))
+;; (string->title "return-stack")
 (defparameter *size#return-stack* 1024)
 
 (defparameter *return-stack*
-  (make-array `(,(*  *cicada-object-size*
-                     *size#return-stack*))
-              :element-type '(unsigned-byte 8)
-              :initial-element 0))
+  (make-vector :length (* *cicada-object-size* *size#return-stack*)
+               :element-type '(unsigned-byte 8)
+               :initial-element 0))
 
 ;; pointer is an index into *return-stack*
 ;; one step of push pop is *cicada-object-size*
 (defparameter *pointer#return-stack* 0)
 
-;; explicitly change value to cicada-object before push
-(defun push#return-stack (cicada-object)
+;; explicitly change value to cicada-byte-vector before push
+(defun push#return-stack (cicada-byte-vector)
   (cond
-    ((not (cicada-object? cicada-object))
-     (error "the argument of (push#return-stack) must be checked by cicada-object?"))
+    ((not (cicada-byte-vector? cicada-byte-vector))
+     (error "the argument of (push#return-stack) must cicada-byte-vector?"))
 
     ((not (<  (*  *pointer#return-stack*
                   *cicada-object-size*)
@@ -532,7 +465,7 @@
      (error "can not push anymore *return-stack* is filled"))
 
     (:else
-     (copy#byte-vector :from cicada-object
+     (copy#byte-vector :from cicada-byte-vector
                        :from-index 0
                        :to *return-stack*
                        :to-index (*  *pointer#return-stack*
@@ -541,27 +474,26 @@
      (setf *pointer#return-stack*
            (add1 *pointer#return-stack*))
      (values *pointer#return-stack*
-             cicada-object))))
+             cicada-byte-vector))))
 
 (defun pop#return-stack ()
   (cond
     ((zero? *pointer#return-stack*)
      (error "can not pop anymore *return-stack* is empty"))
     (:else
-     (let ((cicada-object
-            (make-cicada-object
-             :title (string->title
-                     "pop#return-stack--make-cicada-object--to-return")
+    (let ((cicada-byte-vector
+            (make-cicada-byte-vector-with#title-index&value
+             :title-index 0 ;; place holder
              :value 0)))
        (setf *pointer#return-stack*
              (sub1 *pointer#return-stack*))
-       (copy#byte-vector :to cicada-object
+       (copy#byte-vector :to cicada-byte-vector
                          :to-index 0
                          :from *return-stack*
                          :from-index (*  *pointer#return-stack*
                                          *cicada-object-size*)
                          :size *cicada-object-size*)
-       (values cicada-object
+       (values cicada-byte-vector
                *pointer#return-stack*)))))
 
 
@@ -571,24 +503,23 @@
     ((zero? *pointer#return-stack*)
      (error "can not pop anymore *return-stack* is empty"))
     (:else
-     (let ((cicada-object
-            (make-cicada-object
-             :title (string->title
-                     "pop#return-stack--make-cicada-object--to-return")
+     (let ((cicada-byte-vector
+            (make-cicada-byte-vector-with#title-index&value
+             :title-index 0 ;; place holder
              :value 0)))
-       (copy#byte-vector :to cicada-object
+       (copy#byte-vector :to cicada-byte-vector
                          :to-index 0
                          :from *return-stack*
                          :from-index (*  (sub1 *pointer#return-stack*)
                                          *cicada-object-size*)
                          :size *cicada-object-size*)
-       (values cicada-object
+       (values cicada-byte-vector
                (sub1 *pointer#return-stack*))))))
 (defun address->instruction (address)
   ;; ><><>< maybe not only the function in the table's entry
   (fetch#vector :vector *primitive-instruction-table*
                 :index address))
-(string->title "primitive-instruction")
+;; (string->title "primitive-instruction")
 (defparameter *size#primitive-instruction-table* 1000)
 
 (defparameter *primitive-instruction-table*
