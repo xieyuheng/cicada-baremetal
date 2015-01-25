@@ -10,7 +10,7 @@
                        (:print-function %print-test-group))
   (name (required-argument)
         :type symbol
-        :read-only t)             
+        :read-only t)
   (docstring nil
              :type (or null simple-base-string)
              :read-only t)
@@ -399,7 +399,7 @@
                                         constraints)))))))
 (defun run-unit
     (group &key
-             (skip nil))               
+             (skip nil))
   (let* ((group (find-test-group group))
          (passed '())
          (failed '())

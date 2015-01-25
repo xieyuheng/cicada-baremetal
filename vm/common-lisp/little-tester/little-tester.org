@@ -3,8 +3,7 @@
 #+EMAIL:  xyheme@gmail.com
 
 * todo
-  * 用新發展出來的風格
-    重寫數據結構的部分
+  * 整理數據結構
 * ===================================
 * note
 * -----------------------------------
@@ -47,7 +46,7 @@
                          (:print-function %print-test-group))
     (name (required-argument)
           :type symbol
-          :read-only t)             
+          :read-only t)
     (docstring nil
                :type (or null simple-base-string)
                :read-only t)
@@ -592,7 +591,7 @@
   #+begin_src lisp :tangle little-tester.lisp
   (defun run-unit
       (group &key
-               (skip nil))               
+               (skip nil))
     (let* ((group (find-test-group group))
            (passed '())
            (failed '())

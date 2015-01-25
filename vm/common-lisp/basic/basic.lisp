@@ -30,11 +30,16 @@
 (defun natural-number? (x)
   (and (integerp x)
        (<= 0 x)))
-(defun add1 (x)
-  (+ x 1))
+(defun add (x y) (+ x y))
+(defun sub (x y) (- x y))
+(defun mul (x y) (* x y))
+(defun div (x y) (/ x y))
 
-(defun sub1 (x)
-  (- x 1))
+(defun add1 (x) (+ x 1))
+(defun sub1 (x) (- x 1))
+
+(defmacro add1! (x) `(setf ,x (add1 ,x)))
+(defmacro sub1! (x) `(setf ,x (sub1 ,x)))
 (defun shift#left (&key
                      (step 1)
                      number)
@@ -396,7 +401,7 @@
         :index-vector index-vector
         :counter (add1 counter))))
     ))
-(defun byte-vector? (x) 
+(defun byte-vector? (x)
   (typep x '(vector (unsigned-byte 8))))
 (defun fetch#byte-vector (&key
                             byte-vector
@@ -498,7 +503,7 @@
     ((&key (to nil)
            (trim '())
            prefix
-           postfix           
+           postfix
            letter)
      &body form#list-of-list)
   (let* ((form#list-of-list#2
@@ -686,7 +691,7 @@
 (defun pathname->string (pathname)
   (if (not (pathname? pathname))
       (error "the argument of (pathname->string) must be a pathname")
-      (namestring pathname))) 
+      (namestring pathname)))
 
 (defun string->pathname (string)
   (if (not (string? string))
