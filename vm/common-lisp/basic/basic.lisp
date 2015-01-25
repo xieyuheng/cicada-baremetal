@@ -498,7 +498,8 @@
     ((&key (to nil)
            (trim '())
            prefix
-           postfix)
+           postfix           
+           letter)
      &body form#list-of-list)
   (let* ((form#list-of-list#2
           (apply (function append)
@@ -508,8 +509,15 @@
                                        (append '(format nil) list))
                                  postfix))
                          form#list-of-list)))
-         (form#final (append '(concatenate (quote string))
-                             form#list-of-list#2)))
+         (form#list-of-list#3
+          (append '(concatenate (quote string))
+                  form#list-of-list#2))
+         (form#final
+          (cond ((equal letter :big)
+                 (list 'string-upcase form#list-of-list#3))
+                ((equal letter :small)
+                 (list 'string-downcase form#list-of-list#3))
+                (:else form#list-of-list#3))))
     `(let ((string-for-return ,form#final))
        (format ,to "~A" string-for-return)
        string-for-return)))
@@ -673,6 +681,17 @@
     (:else
      (cons (string->head#char string)
            (string->list#char (string->tail#char string))))))
+(defun pathname? (x)
+  (pathnamep x))
+(defun pathname->string (pathname)
+  (if (not (pathname? pathname))
+      (error "the argument of (pathname->string) must be a pathname")
+      (namestring pathname))) 
+
+(defun string->pathname (string)
+  (if (not (string? string))
+      (error "the argument of (string->pathname) must be a string")
+      (pathname string)))
 (defun end-of-list (list)
   (cond
     ((not (pair? list))

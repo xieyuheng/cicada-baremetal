@@ -1,57 +1,40 @@
 (in-package :cicada-vm)
-(defstruct (test-group
-             (:constructor make-test-group (name &key
-                                                 pre
-                                                 post
-                                                 docstring))
-             (:print-function %print-test-group))
-  (name (required-argument) :type symbol :read-only t)
-  (docstring nil :type (or null simple-base-string) :read-only t)
-  (tests (make-hash-table) :type hash-table :read-only t)
-  (pre nil :type (or null function))
-  (post nil :type (or null function)))
+(defun required-argument ()
+  (error "A required argument was not supplied."))
+
+(defstruct (test-group (:constructor make-test-group
+                                     (name &key
+                                           pre
+                                           post
+                                           docstring))
+                       (:print-function %print-test-group))
+  (name (required-argument)
+        :type symbol
+        :read-only t)             
+  (docstring nil
+             :type (or null simple-base-string)
+             :read-only t)
+  (tests (make-hash-table)
+         :type hash-table
+         :read-only t)
+  (pre nil
+       :type (or null function))
+  (post nil
+        :type (or null function)))
 
 (defun %print-test-group (group stream depth)
   (declare (ignore depth))
   (print-unreadable-object (group stream :type t :identity t)
     (format stream "~S, ~D tests" (test-group-name group)
             (hash-table-count (test-group-tests group)))))
-
-
-(defstruct (test
-             (:constructor make-test (name fn
-                                           &key
-                                           after
-                                           after-pass
-                                           after-fail
-                                           when
-                                           unless
-                                           priority
-                                           docstring))
-             (:print-function %print-test))
-  (name (required-argument) :type symbol :read-only t)
-  (docstring nil :type (or null simple-base-string) :read-only t)
-  (fn (required-argument) :type function :read-only t)
-  (priority 0 :type fixnum)
-  (after '() :type list)
-  (after-pass '() :type list)
-  (after-fail '() :type list)
-  (when nil :type (or null function))
-  (unless nil :type (or null function)))
-
-(defun %print-test (test stream depth)
-  (declare (ignore depth))
-  (print-unreadable-object (test stream :type t :identity t)
-    (princ (test-name test) stream)))
-
-(defun required-argument ()
-  (error "A required argument was not supplied."))
 (defun find-test-group (name &optional create)
   (if (test-group-p name)
       name
       (let ((group (get name 'tests)))
         (cond (group group)
-              (create (setf (get name 'tests) (make-test-group name)))))))
+              (create
+               (setf (get name 'tests)
+                     (make-test-group name)))))))
 
 (defmacro define-test-group (name &optional opts docstring)
   (let ((tmp (gensym "GROUP"))
@@ -69,6 +52,43 @@
              (when ,pre (setf (test-group-pre ,tmp) ,pre))
              (when ,post (setf (test-group-post ,tmp) ,post))
              ,tmp)))))
+(defstruct (test (:constructor
+                  make-test
+                  (name fn
+                        &key
+                        after
+                        after-pass
+                        after-fail
+                        when
+                        unless
+                        priority
+                        docstring))
+                 (:print-function %print-test))
+  (name (required-argument)
+        :type symbol
+        :read-only t)
+  (docstring nil
+             :type (or null simple-base-string)
+             :read-only t)
+  (fn (required-argument)
+      :type function
+      :read-only t)
+  (priority 0
+            :type fixnum)
+  (after '()
+         :type list)
+  (after-pass '()
+              :type list)
+  (after-fail '()
+              :type list)
+  (when  nil  :type (or null function))
+  (unless nil :type (or null function))
+  )
+
+(defun %print-test (test stream depth)
+  (declare (ignore depth))
+  (print-unreadable-object (test stream :type t :identity t)
+    (princ (test-name test) stream)))
 (defmacro deftest
     (test-name
      (group &key
@@ -78,13 +98,11 @@
             when unless
             priority)
      &body body)
-
   (multiple-value-bind
         (body
          decls
          doc)
       (help#parse-body#deftest body nil t)
-
     (let* ((test-function-name
             (intern (concatenate 'string
                                  #.(string '#:test-)
@@ -110,27 +128,19 @@
                                       (test-priority
                                        (gethash (quote ,test-name) ,hash))
                                       (hash-table-count ,hash)))))))
-
-
-
       `(progn
          (defun ,test-function-name ()
            ,doc
            ,@decls
            (block ,test-name
-            ;; test-block ,test-name
              ,@body))
-
-         (let ((,hash (test-group-tests
-                       (find-test-group (quote ,group) t))))
+         (let ((,hash (test-group-tests (find-test-group (quote ,group) t))))
            (when (gethash (quote ,test-name) ,hash) (warn "Redefining test ~A." (quote ,test-name)))
            (setf (gethash (quote ,test-name) ,hash)
                  (make-test (quote ,test-name)
                             (function ,test-function-name)
                             ,@keys)))
-
-         (quote ,test-name)
-         ))))
+         (quote ,test-name)))))
 
 
 (defun help#parse-body#deftest (body env &optional doc-p)
@@ -387,24 +397,26 @@
                                           (or (eq (car x) elt)
                                               (eq (cdr x) elt)))
                                         constraints)))))))
-(defvar *break-on-fail* nil)
 (defun run-unit
     (group &key
-             (skip nil)
-             (break-on-fail *break-on-fail*))
-  (let* ((group (find-test-group group)) 
+             (skip nil))               
+  (let* ((group (find-test-group group))
          (passed '())
          (failed '())
-         (report-file-name (make-pathname
-                            :name (cat ()
+         (report-pathname
+          (merge-pathnames (make-pathname
+                            :directory ".unit-test-report-center"
+                            :name (cat (:letter :small)
                                     ("~A" (test-group-name group))
-                                    (".unit.test.report.org"))))
-         (report-stream
-          (open report-file-name
-                :direction :output
-                :if-exists :supersede)))    
+                                    (".unit-test-report.org")))
+                           (user-homedir-pathname)))
+         (report-stream (open report-pathname
+                              :direction :output
+                              :if-exists :supersede)))
+
     (when (test-group-pre group)
       (funcall (test-group-pre group)))
+
     (unwind-protect
          (dolist (name (all-tests group))
            (tagbody
@@ -417,21 +429,11 @@
                                  (funcall (test-unless test)))
                             (set-difference (test-after-pass test) passed)
                             (set-difference (test-after-fail test) failed))
-
                   (multiple-value-bind
                         (pass?
                          report-string
                          time)
                       (help#do-test#run-unit test)
-
-                    ;; about break-on-fail
-                    (when (and break-on-fail (not pass?))
-                      (restart-case
-                          (break "Test ~A failed with BREAK-ON-FAIL set."
-                                 name)
-                        (try-again ()
-                          :report "Try the test again."
-                          (go try-again))))
 
                     ;; main report
                     (cond ((not pass?)
@@ -473,13 +475,14 @@
       (when failed
         (cat (:to *standard-output*)
           ("The following tests failed:~%")
-          ("~S~%" failed)))      
+          ("~S~%" failed)))
       (cat (:to *standard-output*)
         ("Totals -- Passed: ~D~25T~3D%~&~10TFailed: ~D~25T~3D%~%"
          pass
-         (round (* 100 pass) total)         
+         (round (* 100 pass) total)
          fail
-         (round (* 100 fail) total))))
+         (round (* 100 fail) total))
+        ("report write to: ~A~%" report-pathname)))
 
     (close report-stream)
 

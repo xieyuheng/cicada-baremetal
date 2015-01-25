@@ -4,7 +4,7 @@
 (defparameter *size#entry#title.name-table* 100)
 
 (defparameter *title.name-table*
-  ;; should be a byte-vector in assembly version 
+  ;; should be a byte-vector in assembly version
   (make-array
    `(,*size#title.name-table* ,*size#entry#title.name-table*)
    ;; note that
@@ -39,7 +39,7 @@
           (fetch#vector :vector *name-hash-table#index-for-title*
                         :index name-index)))
     (cond
-      ((not (zero? index-for-title))       
+      ((not (zero? index-for-title))
        `#(<title> ,index-for-title))
 
       ((< *pointer#title.name-table*
@@ -57,11 +57,11 @@
        ;; save name[index] to *title.name-table*
        (save#array :value name-index
                    :array *title.name-table*
-                   :index-vector (vector *pointer#title.name-table* 0))       
+                   :index-vector (vector *pointer#title.name-table* 0))
 
        ;; to update *pointer#title.name-table*
        ;; is to allocate a new index in the *title.name-table*
-       (setf *pointer#title.name-table* 
+       (setf *pointer#title.name-table*
              (add1 *pointer#title.name-table*))
 
        ;; return value
@@ -103,7 +103,7 @@
      (error "the argument :name of (be) must be a name"))
     ((not (cicada-object? cicada-object))
      (error "the argument :cicada-object of (be) must be a cicada-object?"))
-    (:else    
+    (:else
      (let ((title-index (title->index title))
            (name-index (name->index name)))
        (be#low-level :title-index title-index
@@ -122,7 +122,7 @@
                       :index-vector `#(,title-index ,field))))
     (cond
       ;; creat new
-      ((zero? content-of-field) 
+      ((zero? content-of-field)
        (save#array :value (vector name-index
                                   (cicada-byte-vector->title-index cicada-byte-vector)
                                   (cicada-byte-vector->value cicada-byte-vector))
@@ -194,7 +194,7 @@
                                              :index 1)
                   :value (fetch#vector :vector vector-of-name-title-value
                                        :index 2)
-                  ) ;; this bar-ket is to stress that the next key-word values                 
+                  ) ;; this bar-ket is to stress that the next key-word values
                  :found!!!)))
       ;; next
       ((< field *size#entry#title.name-table*)
@@ -331,7 +331,7 @@
           (name->string name)))
 (defparameter *cell-unit* (/ *size#fixnum* 8)) ;; unit byte
 (defparameter *cicada-object-size*
-  (* 2 *cell-unit*))   
+  (* 2 *cell-unit*))
 
 (defun cicada-byte-vector? (byte-vector)
   (and (equal? '(unsigned-byte 8)
@@ -421,7 +421,7 @@
   (cond ((not (cicada-object? cicada-object))
          (error "the argument of (cicada-object->cicada-byte-vector) must be cicada-object"))
         (:else
-         (fetch#vector :vector cicada-object                            
+         (fetch#vector :vector cicada-object
                        :index 1))))
 (defun cicada-object->title-index (cicada-object)
   (cond ((not (cicada-object? cicada-object))
@@ -548,6 +548,7 @@
                      :if-exists ':supersede))
   (format stream "cicada test~%")
   (close stream))
+
 
 (defun load-file (&key
                     file

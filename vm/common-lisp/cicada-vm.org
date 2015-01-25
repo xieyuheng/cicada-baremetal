@@ -2,6 +2,7 @@
 #+AUTHOR: 謝宇恆 / XIE Yuheng
 #+EMAIL:  xyheme@gmail.com
 
+
 * todo
 ** primitive-function#table 的合理性
    * 我想 以 primitive 爲名的數據類型中
@@ -145,7 +146,7 @@
    (defparameter *size#entry#title.name-table* 100)
 
    (defparameter *title.name-table*
-     ;; should be a byte-vector in assembly version 
+     ;; should be a byte-vector in assembly version
      (make-array
       `(,*size#title.name-table* ,*size#entry#title.name-table*)
       ;; note that
@@ -166,7 +167,7 @@
    #+begin_src lisp :tangle cicada-vm.lisp
    (defun index-within-title.name-table? (index)
      (and (natural-number? index)
-          (< index *size#title.name-table*)))   
+          (< index *size#title.name-table*)))
    #+end_src
 ** title?
    #+begin_src lisp :tangle cicada-vm.lisp
@@ -202,7 +203,7 @@
              (fetch#vector :vector *name-hash-table#index-for-title*
                            :index name-index)))
        (cond
-         ((not (zero? index-for-title))       
+         ((not (zero? index-for-title))
           `#(<title> ,index-for-title))
 
          ((< *pointer#title.name-table*
@@ -220,11 +221,11 @@
           ;; save name[index] to *title.name-table*
           (save#array :value name-index
                       :array *title.name-table*
-                      :index-vector (vector *pointer#title.name-table* 0))       
+                      :index-vector (vector *pointer#title.name-table* 0))
 
           ;; to update *pointer#title.name-table*
           ;; is to allocate a new index in the *title.name-table*
-          (setf *pointer#title.name-table* 
+          (setf *pointer#title.name-table*
                 (add1 *pointer#title.name-table*))
 
           ;; return value
@@ -288,7 +289,7 @@
          "[kkk]"))
    #+end_src
 ** ----------------------------------
-** be 
+** be
    #+begin_src lisp :tangle cicada-vm.lisp
    (defun be (&key
                 title
@@ -301,7 +302,7 @@
         (error "the argument :name of (be) must be a name"))
        ((not (cicada-object? cicada-object))
         (error "the argument :cicada-object of (be) must be a cicada-object?"))
-       (:else    
+       (:else
         (let ((title-index (title->index title))
               (name-index (name->index name)))
           (be#low-level :title-index title-index
@@ -320,7 +321,7 @@
                          :index-vector `#(,title-index ,field))))
        (cond
          ;; creat new
-         ((zero? content-of-field) 
+         ((zero? content-of-field)
           (save#array :value (vector name-index
                                      (cicada-byte-vector->title-index cicada-byte-vector)
                                      (cicada-byte-vector->value cicada-byte-vector))
@@ -395,7 +396,7 @@
                                                 :index 1)
                      :value (fetch#vector :vector vector-of-name-title-value
                                           :index 2)
-                     ) ;; this bar-ket is to stress that the next key-word values                 
+                     ) ;; this bar-ket is to stress that the next key-word values
                     :found!!!)))
          ;; next
          ((< field *size#entry#title.name-table*)
@@ -444,9 +445,9 @@
 ** note name
    * not name value binding in name-hash-table
      name-hash-table is used to
-     1. provide the name datatype 
+     1. provide the name datatype
      2. implement title.name-table
-   * binding will be done in title.name-table     
+   * binding will be done in title.name-table
      an object [value with title]
      will be bound to a title name pair
 ** ----------------------------------
@@ -570,7 +571,7 @@
 ** note
    * name is not only a index
      but also have a type-tag
-** string->name 
+** string->name
    #+begin_src lisp :tangle cicada-vm.lisp
    (defun string->name (string)
      (help#string->name#find-old-or-creat-new
@@ -611,7 +612,7 @@
          (add1 index)))
    #+end_src
 ** to reverse index 0
-   * the first entry of *name-hash-table* is reserved 
+   * the first entry of *name-hash-table* is reserved
      for *title.name-table*
      to test if a title name pair in *title.name-table*
      is bound to any object or not
@@ -668,7 +669,7 @@
 ** ----------------------------------
 * cicada-byte-vector
 ** ----------------------------------
-** note 
+** note
    * this is low-level interface
 ** ----------------------------------
 ** cell-unit
@@ -683,7 +684,7 @@
      one for value (of which the meaning is depended on its title)
    #+begin_src lisp :tangle cicada-vm.lisp
    (defparameter *cicada-object-size*
-     (* 2 *cell-unit*))   
+     (* 2 *cell-unit*))
 
    (defun cicada-byte-vector? (byte-vector)
      (and (equal? '(unsigned-byte 8)
@@ -737,7 +738,7 @@
            (:else
             (fetch#byte-vector :byte-vector cicada-byte-vector
                                :size *cell-unit*
-                               :index 0))))   
+                               :index 0))))
    #+end_src
 ** cicada-byte-vector->value
    #+begin_src lisp :tangle cicada-vm.lisp
@@ -747,7 +748,7 @@
            (:else
             (fetch#byte-vector :byte-vector cicada-byte-vector
                                :size *cell-unit*
-                               :index *cell-unit*))))   
+                               :index *cell-unit*))))
    #+end_src
 ** ----------------------------------
 * cicada-object
@@ -762,7 +763,7 @@
                                 :index 0))
           (cicada-byte-vector?
            (fetch#vector :vector vector
-                         :index 1))))   
+                         :index 1))))
    #+end_src
 ** test
    #+begin_src lisp :tangle cicada-vm.test.lisp
@@ -782,7 +783,7 @@
      (if (not (cicada-byte-vector? cicada-byte-vector))
          (error "argument of (cicada-byte-vector->cicada-object) must be a cicada-byte-vector")
          `#(<cicada-object>
-            ,cicada-byte-vector)))   
+            ,cicada-byte-vector)))
    #+end_src
 ** make-cicada-object
    #+begin_src lisp :tangle cicada-vm.lisp
@@ -836,8 +837,8 @@
      (cond ((not (cicada-object? cicada-object))
             (error "the argument of (cicada-object->cicada-byte-vector) must be cicada-object"))
            (:else
-            (fetch#vector :vector cicada-object                            
-                          :index 1))))   
+            (fetch#vector :vector cicada-object
+                          :index 1))))
    #+end_src
 ** cicada-object->title-index
    #+begin_src lisp :tangle cicada-vm.lisp
@@ -846,7 +847,7 @@
             (error "the argument of (cicada-object->title-index) must be cicada-object"))
            (:else
             (cicada-byte-vector->title-index
-              (cicada-object->cicada-byte-vector cicada-object)))))   
+              (cicada-object->cicada-byte-vector cicada-object)))))
    #+end_src
 ** cicada-object->title
    #+begin_src lisp :tangle cicada-vm.lisp
@@ -864,7 +865,7 @@
             (error "the argument of (cicada-object->value) must be cicada-object"))
            (:else
             (cicada-byte-vector->value
-             (cicada-object->cicada-byte-vector cicada-object)))))   
+             (cicada-object->cicada-byte-vector cicada-object)))))
    #+end_src
 ** ----------------------------------
 * return-stack
@@ -1056,7 +1057,7 @@
 
    ;; note that:
    ;; this function defines the interface of primitive-instruction
-   ;; as: 
+   ;; as:
    ;; ><><><
    ;; 1. (primitive-instruction host-object)
    ;;    the return-stack will likely be updated by primitive-instruction
@@ -1164,6 +1165,7 @@
                         :if-exists ':supersede))
      (format stream "cicada test~%")
      (close stream))
+
 
    (defun load-file (&key
                        file
