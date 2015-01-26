@@ -368,6 +368,60 @@
   (format stream
           "[~A]"
           (name->string name)))
+(defparameter *size#cicada-image-buffer* 16)
+(defparameter *cicada-image-filename* "test.image.iaa~")
+
+(defparameter *cicada-image*
+  (make-vector :length (mul *size#cicada-image-buffer* *cicada-object-size*)
+               :element-type '(unsigned-byte 8)
+               :initial-element 0))
+
+(defparameter *pointer#cicada-image-buffer* 0)
+(defun fetch-byte#cicada-image (&key address)
+  (fetch#byte-vector :byte-vector *cicada-image*
+                     :size 1
+                     :index address))
+
+(defun save-byte#cicada-image (&key address byte)
+  (save#byte-vector :value byte 
+                    :byte-vector *cicada-image*
+                    :size 1
+                    :index address))
+
+(defin fetch#cicada-image
+  .title .value)
+(defun fetch#cicada-image (&key address)
+  (values (fetch#byte-vector :byte-vector *cicada-image*
+                             :size *cell-unit*
+                             :index address)
+          (fetch#byte-vector :byte-vector *cicada-image*
+                             :size *cell-unit*
+                             :index (add *cell-unit*
+                                         address))))
+
+(defun save#cicada-image (&key address title value)
+  (save#byte-vector :value title
+                    :byte-vector *cicada-image*
+                    :size *cell-unit*
+                    :index address)
+  (save#byte-vector :value value
+                    :byte-vector *cicada-image*
+                    :size *cell-unit*
+                    :index (add *cell-unit*
+                                address)))
+(progn
+  (setf stream
+        (open (make-pathname :name *cicada-image-filename*)
+              :direction :output
+              :if-exists :supersede))
+  (format stream "cicada test~%")
+  (close stream))
+
+
+(file->buffer :filename *cicada-image-filename*
+              :buffer *cicada-image*)
+(defun fetch#vector-function-body ()) 
+(defun save#vector-function-body ())
 (defparameter *size#return-stack* 1024)
 
 (defparameter *return-stack*
@@ -378,7 +432,6 @@
 ;; pointer is an index into *return-stack*
 ;; one step of push pop is *cicada-object-size*
 (defparameter *pointer#return-stack* 0)
-
 (defun push#return-stack
     (&key
        title
@@ -406,8 +459,6 @@
            (add1! *pointer#return-stack*)
            ;; return current-pointer
            *pointer#return-stack*)))
-
-
 (defin pop#return-stack
   .title
   .value
@@ -416,8 +467,8 @@
   (cond
     ((zero? *pointer#return-stack*)
      (error (cat ()
-              ("when call (pop#return-stack)~%")
-              ("the *return-stack* must not be empty"))))
+              ("when calling (pop#return-stack)~%")
+              ("the *return-stack* must NOT be empty"))))
     (:else
      (sub1! *pointer#return-stack*)
      (values (fetch#title#cicada-object-vector
@@ -429,7 +480,6 @@
              *pointer#return-stack*))))
 
 
-
 ;; TOS denotes top of stack
 (defin tos#return-stack
   .title
@@ -439,8 +489,8 @@
   (cond
     ((zero? *pointer#return-stack*)
      (error (cat ()
-              ("when call (tos#return-stack)~%")
-              ("the *return-stack* must not be empty"))))
+              ("when calling (tos#return-stack)~%")
+              ("the *return-stack* must NOT be empty"))))
     (:else
      (values (fetch#title#cicada-object-vector
               :cicada-object-vector *return-stack*
@@ -449,4 +499,189 @@
               :cicada-object-vector *return-stack*
               :index (sub1 *pointer#return-stack*))
              (sub1 *pointer#return-stack*)))))
-;; push#return-stack
+;; note that:
+;; this function defines the interface of primitive-instruction
+;; as:
+;; 1. (<primitive-instruction> :title :value )
+;;    the return-stack will likely be updated by primitive-instruction
+;; 2. at the end of <primitive-instruction>
+;;    the (execute-next-instruction) will likely be called again
+;; [compare this to real CPU to understand it]
+
+(defun execute-next-instruction ()
+  (let* ((address#vector-function-body
+          (with (tos#return-stack)
+            .value))
+         (primitive-instruction
+          ;; this means only primitive-instruction is handled now
+          (with (fetch#cicada-image
+                 :address address#vector-function-body)
+            .value)))    
+    (with (fetch#cicada-image
+           :address (add *cicada-object-size*
+                         address#vector-function-body))
+      (funcall (primitive-instruction->host-function primitive-instruction)
+               :title .title
+               :value .value))))
+(defparameter *size#primitive-instruction-table* 1000)
+
+(defparameter *primitive-instruction-table*
+  (make-vector
+   :length *size#primitive-instruction-table*
+   :initial-element 'function))
+(defun primitive-instruction? (index)
+  (and (natural-number? index)
+       (< index *size#primitive-instruction-table*)))
+
+(defparameter *pointer#primitive-instruction-table* 1)
+(defun make-primitive-instruction (host-funciton)
+  (cond ((not (function? host-funciton))
+         (error "the argument of (make-primitive-instruction) must be a function"))
+        ((< *pointer#primitive-instruction-table*
+            *size#primitive-instruction-table*)
+         (save#vector :value host-funciton
+                      :vector *primitive-instruction-table*
+                      :index *pointer#primitive-instruction-table*)
+         (add1! *pointer#primitive-instruction-table*)
+         ;; return the old pointer [the index]
+         (sub1 *pointer#primitive-instruction-table*))
+        (:else
+         (error (cat ()
+                  ("when calling (make-primitive-instruction)~%")
+                  ("the *primitive-instruction-table* must NOT be filled"))))))
+(defun primitive-instruction->host-function (primitive-instruction)
+  (let ((host-function
+         (fetch#vector :vector *primitive-instruction-table*
+                       :index primitive-instruction)))
+    (if (not (function? host-function))
+        (error (cat ()
+                 ("from an instruction[index]~%")
+                 ("(primitive-instruction->host-function) can not find any host-function")))
+        host-function)))
+
+;; (defun primitive-instruction->host-function (primitive-instruction)
+;;   (fetch#vector :vector *primitive-instruction-table*
+;;                 :index primitive-instruction))
+(defun &call-primitive-function (&key title value)
+  ;; ><><>< should do title check ???
+  (funcall (primitive-function->host-function value)))
+(defparameter *size#primitive-function-table* 1000)
+
+(defparameter *primitive-function-table*
+  (make-vector
+   :length *size#primitive-function-table*
+   :initial-element 'function))
+(defun primitive-function? (index)
+  (and (natural-number? index)
+       (< index *size#primitive-function-table*)))
+
+(defparameter *pointer#primitive-function-table* 1)
+(defun make-primitive-function (host-funciton)
+  (cond ((not (function? host-funciton))
+         (error "the argument of (make-primitive-function) must be a function"))
+        ((< *pointer#primitive-function-table*
+            *size#primitive-function-table*)
+         (save#vector :value host-funciton
+                      :vector *primitive-function-table*
+                      :index *pointer#primitive-function-table*)
+         (add1! *pointer#primitive-function-table*)
+         ;; return the old pointer [the index]
+         (sub1 *pointer#primitive-function-table*))
+        (:else
+         (error (cat ()
+                  ("when calling (make-primitive-function)~%")
+                  ("the *primitive-function-table* must NOT be filled"))))))
+(defun primitive-function->host-function (primitive-function)
+  (let ((host-function
+         (fetch#vector :vector *primitive-function-table*
+                       :index primitive-function)))
+    (if (not (function? host-function))
+        (error (cat ()
+                 ("from an function[index]~%")
+                 ("(primitive-function->host-function) can not find any host-function")))
+        host-function)))
+
+;; (defun primitive-function->host-function (primitive-function)
+;;   (fetch#vector :vector *primitive-function-table*
+;;                 :index primitive-function))
+(defun &kkk ()
+  (cat (:to *standard-output*)
+    ("kkk took what away?")))
+(defparameter *size#argument-stack* 1024)
+
+(defparameter *argument-stack*
+  (make-vector :length (mul *cicada-object-size* *size#argument-stack*)
+               :element-type '(unsigned-byte 8)
+               :initial-element 0))
+
+;; pointer is an index into *argument-stack*
+;; one step of push pop is *cicada-object-size*
+(defparameter *pointer#argument-stack* 0)
+(defun push#argument-stack
+    (&key
+       title
+       value)
+  (cond
+    ;; type check
+    ((not (title? title))
+     (error "the argument :title of (push#argument-stack) must a title"))
+    ;; filled
+    ((not (< (mul *pointer#argument-stack*
+                  *cicada-object-size*)
+             *size#argument-stack*))
+     (error "can not push anymore *argument-stack* is filled"))
+    ;; side-effect
+    ;; *pointer#argument-stack* is always
+    ;; a free to use index into cicada-object-vector
+    (:else (save#title#cicada-object-vector
+            :title title
+            :cicada-object-vector *argument-stack*
+            :index *pointer#argument-stack*)
+           (save#value#cicada-object-vector
+            :value value
+            :cicada-object-vector *argument-stack*
+            :index *pointer#argument-stack*)
+           (add1! *pointer#argument-stack*)
+           ;; argument current-pointer
+           *pointer#argument-stack*)))
+(defin pop#argument-stack
+  .title
+  .value
+  .current-pointer)
+(defun pop#argument-stack ()
+  (cond
+    ((zero? *pointer#argument-stack*)
+     (error (cat ()
+              ("when calling (pop#argument-stack)~%")
+              ("the *argument-stack* must NOT be empty"))))
+    (:else
+     (sub1! *pointer#argument-stack*)
+     (values (fetch#title#cicada-object-vector
+              :cicada-object-vector *argument-stack*
+              :index *pointer#argument-stack*)
+             (fetch#value#cicada-object-vector
+              :cicada-object-vector *argument-stack*
+              :index *pointer#argument-stack*)
+             *pointer#argument-stack*))))
+
+
+;; TOS denotes top of stack
+(defin tos#argument-stack
+  .title
+  .value
+  .current-pointer)
+(defun tos#argument-stack ()
+  (cond
+    ((zero? *pointer#argument-stack*)
+     (error (cat ()
+              ("when calling (tos#argument-stack)~%")
+              ("the *argument-stack* must NOT be empty"))))
+    (:else
+     (values (fetch#title#cicada-object-vector
+              :cicada-object-vector *argument-stack*
+              :index (sub1 *pointer#argument-stack*))
+             (fetch#value#cicada-object-vector
+              :cicada-object-vector *argument-stack*
+              :index (sub1 *pointer#argument-stack*))
+             (sub1 *pointer#argument-stack*)))))
+

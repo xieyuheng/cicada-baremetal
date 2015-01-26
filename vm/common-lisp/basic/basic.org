@@ -884,6 +884,31 @@
    ;;     ("~A~%" x)))
    #+end_src
 ** ----------------------------------
+** >< file->buffer & buffer<-file
+   #+begin_src lisp :tangle basic.lisp
+   (defun file->buffer (&key
+                         filename
+                         buffer
+                         (buffer-boundary#lower 0)
+                         (buffer-boundary#uper nil))
+     (cond ((not (string? filename))
+            (error (cat ()
+                     ("the argument :filename of (load-file)~%")
+                     ("must be a string"))))
+           ((not (byte-vector? buffer))
+            (error (cat ()
+                     ("the argument :buffer of (load-file)~%")
+                     ("must be a byte-vector"))))
+           (:else
+            ;; return the index of the first byte of the buffer that was not updated
+            (read-sequence buffer
+                           (open (make-pathname :name filename)
+                                 :element-type '(unsigned-byte 8)
+                                 :direction ':input)
+                           :start buffer-boundary#lower
+                           :end buffer-boundary#uper))))
+   #+end_src
+** ----------------------------------
 * char
 ** ----------------------------------
 ** predicate
@@ -922,7 +947,7 @@
 ** ----------------------------------
 ** put
    #+begin_src lisp :tangle basic.lisp
-   (defmacro put (symbol field-symbol value)  
+   (defmacro put (symbol field-symbol value)
      `(setf (get ,symbol ,field-symbol) ,value))
    #+end_src
 ** ----------------------------------
@@ -1376,6 +1401,12 @@
 ** ----------------------------------
 * function
 ** ----------------------------------
+** predicate
+   #+begin_src lisp :tangle basic.lisp
+   (defun function? (x)
+     (functionp x))
+   #+end_src
+** ----------------------------------
 ** map-composite-function
    #+begin_src lisp :tangle basic.lisp
    (defun map-composite-function (function-list list)
@@ -1398,28 +1429,30 @@
 ** ----------------------------------
 ** multi return value
    #+begin_src lisp :tangle basic.lisp
-   (defun return-zero-value ()
-     (values))
+     (defun return-zero-value ()
+       (values))
 
-   ;; define-interface
-   (defmacro defin
-       (function-name
-        &body
-          bounded-variable-list)
-     `(put (quote ,function-name) (quote interface)
-           (quote ,bounded-variable-list)))
+     ;; define-interface
+     (defmacro defin
+         (function-name
+          &body
+            bounded-variable-list)
+       `(eval-when (:compile-toplevel)
+          (put (quote ,function-name) (quote interface)
+               (quote ,bounded-variable-list))))
 
-   (defmacro with (&body body)
-     (let* ((function-call (car body))
-            (function-name (car function-call))
-            (bounded-variable-list
-             (get function-name 'interface)))
-       (if (nil? bounded-variable-list)
-           (error "this function have no interface")
-           `(multiple-value-bind
-                  ,bounded-variable-list
-                ,function-call
-              ,@(cdr body)))))
+     (defmacro with (&body body)
+       (let* ((function-call (car body))
+              (function-name (car function-call))
+              (bounded-variable-list
+               (get function-name 'interface)))
+         (if (nil? bounded-variable-list)
+             (error (cat ()
+                      ("function: ~A have no interface" function-name)))
+             `(multiple-value-bind
+                    ,bounded-variable-list
+                  ,function-call
+                ,@(cdr body)))))
    #+end_src
 ** ----------------------------------
 * line-list

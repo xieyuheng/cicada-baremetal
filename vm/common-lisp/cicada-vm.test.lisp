@@ -17,20 +17,20 @@
                       :name (string->name "took")
                       :title#object (string->title "my")
                       :value#object 666)
-                  (list .field .update?))
+              (list .field .update?))
             (with (ask :title (string->title "kkk")
                        :name (string->name "took"))
-                  (list .title .value .found?)))
+              (list .title .value .found?)))
       ==>
       `(1
-     
+
         (1
          :UPDATED!!!)
 
         (,(string->title "my")
           666
           :FOUND!!!)
-     
+
         )))
 (deftest string->natural-number
     (cicada-vm)
@@ -72,27 +72,71 @@
              :value 369)
 
             (with (tos#return-stack)
-                  .value)
+              .value)
             (with (pop#return-stack)
-                  .value)
+              .value)
 
             (with (tos#return-stack)
-                  .value)
+              .value)
             (with (pop#return-stack)
-                  .value)
+              .value)
 
             (with (tos#return-stack)
-                  .value)
+              .value)
             (with (pop#return-stack)
-                  .value))
+              .value))
       ==>
       (list 1
             2
             3
+
             369
             369
+
             258
             258
+         
             147
+            147)))
+(deftest argument-stack
+    (cicada-vm)
+  (ensure
+      (list (push#argument-stack
+             :title (string->title "argument-stack--push--test#1")
+             :value 147)
+
+            (push#argument-stack
+             :title (string->title "argument-stack--push--test#2")
+             :value 258)
+
+            (push#argument-stack
+             :title (string->title "argument-stack--push--test#3")
+             :value 369)
+
+            (with (tos#argument-stack)
+              .value)
+            (with (pop#argument-stack)
+              .value)
+
+            (with (tos#argument-stack)
+              .value)
+            (with (pop#argument-stack)
+              .value)
+
+            (with (tos#argument-stack)
+              .value)
+            (with (pop#argument-stack)
+              .value))
+      ==>
+      (list 1
+            2
+            3
+
+            369
+            369
+
+            258
+            258
+
             147
-            )))
+            147)))

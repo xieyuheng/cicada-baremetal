@@ -533,6 +533,27 @@
 ;;           :postfix (cat () ("~%")))
 ;;   ("~A" "      123   ")
 ;;   ("~A" "   456   "))
+(defun file->buffer (&key
+                      filename
+                      buffer
+                      (buffer-boundary#lower 0)
+                      (buffer-boundary#uper nil))
+  (cond ((not (string? filename))
+         (error (cat ()
+                  ("the argument :filename of (load-file)~%")
+                  ("must be a string"))))
+        ((not (byte-vector? buffer))
+         (error (cat ()
+                  ("the argument :buffer of (load-file)~%")
+                  ("must be a byte-vector"))))
+        (:else
+         ;; return the index of the first byte of the buffer that was not updated
+         (read-sequence buffer
+                        (open (make-pathname :name filename)
+                              :element-type '(unsigned-byte 8)
+                              :direction ':input)
+                        :start buffer-boundary#lower
+                        :end buffer-boundary#uper))))
 (defun char? (x)
   (characterp x))
 
@@ -553,7 +574,7 @@
 
 (defun string->symbol (string)
   (intern string))
-(defmacro put (symbol field-symbol value)  
+(defmacro put (symbol field-symbol value)
   `(setf (get ,symbol ,field-symbol) ,value))
 (defun string? (x)
   (stringp x))
@@ -750,6 +771,8 @@
 
 ;; on error
 ;; (cons-many 1)
+(defun function? (x)
+  (functionp x))
 (defun map-composite-function (function-list list)
   (help#reverse#map-composite-function
    (reverse function-list)
@@ -774,8 +797,9 @@
     (function-name
      &body
        bounded-variable-list)
-  `(put (quote ,function-name) (quote interface)
-        (quote ,bounded-variable-list)))
+  `(eval-when (:compile-toplevel)
+     (put (quote ,function-name) (quote interface)
+          (quote ,bounded-variable-list))))
 
 (defmacro with (&body body)
   (let* ((function-call (car body))
@@ -783,7 +807,8 @@
          (bounded-variable-list
           (get function-name 'interface)))
     (if (nil? bounded-variable-list)
-        (error "this function have no interface")
+        (error (cat ()
+                 ("function: ~A have no interface" function-name)))
         `(multiple-value-bind
                ,bounded-variable-list
              ,function-call

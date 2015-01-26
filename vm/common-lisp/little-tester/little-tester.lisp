@@ -397,6 +397,8 @@
                                           (or (eq (car x) elt)
                                               (eq (cdr x) elt)))
                                         constraints)))))))
+(defparameter *report-time?* nil)
+
 (defun run-unit
     (group &key
              (skip nil))
@@ -435,30 +437,32 @@
                          time)
                       (help#do-test#run-unit test)
 
-                    ;; main report
-                    (cond ((not pass?)
-                           (push name failed)
-                           (cat (:to report-stream
-                                     :postfix (cat () ("~%")))
-                             ("* >< ~A" name)
-                             ("  * failed"))
-                           (edit#line-list
-                            :print-to report-stream
-                            :indent 4
-                            :line-list
-                            (string->list#line (cat () ("~A" report-string)))))
-                          (:else
-                           (push name passed)
-                           (cat (:to report-stream
-                                     :postfix (cat () ("~%")))
-                             ("* ~A" name))))
-
                     ;; about time used
-                    ;; (multiple-value-bind (hours time) (floor time 3600)
-                    ;;   (multiple-value-bind (minutes seconds) (floor time 60)
-                    ;;     (format t "~47T[~2,'0D:~2,'0D:~5,2,,,'0F]~%"
-                    ;;             hours minutes seconds)))
-
+                    (let ((test-time-string
+                           (if (not *report-time?*)
+                               ""
+                               (multiple-value-bind (hours time) (floor time 3600)
+                                 (multiple-value-bind (minutes seconds) (floor time 60)
+                                   (cat ()
+                                     ("[~2,'0D:~2,'0D:~5,2,,,'0F]"
+                                      hours minutes seconds)))))))                      
+                      ;; main report
+                      (cond ((not pass?)
+                             (push name failed)
+                             (cat (:to report-stream
+                                       :postfix (cat () ("~%")))
+                               ("* >< ~A  ~A" name test-time-string)
+                               ("  * failed"))
+                             (edit#line-list
+                              :print-to report-stream
+                              :indent 4
+                              :line-list
+                              (string->list#line (cat () ("~A" report-string)))))
+                            (:else
+                             (push name passed)
+                             (cat (:to report-stream
+                                       :postfix (cat () ("~%")))
+                               ("* ~A  ~A" name test-time-string)))))                  
                     )))))
 
       (when (test-group-post group)
