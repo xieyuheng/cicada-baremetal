@@ -445,7 +445,7 @@
                                  (multiple-value-bind (minutes seconds) (floor time 60)
                                    (cat ()
                                      ("[~2,'0D:~2,'0D:~5,2,,,'0F]"
-                                      hours minutes seconds)))))))                      
+                                      hours minutes seconds)))))))
                       ;; main report
                       (cond ((not pass?)
                              (push name failed)
@@ -464,7 +464,7 @@
                              (cat (:to report-stream
                                        :postfix (cat () ("~%"))
                                        :letter :small)
-                               ("* ~A  ~A" name test-time-string)))))                  
+                               ("* ~A  ~A" name test-time-string)))))
                     )))))
 
       (when (test-group-post group)
@@ -475,14 +475,18 @@
           (total (hash-table-count (test-group-tests group))))
 
       (cat (:to *standard-output*
-                :postfix (cat () ("~%")))
+                :postfix (cat () ("~%"))
+                :letter :small)
         ("")
         ("* [unit] ~S" (test-group-name group))
-        ("  * pass: ~D~25T~3D%" pass (round (* 100 pass) total))
-        ("  * fail: ~D~25T~3D%" fail (round (* 100 fail) total))
-        ("  * report write to")
-        ("    ~A" report-pathname))      
+        ("  * report overview")
+        ("    |      | number | percent |")
+        ("    | pass | ~6D |   ~3D % |" pass (round (* 100 pass) total))
+        ("    | fail | ~6D |   ~3D % |" fail (round (* 100 fail) total))
+        ("  * report detail write to")
+        ("    ~A" report-pathname))        
 
+    
       (when failed
         (cat (:to *standard-output*
                   :postfix (cat () ("~%"))

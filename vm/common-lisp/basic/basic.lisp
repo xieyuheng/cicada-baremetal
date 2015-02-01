@@ -634,6 +634,9 @@
 
 (defparameter *space#string* " ")
 (defparameter *space#char* (character *space#string*))
+
+(defparameter *sharp#string* "#")
+(defparameter *sharp#char* (character *sharp#string*))
 (defun symbol->string (symbol)
   (symbol-name symbol))
 
@@ -842,6 +845,20 @@
          (cons (list (first list) (second list))
                (group (cddr list)
                       :number number)))))
+;; (getf `(:one 111 :two 222 :three 333) :two)
+
+;; (destructuring-bind (&key one two three)
+;;     `(:one 111 :two 222 :three 333)
+;;   (list three two one))
+
+(defun find#record (key-word value record)
+  (cond ((nil? record)
+         nil)
+        ((equal? (getf (car record) key-word)
+                 value)
+         (car record))
+        (:else
+         (find#record key-word value (cdr record)))))
 ;; (cons-many 1 2 '(3 4))
 ;; ==>
 ;; (cons 1
@@ -915,7 +932,6 @@
 (defun symbol->function (symbol)
   (string->function
    (symbol->string symbol)))
-;; note the order
 (defun edit#line-list
     (&key
        line-list

@@ -122,11 +122,91 @@
   (if (not (title? title))
       (error "the argument of (title->string) must be a title")
       (name->string (title->name title))))
-(defun print-title (title &key (stream t))
+(defun print#title (title &key (stream t))
   (if (not (title? title))
-      (error "the argument of (print-title) must be a title")
-      (print-name (title->name title)
+      (error "the argument of (print#title) must be a title")
+      (print#name (title->name title)
                   :stream stream)))
+(defun map#title.name-table
+    (&key
+       function
+       (title 1)
+       (base-list '()))
+  (cond ((not (< title *pointer#title.name-table*))
+         base-list)
+        (:else
+         (cons (funcall function :title title)
+               (map#title.name-table :function function
+                                     :title (add1 title)
+                                     :base-list base-list)))))
+
+(defun map#entry#title.name-table
+    (&key
+       title
+       function
+       (field 1)
+       (base-list '()))
+  (let ((content-of-field
+         (fetch#array :array *title.name-table*
+                      :index-vector `#(,title ,field))))
+    (cond ((not (vector? content-of-field))
+           base-list)
+          (:else
+           (cons (funcall function
+                   :name (fetch#vector
+                          :vector content-of-field
+                          :index 0)
+                   :title#object (fetch#vector
+                                  :vector content-of-field
+                                  :index 1)
+                   :value#object (fetch#vector
+                                  :vector content-of-field
+                                  :index 2))
+                 (map#entry#title.name-table :title title
+                                             :function function
+                                             :field (add1 field)
+                                             :base-list base-list))))))
+;; can NOT return a string when :to == nil
+
+(defun print#title.name-table
+    (&key
+       (to *standard-output*))
+  (cat (:to to
+            :postfix (cat () ("~%")))
+    ("* title.name-table")
+    ("  |------------+--------|")
+    ("  | size       | ~6D |" *size#title.name-table*)
+    ("  | size#entry | ~6D |" *size#entry#title.name-table*)
+    ("  | title      | ~6D |" (sub1 *pointer#title.name-table*))
+    ("  |------------+--------|"))
+  (map#title.name-table
+   :function
+   (lambda (&key
+              title)
+     (cat (:to to
+               :postfix (cat () ("~%")))
+       ("  * ~A" (title->string title)))
+     (map#entry#title.name-table
+      :title title
+      :function
+      (lambda (&key
+                 name
+                 title#object
+                 value#object)
+        (cat (:to to
+                  :postfix (cat () ("~%")))
+          ("    * ~A" (name->string name))
+          ("      ~A ~A" (title->string title#object) value#object)))))))
+
+;; (be :title (string->title "k1")
+;;     :name (string->name "took1")
+;;     :title#object (string->title "my1")
+;;     :value#object 666)
+;; (be :title (string->title "k1")
+;;     :name (string->name "took2")
+;;     :title#object (string->title "my2")
+;;     :value#object 666)
+;; (print#title.name-table)
 (defin be
   .field ;; index
   .update?)
@@ -280,6 +360,8 @@
    :length *size#name-hash-table*
    :element-type `(integer 0 ,*size#title.name-table*)
    :initial-element 0))
+
+(defparameter *name-hash-table#name-counter* 0)
 (defun name? (index)
   (and (natural-number? index)
        (< index *size#name-hash-table*)))
@@ -314,25 +396,28 @@
 (defun help#string->name#find-old-or-creat-new
     (&key
        string
-       index)
+       index
+       (collision-level 0))
   (cond
+    ;; creat-new
     ((not (name-hash-table-index#used? index))
      (help#string->name#creat-new
       :string string
-      :index index)
+      :index index
+      :collision-level collision-level)
      index)
-
-    ((equal?
-      string
-      (fetch#vector
-       :vector *name-hash-table#string*
-       :index index))
+    ;; find-old
+    ((equal? string
+             (fetch#vector
+              :vector *name-hash-table#string*
+              :index index))
      index)
-
+    ;; collision
     (:else
      (help#string->name#find-old-or-creat-new
       :string string
-      :index (name-hash-table-index#next :index index)))
+      :index (name-hash-table-index#next :index index)
+      :collision-level (add1 collision-level)))
     ))
 
 (defun name-hash-table-index#used? (index)
@@ -340,10 +425,25 @@
                :vector *name-hash-table#string*
                :index index))))
 
+(defun name-hash-table-index#as-title? (index)
+  (and (name-hash-table-index#used? index)
+       (not (zero? (fetch#vector
+                    :vector *name-hash-table#index-for-title*
+                    :index index)))))
+
+(defparameter *name-hash-table#collision-record* '())
+
 (defun help#string->name#creat-new
     (&key
        string
-       index)
+       index
+       collision-level)
+  (add1! *name-hash-table#name-counter*)
+  (if (not (zero? collision-level))
+      (push (list :collision-level collision-level
+                  :string string
+                  :index index)
+            *name-hash-table#collision-record*))
   (save#vector
    :value string
    :vector *name-hash-table#string*
@@ -363,11 +463,66 @@
              (fetch#vector :vector *name-hash-table#string*
                            :index name))
             )))
-(defun print-name (name
+(defun print#name (name
                    &key (stream t))
   (format stream
-          "[~A]"
+          "~A"
           (name->string name)))
+(defun map#name-hash-table
+    (&key
+       function
+       (name 1)
+       (base-list '()))
+  (cond ((not (< name *size#name-hash-table*))
+         base-list)
+        ((not (name-hash-table-index#used? name))
+         (map#name-hash-table :function function
+                              :name (add1 name)
+                              :base-list base-list))
+        (:else
+         (cons (funcall function :name name)
+               (map#name-hash-table :function function
+                                    :name (add1 name)
+                                    :base-list base-list)))))
+
+;; (map#name-hash-table
+;;  :function
+;;  (lambda (&key name)
+;;    (name->string name)))
+;; can NOT return a string when :to == nil
+
+(defun print#name-hash-table
+    (&key
+       (to *standard-output*))
+  (cat (:to to
+            :postfix (cat () ("~%")))
+    ("* name-hash-table")
+    ("  |-----------+--------|")
+    ("  | size      | ~6D |" *size#name-hash-table*)
+    ("  | name      | ~6D |" *name-hash-table#name-counter*)
+    ("  | collision | ~6D |" (length *name-hash-table#collision-record*))
+    ("  |-----------+--------|"))
+  (map#name-hash-table
+   :function
+   (lambda (&key name)
+     (cat (:to to)
+       ("  * ~A " (name->string name)))
+     (cond
+       ((name-hash-table-index#as-title? name)
+        (cat (:to to)
+          (" [as title] "))))
+     (let ((collision-record-entry
+            (find#record :index name
+                         *name-hash-table#collision-record*)))
+       (cond ((not (nil? collision-record-entry))
+              (destructuring-bind
+                    (&key collision-level
+                          string
+                          index)
+                  collision-record-entry
+                (cat (:to to)
+                  (" [collision-level: ~A]" collision-level))))))
+     (cat (:to to) ("~%")))))
 (defparameter *size#cicada-image-buffer* 16)
 (defparameter *cicada-image-filename* "test.image.iaa~")
 
@@ -478,8 +633,6 @@
               :cicada-object-vector *return-stack*
               :index *pointer#return-stack*)
              *pointer#return-stack*))))
-
-
 ;; TOS denotes top of stack
 (defin tos#return-stack
   .title
@@ -529,11 +682,11 @@
   (make#vector
    :length *size#primitive-instruction-table*
    :initial-element 'function))
+
+(defparameter *pointer#primitive-instruction-table* 1)
 (defun primitive-instruction? (index)
   (and (natural-number? index)
        (< index *size#primitive-instruction-table*)))
-
-(defparameter *pointer#primitive-instruction-table* 1)
 (defun make-primitive-instruction (host-funciton)
   (cond ((not (function? host-funciton))
          (error "the argument of (make-primitive-instruction) must be a function"))
@@ -562,6 +715,36 @@
 ;; (defun primitive-instruction->host-function (primitive-instruction)
 ;;   (fetch#vector :vector *primitive-instruction-table*
 ;;                 :index primitive-instruction))
+(defun map#primitive-instruction-table
+    (&key
+       function
+       (primitive-instruction 1)
+       (base-list '()))
+  (cond ((not (< primitive-instruction
+                 *pointer#primitive-instruction-table*))
+         base-list)
+        (:else
+         (cons (funcall function
+                 :primitive-instruction primitive-instruction)
+               (map#primitive-instruction-table
+                :function function
+                :primitive-instruction (add1 primitive-instruction)
+                :base-list base-list)))))
+(defun print#primitive-instruction-table 
+    (&key
+       (to *standard-output*))
+  (cat (:to to
+            :postfix (cat () ("~%")))
+    ("* primitive-instruction-table")
+    ("  |-------------+--------|")
+    ("  | size        | ~6D |" *size#primitive-instruction-table*)
+    ("  | instruction | ~6D |" (sub1 *pointer#primitive-instruction-table*))
+    ("  |-------------+--------|"))
+  ;; (map#primitive-instruction-table
+  ;;  :function
+  ;;  (lambda (&key primitive-instruction)
+  ;;    ))
+  )
 (defun &call-primitive-function (&key title value)
   ;; ><><>< should do title check ???
   (funcall (primitive-function->host-function value)))
@@ -571,11 +754,11 @@
   (make#vector
    :length *size#primitive-function-table*
    :initial-element 'function))
+
+(defparameter *pointer#primitive-function-table* 1)
 (defun primitive-function? (index)
   (and (natural-number? index)
        (< index *size#primitive-function-table*)))
-
-(defparameter *pointer#primitive-function-table* 1)
 (defun make-primitive-function (host-funciton)
   (cond ((not (function? host-funciton))
          (error "the argument of (make-primitive-function) must be a function"))
@@ -663,8 +846,6 @@
               :cicada-object-vector *argument-stack*
               :index *pointer#argument-stack*)
              *pointer#argument-stack*))))
-
-
 ;; TOS denotes top of stack
 (defin tos#argument-stack
   .title

@@ -1011,6 +1011,9 @@
 
    (defparameter *space#string* " ")
    (defparameter *space#char* (character *space#string*))
+
+   (defparameter *sharp#string* "#")
+   (defparameter *sharp#char* (character *sharp#string*))
    #+end_src
 ** ----------------------------------
 * symbol
@@ -1483,6 +1486,23 @@
                   (group (cddr list)
                          :number number)))))
    #+end_src
+** find#record
+   #+begin_src lisp :tangle basic.lisp
+   ;; (getf `(:one 111 :two 222 :three 333) :two)
+
+   ;; (destructuring-bind (&key one two three)
+   ;;     `(:one 111 :two 222 :three 333)
+   ;;   (list three two one))
+
+   (defun find#record (key-word value record)
+     (cond ((nil? record)
+            nil)
+           ((equal? (getf (car record) key-word)
+                    value)
+            (car record))
+           (:else
+            (find#record key-word value (cdr record)))))
+   #+end_src
 ** ----------------------------------
 ** cons-many
    #+begin_src lisp :tangle basic.lisp
@@ -1582,8 +1602,11 @@
 * line-list
 ** ----------------------------------
 ** edit#line-list
+   * note the order
+   * actually string-list
+     but the :indent only make sense
+     when each string in the list is a line
    #+begin_src lisp :tangle basic.lisp
-   ;; note the order
    (defun edit#line-list
        (&key
           line-list

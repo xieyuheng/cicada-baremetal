@@ -3,11 +3,13 @@
 #+EMAIL:  xyheme@gmail.com
 
 * todo
-** refine the interface of primitive-function-table & primitive-instruction-table
-** interface to cicada image buffer
 ** primitive-function-table 的合理性
    * 我想 以 primitive 爲名的數據類型中
      還有很多東西要被 table 來實現
+** summary of the tables
+** refine the interface of primitive-function-table & primitive-instruction-table
+** [maybe] to find a better hash function
+** interface to cicada image buffer
 ** type check of function
    * load-file
      the argument :file should be of path type
@@ -312,23 +314,110 @@
          (error "the argument of (title->string) must be a title")
          (name->string (title->name title))))
    #+end_src
-** print-title
+** print#title
    #+begin_src lisp :tangle cicada-vm.lisp
-   (defun print-title (title &key (stream t))
+   (defun print#title (title &key (stream t))
      (if (not (title? title))
-         (error "the argument of (print-title) must be a title")
-         (print-name (title->name title)
+         (error "the argument of (print#title) must be a title")
+         (print#name (title->name title)
                      :stream stream)))
    #+end_src
 ** test
    #+begin_src lisp :tangle cicada-vm.test.lisp
-   (deftest print-title
+   (deftest print#title
        (cicada-vm)
      (ensure
-         (print-title (string->title "kkk")
+         (print#title (string->title "kkk")
                       :stream nil)
          ==>
-         "[kkk]"))
+         "kkk"))
+   #+end_src
+** ----------------------------------
+** map[#entry]#title.name-table
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (defun map#title.name-table
+       (&key
+          function
+          (title 1)
+          (base-list '()))
+     (cond ((not (< title *pointer#title.name-table*))
+            base-list)
+           (:else
+            (cons (funcall function :title title)
+                  (map#title.name-table :function function
+                                        :title (add1 title)
+                                        :base-list base-list)))))
+
+   (defun map#entry#title.name-table
+       (&key
+          title
+          function
+          (field 1)
+          (base-list '()))
+     (let ((content-of-field
+            (fetch#array :array *title.name-table*
+                         :index-vector `#(,title ,field))))
+       (cond ((not (vector? content-of-field))
+              base-list)
+             (:else
+              (cons (funcall function
+                      :name (fetch#vector
+                             :vector content-of-field
+                             :index 0)
+                      :title#object (fetch#vector
+                                     :vector content-of-field
+                                     :index 1)
+                      :value#object (fetch#vector
+                                     :vector content-of-field
+                                     :index 2))
+                    (map#entry#title.name-table :title title
+                                                :function function
+                                                :field (add1 field)
+                                                :base-list base-list))))))
+   #+end_src
+** print#title.name-table
+   #+begin_src lisp :tangle cicada-vm.lisp
+   ;; can NOT return a string when :to == nil
+
+   (defun print#title.name-table
+       (&key
+          (to *standard-output*))
+     (cat (:to to
+               :postfix (cat () ("~%")))
+       ("* title.name-table")
+       ("  |------------+--------|")
+       ("  | size       | ~6D |" *size#title.name-table*)
+       ("  | size#entry | ~6D |" *size#entry#title.name-table*)
+       ("  | title      | ~6D |" (sub1 *pointer#title.name-table*))
+       ("  |------------+--------|"))
+     (map#title.name-table
+      :function
+      (lambda (&key
+                 title)
+        (cat (:to to
+                  :postfix (cat () ("~%")))
+          ("  * ~A" (title->string title)))
+        (map#entry#title.name-table
+         :title title
+         :function
+         (lambda (&key
+                    name
+                    title#object
+                    value#object)
+           (cat (:to to
+                     :postfix (cat () ("~%")))
+             ("    * ~A" (name->string name))
+             ("      ~A ~A" (title->string title#object) value#object)))))))
+
+   ;; (be :title (string->title "k1")
+   ;;     :name (string->name "took1")
+   ;;     :title#object (string->title "my1")
+   ;;     :value#object 666)
+   ;; (be :title (string->title "k1")
+   ;;     :name (string->name "took2")
+   ;;     :title#object (string->title "my2")
+   ;;     :value#object 666)
+   ;; (print#title.name-table)
    #+end_src
 ** ----------------------------------
 ** be
@@ -474,7 +563,7 @@
                  (list .field .update?))
                (with (ask :title (string->title "kkk")
                           :name (string->name "took"))
-                 (list .title .value .found?)))
+                     (list .title .value .found?)))
          ==>
          `(1
 
@@ -533,6 +622,8 @@
       :length *size#name-hash-table*
       :element-type `(integer 0 ,*size#title.name-table*)
       :initial-element 0))
+
+   (defparameter *name-hash-table#name-counter* 0)
    #+end_src
 ** name?
    * index-within-name-hash-table?
@@ -582,8 +673,6 @@
    #+end_src
 ** ----------------------------------
 ** string->name
-   * in the following functions
-     the fact tha name is an index is stressed
    #+begin_src lisp :tangle cicada-vm.lisp
    (defun string->name (string)
      (help#string->name#find-old-or-creat-new
@@ -594,25 +683,28 @@
    (defun help#string->name#find-old-or-creat-new
        (&key
           string
-          index)
+          index
+          (collision-level 0))
      (cond
+       ;; creat-new
        ((not (name-hash-table-index#used? index))
         (help#string->name#creat-new
          :string string
-         :index index)
+         :index index
+         :collision-level collision-level)
         index)
-
-       ((equal?
-         string
-         (fetch#vector
-          :vector *name-hash-table#string*
-          :index index))
+       ;; find-old
+       ((equal? string
+                (fetch#vector
+                 :vector *name-hash-table#string*
+                 :index index))
         index)
-
+       ;; collision
        (:else
         (help#string->name#find-old-or-creat-new
          :string string
-         :index (name-hash-table-index#next :index index)))
+         :index (name-hash-table-index#next :index index)
+         :collision-level (add1 collision-level)))
        ))
 
    (defun name-hash-table-index#used? (index)
@@ -620,10 +712,25 @@
                   :vector *name-hash-table#string*
                   :index index))))
 
+   (defun name-hash-table-index#as-title? (index)
+     (and (name-hash-table-index#used? index)
+          (not (zero? (fetch#vector
+                       :vector *name-hash-table#index-for-title*
+                       :index index)))))
+
+   (defparameter *name-hash-table#collision-record* '())
+
    (defun help#string->name#creat-new
        (&key
           string
-          index)
+          index
+          collision-level)
+     (add1! *name-hash-table#name-counter*)
+     (if (not (zero? collision-level))
+         (push (list :collision-level collision-level
+                     :string string
+                     :index index)
+               ,*name-hash-table#collision-record*))
      (save#vector
       :value string
       :vector *name-hash-table#string*
@@ -647,12 +754,12 @@
                               :index name))
                )))
    #+end_src
-** print-name
+** print#name
    #+begin_src lisp :tangle cicada-vm.lisp
-   (defun print-name (name
+   (defun print#name (name
                       &key (stream t))
      (format stream
-             "[~A]"
+             "~A"
              (name->string name)))
    #+end_src
 ** test
@@ -664,13 +771,75 @@
          ==>
          "kkk took my baby away!"))
 
-   (deftest print-name
+   (deftest print#name
        (cicada-vm)
      (ensure
-         (print-name (string->name "kkk took my baby away!")
+         (print#name (string->name "kkk took my baby away!")
                      :stream nil)
          ==>
-         "[kkk took my baby away!]"))
+         "kkk took my baby away!"))
+   #+end_src
+** ----------------------------------
+** map#name-hash-table
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (defun map#name-hash-table
+       (&key
+          function
+          (name 1)
+          (base-list '()))
+     (cond ((not (< name *size#name-hash-table*))
+            base-list)
+           ((not (name-hash-table-index#used? name))
+            (map#name-hash-table :function function
+                                 :name (add1 name)
+                                 :base-list base-list))
+           (:else
+            (cons (funcall function :name name)
+                  (map#name-hash-table :function function
+                                       :name (add1 name)
+                                       :base-list base-list)))))
+
+   ;; (map#name-hash-table
+   ;;  :function
+   ;;  (lambda (&key name)
+   ;;    (name->string name)))
+   #+end_src
+** print#name-hash-table
+   #+begin_src lisp :tangle cicada-vm.lisp
+   ;; can NOT return a string when :to == nil
+
+   (defun print#name-hash-table
+       (&key
+          (to *standard-output*))
+     (cat (:to to
+               :postfix (cat () ("~%")))
+       ("* name-hash-table")
+       ("  |-----------+--------|")
+       ("  | size      | ~6D |" *size#name-hash-table*)
+       ("  | name      | ~6D |" *name-hash-table#name-counter*)
+       ("  | collision | ~6D |" (length *name-hash-table#collision-record*))
+       ("  |-----------+--------|"))
+     (map#name-hash-table
+      :function
+      (lambda (&key name)
+        (cat (:to to)
+          ("  * ~A " (name->string name)))
+        (cond
+          ((name-hash-table-index#as-title? name)
+           (cat (:to to)
+             (" [as title] "))))
+        (let ((collision-record-entry
+               (find#record :index name
+                            ,*name-hash-table#collision-record*)))
+          (cond ((not (nil? collision-record-entry))
+                 (destructuring-bind
+                       (&key collision-level
+                             string
+                             index)
+                     collision-record-entry
+                   (cat (:to to)
+                     (" [collision-level: ~A]" collision-level))))))
+        (cat (:to to) ("~%")))))
    #+end_src
 ** ----------------------------------
 * cicada-image
@@ -844,7 +1013,7 @@
               ;; return current-pointer
               ,*pointer#return-stack*)))
    #+end_src
-** pop#return-stack & tos#return-stack
+** pop#return-stack
    #+begin_src lisp :tangle cicada-vm.lisp
    (defin pop#return-stack
      .title
@@ -865,8 +1034,9 @@
                  :cicada-object-vector *return-stack*
                  :index *pointer#return-stack*)
                 ,*pointer#return-stack*))))
-
-
+   #+end_src
+** tos#return-stack
+   #+begin_src lisp :tangle cicada-vm.lisp
    ;; TOS denotes top of stack
    (defin tos#return-stack
      .title
@@ -985,6 +1155,8 @@
      (make#vector
       :length *size#primitive-instruction-table*
       :initial-element 'function))
+
+   (defparameter *pointer#primitive-instruction-table* 1)
    #+end_src
 ** primitive-instruction?
    * index-within-primitive-instruction-table?
@@ -992,8 +1164,6 @@
    (defun primitive-instruction? (index)
      (and (natural-number? index)
           (< index *size#primitive-instruction-table*)))
-
-   (defparameter *pointer#primitive-instruction-table* 1)
    #+end_src
 ** make-primitive-instruction
    #+begin_src lisp :tangle cicada-vm.lisp
@@ -1030,6 +1200,43 @@
    ;;                 :index primitive-instruction))
    #+end_src
 ** ----------------------------------
+** map#primitive-instruction-table
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (defun map#primitive-instruction-table
+       (&key
+          function
+          (primitive-instruction 1)
+          (base-list '()))
+     (cond ((not (< primitive-instruction
+                    ,*pointer#primitive-instruction-table*))
+            base-list)
+           (:else
+            (cons (funcall function
+                    :primitive-instruction primitive-instruction)
+                  (map#primitive-instruction-table
+                   :function function
+                   :primitive-instruction (add1 primitive-instruction)
+                   :base-list base-list)))))
+   #+end_src
+** >< print#primitive-instruction-table
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (defun print#primitive-instruction-table
+       (&key
+          (to *standard-output*))
+     (cat (:to to
+               :postfix (cat () ("~%")))
+       ("* primitive-instruction-table")
+       ("  |-------------+--------|")
+       ("  | size        | ~6D |" *size#primitive-instruction-table*)
+       ("  | instruction | ~6D |" (sub1 *pointer#primitive-instruction-table*))
+       ("  |-------------+--------|"))
+     ;; (map#primitive-instruction-table
+     ;;  :function
+     ;;  (lambda (&key primitive-instruction)
+     ;;    ))
+     )
+   #+end_src
+** ----------------------------------
 ** &call-primitive-function
    * this is the first primitive-instruction
    #+begin_src lisp :tangle cicada-vm.lisp
@@ -1048,6 +1255,8 @@
      (make#vector
       :length *size#primitive-function-table*
       :initial-element 'function))
+
+   (defparameter *pointer#primitive-function-table* 1)
    #+end_src
 ** primitive-function?
    * index-within-primitive-function-table?
@@ -1055,8 +1264,6 @@
    (defun primitive-function? (index)
      (and (natural-number? index)
           (< index *size#primitive-function-table*)))
-
-   (defparameter *pointer#primitive-function-table* 1)
    #+end_src
 ** make-primitive-function
    #+begin_src lisp :tangle cicada-vm.lisp
@@ -1151,7 +1358,7 @@
               ;; argument current-pointer
               ,*pointer#argument-stack*)))
    #+end_src
-** pop#argument-stack & tos#argument-stack
+** pop#argument-stack
    #+begin_src lisp :tangle cicada-vm.lisp
    (defin pop#argument-stack
      .title
@@ -1172,8 +1379,9 @@
                  :cicada-object-vector *argument-stack*
                  :index *pointer#argument-stack*)
                 ,*pointer#argument-stack*))))
-
-
+   #+end_src
+** tos#argument-stack
+   #+begin_src lisp :tangle cicada-vm.lisp
    ;; TOS denotes top of stack
    (defin tos#argument-stack
      .title
@@ -1274,8 +1482,6 @@
   (save#cicada-image :address *cicada-object-size*
                      :title (string->title "nevermind")
                      :value (make-primitive-function (function &kkk)))
-
-
 
   (primitive-instruction->host-function (make-primitive-instruction (function &call-primitive-function)))
 

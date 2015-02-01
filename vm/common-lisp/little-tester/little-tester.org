@@ -667,14 +667,18 @@
             (total (hash-table-count (test-group-tests group))))
 
         (cat (:to *standard-output*
-                  :postfix (cat () ("~%")))
+                  :postfix (cat () ("~%"))
+                  :letter :small)
           ("")
           ("* [unit] ~S" (test-group-name group))
-          ("  * pass: ~D~25T~3D%" pass (round (* 100 pass) total))
-          ("  * fail: ~D~25T~3D%" fail (round (* 100 fail) total))
-          ("  * report write to")
-          ("    ~A" report-pathname))
+          ("  * report overview")
+          ("    |      | number | percent |")
+          ("    | pass | ~6D |   ~3D % |" pass (round (* 100 pass) total))
+          ("    | fail | ~6D |   ~3D % |" fail (round (* 100 fail) total))
+          ("  * report detail write to")
+          ("    ~A" report-pathname))        
 
+      
         (when failed
           (cat (:to *standard-output*
                     :postfix (cat () ("~%"))
@@ -709,3 +713,4 @@
                    (float internal-time-units-per-second 1f0))))))
   #+end_src
 * ===================================
+

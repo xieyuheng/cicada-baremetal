@@ -1,11 +1,11 @@
 (in-package :cicada-vm)
-(deftest print-title
+(deftest print#title
     (cicada-vm)
   (ensure
-      (print-title (string->title "kkk")
+      (print#title (string->title "kkk")
                    :stream nil)
       ==>
-      "[kkk]"))
+      "kkk"))
 (deftest be--and--ask
     (cicada-vm)
   (ensure
@@ -20,7 +20,7 @@
               (list .field .update?))
             (with (ask :title (string->title "kkk")
                        :name (string->name "took"))
-              (list .title .value .found?)))
+                  (list .title .value .found?)))
       ==>
       `(1
 
@@ -49,13 +49,13 @@
       ==>
       "kkk took my baby away!"))
 
-(deftest print-name
+(deftest print#name
     (cicada-vm)
   (ensure
-      (print-name (string->name "kkk took my baby away!")
+      (print#name (string->name "kkk took my baby away!")
                   :stream nil)
       ==>
-      "[kkk took my baby away!]"))
+      "kkk took my baby away!"))
 (deftest return-stack
     (cicada-vm)
   (ensure
