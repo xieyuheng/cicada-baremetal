@@ -44,7 +44,7 @@
    * when wish to stress that a symbol is used as a bounded-variable
      use "." as its prefix
 * -----------------------------------
-* (in-package :cicada-vm)
+* file header
 ** basic.lisp
    #+begin_src lisp :tangle basic.lisp
    (in-package :cicada-vm)
@@ -54,6 +54,14 @@
    (in-package :cicada-vm)
    #+end_src
 * -----------------------------------
+* variable
+** ----------------------------------  
+** set!
+   #+begin_src lisp :tangle basic.lisp
+   (defmacro set! (variable-name value)
+     `(setf ,variable-name ,value))
+   #+end_src
+** ----------------------------------
 * bool
 ** ----------------------------------
 ** predicate
@@ -77,6 +85,12 @@
      (equal x y))
    #+end_src
 ** ----------------------------------
+** constants
+   #+begin_src lisp :tangle basic.lisp
+   (defparameter true t)
+   (defparameter false nil)
+   #+end_src
+** ----------------------------------
 * fixmun
 ** ----------------------------------
 ** predicate
@@ -88,6 +102,9 @@
           (< x
              (expt 2 *size#fixnum*))))
 
+   (defun one? (x)
+     (and (integerp x)
+          (= 1 x)))
 
    (defun zero? (x)
      (and (integerp x)
@@ -298,9 +315,9 @@
      (vectorp x))
    #+end_src
 ** ----------------------------------
-** make-vector
+** make & fetch & save
    #+begin_src lisp :tangle basic.lisp
-   (defun make-vector
+   (defun make#vector
        (&key
           length
           element-type
@@ -316,10 +333,11 @@
                  :fill-pointer fill-pointer
                  :displaced-to displaced-to
                  :displaced-index-offset displaced-index-offset))
-   #+end_src
-** ----------------------------------
-** fetch & save
-   #+begin_src lisp :tangle basic.lisp
+
+   (defun make#sub-vector (&key vector start end)
+     (subseq vector start end))
+
+
    (defun fetch#vector (&key
                           vector
                           index)
@@ -847,7 +865,10 @@
                     (list 'string-upcase form#list-of-list#3))
                    ((equal letter :small)
                     (list 'string-downcase form#list-of-list#3))
-                   (:else form#list-of-list#3))))
+                   ((equal letter nil)
+                    form#list-of-list#3)               
+                   (:else
+                    (error "the argument :letter of (cat) must be :big or :small or nil")))))
        `(let ((string-for-return ,form#final))
           (format ,to "~A" string-for-return)
           string-for-return)))
@@ -909,6 +930,43 @@
                            :end buffer-boundary#uper))))
    #+end_src
 ** ----------------------------------
+** reader macro
+   #+begin_src lisp :tangle basic.lisp
+   (defun bind-char-to-reader
+       (&key
+          char
+          reader
+          (terminating? true)
+          (readtable *readtable*))
+     (set-macro-character char
+                          reader
+                          (not terminating?)
+                          readtable))
+
+   (defun find-reader-from-char
+       (&key
+          char
+          (readtable *readtable*))
+     (get-macro-character char readtable))   
+
+
+   (defun bind-two-char-to-reader
+       (&key
+          char1
+          char2
+          reader
+          (readtable *readtable*))
+     (set-dispatch-macro-character char1
+                                   char2
+                                   reader
+                                   readtable))
+
+   (defun find-reader-from-two-char (char1 char2)
+     (get-dispatch-macro-character char1
+                                   char2
+                                   readtable))
+   #+end_src
+** ----------------------------------
 * char
 ** ----------------------------------
 ** predicate
@@ -932,6 +990,27 @@
 
    (defun code->char (code)
      (code-char code))
+   #+end_src
+** ----------------------------------
+** constants   
+   #+begin_src lisp :tangle basic.lisp
+   (defparameter *bar#square#string* "[")
+   (defparameter *bar#square#char* (character *bar#square#string*))
+   (defparameter *ket#square#string* "]")
+   (defparameter *ket#square#char* (character *ket#square#string*))
+
+   (defparameter *bar#round#string* "(")
+   (defparameter *bar#round#char* (character *bar#round#string*))
+   (defparameter *ket#round#string* ")")
+   (defparameter *ket#round#char* (character *ket#round#string*))
+
+   (defparameter *bar#flower#string* "{")
+   (defparameter *bar#flower#char* (character *bar#flower#string*))
+   (defparameter *ket#flower#string* "}")
+   (defparameter *ket#flower#char* (character *ket#flower#string*))
+
+   (defparameter *space#string* " ")
+   (defparameter *space#char* (character *space#string*))
    #+end_src
 ** ----------------------------------
 * symbol
@@ -967,6 +1046,36 @@
          (not (position-if
                (lambda (char) (not (char#space? char)))
                string))))
+   #+end_src
+** ----------------------------------
+** make & fetch & save
+   #+begin_src lisp :tangle basic.lisp
+   (defun make#string (&key
+                         length
+                         (initial-element *space#char*)
+                         (element-type 'character))  
+     (make-string length
+                  :initial-element initial-element
+                  :element-type element-type))
+
+   (defun make#sub-string (&key string start end)
+     (subseq string start end))
+
+
+   (defun fetch#string (&key
+                          string
+                          index)
+     (fetch#vector :vector string
+                   :index index))
+
+
+   (defun save#string (&key
+                         value
+                         string
+                         index)
+     (save#vector :value value
+                  :vector string
+                  :index index))
    #+end_src
 ** ----------------------------------
 ** dup#string
@@ -1429,30 +1538,45 @@
 ** ----------------------------------
 ** multi return value
    #+begin_src lisp :tangle basic.lisp
-     (defun return-zero-value ()
-       (values))
+   (defun return-zero-value ()
+     (values))
 
-     ;; define-interface
-     (defmacro defin
-         (function-name
-          &body
-            bounded-variable-list)
-       `(eval-when (:compile-toplevel)
-          (put (quote ,function-name) (quote interface)
-               (quote ,bounded-variable-list))))
+   ;; define-interface
+   (defmacro defin
+       (function-name
+        &body
+          bounded-variable-list)
+     `(eval-when (:compile-toplevel)
+        (put (quote ,function-name) (quote interface)
+             (quote ,bounded-variable-list))))
 
-     (defmacro with (&body body)
-       (let* ((function-call (car body))
-              (function-name (car function-call))
-              (bounded-variable-list
-               (get function-name 'interface)))
-         (if (nil? bounded-variable-list)
-             (error (cat ()
-                      ("function: ~A have no interface" function-name)))
-             `(multiple-value-bind
-                    ,bounded-variable-list
-                  ,function-call
-                ,@(cdr body)))))
+   (defmacro with (&body body)
+     (let* ((function-call (car body))
+            (function-name (car function-call))
+            (bounded-variable-list
+             (get function-name 'interface)))
+       (if (nil? bounded-variable-list)
+           (error (cat ()
+                    ("function: ~A have no interface" function-name)))
+           `(multiple-value-bind
+                  ,bounded-variable-list
+                ,function-call
+              ,@(cdr body)))))
+   #+end_src
+** ----------------------------------
+** string->function & symbol->function
+   #+begin_src lisp :tangle basic.lisp
+   (defun string->function (string)
+     (handler-case
+         (symbol-function
+          (string->symbol
+           (string-upcase string)))
+       (undefined-function (condition)
+         nil)))
+
+   (defun symbol->function (symbol)
+     (string->function
+      (symbol->string symbol)))
    #+end_src
 ** ----------------------------------
 * line-list

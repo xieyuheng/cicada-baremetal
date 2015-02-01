@@ -12,7 +12,7 @@
     * 命令補全
       [這要 hack slime 才行]
 * ===================================
-* (in-package :cicada-vm)
+* file header
 ** ghost-in-shell.lisp
    #+begin_src lisp :tangle ghost-in-shell.lisp
    (in-package :cicada-vm)

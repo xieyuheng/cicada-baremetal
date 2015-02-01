@@ -1,4 +1,6 @@
 (in-package :cicada-vm)
+(defmacro set! (variable-name value)
+  `(setf ,variable-name ,value))
 (defun nil? (x)
   (null x))
 
@@ -12,6 +14,8 @@
 
 (defun equal? (x y)
   (equal x y))
+(defparameter true t)
+(defparameter false nil)
 (defparameter *size#fixnum* 32) ;; unit bit
 
 (defun fixnum? (x)
@@ -19,6 +23,9 @@
        (< x
           (expt 2 *size#fixnum*))))
 
+(defun one? (x)
+  (and (integerp x)
+       (= 1 x)))
 
 (defun zero? (x)
   (and (integerp x)
@@ -105,7 +112,7 @@
             value)))
 (defun vector? (x)
   (vectorp x))
-(defun make-vector
+(defun make#vector
     (&key
        length
        element-type
@@ -121,6 +128,11 @@
               :fill-pointer fill-pointer
               :displaced-to displaced-to
               :displaced-index-offset displaced-index-offset))
+
+(defun make#sub-vector (&key vector start end)
+  (subseq vector start end))
+
+
 (defun fetch#vector (&key
                        vector
                        index)
@@ -522,7 +534,10 @@
                  (list 'string-upcase form#list-of-list#3))
                 ((equal letter :small)
                  (list 'string-downcase form#list-of-list#3))
-                (:else form#list-of-list#3))))
+                ((equal letter nil)
+                 form#list-of-list#3)               
+                (:else
+                 (error "the argument :letter of (cat) must be :big or :small or nil")))))
     `(let ((string-for-return ,form#final))
        (format ,to "~A" string-for-return)
        string-for-return)))
@@ -554,6 +569,39 @@
                               :direction ':input)
                         :start buffer-boundary#lower
                         :end buffer-boundary#uper))))
+(defun bind-char-to-reader
+    (&key
+       char
+       reader
+       (terminating? true)
+       (readtable *readtable*))
+  (set-macro-character char
+                       reader
+                       (not terminating?)
+                       readtable))
+
+(defun find-reader-from-char
+    (&key
+       char
+       (readtable *readtable*))
+  (get-macro-character char readtable))   
+
+
+(defun bind-two-char-to-reader
+    (&key
+       char1
+       char2
+       reader
+       (readtable *readtable*))
+  (set-dispatch-macro-character char1
+                                char2
+                                reader
+                                readtable))
+
+(defun find-reader-from-two-char (char1 char2)
+  (get-dispatch-macro-character char1
+                                char2
+                                readtable))
 (defun char? (x)
   (characterp x))
 
@@ -569,6 +617,23 @@
 
 (defun code->char (code)
   (code-char code))
+(defparameter *bar#square#string* "[")
+(defparameter *bar#square#char* (character *bar#square#string*))
+(defparameter *ket#square#string* "]")
+(defparameter *ket#square#char* (character *ket#square#string*))
+
+(defparameter *bar#round#string* "(")
+(defparameter *bar#round#char* (character *bar#round#string*))
+(defparameter *ket#round#string* ")")
+(defparameter *ket#round#char* (character *ket#round#string*))
+
+(defparameter *bar#flower#string* "{")
+(defparameter *bar#flower#char* (character *bar#flower#string*))
+(defparameter *ket#flower#string* "}")
+(defparameter *ket#flower#char* (character *ket#flower#string*))
+
+(defparameter *space#string* " ")
+(defparameter *space#char* (character *space#string*))
 (defun symbol->string (symbol)
   (symbol-name symbol))
 
@@ -588,6 +653,32 @@
       (not (position-if
             (lambda (char) (not (char#space? char)))
             string))))
+(defun make#string (&key
+                      length
+                      (initial-element *space#char*)
+                      (element-type 'character))  
+  (make-string length
+               :initial-element initial-element
+               :element-type element-type))
+
+(defun make#sub-string (&key string start end)
+  (subseq string start end))
+
+
+(defun fetch#string (&key
+                       string
+                       index)
+  (fetch#vector :vector string
+                :index index))
+
+
+(defun save#string (&key
+                      value
+                      string
+                      index)
+  (save#vector :value value
+               :vector string
+               :index index))
 (defun dup#string (&key
                      (time 1)
                      string)
@@ -813,6 +904,17 @@
                ,bounded-variable-list
              ,function-call
            ,@(cdr body)))))
+(defun string->function (string)
+  (handler-case
+      (symbol-function
+       (string->symbol
+        (string-upcase string)))
+    (undefined-function (condition)
+      nil)))
+
+(defun symbol->function (symbol)
+  (string->function
+   (symbol->string symbol)))
 ;; note the order
 (defun edit#line-list
     (&key

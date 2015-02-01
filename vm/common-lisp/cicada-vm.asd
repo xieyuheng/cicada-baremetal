@@ -1,6 +1,6 @@
 (push :with-little-test *features*)
 
-(defsystem :cicada-vm
+(defsystem #:cicada-vm
   :description "virtual machine of cicada language"
   :author "XIE Yuheng <xyheme@gmail.com>"
   :depends-on ()
@@ -18,6 +18,11 @@
    (:module #:basic.test :pathname "basic"
             :components
             ((:file "basic.test"
+                    :if-feature :with-little-test)))
+   (:module #:cicada-rhapsody
+            :components
+            ((:file "cicada-rhapsody")
+             (:file "cicada-rhapsody.test"
                     :if-feature :with-little-test)))
    ;; (:module #:ghost-in-shell
    ;;          :components

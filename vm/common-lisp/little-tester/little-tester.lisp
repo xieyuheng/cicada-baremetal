@@ -450,9 +450,10 @@
                       (cond ((not pass?)
                              (push name failed)
                              (cat (:to report-stream
-                                       :postfix (cat () ("~%")))
+                                       :postfix (cat () ("~%"))
+                                       :letter :small)
                                ("* >< ~A  ~A" name test-time-string)
-                               ("  * failed"))
+                               ("  * fail"))
                              (edit#line-list
                               :print-to report-stream
                               :indent 4
@@ -461,7 +462,8 @@
                             (:else
                              (push name passed)
                              (cat (:to report-stream
-                                       :postfix (cat () ("~%")))
+                                       :postfix (cat () ("~%"))
+                                       :letter :small)
                                ("* ~A  ~A" name test-time-string)))))                  
                     )))))
 
@@ -472,21 +474,21 @@
           (fail (length failed))
           (total (hash-table-count (test-group-tests group))))
 
-      (cat (:to *standard-output*)
-        ("~%")
-        ("in unit ~S~%"
-         (test-group-name group)))
+      (cat (:to *standard-output*
+                :postfix (cat () ("~%")))
+        ("")
+        ("* [unit] ~S" (test-group-name group))
+        ("  * pass: ~D~25T~3D%" pass (round (* 100 pass) total))
+        ("  * fail: ~D~25T~3D%" fail (round (* 100 fail) total))
+        ("  * report write to")
+        ("    ~A" report-pathname))      
+
       (when failed
-        (cat (:to *standard-output*)
-          ("The following tests failed:~%")
-          ("~S~%" failed)))
-      (cat (:to *standard-output*)
-        ("Totals -- Passed: ~D~25T~3D%~&~10TFailed: ~D~25T~3D%~%"
-         pass
-         (round (* 100 pass) total)
-         fail
-         (round (* 100 fail) total))
-        ("report write to: ~A~%" report-pathname)))
+        (cat (:to *standard-output*
+                  :postfix (cat () ("~%"))
+                  :letter :small)
+          ("  * the following tests failed")
+          ("    ~A" failed))))
 
     (close report-stream)
 
