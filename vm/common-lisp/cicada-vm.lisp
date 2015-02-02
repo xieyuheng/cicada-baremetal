@@ -80,9 +80,11 @@
           (fetch#vector :vector *name-hash-table#index-for-title*
                         :index name)))
     (cond
+      ;; find-old
       ((not (zero? index-for-title))
        index-for-title)
 
+      ;; creat-new
       ((< *pointer#title.name-table*
           *size#title.name-table*)
        ;; now
@@ -328,6 +330,17 @@
        (error (cat ()
                 ("can not ask for the object under the name as you wish~%")
                 ("and the names under this title is too filled")))))))
+(defin o
+  .value
+  .title
+  .found?)
+
+(defun o (title-string name-string)
+  (with (ask :title (string->title title-string)
+             :name (string->name name-string))
+        (values .value
+                .title
+                .found?)))
 ;; must be a prime number
 
 ;; 1000003  ;; about 976 k
@@ -683,25 +696,58 @@
    :length *size#primitive-instruction-table*
    :initial-element 'function))
 
+(defparameter *primitive-instruction-table#title*
+  (make#vector
+   :length *size#primitive-instruction-table*
+   :initial-element `(integer 0 ,*size#title.name-table*)))
+
+(defparameter *primitive-instruction-table#name*
+  (make#vector
+   :length *size#primitive-instruction-table*
+   :initial-element `(integer 0 ,*size#name-hash-table*)))
+
 (defparameter *pointer#primitive-instruction-table* 1)
 (defun primitive-instruction? (index)
   (and (natural-number? index)
        (< index *size#primitive-instruction-table*)))
-(defun make-primitive-instruction (host-funciton)
-  (cond ((not (function? host-funciton))
-         (error "the argument of (make-primitive-instruction) must be a function"))
-        ((< *pointer#primitive-instruction-table*
-            *size#primitive-instruction-table*)
-         (save#vector :value host-funciton
-                      :vector *primitive-instruction-table*
-                      :index *pointer#primitive-instruction-table*)
-         (add1! *pointer#primitive-instruction-table*)
-         ;; return the old pointer [the index]
-         (sub1 *pointer#primitive-instruction-table*))
-        (:else
-         (error (cat ()
-                  ("when calling (make-primitive-instruction)~%")
-                  ("the *primitive-instruction-table* must NOT be filled"))))))
+(defparameter *title#primitive-instruction*
+  (string->title "primitive-instruction"))
+
+(defmacro define-primitive-instruction
+    (title-string
+     name-string
+     &body body)
+  `(let ((title (string->title ,title-string))
+         (name (string->name ,name-string)))
+     (be :title title
+         :name name
+         :title#object *title#primitive-instruction*
+         :value#object
+         (let ((host-funciton
+                (lambda (&key title value)
+                  ,@body)))
+           (cond
+             ((< *pointer#primitive-instruction-table*
+                 *size#primitive-instruction-table*)
+              (save#vector
+               :value host-funciton
+               :vector *primitive-instruction-table*
+               :index *pointer#primitive-instruction-table*)
+              (save#vector
+               :value title
+               :vector *primitive-instruction-table#title*
+               :index *pointer#primitive-instruction-table*)
+              (save#vector
+               :value name
+               :vector *primitive-instruction-table#name*
+               :index *pointer#primitive-instruction-table*)
+              (add1! *pointer#primitive-instruction-table*)
+              ;; return the old pointer [the index]
+              (sub1 *pointer#primitive-instruction-table*))
+             (:else
+              (error (cat ()
+                       ("when using (define-primitive-instruction)~%")
+                       ("the *primitive-instruction-table* must NOT be filled")))))))))
 (defun primitive-instruction->host-function (primitive-instruction)
   (let ((host-function
          (fetch#vector :vector *primitive-instruction-table*
@@ -725,12 +771,18 @@
          base-list)
         (:else
          (cons (funcall function
+                 :title (fetch#vector
+                         :vector *primitive-instruction-table#title*
+                         :index primitive-instruction)
+                 :name (fetch#vector
+                         :vector *primitive-instruction-table#name*
+                         :index primitive-instruction)
                  :primitive-instruction primitive-instruction)
                (map#primitive-instruction-table
                 :function function
                 :primitive-instruction (add1 primitive-instruction)
                 :base-list base-list)))))
-(defun print#primitive-instruction-table 
+(defun print#primitive-instruction-table
     (&key
        (to *standard-output*))
   (cat (:to to
@@ -740,14 +792,14 @@
     ("  | size        | ~6D |" *size#primitive-instruction-table*)
     ("  | instruction | ~6D |" (sub1 *pointer#primitive-instruction-table*))
     ("  |-------------+--------|"))
-  ;; (map#primitive-instruction-table
-  ;;  :function
-  ;;  (lambda (&key primitive-instruction)
-  ;;    ))
-  )
-(defun &call-primitive-function (&key title value)
-  ;; ><><>< should do title check ???
-  (funcall (primitive-function->host-function value)))
+  (map#primitive-instruction-table
+   :function
+   (lambda (&key title name primitive-instruction)
+     (cat (:to to
+               :postfix (cat () ("~%")))
+       ("  * ~A ~A"
+        (title->string title)
+        (name->string name))))))
 (defparameter *size#primitive-function-table* 1000)
 
 (defparameter *primitive-function-table*
@@ -755,25 +807,58 @@
    :length *size#primitive-function-table*
    :initial-element 'function))
 
+(defparameter *primitive-function-table#title*
+  (make#vector
+   :length *size#primitive-function-table*
+   :initial-element `(integer 0 ,*size#title.name-table*)))
+
+(defparameter *primitive-function-table#name*
+  (make#vector
+   :length *size#primitive-function-table*
+   :initial-element `(integer 0 ,*size#name-hash-table*)))
+
 (defparameter *pointer#primitive-function-table* 1)
 (defun primitive-function? (index)
   (and (natural-number? index)
        (< index *size#primitive-function-table*)))
-(defun make-primitive-function (host-funciton)
-  (cond ((not (function? host-funciton))
-         (error "the argument of (make-primitive-function) must be a function"))
-        ((< *pointer#primitive-function-table*
-            *size#primitive-function-table*)
-         (save#vector :value host-funciton
-                      :vector *primitive-function-table*
-                      :index *pointer#primitive-function-table*)
-         (add1! *pointer#primitive-function-table*)
-         ;; return the old pointer [the index]
-         (sub1 *pointer#primitive-function-table*))
-        (:else
-         (error (cat ()
-                  ("when calling (make-primitive-function)~%")
-                  ("the *primitive-function-table* must NOT be filled"))))))
+(defparameter *title#primitive-function*
+  (string->title "primitive-function"))
+
+(defmacro define-primitive-function
+    (title-string
+     name-string
+     &body body)
+  `(let ((title (string->title ,title-string))
+         (name (string->name ,name-string)))
+     (be :title title
+         :name name
+         :title#object *title#primitive-function*
+         :value#object
+         (let ((host-funciton
+                (lambda ()
+                  ,@body)))
+           (cond
+             ((< *pointer#primitive-function-table*
+                 *size#primitive-function-table*)
+              (save#vector
+               :value host-funciton
+               :vector *primitive-function-table*
+               :index *pointer#primitive-function-table*)
+              (save#vector
+               :value title
+               :vector *primitive-function-table#title*
+               :index *pointer#primitive-function-table*)
+              (save#vector
+               :value name
+               :vector *primitive-function-table#name*
+               :index *pointer#primitive-function-table*)
+              (add1! *pointer#primitive-function-table*)
+              ;; return the old pointer [the index]
+              (sub1 *pointer#primitive-function-table*))
+             (:else
+              (error (cat ()
+                       ("when using (define-primitive-function)~%")
+                       ("the *primitive-function-table* must NOT be filled")))))))))
 (defun primitive-function->host-function (primitive-function)
   (let ((host-function
          (fetch#vector :vector *primitive-function-table*
@@ -787,9 +872,45 @@
 ;; (defun primitive-function->host-function (primitive-function)
 ;;   (fetch#vector :vector *primitive-function-table*
 ;;                 :index primitive-function))
-(defun &kkk ()
-  (cat (:to *standard-output*)
-    ("kkk took what away?")))
+(defun map#primitive-function-table
+    (&key
+       function
+       (primitive-function 1)
+       (base-list '()))
+  (cond ((not (< primitive-function
+                 *pointer#primitive-function-table*))
+         base-list)
+        (:else
+         (cons (funcall function
+                 :title (fetch#vector
+                         :vector *primitive-function-table#title*
+                         :index primitive-function)
+                 :name (fetch#vector
+                         :vector *primitive-function-table#name*
+                         :index primitive-function)
+                 :primitive-function primitive-function)
+               (map#primitive-function-table
+                :function function
+                :primitive-function (add1 primitive-function)
+                :base-list base-list)))))
+(defun print#primitive-function-table
+    (&key
+       (to *standard-output*))
+  (cat (:to to
+            :postfix (cat () ("~%")))
+    ("* primitive-function-table")
+    ("  |----------+--------|")
+    ("  | size     | ~6D |" *size#primitive-function-table*)
+    ("  | function | ~6D |" (sub1 *pointer#primitive-function-table*))
+    ("  |----------+--------|"))
+  (map#primitive-function-table
+   :function
+   (lambda (&key title name primitive-function)
+     (cat (:to to
+               :postfix (cat () ("~%")))
+       ("  * ~A ~A"
+        (title->string title)
+        (name->string name))))))
 (defparameter *size#argument-stack* 1024)
 
 (defparameter *argument-stack*
