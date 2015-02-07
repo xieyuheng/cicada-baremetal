@@ -128,9 +128,7 @@
 * note
   * ## cicada
     ## end cicada
-  * I give up top-level version
-    which is hard to do by reader-macro
-* top-level
+* top-level 
 * -----------------------------------
 * note
   * cicada.cicada

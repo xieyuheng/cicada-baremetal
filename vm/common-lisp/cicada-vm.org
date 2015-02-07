@@ -35,31 +35,35 @@
   #+begin_src lisp :tangle cicada-vm.asd
   (push :with-little-test *features*)
 
-  (defsystem #:cicada-vm
+  ;; new common-lisp hacker
+  ;; please view module as directory
+  ;;   which you can override by :pathname
+  ;; and system as top-level directory
+  (defsystem :cicada-vm
     :description "virtual machine of cicada language"
     :author "XIE Yuheng <xyheme@gmail.com>"
     :depends-on ()
     :serial t
     :components
-    ((:module #:package-header
+    ((:module "package-header"
               :components
               ((:file "package-header")))
-     (:module #:basic
+     (:module "basic"
               :components
               ((:file "basic")))
-     (:module #:little-tester
+     (:module "little-tester"
               :components
               ((:file "little-tester")))
-     (:module #:basic.test :pathname "basic"
+     (:module "basic.test" :pathname "basic"
               :components
               ((:file "basic.test"
                       :if-feature :with-little-test)))
-     (:module #:cicada-rhapsody
+     (:module "cicada-rhapsody"
               :components
               ((:file "cicada-rhapsody")
                (:file "cicada-rhapsody.test"
                       :if-feature :with-little-test)))
-     ;; (:module #:ghost-in-shell
+     ;; (:module ghost-in-shell
      ;;          :components
      ;;          ((:file "ghost-in-shell")
      ;;           (:file "ghost-in-shell.test"
@@ -863,7 +867,11 @@
 ** the cicada-image
    #+begin_src lisp :tangle cicada-vm.lisp
    (defparameter *size#cicada-image-buffer* 16)
-   (defparameter *cicada-image-filename* "test.image.iaa~")
+
+   (setf (logical-pathname-translations "cicada")
+         `(("**;*.*" "home:.cicada;**;*.*")))
+
+   (defparameter *cicada-image-filename* "cicada:test.cicada-image")
 
    (defparameter *cicada-image*
      (make#vector :length (mul *size#cicada-image-buffer* *cicada-object-size*)
@@ -912,7 +920,7 @@
    #+begin_src lisp :tangle cicada-vm.lisp
    (progn
      (setf stream
-           (open (make-pathname :name *cicada-image-filename*)
+           (open *cicada-image-filename*
                  :direction :output
                  :if-exists :supersede))
      (format stream "cicada test~%")
@@ -1160,6 +1168,12 @@
      [接口函數是 make-primitive-instruction]
      所申請的位置的 index 就被爲是 primitive-instruction 的值
      而需要的時候 (be) 會給這個 index 一個名字
+   * re-define a primitive-instruction
+     will not cover the old one
+     just re-bind the title.name
+     if the old one is compiled into some function body
+     it will still use the old one
+     [this is the nature of forth]
 ** the primitive-instruction-table
    #+begin_src lisp :tangle cicada-vm.lisp
    (defparameter *size#primitive-instruction-table* 1000)
@@ -1609,20 +1623,16 @@
      but to use instruction-return-stack
 * -----------------------------------
 * >< let it be
-  #+begin_src lisp :tangle cicada-vm.lisp
-
-  #+end_src
 * >< the story begin
 * ===================================
 * test
   #+begin_src lisp
-  (asdf:load-system "cicada-vm")
+  (asdf:load-system :cicada-vm)
   (in-package :cicada-vm)
   (setf *print-pretty* t)
   (run-unit 'basic)
   (run-unit 'cicada-rhapsody)
   (run-unit 'cicada-vm)
-
 
 
   ;; this is the first primitive-instruction
@@ -1640,7 +1650,7 @@
       "test"
       "kkk"
     (cat (:to *standard-output*)
-      ("kkk took what away?")))
+      ("kkk took what away?~%")))
 
 
   (save#cicada-image
@@ -1658,7 +1668,6 @@
    :value 0)
 
   (execute-next-instruction)
-
 
   (print#primitive-instruction-table)
   (print#primitive-function-table)

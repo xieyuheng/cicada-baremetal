@@ -564,7 +564,7 @@
         (:else
          ;; return the index of the first byte of the buffer that was not updated
          (read-sequence buffer
-                        (open (make-pathname :name filename)
+                        (open filename
                               :element-type '(unsigned-byte 8)
                               :direction ':input)
                         :start buffer-boundary#lower

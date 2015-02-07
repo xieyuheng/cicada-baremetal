@@ -406,12 +406,16 @@
          (passed '())
          (failed '())
          (report-pathname
-          (merge-pathnames (make-pathname
-                            :directory ".unit-test-report-center"
-                            :name (cat (:letter :small)
-                                    ("~A" (test-group-name group))
-                                    (".unit-test-report.org")))
-                           (user-homedir-pathname)))
+          (cat (:letter :small)
+            ("home:.unit-test-report-center;")
+            ("~A-report.org" (test-group-name group)))
+          ;; (merge-pathnames (make-pathname
+          ;;                   :directory ".unit-test-report-center"
+          ;;                   :name (cat (:letter :small)
+          ;;                           ("~A" (test-group-name group))
+          ;;                           (".unit-test-report.org")))
+          ;;                  (user-homedir-pathname))
+           )
          (report-stream (open report-pathname
                               :direction :output
                               :if-exists :supersede)))
@@ -486,7 +490,7 @@
         ("  * report detail write to")
         ("    ~A" report-pathname))        
 
-    
+
       (when failed
         (cat (:to *standard-output*
                   :postfix (cat () ("~%"))

@@ -537,7 +537,11 @@
                   (" [collision-level: ~A]" collision-level))))))
      (cat (:to to) ("~%")))))
 (defparameter *size#cicada-image-buffer* 16)
-(defparameter *cicada-image-filename* "test.image.iaa~")
+
+(setf (logical-pathname-translations "cicada")
+      `(("**;*.*" "home:.cicada;**;*.*")))
+
+(defparameter *cicada-image-filename* "cicada:test.cicada-image")
 
 (defparameter *cicada-image*
   (make#vector :length (mul *size#cicada-image-buffer* *cicada-object-size*)
@@ -579,7 +583,7 @@
                                 address)))
 (progn
   (setf stream
-        (open (make-pathname :name *cicada-image-filename*)
+        (open *cicada-image-filename*
               :direction :output
               :if-exists :supersede))
   (format stream "cicada test~%")
@@ -712,7 +716,7 @@
        (< index *size#primitive-instruction-table*)))
 (defparameter *title#primitive-instruction*
   (string->title "primitive-instruction"))
-
+ 
 (defmacro define-primitive-instruction
     (title-string
      name-string
