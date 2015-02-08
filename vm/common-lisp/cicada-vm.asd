@@ -1,6 +1,6 @@
 (push :with-little-test *features*)
 
-;; new common-lisp hacker 
+;; new common-lisp hacker
 ;; please view module as directory
 ;;   which you can override by :pathname
 ;; and system as top-level directory

@@ -113,15 +113,19 @@
 
   (bind-char-to-reader :char *bar#square#char*
                        :reader (function cicada-rhapsody#in-line))
+
+  ;; (bind-two-char-to-reader :char1 (character "#")
+  ;;                          :char2 (character "@")
+  ;;                          :reader (function ><><><))
   #+end_src
 * test
   #+begin_src lisp :tangle cicada-rhapsody.test.lisp
   (deftest cicada-rhapsody#in-line
       (cicada-rhapsody)
     (ensure
-        [ (: list :) [ [] ] ]
+        [ (: string-upcase :) [ [] ] ]
         ==>
-        (list " (: list :) [ [] ] ")
+        " (: STRING-UPCASE :) [ [] ] "
         ))
   #+end_src
 * -----------------------------------

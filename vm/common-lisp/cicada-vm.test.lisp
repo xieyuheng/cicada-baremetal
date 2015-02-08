@@ -140,3 +140,45 @@
 
             147
             147)))
+(deftest frame-stack
+    (cicada-vm)
+  (ensure
+      (list (push#frame-stack
+             :title (string->title "frame-stack--push--test#1")
+             :value 147)
+
+            (push#frame-stack
+             :title (string->title "frame-stack--push--test#2")
+             :value 258)
+
+            (push#frame-stack
+             :title (string->title "frame-stack--push--test#3")
+             :value 369)
+
+            (with (tos#frame-stack)
+              .value)
+            (with (pop#frame-stack)
+              .value)
+
+            (with (tos#frame-stack)
+              .value)
+            (with (pop#frame-stack)
+              .value)
+
+            (with (tos#frame-stack)
+              .value)
+            (with (pop#frame-stack)
+              .value))
+      ==>
+      (list 1
+            2
+            3
+
+            369
+            369
+
+            258
+            258
+
+            147
+            147)))

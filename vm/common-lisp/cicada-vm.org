@@ -2,7 +2,38 @@
 #+AUTHOR: 謝宇恆 / XIE Yuheng
 #+EMAIL:  xyheme@gmail.com
 
+* the vector-function
+* change the structure of primitive-function to meet vector-function
+  * add more fields
+    to allow [named|inited|unnamed]-local-variable & return-value
+  * primitive-function 的數據結構還不夠用
+    因爲同 vector-function 一樣
+    所有的 function 都應該有一致的關於類型的信息
+* change the interface of primitive-instruction (again)
+  * to allow a instruction to have many arguments
 * todo
+** a set of primitive-[function|instruction]
+   * primitive-[function|instruction] 应该写在能够用来测试 它们的编译器之后
+** #@ @#
+   * 但是其实不光是用于编译 vector-function
+     在映射 primitive-function 的时候我也感到了 对新语法的需要
+     但是我并不在这里使用 cicada-rhapsody
+     而是 定义 #@ @# 这个 macro
+** for to write the compiler
+   * 这里需要良好的计划
+     因为这个编译器 在代码演化到某个阶段的时候 是会被抛弃的
+     [所谓 金蝉脱壳]
+   * 在这里我可以运用 common-lisp 所能提供的 尽可能丰富的 资源
+     而不用像在实现 vm 的时候一样
+     时刻维护把代码重写为汇编的容易性
+     这时所写的用于编译的函数也不会被重新映射为 cicada 的 primitive-function
+   * 这里的 cicada-rhapsody 是能够贡献于 common-lisp 社区的
+     [所以 我将会考虑 遵从 common-lisp 程序员 写代码的习俗]
+** the first version of the compiler (in cicada-rhapsody)
+** 把那個 o 換掉
+   * 之所以出現這種情況是接口沒設計好
+     可能在寫編譯器的時候這個接口就會被自動更換了
+** to use instruction-return-stack
 ** [how] reduce dup code by better abstraction
 ** [maybe] to find a better hash function
 ** interface to cicada image buffer
@@ -15,6 +46,7 @@
    * record 應該可以被過濾
      設計數據結構的時候需要考慮這一點
    * 並且 record 的順序是極端重要的
+   * io 要從鍵盤的輸入開始 而不使用舊的標準
    * 輸入設備所產生的 record
      將被作爲 消息 傳遞給 一個 底層的 loop
      這在於 repl 並應該在回車的時候執行代碼
@@ -25,7 +57,6 @@
 ** vector-function
 ** the funciton (next)
 ** parsing image file
-** cicada-rhapsody
 ** first version
    * without database of symbol usage
    * without resolving symbols
@@ -225,11 +256,17 @@
        <object
        <find?
 ** ----------------------------------
-** title-table
+** the title.name-table
    #+begin_src lisp :tangle cicada-vm.lisp
    (defparameter *size#title.name-table* 1000)
 
    (defparameter *size#entry#title.name-table* 100)
+
+   ;; the first entry of *title.name-table* reserved
+   ;; for *name-hash-table*
+   ;; to test if a name in *name-hash-table*
+   ;; is used as title or not
+   (defparameter *pointer#title.name-table* 1)
 
    (defparameter *title.name-table*
      ;; should be a byte-vector in assembly version
@@ -242,12 +279,6 @@
       ;; (i n) must be a vector of
       ;; #( name[index] title[index] value )
       :initial-element 0))
-
-   ;; the first entry of *title.name-table* reserved
-   ;; for *name-hash-table*
-   ;; to test if a name in *name-hash-table*
-   ;; is used as title or not
-   (defparameter *pointer#title.name-table* 1)
    #+end_src
 ** title?
    * index-within-title.name-table?
@@ -605,7 +636,7 @@
      an object [value with title]
      will be bound to a title name pair
 ** ----------------------------------
-** name-hash-table
+** the name-hash-table
    #+begin_src lisp :tangle cicada-vm.lisp
    ;; must be a prime number
 
@@ -619,6 +650,8 @@
    ;; 230      ;; for a special test
 
    (defparameter *size#name-hash-table* 100333)
+
+   (defparameter *name-hash-table#name-counter* 0)
 
    (defparameter *name-hash-table#string*
      (make#vector
@@ -639,8 +672,6 @@
       :length *size#name-hash-table*
       :element-type `(integer 0 ,*size#title.name-table*)
       :initial-element 0))
-
-   (defparameter *name-hash-table#name-counter* 0)
    #+end_src
 ** name?
    * index-within-name-hash-table?
@@ -931,16 +962,6 @@
                  :buffer *cicada-image*)
    #+end_src
 ** ----------------------------------
-* >< vector-function
-** ----------------------------------
-** note
-** ----------------------------------
-** >< fetch & save
-   #+begin_src lisp :tangle cicada-vm.lisp
-   (defun fetch#vector-function-body ())
-   (defun save#vector-function-body ())
-   #+end_src
-** ----------------------------------
 * return-stack
 ** ----------------------------------
 ** note
@@ -1154,292 +1175,6 @@
 ** ----------------------------------
 ** >< [maybe] address#in-vector-function-body
 ** ----------------------------------
-* primitive-instruction
-** ----------------------------------
-** note
-   * 用 table 來實現
-     primitive-instruction 這個數據結構
-     除了找到 primitive-instruction 本身在 host language 中的位置以外
-     我還可以增加別的數據域
-   * primitive-instruction 的製作
-     與 用 (be) 給它命名是分開的
-     單單在 host-language 中製作一個 primitive-instruction
-     會在 *primitive-instruction-table* 中申請一個位置
-     [接口函數是 make-primitive-instruction]
-     所申請的位置的 index 就被爲是 primitive-instruction 的值
-     而需要的時候 (be) 會給這個 index 一個名字
-   * re-define a primitive-instruction
-     will not cover the old one
-     just re-bind the title.name
-     if the old one is compiled into some function body
-     it will still use the old one
-     [this is the nature of forth]
-** the primitive-instruction-table
-   #+begin_src lisp :tangle cicada-vm.lisp
-   (defparameter *size#primitive-instruction-table* 1000)
-
-   (defparameter *primitive-instruction-table*
-     (make#vector
-      :length *size#primitive-instruction-table*
-      :initial-element 'function))
-
-   (defparameter *primitive-instruction-table#title*
-     (make#vector
-      :length *size#primitive-instruction-table*
-      :initial-element `(integer 0 ,*size#title.name-table*)))
-
-   (defparameter *primitive-instruction-table#name*
-     (make#vector
-      :length *size#primitive-instruction-table*
-      :initial-element `(integer 0 ,*size#name-hash-table*)))
-
-   (defparameter *pointer#primitive-instruction-table* 1)
-   #+end_src
-** primitive-instruction?
-   * index-within-primitive-instruction-table?
-   #+begin_src lisp :tangle cicada-vm.lisp
-   (defun primitive-instruction? (index)
-     (and (natural-number? index)
-          (< index *size#primitive-instruction-table*)))
-   #+end_src
-** define-primitive-instruction
-   #+begin_src lisp :tangle cicada-vm.lisp
-   (defparameter *title#primitive-instruction*
-     (string->title "primitive-instruction"))
-
-   (defmacro define-primitive-instruction
-       (title-string
-        name-string
-        &body body)
-     `(let ((title (string->title ,title-string))
-            (name (string->name ,name-string)))
-        (be :title title
-            :name name
-            :title#object *title#primitive-instruction*
-            :value#object
-            (let ((host-funciton
-                   (lambda (&key title value)
-                     ,@body)))
-              (cond
-                ((< *pointer#primitive-instruction-table*
-                    ,*size#primitive-instruction-table*)
-                 (save#vector
-                  :value host-funciton
-                  :vector *primitive-instruction-table*
-                  :index *pointer#primitive-instruction-table*)
-                 (save#vector
-                  :value title
-                  :vector *primitive-instruction-table#title*
-                  :index *pointer#primitive-instruction-table*)
-                 (save#vector
-                  :value name
-                  :vector *primitive-instruction-table#name*
-                  :index *pointer#primitive-instruction-table*)
-                 (add1! *pointer#primitive-instruction-table*)
-                 ;; return the old pointer [the index]
-                 (sub1 *pointer#primitive-instruction-table*))
-                (:else
-                 (error (cat ()
-                          ("when using (define-primitive-instruction)~%")
-                          ("the *primitive-instruction-table* must NOT be filled")))))))))
-   #+end_src
-** primitive-instruction->host-function
-   #+begin_src lisp :tangle cicada-vm.lisp
-   (defun primitive-instruction->host-function (primitive-instruction)
-     (let ((host-function
-            (fetch#vector :vector *primitive-instruction-table*
-                          :index primitive-instruction)))
-       (if (not (function? host-function))
-           (error (cat ()
-                    ("from an instruction[index]~%")
-                    ("(primitive-instruction->host-function) can not find any host-function")))
-           host-function)))
-
-   ;; (defun primitive-instruction->host-function (primitive-instruction)
-   ;;   (fetch#vector :vector *primitive-instruction-table*
-   ;;                 :index primitive-instruction))
-   #+end_src
-** ----------------------------------
-** map#primitive-instruction-table
-   #+begin_src lisp :tangle cicada-vm.lisp
-   (defun map#primitive-instruction-table
-       (&key
-          function
-          (primitive-instruction 1)
-          (base-list '()))
-     (cond ((not (< primitive-instruction
-                    ,*pointer#primitive-instruction-table*))
-            base-list)
-           (:else
-            (cons (funcall function
-                    :title (fetch#vector
-                            :vector *primitive-instruction-table#title*
-                            :index primitive-instruction)
-                    :name (fetch#vector
-                            :vector *primitive-instruction-table#name*
-                            :index primitive-instruction)
-                    :primitive-instruction primitive-instruction)
-                  (map#primitive-instruction-table
-                   :function function
-                   :primitive-instruction (add1 primitive-instruction)
-                   :base-list base-list)))))
-   #+end_src
-** print#primitive-instruction-table
-   #+begin_src lisp :tangle cicada-vm.lisp
-   (defun print#primitive-instruction-table
-       (&key
-          (to *standard-output*))
-     (cat (:to to
-               :postfix (cat () ("~%")))
-       ("* primitive-instruction-table")
-       ("  |-------------+--------|")
-       ("  | size        | ~6D |" *size#primitive-instruction-table*)
-       ("  | instruction | ~6D |" (sub1 *pointer#primitive-instruction-table*))
-       ("  |-------------+--------|"))
-     (map#primitive-instruction-table
-      :function
-      (lambda (&key title name primitive-instruction)
-        (cat (:to to
-                  :postfix (cat () ("~%")))
-          ("  * ~A ~A"
-           (title->string title)
-           (name->string name))))))
-   #+end_src
-** ----------------------------------
-* primitive-function
-** ----------------------------------
-** the primitive-function-table
-   #+begin_src lisp :tangle cicada-vm.lisp
-   (defparameter *size#primitive-function-table* 1000)
-
-   (defparameter *primitive-function-table*
-     (make#vector
-      :length *size#primitive-function-table*
-      :initial-element 'function))
-
-   (defparameter *primitive-function-table#title*
-     (make#vector
-      :length *size#primitive-function-table*
-      :initial-element `(integer 0 ,*size#title.name-table*)))
-
-   (defparameter *primitive-function-table#name*
-     (make#vector
-      :length *size#primitive-function-table*
-      :initial-element `(integer 0 ,*size#name-hash-table*)))
-
-   (defparameter *pointer#primitive-function-table* 1)
-   #+end_src
-** primitive-function?
-   * index-within-primitive-function-table?
-   #+begin_src lisp :tangle cicada-vm.lisp
-   (defun primitive-function? (index)
-     (and (natural-number? index)
-          (< index *size#primitive-function-table*)))
-   #+end_src
-** define-primitive-function
-   #+begin_src lisp :tangle cicada-vm.lisp
-   (defparameter *title#primitive-function*
-     (string->title "primitive-function"))
-
-   (defmacro define-primitive-function
-       (title-string
-        name-string
-        &body body)
-     `(let ((title (string->title ,title-string))
-            (name (string->name ,name-string)))
-        (be :title title
-            :name name
-            :title#object *title#primitive-function*
-            :value#object
-            (let ((host-funciton
-                   (lambda ()
-                     ,@body)))
-              (cond
-                ((< *pointer#primitive-function-table*
-                    ,*size#primitive-function-table*)
-                 (save#vector
-                  :value host-funciton
-                  :vector *primitive-function-table*
-                  :index *pointer#primitive-function-table*)
-                 (save#vector
-                  :value title
-                  :vector *primitive-function-table#title*
-                  :index *pointer#primitive-function-table*)
-                 (save#vector
-                  :value name
-                  :vector *primitive-function-table#name*
-                  :index *pointer#primitive-function-table*)
-                 (add1! *pointer#primitive-function-table*)
-                 ;; return the old pointer [the index]
-                 (sub1 *pointer#primitive-function-table*))
-                (:else
-                 (error (cat ()
-                          ("when using (define-primitive-function)~%")
-                          ("the *primitive-function-table* must NOT be filled")))))))))
-   #+end_src
-** primitive-function->host-function
-   #+begin_src lisp :tangle cicada-vm.lisp
-   (defun primitive-function->host-function (primitive-function)
-     (let ((host-function
-            (fetch#vector :vector *primitive-function-table*
-                          :index primitive-function)))
-       (if (not (function? host-function))
-           (error (cat ()
-                    ("from an function[index]~%")
-                    ("(primitive-function->host-function) can not find any host-function")))
-           host-function)))
-
-   ;; (defun primitive-function->host-function (primitive-function)
-   ;;   (fetch#vector :vector *primitive-function-table*
-   ;;                 :index primitive-function))
-   #+end_src
-** ----------------------------------
-** map#primitive-function-table
-   #+begin_src lisp :tangle cicada-vm.lisp
-   (defun map#primitive-function-table
-       (&key
-          function
-          (primitive-function 1)
-          (base-list '()))
-     (cond ((not (< primitive-function
-                    ,*pointer#primitive-function-table*))
-            base-list)
-           (:else
-            (cons (funcall function
-                    :title (fetch#vector
-                            :vector *primitive-function-table#title*
-                            :index primitive-function)
-                    :name (fetch#vector
-                            :vector *primitive-function-table#name*
-                            :index primitive-function)
-                    :primitive-function primitive-function)
-                  (map#primitive-function-table
-                   :function function
-                   :primitive-function (add1 primitive-function)
-                   :base-list base-list)))))
-   #+end_src
-** print#primitive-function-table
-   #+begin_src lisp :tangle cicada-vm.lisp
-   (defun print#primitive-function-table
-       (&key
-          (to *standard-output*))
-     (cat (:to to
-               :postfix (cat () ("~%")))
-       ("* primitive-function-table")
-       ("  |----------+--------|")
-       ("  | size     | ~6D |" *size#primitive-function-table*)
-       ("  | function | ~6D |" (sub1 *pointer#primitive-function-table*))
-       ("  |----------+--------|"))
-     (map#primitive-function-table
-      :function
-      (lambda (&key title name primitive-function)
-        (cat (:to to
-                  :postfix (cat () ("~%")))
-          ("  * ~A ~A"
-           (title->string title)
-           (name->string name))))))
-   #+end_src
-** ----------------------------------
 * argument-stack
 ** ----------------------------------
 ** the argument-stack
@@ -1578,7 +1313,481 @@
                147)))
    #+end_src
 ** ----------------------------------
-* >< frame-stack
+* frame-stack
+** ----------------------------------
+** the frame-stack
+   * the following functions
+     should be used like assembly macro
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (defparameter *size#frame-stack* 1024)
+
+   (defparameter *frame-stack*
+     (make#vector :length (mul *cicada-object-size* *size#frame-stack*)
+                  :element-type '(unsigned-byte 8)
+                  :initial-element 0))
+
+   ;; pointer is an index into *frame-stack*
+   ;; one step of push pop is *cicada-object-size*
+   (defparameter *pointer#frame-stack* 0)
+   #+end_src
+** push#frame-stack
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (defun push#frame-stack
+       (&key
+          title
+          value)
+     (cond
+       ;; type check
+       ((not (title? title))
+        (error "the frame :title of (push#frame-stack) must a title"))
+       ;; filled
+       ((not (< (mul *pointer#frame-stack*
+                     ,*cicada-object-size*)
+                ,*size#frame-stack*))
+        (error "can not push anymore *frame-stack* is filled"))
+       ;; side-effect
+       ;; *pointer#frame-stack* is always
+       ;; a free to use index into cicada-object-vector
+       (:else (save#title#cicada-object-vector
+               :title title
+               :cicada-object-vector *frame-stack*
+               :index *pointer#frame-stack*)
+              (save#value#cicada-object-vector
+               :value value
+               :cicada-object-vector *frame-stack*
+               :index *pointer#frame-stack*)
+              (add1! *pointer#frame-stack*)
+              ;; frame current-pointer
+              ,*pointer#frame-stack*)))
+   #+end_src
+** pop#frame-stack
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (defin pop#frame-stack
+     .title
+     .value
+     .current-pointer)
+   (defun pop#frame-stack ()
+     (cond
+       ((zero? *pointer#frame-stack*)
+        (error (cat ()
+                 ("when calling (pop#frame-stack)~%")
+                 ("the *frame-stack* must NOT be empty"))))
+       (:else
+        (sub1! *pointer#frame-stack*)
+        (values (fetch#title#cicada-object-vector
+                 :cicada-object-vector *frame-stack*
+                 :index *pointer#frame-stack*)
+                (fetch#value#cicada-object-vector
+                 :cicada-object-vector *frame-stack*
+                 :index *pointer#frame-stack*)
+                ,*pointer#frame-stack*))))
+   #+end_src
+** tos#frame-stack
+   #+begin_src lisp :tangle cicada-vm.lisp
+   ;; TOS denotes top of stack
+   (defin tos#frame-stack
+     .title
+     .value
+     .current-pointer)
+   (defun tos#frame-stack ()
+     (cond
+       ((zero? *pointer#frame-stack*)
+        (error (cat ()
+                 ("when calling (tos#frame-stack)~%")
+                 ("the *frame-stack* must NOT be empty"))))
+       (:else
+        (values (fetch#title#cicada-object-vector
+                 :cicada-object-vector *frame-stack*
+                 :index (sub1 *pointer#frame-stack*))
+                (fetch#value#cicada-object-vector
+                 :cicada-object-vector *frame-stack*
+                 :index (sub1 *pointer#frame-stack*))
+                (sub1 *pointer#frame-stack*)))))
+   #+end_src
+** ----------------------------------
+** test
+   #+begin_src lisp :tangle cicada-vm.test.lisp
+   (deftest frame-stack
+       (cicada-vm)
+     (ensure
+         (list (push#frame-stack
+                :title (string->title "frame-stack--push--test#1")
+                :value 147)
+
+               (push#frame-stack
+                :title (string->title "frame-stack--push--test#2")
+                :value 258)
+
+               (push#frame-stack
+                :title (string->title "frame-stack--push--test#3")
+                :value 369)
+
+               (with (tos#frame-stack)
+                 .value)
+               (with (pop#frame-stack)
+                 .value)
+
+               (with (tos#frame-stack)
+                 .value)
+               (with (pop#frame-stack)
+                 .value)
+
+               (with (tos#frame-stack)
+                 .value)
+               (with (pop#frame-stack)
+                 .value))
+         ==>
+         (list 1
+               2
+               3
+
+               369
+               369
+
+               258
+               258
+
+               147
+               147)))
+   #+end_src
+** ----------------------------------
+* primitive-instruction
+** ----------------------------------
+** note
+   * 用 table 來實現
+     primitive-instruction 這個數據結構
+     除了找到 primitive-instruction 本身在 host language 中的位置以外
+     我還可以增加別的數據域
+   * primitive-instruction 的製作
+     與 用 (be) 給它命名是分開的
+     單單在 host-language 中製作一個 primitive-instruction
+     會在 *primitive-instruction-table* 中申請一個位置
+     [接口函數是 make-primitive-instruction]
+     所申請的位置的 index 就被爲是 primitive-instruction 的值
+     而需要的時候 (be) 會給這個 index 一個名字
+   * re-define a primitive-instruction
+     will not cover the old one
+     just re-bind the title.name
+     if the old one is compiled into some function body
+     it will still use the old one
+     [this is the nature of forth]
+** the primitive-instruction-table
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (defparameter *size#primitive-instruction-table* 1000)
+
+   (defparameter *primitive-instruction-table*
+     (make#vector
+      :length *size#primitive-instruction-table*
+      :element-type 'function
+      :initial-element 0))
+
+   (defparameter *primitive-instruction-table#title*
+     (make#vector
+      :length *size#primitive-instruction-table*
+      :element-type `(integer 0 ,*size#title.name-table*)
+      :initial-element 0))
+
+   (defparameter *primitive-instruction-table#name*
+     (make#vector
+      :length *size#primitive-instruction-table*
+      :element-type `(integer 0 ,*size#name-hash-table*)
+      :initial-element 0))
+
+   (defparameter *pointer#primitive-instruction-table* 1)
+   #+end_src
+** primitive-instruction?
+   * index-within-primitive-instruction-table?
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (defun primitive-instruction? (index)
+     (and (natural-number? index)
+          (< index *size#primitive-instruction-table*)))
+   #+end_src
+** define-primitive-instruction
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (defparameter *title#primitive-instruction*
+     (string->title "primitive-instruction"))
+
+   (defmacro define-primitive-instruction
+       (title-string
+        name-string
+        &body body)
+     `(let ((title (string->title ,title-string))
+            (name (string->name ,name-string)))
+        (be :title title
+            :name name
+            :title#object *title#primitive-instruction*
+            :value#object
+            (let ((host-funciton
+                   (lambda (&key title value)
+                     ,@body)))
+              (cond
+                ((< *pointer#primitive-instruction-table*
+                    ,*size#primitive-instruction-table*)
+                 (save#vector
+                  :value host-funciton
+                  :vector *primitive-instruction-table*
+                  :index *pointer#primitive-instruction-table*)
+                 (save#vector
+                  :value title
+                  :vector *primitive-instruction-table#title*
+                  :index *pointer#primitive-instruction-table*)
+                 (save#vector
+                  :value name
+                  :vector *primitive-instruction-table#name*
+                  :index *pointer#primitive-instruction-table*)
+                 (add1! *pointer#primitive-instruction-table*)
+                 ;; return the old pointer [the index]
+                 (sub1 *pointer#primitive-instruction-table*))
+                (:else
+                 (error (cat ()
+                          ("when using (define-primitive-instruction)~%")
+                          ("the *primitive-instruction-table* must NOT be filled")))))))))
+   #+end_src
+** primitive-instruction->host-function
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (defun primitive-instruction->host-function (primitive-instruction)
+     (let ((host-function
+            (fetch#vector :vector *primitive-instruction-table*
+                          :index primitive-instruction)))
+       (if (not (function? host-function))
+           (error (cat ()
+                    ("from an instruction[index]~%")
+                    ("(primitive-instruction->host-function) can not find any host-function")))
+           host-function)))
+
+   ;; (defun primitive-instruction->host-function (primitive-instruction)
+   ;;   (fetch#vector :vector *primitive-instruction-table*
+   ;;                 :index primitive-instruction))
+   #+end_src
+** ----------------------------------
+** map#primitive-instruction-table
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (defun map#primitive-instruction-table
+       (&key
+          function
+          (primitive-instruction 1)
+          (base-list '()))
+     (cond ((not (< primitive-instruction
+                    ,*pointer#primitive-instruction-table*))
+            base-list)
+           (:else
+            (cons (funcall function
+                    :title (fetch#vector
+                            :vector *primitive-instruction-table#title*
+                            :index primitive-instruction)
+                    :name (fetch#vector
+                            :vector *primitive-instruction-table#name*
+                            :index primitive-instruction)
+                    :primitive-instruction primitive-instruction)
+                  (map#primitive-instruction-table
+                   :function function
+                   :primitive-instruction (add1 primitive-instruction)
+                   :base-list base-list)))))
+   #+end_src
+** print#primitive-instruction-table
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (defun print#primitive-instruction-table
+       (&key
+          (to *standard-output*))
+     (cat (:to to
+               :postfix (cat () ("~%")))
+       ("* primitive-instruction-table")
+       ("  |-------------+--------|")
+       ("  | size        | ~6D |" *size#primitive-instruction-table*)
+       ("  | instruction | ~6D |" (sub1 *pointer#primitive-instruction-table*))
+       ("  |-------------+--------|"))
+     (map#primitive-instruction-table
+      :function
+      (lambda (&key title name primitive-instruction)
+        (cat (:to to
+                  :postfix (cat () ("~%")))
+          ("  * ~A ~A"
+           (title->string title)
+           (name->string name))))))
+   #+end_src
+** ----------------------------------
+* primitive-function
+** ----------------------------------
+** the primitive-function-table
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (defparameter *size#primitive-function-table* 1000)
+
+   (defparameter *pointer#primitive-function-table* 1)
+
+   (defparameter *primitive-function-table*
+     (make#vector
+      :length *size#primitive-function-table*
+      :element-type 'function
+      :initial-element 0))
+
+   (defparameter *primitive-function-table#title*
+     (make#vector
+      :length *size#primitive-function-table*
+      :element-type `(integer 0 ,*size#title.name-table*)
+      :initial-element 0))
+
+   (defparameter *primitive-function-table#name*
+     (make#vector
+      :length *size#primitive-function-table*
+      :element-type `(integer 0 ,*size#name-hash-table*)
+      :initial-element 0))
+
+
+   ;; * named-local-variable
+   ;;   * [ number ]
+   ;;   * [ name ] [ title ]
+   ;;     maybe-more
+
+   ;; * inited-local-variable
+   ;;   * [ number ]
+   ;;   * [ name ] [ title value ]
+   ;;     maybe-more
+
+   ;; * unnamed-local-variable
+   ;;   * [ number ]
+   ;;   * [ title ]
+   ;;     maybe-more
+
+   ;; * return-object
+   ;;   * [ number ]
+   ;;   * [ title ]
+   ;;     maybe-more
+
+   (defparameter *primitive-function-table#named-local-variable*
+     (make#vector
+      :length *size#primitive-function-table*
+      :element-type `vector
+      :initial-element 0))
+
+   (defparameter *primitive-function-table#inited-local-variable*
+     (make#vector
+      :length *size#primitive-function-table*
+      :element-type `vector
+      :initial-element 0))
+
+   (defparameter *primitive-function-table#unnamed-local-variable*
+     (make#vector
+      :length *size#primitive-function-table*
+      :element-type `vector
+      :initial-element 0))
+
+   (defparameter *primitive-function-table#return-object*
+     (make#vector
+      :length *size#primitive-function-table*
+      :element-type `vector
+      :initial-element 0))
+   #+end_src
+** primitive-function?
+   * index-within-primitive-function-table?
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (defun primitive-function? (index)
+     (and (natural-number? index)
+          (< index *size#primitive-function-table*)))
+   #+end_src
+** define-primitive-function
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (defparameter *title#primitive-function*
+     (string->title "primitive-function"))
+
+   (defmacro define-primitive-function
+       (title-string
+        name-string
+        &body body)
+     `(let ((title (string->title ,title-string))
+            (name (string->name ,name-string)))
+        (be :title title
+            :name name
+            :title#object *title#primitive-function*
+            :value#object
+            (let ((host-funciton
+                   (lambda ()
+                     ,@body)))
+              (cond
+                ((< *pointer#primitive-function-table*
+                    ,*size#primitive-function-table*)
+                 (save#vector
+                  :value host-funciton
+                  :vector *primitive-function-table*
+                  :index *pointer#primitive-function-table*)
+                 (save#vector
+                  :value title
+                  :vector *primitive-function-table#title*
+                  :index *pointer#primitive-function-table*)
+                 (save#vector
+                  :value name
+                  :vector *primitive-function-table#name*
+                  :index *pointer#primitive-function-table*)
+                 (add1! *pointer#primitive-function-table*)
+                 ;; return the old pointer [the index]
+                 (sub1 *pointer#primitive-function-table*))
+                (:else
+                 (error (cat ()
+                          ("when using (define-primitive-function)~%")
+                          ("the *primitive-function-table* must NOT be filled")))))))))
+   #+end_src
+** primitive-function->host-function
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (defun primitive-function->host-function (primitive-function)
+     (let ((host-function
+            (fetch#vector :vector *primitive-function-table*
+                          :index primitive-function)))
+       (if (not (function? host-function))
+           (error (cat ()
+                    ("from an function[index]~%")
+                    ("(primitive-function->host-function) can not find any host-function")))
+           host-function)))
+
+   ;; (defun primitive-function->host-function (primitive-function)
+   ;;   (fetch#vector :vector *primitive-function-table*
+   ;;                 :index primitive-function))
+   #+end_src
+** ----------------------------------
+** map#primitive-function-table
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (defun map#primitive-function-table
+       (&key
+          function
+          (primitive-function 1)
+          (base-list '()))
+     (cond ((not (< primitive-function
+                    ,*pointer#primitive-function-table*))
+            base-list)
+           (:else
+            (cons (funcall function
+                    :title (fetch#vector
+                            :vector *primitive-function-table#title*
+                            :index primitive-function)
+                    :name (fetch#vector
+                            :vector *primitive-function-table#name*
+                            :index primitive-function)
+                    :primitive-function primitive-function)
+                  (map#primitive-function-table
+                   :function function
+                   :primitive-function (add1 primitive-function)
+                   :base-list base-list)))))
+   #+end_src
+** print#primitive-function-table
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (defun print#primitive-function-table
+       (&key
+          (to *standard-output*))
+     (cat (:to to
+               :postfix (cat () ("~%")))
+       ("* primitive-function-table")
+       ("  |----------+--------|")
+       ("  | size     | ~6D |" *size#primitive-function-table*)
+       ("  | function | ~6D |" (sub1 *pointer#primitive-function-table*))
+       ("  |----------+--------|"))
+     (map#primitive-function-table
+      :function
+      (lambda (&key title name primitive-function)
+        (cat (:to to
+                  :postfix (cat () ("~%")))
+          ("  * ~A ~A"
+           (title->string title)
+           (name->string name))))))
+   #+end_src
+** ----------------------------------
 * summary of tables
 ** ----------------------------------
 ** title.name-table
@@ -1606,14 +1815,52 @@
    * 一維
    * 語義爲指令集
    * 索引爲零的 第一行 不用
-   * 每行一值 爲函數
+   * 每行三值 函數 姓 名
 ** primitive-function-table
    * 一維
    * 語義爲原始函數集
    * 索引爲零的 第一行 不用
-   * 每行一值 爲函數
+   * 每行三值 函數 姓 名
 ** ----------------------------------
-* >< [maybe] instruction-return-stack
+* vector-function
+** ----------------------------------
+** 記
+   * 函數體 中所保存的是線串碼[threaded-code][一串珠]
+     也可以說一個函數體就是被線穿起來的一串珠子[bead]
+     每個珠子是兩個物 一爲指令 二爲指令之參數
+     不同的指令的參數個數可以不同 也就是說珠子有大有小
+   * 函數頭 中保存約束變元的信息 還有返回值的信息 還有其他信息
+** note the vector-function
+*** [ title name ]
+*** body (bead)
+    * [ 0 size ] (unit : object)
+      the 0 is for coming back from body (for debug)
+    * [ title instruction ] [ title value ] maybe-more
+      maybe-more
+*** named-local-variable
+    * [ number ]
+    * [ name ] [ title ]
+      maybe-more
+*** inited-local-variable
+    * [ number ]
+    * [ name ] [ title value ]
+      maybe-more
+*** unnamed-local-variable
+    * [ number ]
+    * [ title ]
+      maybe-more
+*** return-object
+    * [ number ]
+    * [ title ]
+      maybe-more
+** ----------------------------------
+** fetch & save
+   #+begin_src lisp :tangle cicada-vm.lisp
+   (defun fetch#vector-function-body ())
+   (defun save#vector-function-body ())
+   #+end_src
+** ----------------------------------
+* >< instruction-return-stack
 ** note
    * in cicada language
      you can extend the instruction set of the vm
@@ -1637,10 +1884,13 @@
 
   ;; this is the first primitive-instruction
   (define-primitive-instruction
-      "primitive-function"
-      "call"
+    "primitive-function"
+    "call"
     ;; ><><>< should do title check
+    ;; 还有声明副作用的语法 如何
+    ;; 比如 对 return-stack 的副作用
     (funcall (primitive-function->host-function value)))
+
 
   ;; * the argument of a primitive-function
   ;;   should be fetched from the *argument-stack*
@@ -1649,6 +1899,14 @@
   (define-primitive-function
       "test"
       "kkk"
+    ;; #@ <fixnum>
+    ;;    <fixnum>
+    ;;    <fixnum> <:var1
+    ;;    1 <:var2
+    ;;    <title> <:var3
+    ;;    fixnum (title) <:var4
+    ;;    --
+    ;;    <fixnum> @#
     (cat (:to *standard-output*)
       ("kkk took what away?~%")))
 

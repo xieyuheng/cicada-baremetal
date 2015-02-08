@@ -90,3 +90,7 @@
 
 (bind-char-to-reader :char *bar#square#char*
                      :reader (function cicada-rhapsody#in-line))
+
+;; (bind-two-char-to-reader :char1 (character "#")
+;;                          :char2 (character "@")
+;;                          :reader (function ><><><))

@@ -54,6 +54,12 @@
 
 (defparameter *size#entry#title.name-table* 100)
 
+;; the first entry of *title.name-table* reserved
+;; for *name-hash-table*
+;; to test if a name in *name-hash-table*
+;; is used as title or not
+(defparameter *pointer#title.name-table* 1)
+
 (defparameter *title.name-table*
   ;; should be a byte-vector in assembly version
   (make-array
@@ -65,12 +71,6 @@
    ;; (i n) must be a vector of
    ;; #( name[index] title[index] value )
    :initial-element 0))
-
-;; the first entry of *title.name-table* reserved
-;; for *name-hash-table*
-;; to test if a name in *name-hash-table*
-;; is used as title or not
-(defparameter *pointer#title.name-table* 1)
 (defun title? (index)
   (and (natural-number? index)
        (< index *size#title.name-table*)))
@@ -354,6 +354,8 @@
 
 (defparameter *size#name-hash-table* 100333)
 
+(defparameter *name-hash-table#name-counter* 0)
+
 (defparameter *name-hash-table#string*
   (make#vector
    :length *size#name-hash-table*
@@ -373,8 +375,6 @@
    :length *size#name-hash-table*
    :element-type `(integer 0 ,*size#title.name-table*)
    :initial-element 0))
-
-(defparameter *name-hash-table#name-counter* 0)
 (defun name? (index)
   (and (natural-number? index)
        (< index *size#name-hash-table*)))
@@ -592,8 +592,6 @@
 
 (file->buffer :filename *cicada-image-filename*
               :buffer *cicada-image*)
-(defun fetch#vector-function-body ())
-(defun save#vector-function-body ())
 (defparameter *size#return-stack* 1024)
 
 (defparameter *return-stack*
@@ -693,22 +691,175 @@
       (funcall (primitive-instruction->host-function primitive-instruction)
                :title .title
                :value .value))))
+(defparameter *size#argument-stack* 1024)
+
+(defparameter *argument-stack*
+  (make#vector :length (mul *cicada-object-size* *size#argument-stack*)
+               :element-type '(unsigned-byte 8)
+               :initial-element 0))
+
+;; pointer is an index into *argument-stack*
+;; one step of push pop is *cicada-object-size*
+(defparameter *pointer#argument-stack* 0)
+(defun push#argument-stack
+    (&key
+       title
+       value)
+  (cond
+    ;; type check
+    ((not (title? title))
+     (error "the argument :title of (push#argument-stack) must a title"))
+    ;; filled
+    ((not (< (mul *pointer#argument-stack*
+                  *cicada-object-size*)
+             *size#argument-stack*))
+     (error "can not push anymore *argument-stack* is filled"))
+    ;; side-effect
+    ;; *pointer#argument-stack* is always
+    ;; a free to use index into cicada-object-vector
+    (:else (save#title#cicada-object-vector
+            :title title
+            :cicada-object-vector *argument-stack*
+            :index *pointer#argument-stack*)
+           (save#value#cicada-object-vector
+            :value value
+            :cicada-object-vector *argument-stack*
+            :index *pointer#argument-stack*)
+           (add1! *pointer#argument-stack*)
+           ;; argument current-pointer
+           *pointer#argument-stack*)))
+(defin pop#argument-stack
+  .title
+  .value
+  .current-pointer)
+(defun pop#argument-stack ()
+  (cond
+    ((zero? *pointer#argument-stack*)
+     (error (cat ()
+              ("when calling (pop#argument-stack)~%")
+              ("the *argument-stack* must NOT be empty"))))
+    (:else
+     (sub1! *pointer#argument-stack*)
+     (values (fetch#title#cicada-object-vector
+              :cicada-object-vector *argument-stack*
+              :index *pointer#argument-stack*)
+             (fetch#value#cicada-object-vector
+              :cicada-object-vector *argument-stack*
+              :index *pointer#argument-stack*)
+             *pointer#argument-stack*))))
+;; TOS denotes top of stack
+(defin tos#argument-stack
+  .title
+  .value
+  .current-pointer)
+(defun tos#argument-stack ()
+  (cond
+    ((zero? *pointer#argument-stack*)
+     (error (cat ()
+              ("when calling (tos#argument-stack)~%")
+              ("the *argument-stack* must NOT be empty"))))
+    (:else
+     (values (fetch#title#cicada-object-vector
+              :cicada-object-vector *argument-stack*
+              :index (sub1 *pointer#argument-stack*))
+             (fetch#value#cicada-object-vector
+              :cicada-object-vector *argument-stack*
+              :index (sub1 *pointer#argument-stack*))
+             (sub1 *pointer#argument-stack*)))))
+(defparameter *size#frame-stack* 1024)
+
+(defparameter *frame-stack*
+  (make#vector :length (mul *cicada-object-size* *size#frame-stack*)
+               :element-type '(unsigned-byte 8)
+               :initial-element 0))
+
+;; pointer is an index into *frame-stack*
+;; one step of push pop is *cicada-object-size*
+(defparameter *pointer#frame-stack* 0)
+(defun push#frame-stack
+    (&key
+       title
+       value)
+  (cond
+    ;; type check
+    ((not (title? title))
+     (error "the frame :title of (push#frame-stack) must a title"))
+    ;; filled
+    ((not (< (mul *pointer#frame-stack*
+                  *cicada-object-size*)
+             *size#frame-stack*))
+     (error "can not push anymore *frame-stack* is filled"))
+    ;; side-effect
+    ;; *pointer#frame-stack* is always
+    ;; a free to use index into cicada-object-vector
+    (:else (save#title#cicada-object-vector
+            :title title
+            :cicada-object-vector *frame-stack*
+            :index *pointer#frame-stack*)
+           (save#value#cicada-object-vector
+            :value value
+            :cicada-object-vector *frame-stack*
+            :index *pointer#frame-stack*)
+           (add1! *pointer#frame-stack*)
+           ;; frame current-pointer
+           *pointer#frame-stack*)))
+(defin pop#frame-stack
+  .title
+  .value
+  .current-pointer)
+(defun pop#frame-stack ()
+  (cond
+    ((zero? *pointer#frame-stack*)
+     (error (cat ()
+              ("when calling (pop#frame-stack)~%")
+              ("the *frame-stack* must NOT be empty"))))
+    (:else
+     (sub1! *pointer#frame-stack*)
+     (values (fetch#title#cicada-object-vector
+              :cicada-object-vector *frame-stack*
+              :index *pointer#frame-stack*)
+             (fetch#value#cicada-object-vector
+              :cicada-object-vector *frame-stack*
+              :index *pointer#frame-stack*)
+             *pointer#frame-stack*))))
+;; TOS denotes top of stack
+(defin tos#frame-stack
+  .title
+  .value
+  .current-pointer)
+(defun tos#frame-stack ()
+  (cond
+    ((zero? *pointer#frame-stack*)
+     (error (cat ()
+              ("when calling (tos#frame-stack)~%")
+              ("the *frame-stack* must NOT be empty"))))
+    (:else
+     (values (fetch#title#cicada-object-vector
+              :cicada-object-vector *frame-stack*
+              :index (sub1 *pointer#frame-stack*))
+             (fetch#value#cicada-object-vector
+              :cicada-object-vector *frame-stack*
+              :index (sub1 *pointer#frame-stack*))
+             (sub1 *pointer#frame-stack*)))))
 (defparameter *size#primitive-instruction-table* 1000)
 
 (defparameter *primitive-instruction-table*
   (make#vector
    :length *size#primitive-instruction-table*
-   :initial-element 'function))
+   :element-type 'function
+   :initial-element 0))
 
 (defparameter *primitive-instruction-table#title*
   (make#vector
    :length *size#primitive-instruction-table*
-   :initial-element `(integer 0 ,*size#title.name-table*)))
+   :element-type `(integer 0 ,*size#title.name-table*)
+   :initial-element 0))
 
 (defparameter *primitive-instruction-table#name*
   (make#vector
    :length *size#primitive-instruction-table*
-   :initial-element `(integer 0 ,*size#name-hash-table*)))
+   :element-type `(integer 0 ,*size#name-hash-table*)
+   :initial-element 0))
 
 (defparameter *pointer#primitive-instruction-table* 1)
 (defun primitive-instruction? (index)
@@ -716,7 +867,7 @@
        (< index *size#primitive-instruction-table*)))
 (defparameter *title#primitive-instruction*
   (string->title "primitive-instruction"))
- 
+
 (defmacro define-primitive-instruction
     (title-string
      name-string
@@ -806,22 +957,49 @@
         (name->string name))))))
 (defparameter *size#primitive-function-table* 1000)
 
+(defparameter *pointer#primitive-function-table* 1)
+
 (defparameter *primitive-function-table*
   (make#vector
    :length *size#primitive-function-table*
-   :initial-element 'function))
+   :element-type 'function
+   :initial-element 0))
 
 (defparameter *primitive-function-table#title*
   (make#vector
    :length *size#primitive-function-table*
-   :initial-element `(integer 0 ,*size#title.name-table*)))
+   :element-type `(integer 0 ,*size#title.name-table*)
+   :initial-element 0))
 
 (defparameter *primitive-function-table#name*
   (make#vector
    :length *size#primitive-function-table*
-   :initial-element `(integer 0 ,*size#name-hash-table*)))
+   :element-type `(integer 0 ,*size#name-hash-table*)
+   :initial-element 0))
 
-(defparameter *pointer#primitive-function-table* 1)
+(defparameter *primitive-function-table#named-local-variable*
+  (make#vector
+   :length *size#primitive-function-table*
+   :element-type `list
+   :initial-element 0))
+
+(defparameter *primitive-function-table#inited-local-variable*
+  (make#vector
+   :length *size#primitive-function-table*
+   :element-type `list
+   :initial-element 0))
+
+(defparameter *primitive-function-table#unnamed-local-variable*
+  (make#vector
+   :length *size#primitive-function-table*
+   :element-type `list
+   :initial-element 0))
+
+(defparameter *primitive-function-table#return-value*
+  (make#vector
+   :length *size#primitive-function-table*
+   :element-type `list
+   :initial-element 0))
 (defun primitive-function? (index)
   (and (natural-number? index)
        (< index *size#primitive-function-table*)))
@@ -915,79 +1093,5 @@
        ("  * ~A ~A"
         (title->string title)
         (name->string name))))))
-(defparameter *size#argument-stack* 1024)
-
-(defparameter *argument-stack*
-  (make#vector :length (mul *cicada-object-size* *size#argument-stack*)
-               :element-type '(unsigned-byte 8)
-               :initial-element 0))
-
-;; pointer is an index into *argument-stack*
-;; one step of push pop is *cicada-object-size*
-(defparameter *pointer#argument-stack* 0)
-(defun push#argument-stack
-    (&key
-       title
-       value)
-  (cond
-    ;; type check
-    ((not (title? title))
-     (error "the argument :title of (push#argument-stack) must a title"))
-    ;; filled
-    ((not (< (mul *pointer#argument-stack*
-                  *cicada-object-size*)
-             *size#argument-stack*))
-     (error "can not push anymore *argument-stack* is filled"))
-    ;; side-effect
-    ;; *pointer#argument-stack* is always
-    ;; a free to use index into cicada-object-vector
-    (:else (save#title#cicada-object-vector
-            :title title
-            :cicada-object-vector *argument-stack*
-            :index *pointer#argument-stack*)
-           (save#value#cicada-object-vector
-            :value value
-            :cicada-object-vector *argument-stack*
-            :index *pointer#argument-stack*)
-           (add1! *pointer#argument-stack*)
-           ;; argument current-pointer
-           *pointer#argument-stack*)))
-(defin pop#argument-stack
-  .title
-  .value
-  .current-pointer)
-(defun pop#argument-stack ()
-  (cond
-    ((zero? *pointer#argument-stack*)
-     (error (cat ()
-              ("when calling (pop#argument-stack)~%")
-              ("the *argument-stack* must NOT be empty"))))
-    (:else
-     (sub1! *pointer#argument-stack*)
-     (values (fetch#title#cicada-object-vector
-              :cicada-object-vector *argument-stack*
-              :index *pointer#argument-stack*)
-             (fetch#value#cicada-object-vector
-              :cicada-object-vector *argument-stack*
-              :index *pointer#argument-stack*)
-             *pointer#argument-stack*))))
-;; TOS denotes top of stack
-(defin tos#argument-stack
-  .title
-  .value
-  .current-pointer)
-(defun tos#argument-stack ()
-  (cond
-    ((zero? *pointer#argument-stack*)
-     (error (cat ()
-              ("when calling (tos#argument-stack)~%")
-              ("the *argument-stack* must NOT be empty"))))
-    (:else
-     (values (fetch#title#cicada-object-vector
-              :cicada-object-vector *argument-stack*
-              :index (sub1 *pointer#argument-stack*))
-             (fetch#value#cicada-object-vector
-              :cicada-object-vector *argument-stack*
-              :index (sub1 *pointer#argument-stack*))
-             (sub1 *pointer#argument-stack*)))))
-
+(defun fetch#vector-function-body ())
+(defun save#vector-function-body ())

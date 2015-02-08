@@ -2,7 +2,7 @@
 (deftest cicada-rhapsody#in-line
     (cicada-rhapsody)
   (ensure
-      [ (: list :) [ [] ] ]
+      [ (: string-upcase :) [ [] ] ]
       ==>
-      (list " (: list :) [ [] ] ")
+      " (: STRING-UPCASE :) [ [] ] "
       ))
