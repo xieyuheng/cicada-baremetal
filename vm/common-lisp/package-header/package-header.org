@@ -5,8 +5,13 @@
 
 * defpackage
   #+begin_src lisp :tangle package-header.lisp 
-  (defpackage :cicada-vm
+  (defpackage "<"
     (:use :common-lisp)
+    (:export
+     ))
+
+  (defpackage :cicada-vm
+    (:use :common-lisp "<")
     (:export
      ))
   #+end_src

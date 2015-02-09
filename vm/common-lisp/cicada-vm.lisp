@@ -669,28 +669,17 @@
              (sub1 *pointer#return-stack*)))))
 ;; note that:
 ;; this function defines the interface of primitive-instruction
-;; as:
-;; 1. (<primitive-instruction> :title :value )
-;;    the return-stack will likely be updated by primitive-instruction
-;; 2. at the end of <primitive-instruction>
-;;    the (execute-next-instruction) will likely be called again
-;; [compare this to real CPU to understand it]
 
 (defun execute-next-instruction ()
   (let* ((address#vector-function-body
           (with (tos#return-stack)
-            .value))
+                .value))
          (primitive-instruction
           ;; this means only primitive-instruction is handled now
           (with (fetch#cicada-image
                  :address address#vector-function-body)
-            .value)))
-    (with (fetch#cicada-image
-           :address (add *cicada-object-size*
-                         address#vector-function-body))
-      (funcall (primitive-instruction->host-function primitive-instruction)
-               :title .title
-               :value .value))))
+                .value)))
+    (funcall (primitive-instruction->host-function primitive-instruction))))
 (defparameter *size#argument-stack* 1024)
 
 (defparameter *argument-stack*
@@ -841,7 +830,310 @@
               :cicada-object-vector *frame-stack*
               :index (sub1 *pointer#frame-stack*))
              (sub1 *pointer#frame-stack*)))))
+(defmacro @ (&body body)
+    `(let* ((cute-comment#list (quote ,body))
+            (length (length cute-comment#list)))
+       (make#vector :length length
+                    :initial-contents cute-comment#list)))
+;; note that
+;;   (symbol->string '<::a)
+;;   ==>
+;;   "A"
+
+(defun | symbol <a> ? | (symbol)
+  (if (not (symbol? symbol))
+      false
+      (let ((string (symbol->string symbol)))
+        (and (>= (length string) 3)
+             (equal? (string->head#char string) #\<)
+             (equal? (string->end#char  string) #\>)))))
+
+(defparameter *<-package* (find-package "<"))
+(defun | symbol <:: ? | (symbol)
+  (if (not (symbol? symbol))
+      false
+      (equal? *<-package*
+              (symbol-package symbol))))
+
+(defun | string <::a -> a | (string)
+  (cat (:letter :small)
+    (string)))
+
+(defun | string <a> -> a | (string)
+  (cat (:trim
+        '(#\< #\>)
+        :letter :small)
+    (string)))
+
+
+
+
+(defun cute-comment->unnamed-local-variable (cute-comment)
+  (let ((length (length cute-comment)))
+    (let-fun ((:def loop-collect (&key
+                                  (cursor 0)
+                                  (base-list '()))
+                ;; 兩元並查
+                ;; (因 雖可回頭看 但不可[不易]更改收集)
+                ;; <a> <b>  則收 a 爲類型[姓]  並繼續
+                ;; <a> <::  則斥 a 爲類型[姓]  並停止
+                ;; <a> ***  則收 a 爲類型[姓]  並停止
+                (cond ((not (< cursor (sub2 length)))
+                       (error (cat ()
+                                ("(cute-comment->unnamed-local-variable)~%")
+                                ("meet ill formed (@ ... -- ... @) cute-comment~%")
+                                ("the cute-comment as vector is ~A ~%" cute-comment)
+                                ("the cursor is ~A ~%" cursor))))
+                      ((| <a> <b> ? | cursor)
+                       (cons (string->title
+                              (| string <a> -> a |
+                               (symbol->string
+                                (fetch#vector :vector cute-comment
+                                              :index cursor))))
+                             (loop-collect
+                                :cursor (add1 cursor)
+                                :base-list base-list)))
+                      ((| <a> <:: ? | cursor)
+                       base-list)
+                      ('| <a> *** |
+                       (cons (string->title
+                              (| string <a> -> a |
+                               (symbol->string
+                                (fetch#vector :vector cute-comment
+                                              :index cursor))))
+                             base-list)))))
+      (let* ((list (loop-collect))
+             (list-length (length list))
+             (vector-length (add1 list-length))
+             (number list-length))
+        (make#vector :length vector-length
+                     :initial-contents (cons number list)))
+      :where
+      (:def | <a> <b> ? | (cursor)
+        (and (| symbol <a> ? | (fetch#vector :vector cute-comment
+                                             :index cursor))
+             (| symbol <a> ? | (fetch#vector :vector cute-comment
+                                             :index (add1 cursor)))))
+      (:def | <a> <:: ? | (cursor)
+        (and (| symbol <a> ? | (fetch#vector :vector cute-comment
+                                             :index cursor))
+             (| symbol <:: ? | (fetch#vector :vector cute-comment
+                                             :index (add1 cursor))))))))
+
+
+;; (cute-comment->unnamed-local-variable
+;;  (@ <fixnum>
+;;     <fixnum>
+;;     <fixnum> <::var1
+;;     1        <::var2
+;;     <title>  <::var3
+;;     fixnum (title) <::var4
+;;     --
+;;     <fixnum> @))
+
+;; (cute-comment->unnamed-local-variable
+;;  (@ <fixnum>
+;;     <fixnum>
+;;     --
+;;     @))
+
+
+
+(defun cute-comment->inited-local-variable (cute-comment)
+  ;; 語義待定
+  )
+
+
+(defun cute-comment->named-local-variable (cute-comment)
+  (let ((length (length cute-comment)))
+    (let-fun ((:def loop-collect (&key
+                                  (cursor 0)
+                                  (base-list '()))
+                ;; 找 <::
+                ;; 並 回頭看
+                ;; 爲 <a>
+                ;;    則 收 <:: 者 爲 有名約束變元之名
+                ;;       收 a      爲 此約束變元的類型[姓]
+                ;;       並 繼續
+                ;;    否則 繼續
+                ;; 見 --
+                ;;    則止
+                ;;    否則 繼續
+                (cond ((not (< cursor (sub1 length)))
+                       (error (cat ()
+                                ("(cute-comment->named-local-variable)~%")
+                                ("meet ill formed (@ ... -- ... @) cute-comment~%")
+                                ("the cute-comment as vector is ~A ~%" cute-comment)
+                                ("the cursor is ~A ~%" cursor))))
+                      ((| <:: ? | cursor)
+                       (cond ((zero? cursor)
+                              (error (cat ()
+                                       ("(cute-comment->named-local-variable)~%")
+                                       ("meet ill formed (@ ... -- ... @) cute-comment~%")
+                                       ("a <:: is at the beginning~%")
+                                       ("the cute-comment as vector is ~A ~%" cute-comment)
+                                       ("the cursor is ~A ~%" cursor))))
+                             ((| <a> ? | (sub1 cursor))
+                              (cons-many (string->name
+                                          (| string <::a -> a |
+                                           (symbol->string
+                                            (fetch#vector :vector cute-comment
+                                                          :index cursor))))
+                                         (string->title
+                                          (| string <a> -> a |
+                                           (symbol->string
+                                            (fetch#vector :vector cute-comment
+                                                          :index (sub1 cursor)))))
+                                         (loop-collect
+                                            :cursor (add1 cursor)
+                                            :base-list base-list)))
+                             (:else
+                              (loop-collect
+                                 :cursor (add1 cursor)
+                                 :base-list base-list))))
+                      ((| -- ? | cursor)
+                       base-list)
+                      (:else
+                       (loop-collect
+                          :cursor (add1 cursor)
+                          :base-list base-list)))))
+      (let* ((list (loop-collect))
+             (list-length (length list))
+             (vector-length (add1 list-length))
+             (number (div list-length 2)))
+        (make#vector :length vector-length
+                     :initial-contents (cons number list)))
+      :where
+      (:def | <:: ? | (cursor)
+        (| symbol <:: ? | (fetch#vector :vector cute-comment
+                                        :index cursor)))
+      (:def | <a> ? | (cursor)
+        (| symbol <a> ? | (fetch#vector :vector cute-comment
+                                        :index cursor)))
+      (:def | -- ? | (cursor)
+        (let ((dash-dash#symbol
+               (fetch#vector :vector cute-comment
+                             :index cursor)))
+          (and (symbol? dash-dash#symbol)
+               (let ((dash-dash#string
+                      (symbol->string dash-dash#symbol)))
+                 (and (> (length dash-dash#string)
+                         1)
+                      (equal? (cat (:trim '(#\-))
+                                (dash-dash#string))
+                              "")))))))))
+
+;; (cute-comment->named-local-variable
+;;  (@ <fixnum>
+;;     <fixnum>
+;;     <fixnum> <::var1
+;;     1        <::var2
+;;     <title>  <::var3
+;;     fixnum (title) <::var4
+;;     --
+;;     <fixnum> @))
+
+
+
+(defun cute-comment->return-object (cute-comment)
+  (let ((length (length cute-comment)))
+    (let-fun ((:def find-dash-dash (&key
+                                    (cursor 0))
+                (cond ((not (< cursor length))
+                       (error (cat ()
+                                ("(cute-comment->return-object)~%")
+                                ("meet ill formed (@ ... -- ... @) cute-comment~%")
+                                ("can not find -- in it~%")
+                                ("the cute-comment as vector is ~A ~%" cute-comment)
+                                ("the cursor is ~A ~%" cursor))))
+                      ((| -- ? | cursor)
+                       cursor)
+                      (:else
+                       (find-dash-dash :cursor (add1 cursor)))))
+              (:def loop-collect (&key
+                                  (cursor 0)
+                                  (base-list '()))
+                ;; 找 -- 而後類 無名函數者
+                ;; 但是此時無需 兩元並查
+                ;; <a>  則收 a 爲類型[姓]  並繼續
+                ;; 否則 誤
+                ;; 遇 @ 則止
+                (cond ((= cursor (sub1 length))
+                       (if (| @ ? | cursor)
+                           base-list
+                           (error (cat ()
+                                    ("(cute-comment->return-object)~%")
+                                    ("meet ill formed (@ ... -- ... @) cute-comment~%")
+                                    ("the end of it is not @ ~%")
+                                    ("the cute-comment as vector is ~A ~%" cute-comment)
+                                    ("the cursor is ~A ~%" cursor)))))
+                      ((| <a> ? | cursor)
+                       (cons (string->title
+                              (| string <a> -> a |
+                               (symbol->string
+                                (fetch#vector :vector cute-comment
+                                              :index cursor))))
+                             (loop-collect
+                                :cursor (add1 cursor)
+                                :base-list base-list)))
+                      (:else
+                       (error (cat ()
+                                ("(cute-comment->return-object)~%")
+                                ("meet ill formed (@ ... -- ... @) cute-comment~%")
+                                ("some thing other then <> occur after -- ~%")
+                                ("the cute-comment as vector is ~A ~%" cute-comment)
+                                ("the cursor is ~A ~%" cursor)))))))
+      (let* ((list (loop-collect :cursor (add1 (find-dash-dash))))
+             (list-length (length list))
+             (vector-length (add1 list-length))
+             (number list-length))
+        (make#vector :length vector-length
+                     :initial-contents (cons number list)))
+      :where
+      (:def | @ ? | (cursor)
+        (let ((dash-dash#symbol
+               (fetch#vector :vector cute-comment
+                             :index cursor)))
+          (and (symbol? dash-dash#symbol)
+               (equal? dash-dash#symbol
+                       '@))))
+      (:def | -- ? | (cursor)
+        (let ((dash-dash#symbol
+               (fetch#vector :vector cute-comment
+                             :index cursor)))
+          (and (symbol? dash-dash#symbol)
+               (let ((dash-dash#string
+                      (symbol->string dash-dash#symbol)))
+                 (and (> (length dash-dash#string)
+                         1)
+                      (equal? (cat (:trim '(#\-))
+                                (dash-dash#string))
+                              ""))))))
+      (:def | <a> ? | (cursor)
+        (| symbol <a> ? | (fetch#vector :vector cute-comment
+                                        :index cursor))))))
+
+;; (cute-comment->return-object
+;;  (@ <fixnum>
+;;     <fixnum>
+;;     <fixnum> <::var1
+;;     1        <::var2
+;;     <title>  <::var3
+;;     fixnum (title) <::var4
+;;     --
+;;     <fixnum>
+;;     <fixnum> @))
+
+;; (cute-comment->return-object
+;;  (@ <fixnum>
+;;     --
+;;     <fixnum>
+;;     <fixnum>
+;;     <fixnum>
+;;     <fixnum> @))
 (defparameter *size#primitive-instruction-table* 1000)
+
+(defparameter *pointer#primitive-instruction-table* 1)
 
 (defparameter *primitive-instruction-table*
   (make#vector
@@ -861,7 +1153,120 @@
    :element-type `(integer 0 ,*size#name-hash-table*)
    :initial-element 0))
 
-(defparameter *pointer#primitive-instruction-table* 1)
+
+(defparameter *primitive-instruction-table#named-local-variable*
+  (make#vector
+   :length *size#primitive-instruction-table*
+   :element-type `vector
+   :initial-element 0))
+
+(defparameter *primitive-instruction-table#inited-local-variable*
+  (make#vector
+   :length *size#primitive-instruction-table*
+   :element-type `vector
+   :initial-element 0))
+
+(defparameter *primitive-instruction-table#unnamed-local-variable*
+  (make#vector
+   :length *size#primitive-instruction-table*
+   :element-type `vector
+   :initial-element 0))
+
+(defparameter *primitive-instruction-table#return-object*
+  (make#vector
+   :length *size#primitive-instruction-table*
+   :element-type `vector
+   :initial-element 0))
+
+
+(defun fetch#primitive-instruction-table
+    (&key
+       index
+       field)
+  (if (equal? index :currnet)
+      (set! index *pointer#primitive-instruction-table*))
+  (cond ((equal? field :instruction)
+         (fetch#vector
+          :vector *primitive-instruction-table*
+          :index index))
+        ((equal? field :title)
+         (fetch#vector
+          :vector *primitive-instruction-table#title*
+          :index index))
+        ((equal? field :name)
+         (fetch#vector
+          :vector *primitive-instruction-table#name*
+          :index index))
+        ((equal? field :named-local-variable)
+         (fetch#vector
+          :vector *primitive-instruction-table#named-local-variable*
+          :index index))
+        ((equal? field :inited-local-variable)
+         (fetch#vector
+          :vector *primitive-instruction-table#inited-local-variable*
+          :index index))
+        ((equal? field :unnamed-local-variable)
+         (fetch#vector
+          :vector *primitive-instruction-table#unnamed-local-variable*
+          :index index))
+        ((equal? field :return-object)
+         (fetch#vector
+          :vector *primitive-instruction-table#return-object*
+          :index index))
+        (:else
+         (error (cat ()
+                  ("the argument :field of (fetch#primitive-instruction-table)~%")
+                  ("must be a valid field of the primitive-instruction-table~%")
+                  ("but ~A is not~%" field))))))
+
+
+(defun save#primitive-instruction-table
+    (&key
+       index
+       field
+       value)
+  (if (equal? index :currnet)
+      (set! index *pointer#primitive-instruction-table*))
+  (cond ((equal? field :instruction)
+         (save#vector
+          :value value
+          :vector *primitive-instruction-table*
+          :index index))
+        ((equal? field :title)
+         (save#vector
+          :value value
+          :vector *primitive-instruction-table#title*
+          :index index))
+        ((equal? field :name)
+         (save#vector
+          :value value
+          :vector *primitive-instruction-table#name*
+          :index index))
+        ((equal? field :named-local-variable)
+         (save#vector
+          :value value
+          :vector *primitive-instruction-table#named-local-variable*
+          :index index))
+        ((equal? field :inited-local-variable)
+         (save#vector
+          :value value
+          :vector *primitive-instruction-table#inited-local-variable*
+          :index index))
+        ((equal? field :unnamed-local-variable)
+         (save#vector
+          :value value
+          :vector *primitive-instruction-table#unnamed-local-variable*
+          :index index))
+        ((equal? field :return-object)
+         (save#vector
+          :value value
+          :vector *primitive-instruction-table#return-object*
+          :index index))
+        (:else
+         (error (cat ()
+                  ("the argument :field of (save#primitive-instruction-table)~%")
+                  ("must be a valid field of the primitive-instruction-table~%")
+                  ("but ~A is not~%" field))))))
 (defun primitive-instruction? (index)
   (and (natural-number? index)
        (< index *size#primitive-instruction-table*)))
@@ -871,6 +1276,7 @@
 (defmacro define-primitive-instruction
     (title-string
      name-string
+     cute-comment
      &body body)
   `(let ((title (string->title ,title-string))
          (name (string->name ,name-string)))
@@ -878,38 +1284,34 @@
          :name name
          :title#object *title#primitive-instruction*
          :value#object
-         (let ((host-funciton
-                (lambda (&key title value)
-                  ,@body)))
-           (cond
-             ((< *pointer#primitive-instruction-table*
-                 *size#primitive-instruction-table*)
-              (save#vector
-               :value host-funciton
-               :vector *primitive-instruction-table*
-               :index *pointer#primitive-instruction-table*)
-              (save#vector
-               :value title
-               :vector *primitive-instruction-table#title*
-               :index *pointer#primitive-instruction-table*)
-              (save#vector
-               :value name
-               :vector *primitive-instruction-table#name*
-               :index *pointer#primitive-instruction-table*)
-              (add1! *pointer#primitive-instruction-table*)
-              ;; return the old pointer [the index]
-              (sub1 *pointer#primitive-instruction-table*))
-             (:else
-              (error (cat ()
-                       ("when using (define-primitive-instruction)~%")
-                       ("the *primitive-instruction-table* must NOT be filled")))))))))
+         (cond ((< *pointer#primitive-instruction-table*
+                   *size#primitive-instruction-table*)
+                (save#primitive-instruction-table
+                 :value (lambda () ,@body)
+                 :field :instruction
+                 :index :currnet)
+                (save#primitive-instruction-table
+                 :value title
+                 :field :title
+                 :index :currnet)
+                (save#primitive-instruction-table
+                 :value name
+                 :field :name
+                 :index :currnet)
+                (add1! *pointer#primitive-instruction-table*)
+                ;; return the old pointer [the index]
+                (sub1 *pointer#primitive-instruction-table*))
+               (:else
+                (error (cat ()
+                         ("when using (define-primitive-instruction)~%")
+                         ("the *primitive-instruction-table* must NOT be filled"))))))))
 (defun primitive-instruction->host-function (primitive-instruction)
   (let ((host-function
          (fetch#vector :vector *primitive-instruction-table*
                        :index primitive-instruction)))
     (if (not (function? host-function))
         (error (cat ()
-                 ("from an instruction[index]~%")
+                 ("from an instruction[index]: ~A ~%" primitive-instruction)
                  ("(primitive-instruction->host-function) can not find any host-function")))
         host-function)))
 
@@ -977,29 +1379,120 @@
    :element-type `(integer 0 ,*size#name-hash-table*)
    :initial-element 0))
 
+
 (defparameter *primitive-function-table#named-local-variable*
   (make#vector
    :length *size#primitive-function-table*
-   :element-type `list
+   :element-type `vector
    :initial-element 0))
 
 (defparameter *primitive-function-table#inited-local-variable*
   (make#vector
    :length *size#primitive-function-table*
-   :element-type `list
+   :element-type `vector
    :initial-element 0))
 
 (defparameter *primitive-function-table#unnamed-local-variable*
   (make#vector
    :length *size#primitive-function-table*
-   :element-type `list
+   :element-type `vector
    :initial-element 0))
 
-(defparameter *primitive-function-table#return-value*
+(defparameter *primitive-function-table#return-object*
   (make#vector
    :length *size#primitive-function-table*
-   :element-type `list
+   :element-type `vector
    :initial-element 0))
+
+
+(defun fetch#primitive-function-table
+    (&key
+       index
+       field)
+  (if (equal? index :currnet)
+      (set! index *pointer#primitive-function-table*))
+  (cond ((equal? field :function)
+         (fetch#vector
+          :vector *primitive-function-table*
+          :index index))
+        ((equal? field :title)
+         (fetch#vector
+          :vector *primitive-function-table#title*
+          :index index))
+        ((equal? field :name)
+         (fetch#vector
+          :vector *primitive-function-table#name*
+          :index index))
+        ((equal? field :named-local-variable)
+         (fetch#vector
+          :vector *primitive-function-table#named-local-variable*
+          :index index))
+        ((equal? field :inited-local-variable)
+         (fetch#vector
+          :vector *primitive-function-table#inited-local-variable*
+          :index index))
+        ((equal? field :unnamed-local-variable)
+         (fetch#vector
+          :vector *primitive-function-table#unnamed-local-variable*
+          :index index))
+        ((equal? field :return-object)
+         (fetch#vector
+          :vector *primitive-function-table#return-object*
+          :index index))
+        (:else
+         (error (cat ()
+                  ("the argument :field of (fetch#primitive-function-table)~%")
+                  ("must be a valid field of the primitive-function-table~%")
+                  ("but ~A is not~%" field))))))
+
+
+(defun save#primitive-function-table
+    (&key
+       index
+       field
+       value)
+  (if (equal? index :currnet)
+      (set! index *pointer#primitive-function-table*))
+  (cond ((equal? field :function)
+         (save#vector
+          :value value
+          :vector *primitive-function-table*
+          :index index))
+        ((equal? field :title)
+         (save#vector
+          :value value
+          :vector *primitive-function-table#title*
+          :index index))
+        ((equal? field :name)
+         (save#vector
+          :value value
+          :vector *primitive-function-table#name*
+          :index index))
+        ((equal? field :named-local-variable)
+         (save#vector
+          :value value
+          :vector *primitive-function-table#named-local-variable*
+          :index index))
+        ((equal? field :inited-local-variable)
+         (save#vector
+          :value value
+          :vector *primitive-function-table#inited-local-variable*
+          :index index))
+        ((equal? field :unnamed-local-variable)
+         (save#vector
+          :value value
+          :vector *primitive-function-table#unnamed-local-variable*
+          :index index))
+        ((equal? field :return-object)
+         (save#vector
+          :value value
+          :vector *primitive-function-table#return-object*
+          :index index))
+        (:else
+         (error (cat ()
+                  ("the argument :field of (save#primitive-function-table)~%")
+                  ("must be a valid field of the primitive-function-table~%")
+                  ("but ~A is not~%" field))))))
 (defun primitive-function? (index)
   (and (natural-number? index)
        (< index *size#primitive-function-table*)))
@@ -1009,6 +1502,7 @@
 (defmacro define-primitive-function
     (title-string
      name-string
+     cute-comment
      &body body)
   `(let ((title (string->title ,title-string))
          (name (string->name ,name-string)))
@@ -1016,44 +1510,49 @@
          :name name
          :title#object *title#primitive-function*
          :value#object
-         (let ((host-funciton
-                (lambda ()
-                  ,@body)))
-           (cond
-             ((< *pointer#primitive-function-table*
-                 *size#primitive-function-table*)
-              (save#vector
-               :value host-funciton
-               :vector *primitive-function-table*
-               :index *pointer#primitive-function-table*)
-              (save#vector
-               :value title
-               :vector *primitive-function-table#title*
-               :index *pointer#primitive-function-table*)
-              (save#vector
-               :value name
-               :vector *primitive-function-table#name*
-               :index *pointer#primitive-function-table*)
-              (add1! *pointer#primitive-function-table*)
-              ;; return the old pointer [the index]
-              (sub1 *pointer#primitive-function-table*))
-             (:else
-              (error (cat ()
-                       ("when using (define-primitive-function)~%")
-                       ("the *primitive-function-table* must NOT be filled")))))))))
+         (cond ((< *pointer#primitive-function-table*
+                   *size#primitive-function-table*)
+                (save#primitive-function-table
+                 :value (lambda () ,@body)
+                 :field :function
+                 :index :currnet)
+                (save#primitive-function-table
+                 :value title
+                 :field :title
+                 :index :currnet)
+                (save#primitive-function-table
+                 :value name
+                 :field :name
+                 :index :currnet)
+                (save#primitive-function-table
+                 :value (cute-comment->unnamed-local-variable ,cute-comment)
+                 :field :unnamed-local-variable
+                 :index :currnet)
+                (save#primitive-function-table
+                 :value (cute-comment->named-local-variable ,cute-comment)
+                 :field :named-local-variable
+                 :index :currnet)
+                (save#primitive-function-table
+                 :value (cute-comment->return-object ,cute-comment)
+                 :field :return-object
+                 :index :currnet)
+                (add1! *pointer#primitive-function-table*)
+                ;; return the old pointer [the index]
+                (sub1 *pointer#primitive-function-table*))
+               (:else
+                (error (cat ()
+                         ("when using (define-primitive-function)~%")
+                         ("the *primitive-function-table* must NOT be filled"))))))))
 (defun primitive-function->host-function (primitive-function)
   (let ((host-function
-         (fetch#vector :vector *primitive-function-table*
-                       :index primitive-function)))
+         (fetch#primitive-function-table
+          :field :function
+          :index primitive-function)))
     (if (not (function? host-function))
         (error (cat ()
-                 ("from an function[index]~%")
+                 ("from an function[index] ~A ~%" primitive-function)
                  ("(primitive-function->host-function) can not find any host-function")))
         host-function)))
-
-;; (defun primitive-function->host-function (primitive-function)
-;;   (fetch#vector :vector *primitive-function-table*
-;;                 :index primitive-function))
 (defun map#primitive-function-table
     (&key
        function
@@ -1064,12 +1563,12 @@
          base-list)
         (:else
          (cons (funcall function
-                 :title (fetch#vector
-                         :vector *primitive-function-table#title*
+                 :title (fetch#primitive-function-table
+                         :field :title
                          :index primitive-function)
-                 :name (fetch#vector
-                         :vector *primitive-function-table#name*
-                         :index primitive-function)
+                 :name (fetch#primitive-function-table
+                        :field :name
+                        :index primitive-function)
                  :primitive-function primitive-function)
                (map#primitive-function-table
                 :function function
@@ -1095,3 +1594,6 @@
         (name->string name))))))
 (defun fetch#vector-function-body ())
 (defun save#vector-function-body ())
+(defun cicada (string) (cicada-language string))
+(defun cicada-language (string)
+  (string->list#word string))
