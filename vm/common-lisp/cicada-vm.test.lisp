@@ -3,7 +3,7 @@
     (cicada-vm)
   (ensure
       (print#title (string->title "kkk")
-                   :stream nil)
+                   :to nil)
       ==>
       "kkk"))
 (deftest be--and--ask
@@ -53,42 +53,40 @@
     (cicada-vm)
   (ensure
       (print#name (string->name "kkk took my baby away!")
-                  :stream nil)
+                  :to nil)
       ==>
       "kkk took my baby away!"))
 (deftest return-stack
     (cicada-vm)
   (ensure
-      (list (push#return-stack
-             :title (string->title "return-stack--push--test#1")
-             :value 147)
+      (let* ((push1 (push#return-stack
+                     :title (string->title "return-stack--push--test#1")
+                     :value 147))
+             (push2 (push#return-stack
+                     :title (string->title "return-stack--push--test#2")
+                     :value 258))
+             (push3 (push#return-stack
+                     :title (string->title "return-stack--push--test#3")
+                     :value 369)))
+        (list (sub push3 push2)
+              (sub push2 push1)
+              (with (tos#return-stack)
+                .value)
+              (with (pop#return-stack)
+                .value)
 
-            (push#return-stack
-             :title (string->title "return-stack--push--test#2")
-             :value 258)
+              (with (tos#return-stack)
+                .value)
+              (with (pop#return-stack)
+                .value)
 
-            (push#return-stack
-             :title (string->title "return-stack--push--test#3")
-             :value 369)
-
-            (with (tos#return-stack)
-              .value)
-            (with (pop#return-stack)
-              .value)
-
-            (with (tos#return-stack)
-              .value)
-            (with (pop#return-stack)
-              .value)
-
-            (with (tos#return-stack)
-              .value)
-            (with (pop#return-stack)
-              .value))
+              (with (tos#return-stack)
+                .value)
+              (with (pop#return-stack)
+                .value)))
       ==>
       (list 1
-            2
-            3
+            1
 
             369
             369

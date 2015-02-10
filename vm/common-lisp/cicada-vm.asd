@@ -13,12 +13,19 @@
   ((:module "package-header"
             :components
             ((:file "package-header")))
+   (:module "ytool"
+            :components
+            ((:file "ytool")))
    (:module "basic"
             :components
             ((:file "basic")))
    (:module "little-tester"
             :components
             ((:file "little-tester")))
+   (:module "ytool.test" :pathname "ytool"
+            :components
+            ((:file "ytool.test"
+                    :if-feature :with-little-test)))
    (:module "basic.test" :pathname "basic"
             :components
             ((:file "basic.test"
@@ -35,5 +42,4 @@
    ;;                  :if-feature :with-little-test)))
    (:file "cicada-vm")
    (:file "cicada-vm.test"
-          :if-feature :with-little-test)
-   ))
+          :if-feature :with-little-test)))

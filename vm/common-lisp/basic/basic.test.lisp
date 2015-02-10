@@ -1,29 +1,4 @@
 (in-package :cicada-vm)
-(deftest full-scope-test--123
-    (basic)
-  (ensure
-      (let-fun ((:def help1 (number)
-                  (add1 (help2 number))))
-        (set! *zero* 0)
-        (help1 *zero*)
-        :where
-        (:def help2 (number) (add1 (help3 number)))
-        (:def help3 (number) (add1 number)))
-      ==>
-      3))
-
-(deftest full-scope-test--321
-    (basic)
-  (ensure
-      (let-fun ((:def help1 (number)
-                  (add1 number)))
-        (set! *zero* 0)
-        (help3 *zero*)
-        :where
-        (:def help2 (number) (add1 (help1 number)))
-        (:def help3 (number) (add1 (help2 number))))
-      ==>
-      3))
 (deftest natural-number?
     (basic)
   (ensure
@@ -95,6 +70,27 @@
        :index-vector '#(0 0 0))
       ==>
       258))
+(deftest map#vector--sub-vector
+    (basic)
+  (ensure
+      (map#vector
+       :width 2
+       :number 2
+       :function (lambda (&key sub-vector) sub-vector)
+       :vector #(0 0 1 1 2 2))
+      ==>
+      (list #(0 0) #(1 1))))
+
+(deftest map#vector--element
+    (basic)
+  (ensure
+      (map#vector
+       :width 1
+       :number 2
+       :function (lambda (&key element) element)
+       :vector #(0 0 1 1 2 2))
+      ==>
+      (list 0 0)))
 (deftest fetch#byte-array
     (basic)
   (ensure
