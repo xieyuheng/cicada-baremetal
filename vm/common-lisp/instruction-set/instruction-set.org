@@ -2,12 +2,14 @@
 #+AUTHOR: 謝宇恆 / XIE Yuheng
 #+EMAIL:  xyheme@gmail.com
 
-* a set of primitive-[function|instruction] as instruction-set
-  * primitive-[function|instruction] 应该写在能够用来测试它们的编译器之后
 * todo
+** a set of primitive-[function|instruction] as instruction-set
+   * primitive-[function|instruction]
+     应该写在能够用来测试它们的编译器之后
+** design the memory layout of image file
 * ===================================
 * note
-* ----------------------------------- 
+* -----------------------------------
 * file header
 ** instruction-set.lisp
    #+begin_src lisp :tangle instruction-set.lisp
@@ -17,5 +19,183 @@
    #+begin_src lisp :tangle instruction-set.test.lisp
    (in-package :cicada-vm)
    #+end_src
-* ----------------------------------- 
+* -----------------------------------
+* fixnum
+  #+begin_src lisp :tangle instruction-set.lisp
+  (define-primitive-function "fixnum" "add1"
+      (@ <fixnum> -- <fixnum> @)
+    (save#argument-stack
+     :index 0
+     :value (add1 (fetch#argument-stack
+                   :index 0
+                   :field :value))))
+  #+end_src
+* ><
+  #+begin_src lisp
+  def_assembly_code "add2", add2
+     ;; (* n -- n+1 *)
+     add qword[Argument_stack_pointer], 2
+     next
+
+  def_assembly_code "add3", add3
+     ;; (* n -- n+1 *)
+     add qword[Argument_stack_pointer], 3
+     next
+
+  def_assembly_code "add4", add4
+     ;; (* n -- n+4 *)
+     add qword[Argument_stack_pointer], 4
+     next
+
+  def_assembly_code "add8", add8
+     ;; (* n -- n+8 *)
+     add qword[Argument_stack_pointer], 8
+     next
+
+
+  def_assembly_code "sub1", sub1
+     ;; (* n -- n-1 *)
+     dec qword[Argument_stack_pointer]
+     next
+
+  def_assembly_code "sub2", sub2
+     ;; (* n -- n-1 *)
+     sub qword[Argument_stack_pointer], 2
+     next
+
+  def_assembly_code "sub3", sub3
+     ;; (* n -- n-1 *)
+     sub qword[Argument_stack_pointer], 3
+     next
+
+  def_assembly_code "sub4", sub4
+     ;; (* n -- n-4 *)
+     sub qword[Argument_stack_pointer], 4
+     next
+
+  def_assembly_code "sub8", sub8
+     ;; (* n -- n-8 *)
+     sub qword[Argument_stack_pointer], 8
+     next
+
+
+  def_assembly_code "add", addition
+     ;; (* a b -- a+b *)
+     pop_argument_stack rax
+     add qword[Argument_stack_pointer], rax
+     next
+
+  def_verb "+", _add
+     xx addition
+     xx Exit
+  def_verb_end _add
+
+
+  def_assembly_code "sub", subtraction
+     ;; (* a b -- a-b *)
+     pop_argument_stack rax
+     sub qword[Argument_stack_pointer], rax
+     next
+
+  def_verb "-", _sub
+     xx subtraction
+     xx Exit
+  def_verb_end _sub
+
+
+  def_assembly_code "mul", multiple
+     ;; (* a b -- a*b *)
+     pop_argument_stack  rbx ;; 2ed arg
+     pop_argument_stack  rax ;; 1st arg
+     imul rbx, rax
+     ;; imul will ignore overflow
+     ;; when there are two registers as arg
+     ;; imul will save the result into the first register
+     push_argument_stack rbx
+     next
+
+  def_verb "*", _mul
+     xx multiple
+     xx Exit
+  def_verb_end _mul
+
+
+
+  def_assembly_code "moddiv", moddiv
+     ;; (* a, b -- a mod b, quotient *)
+     ;; (* dividend, divisor -- remainder, quotient *)
+     ;; the arg of idiv is divisor
+     ;; the lower half of dividend is taken from rax
+     ;; the upper half of dividend is taken from rdx
+     xor  rdx, rdx   ;; high-part of dividend is not used
+     pop_argument_stack  rbx ;; 2ed arg
+     pop_argument_stack  rax ;; 1st arg
+     idiv rbx
+     ;; the remainder is stored in rdx
+     ;; the quotient  is stored in rax
+     push_argument_stack rdx ;; remainder
+     push_argument_stack rax ;; quotient
+     next
+
+
+  def_verb "divmod", divmod
+     ;; (* a, b -- quotient, a mod b *)
+     xx moddiv, swap
+     xx Exit
+  def_verb_end divmod
+
+
+  def_verb "div", division
+     ;; (* a, b -- quotient *)
+     xx divmod, drop
+     xx Exit
+  def_verb_end division
+
+  def_verb "/", _div
+     ;; (* a, b -- quotient *)
+     xx division
+     xx Exit
+  def_verb_end _div
+
+
+  def_verb "mod", _mod
+     ;; (* a, b -- a mod b *)
+     xx moddiv, drop
+     xx Exit
+  def_verb_end _mod
+
+
+  def_verb "negate", negate
+     ;; (* n --  -n *)
+     xx _literal, 0
+     xx swap, subtraction
+     xx Exit
+  def_verb_end negate
+
+  def_verb "help:power", help_power
+     ;; (* a, m, n -- a^n *)
+     xx dup, zero?, _false?branch, 5
+     xx   drop, swap, drop
+     xx   Exit
+     xx sub1
+     xx swap
+     xx   xoverxx, multiple
+     xx swap
+     xx help_power
+     xx Exit
+  def_verb_end help_power
+
+  def_verb "power", power
+     ;; n must be naturl number for now
+     ;; (* a, n -- a^n *)
+     xx _literal, 1
+     xx swap
+     xx help_power
+     xx Exit
+  def_verb_end power
+  #+end_src
+* memory
+* return-stack
+* argument-stack
+* frame-stack
 * ===================================

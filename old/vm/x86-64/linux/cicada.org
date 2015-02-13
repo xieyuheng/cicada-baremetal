@@ -606,7 +606,7 @@
    segment readable executable writeable
    #+end_src
 * ==================================================
-* include macro
+* *include macro*
   #+begin_src fasm :tangle cicada.fasm
   include "../macro.inc"
   #+end_src
@@ -1373,7 +1373,7 @@
       xx Exit
    def_verb_end t
    #+end_src
-* include threaded code
+* *include threaded code*
   #+begin_src fasm :tangle cicada.fasm
   include "../threaded-code.inc"
   #+end_src

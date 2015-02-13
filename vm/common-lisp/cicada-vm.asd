@@ -49,10 +49,10 @@
             :components
             ((:file "compiler")
              (:file "compiler.test"
-                    :if-feature :with-little-test)))     
+                    :if-feature :with-little-test)))
    ;; (:module ghost-in-shell
    ;;          :components
    ;;          ((:file "ghost-in-shell")
    ;;           (:file "ghost-in-shell.test"
-   ;;                  :if-feature :with-little-test)))   
+   ;;                  :if-feature :with-little-test)))
    ))
