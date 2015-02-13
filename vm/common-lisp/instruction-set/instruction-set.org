@@ -1,0 +1,21 @@
+#+TITLE:  instruction-set
+#+AUTHOR: 謝宇恆 / XIE Yuheng
+#+EMAIL:  xyheme@gmail.com
+
+* a set of primitive-[function|instruction] as instruction-set
+  * primitive-[function|instruction] 应该写在能够用来测试它们的编译器之后
+* todo
+* ===================================
+* note
+* ----------------------------------- 
+* file header
+** instruction-set.lisp
+   #+begin_src lisp :tangle instruction-set.lisp
+   (in-package :cicada-vm)
+   #+end_src
+** instruction-set.test.lisp
+   #+begin_src lisp :tangle instruction-set.test.lisp
+   (in-package :cicada-vm)
+   #+end_src
+* ----------------------------------- 
+* ===================================

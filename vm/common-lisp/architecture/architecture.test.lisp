@@ -1,13 +1,13 @@
 (in-package :cicada-vm)
 (deftest print#title
-    (cicada-vm)
+    (architecture)
   (ensure
       (print#title (string->title "kkk")
                    :to nil)
       ==>
       "kkk"))
 (deftest be--and--ask
-    (cicada-vm)
+    (architecture)
   (ensure
       (list (be :title (string->title "kkk")
                 :name (string->name "took")
@@ -33,7 +33,7 @@
 
         )))
 (deftest string->natural-number
-    (cicada-vm)
+    (architecture)
   (ensure
       (list (string->natural-number "")
             (string->natural-number "@")
@@ -43,21 +43,21 @@
             64
             448)))
 (deftest name->string
-    (cicada-vm)
+    (architecture)
   (ensure
       (name->string (string->name "kkk took my baby away!"))
       ==>
       "kkk took my baby away!"))
 
 (deftest print#name
-    (cicada-vm)
+    (architecture)
   (ensure
       (print#name (string->name "kkk took my baby away!")
                   :to nil)
       ==>
       "kkk took my baby away!"))
 (deftest return-stack
-    (cicada-vm)
+    (architecture)
   (ensure
       (let* ((push1 (push#return-stack
                      :title (string->title "return-stack--push--test#1")
@@ -97,7 +97,7 @@
             147
             147)))
 (deftest argument-stack
-    (cicada-vm)
+    (architecture)
   (ensure
       (list (push#argument-stack
              :title (string->title "argument-stack--push--test#1")
@@ -139,7 +139,7 @@
             147
             147)))
 (deftest frame-stack
-    (cicada-vm)
+    (architecture)
   (ensure
       (list (push#frame-stack
              :title (string->title "frame-stack--push--test#1")

@@ -1,0 +1,109 @@
+#+TITLE:  compiler
+#+AUTHOR: 謝宇恆 / XIE Yuheng
+#+EMAIL:  xyheme@gmail.com
+
+* todo
+** for to write the compiler
+   * 这里需要良好的计划
+     因为这个编译器 在代码演化到某个阶段的时候 是会被抛弃的
+     [所谓 金蝉脱壳]
+   * 在这里我可以运用 common-lisp 所能提供的 尽可能丰富的 资源
+     而不用像在实现 vm 的时候一样
+     时刻维护把代码重写为汇编的容易性
+     这时所写的用于编译的函数也不会被重新映射为 cicada 的 primitive-function
+   * 这里的 cicada-rhapsody 是能够贡献于 common-lisp 社区的
+     [所以 我将会考虑 遵从 common-lisp 程序员 写代码的习俗]
+** the first version of the compiler (in cicada-rhapsody) & 象棋比喻
+   * 关于 vector-function 与 primitive-function 的接口
+     * 此二者的实现方式不同
+       但是它们的接口都将被编译器用到
+     * 所以先写编译器
+       看看需要什么样的接口
+   * 我发现 就像下棋[象棋]一样
+     你能同时考虑的步数越多
+     你的棋艺就越精湛
+     比如
+     之列 vector-function 与 primitive-function 的接口函数
+     就应该与使用这些接口的编译器一起被考虑
+     也就是说我同时能考虑到的 "步数" 仅仅是 两步 而已
+** 把那個 o 換掉
+   * 之所以出現這種情況是接口沒設計好
+     可能在寫編譯器的時候這個接口就會被自動更換了
+* ===================================
+* note
+* ----------------------------------- 
+* file header
+** compiler.lisp
+   #+begin_src lisp :tangle compiler.lisp
+   (in-package :cicada-vm)
+   #+end_src
+** compiler.test.lisp
+   #+begin_src lisp :tangle compiler.test.lisp
+   (in-package :cicada-vm)
+   #+end_src
+* ----------------------------------- 
+* compiler of cicada language
+** 記
+   * 這裏的編譯器是將要被重新實現於蟬語中的
+     所以
+     其代碼風格趨向蟬語
+   * 注意所處理的都是字符串 而不是 stream
+   * 難點在於
+     在這裏就要形成 所謂的 語境 概念
+     所定義的是一個語境而已
+     這個語境中 保留了 forth 的語法的傳統
+     但是這裏不能使用虛擬機中的 姓名 機制來實現 語境
+     也沒有必要這樣做
+     因爲這裏的語境是單一的
+** note usage in common-lisp
+   * [ (: cicada :) ]
+** cicada
+   #+begin_src lisp :tangle compiler.lisp
+   (defun cicada (string) (cicada-language string))
+   (defun cicada-language (string)
+     (string->list#word string))
+   #+end_src
+** key-word
+** test
+   #+begin_src cicada
+   [ (: cicada :)
+
+   : string->char
+     (* string[address, length] -- char *)
+     (* drop fetch-byte *)
+     get-char
+     xx|swap|x drop2
+     Exit
+   ; define-verb
+
+   : <string> (->char)
+     (@ <string> -- <char> @)
+     (char) (* drop fetch-byte *)
+     (xx|swap|x) (drop 2)
+   ; (define-verb)
+
+   : <string> ->char
+     (@ <string> -- <char> @)
+     char (* drop fetch-byte *)
+     xx|swap|x drop2
+   ; define-verb
+
+   ]
+   #+end_src
+* ----------------------------------- 
+* vector-function
+** ----------------------------------
+** 記
+   * 函數體 中所保存的是線串碼[threaded-code][一串珠]
+     也可以說一個函數體就是被線穿起來的一串珠子[bead]
+     每個珠子是兩個物 一爲指令 二爲指令之參數
+     不同的指令的參數個數可以不同 也就是說珠子有大有小
+   * 函數頭 中保存約束變元的信息 還有返回值的信息 還有其他信息
+** ----------------------------------
+** fetch & save
+   #+begin_src lisp :tangle compiler.lisp
+   (defun fetch#vector-function-body ())
+   (defun save#vector-function-body ())
+   #+end_src
+** ----------------------------------
+* ===================================

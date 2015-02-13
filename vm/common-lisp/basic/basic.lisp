@@ -192,7 +192,7 @@
                                (funcall function
                                  :element (get-element cursor))
                                (funcall function
-                                 :sub-vector (get-sub-vector cursor)))))                      
+                                 :sub-vector (get-sub-vector cursor)))))
                       (cons value-to-collect
                             (loop-collect :cursor (add1 cursor)))))
                    (:else

@@ -1693,8 +1693,3 @@
                     :function
                     (lambda (&key element) (title->string element)))))))
   (cat (:to to) ("~%")))
-(defun fetch#vector-function-body ())
-(defun save#vector-function-body ())
-(defun cicada (string) (cicada-language string))
-(defun cicada-language (string)
-  (string->list#word string))

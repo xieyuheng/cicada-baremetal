@@ -35,11 +35,24 @@
             ((:file "cicada-rhapsody")
              (:file "cicada-rhapsody.test"
                     :if-feature :with-little-test)))
+   (:module "architecture"
+            :components
+            ((:file "architecture")
+             (:file "architecture.test"
+                    :if-feature :with-little-test)))
+   (:module "instruction-set"
+            :components
+            ((:file "instruction-set")
+             (:file "instruction-set.test"
+                    :if-feature :with-little-test)))
+   (:module "compiler"
+            :components
+            ((:file "compiler")
+             (:file "compiler.test"
+                    :if-feature :with-little-test)))     
    ;; (:module ghost-in-shell
    ;;          :components
    ;;          ((:file "ghost-in-shell")
    ;;           (:file "ghost-in-shell.test"
-   ;;                  :if-feature :with-little-test)))
-   (:file "cicada-vm")
-   (:file "cicada-vm.test"
-          :if-feature :with-little-test)))
+   ;;                  :if-feature :with-little-test)))   
+   ))

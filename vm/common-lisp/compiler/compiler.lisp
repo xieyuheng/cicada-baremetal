@@ -1,0 +1,6 @@
+(in-package :cicada-vm)
+(defun cicada (string) (cicada-language string))
+(defun cicada-language (string)
+  (string->list#word string))
+(defun fetch#vector-function-body ())
+(defun save#vector-function-body ())
