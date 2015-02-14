@@ -272,17 +272,6 @@
        (orz ()
          ("can not ask for the object under the name as you wish~%")
          ("and the names under this title is too filled"))))))
-(defin o
-  .value
-  .title
-  .found?)
-
-(defun o (title-string name-string)
-  (with (ask :title (string->title title-string)
-             :name (string->name name-string))
-        (values .value
-                .title
-                .found?)))
 (defun title? (index)
   (and (natural-number? index)
        (< index *size#title.name-table*)))

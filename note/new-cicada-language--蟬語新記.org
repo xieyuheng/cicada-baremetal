@@ -2,7 +2,6 @@
 #+AUTHOR: 謝宇恆 / XIE Yuheng
 #+EMAIL:  xyheme@gmail.com
 
-* todo
 * ===================================
 * 姓名
 ** 語義

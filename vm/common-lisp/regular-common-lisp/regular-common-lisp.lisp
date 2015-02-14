@@ -51,6 +51,10 @@
 (defmacro sub1! (x) `(setf ,x (sub1 ,x)))
 (defmacro add2! (x) `(setf ,x (add2 ,x)))
 (defmacro sub2! (x) `(setf ,x (sub2 ,x)))
+
+(defun neg (x) (- x))
+
+(defun power (x y) (expt x y))
 (defun natural-number->keyword (number)
   (intern (format nil "~A" number)
           :keyword))

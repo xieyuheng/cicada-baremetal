@@ -16,9 +16,9 @@
    (:module "ytool"
             :components
             ((:file "ytool")))
-   (:module "basic"
+   (:module "regular-common-lisp"
             :components
-            ((:file "basic")))
+            ((:file "regular-common-lisp")))
    (:module "little-tester"
             :components
             ((:file "little-tester")))
@@ -26,9 +26,9 @@
             :components
             ((:file "ytool.test"
                     :if-feature :with-little-test)))
-   (:module "basic.test" :pathname "basic"
+   (:module "regular-common-lisp.test" :pathname "regular-common-lisp"
             :components
-            ((:file "basic.test"
+            ((:file "regular-common-lisp.test"
                     :if-feature :with-little-test)))
    (:module "cicada-rhapsody"
             :components

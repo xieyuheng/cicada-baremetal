@@ -2,7 +2,84 @@
 #+AUTHOR: 謝宇恆 / XIE Yuheng
 #+EMAIL:  xyheme@gmail.com
 
-* todo
+* ===================================
+* todo regular-common-lisp
+** maybe need a better fixnum?
+** argument type check for the following functions
+   * dup#string
+   * edit#line-list
+** dup
+   * uses make-string to re-define dup#string
+   * define dup for other datatype
+* todo architecture
+** to use instruction-return-stack
+** [how?] reduce dup code by better abstraction
+** [maybe] to find a better hash function
+** interface to cicada image buffer
+** type check of load-file
+   * the argument :file should be of path type
+** about io
+   * 總應該使用 record 來記錄 io
+     record 是可以被作爲一等公民處理的
+   * record 應該可以被過濾
+     設計數據結構的時候需要考慮這一點
+   * 並且 record 的順序是極端重要的
+   * io 要從鍵盤的輸入開始 而不使用舊的標準
+   * 輸入設備所產生的 record
+     將被作爲 消息 傳遞給 一個 底層的 loop
+     這在於 repl 並應該在回車的時候執行代碼
+     而應該有一個特殊的按鍵來控制代碼的執行
+     如果以 每次鍵盤的擊鍵爲輸入的話
+     repl 其實就是一個小型的文本編輯器了
+** write image file
+** parsing image file
+* todo instruction-set
+** design the memory layout of image file
+** a set (very first group) of primitive-[function|instruction]
+   * as instruction-set
+   * primitive-[function|instruction]
+     应该写在能够用来测试它们的编译器之后
+** 重新設計跟謂詞有關的語義
+   * 在之前的版本中我沒有發現這個錯誤真是太愚蠢了
+     但是現在我卻發現
+     有使用局部有名變元時
+     和不使用局部有名變元時
+     對謂詞的語義要求不同
+     前者要求吃掉棧中的值
+     而後者要求不吃
+   * 是否可以給謂詞設立一個專門的棧 ?
+   * 其實
+     是 if 被特殊處理了 而不是 各個謂詞
+     可能想到的方法有
+     1) 在編譯期計算 if-part 所消耗的值的個數
+        然後複製這些個數的值
+        這樣就要求 if-part 必須具有簡單性
+        這樣 與有名局部變元的語義衝突就解決了
+* todo compiler
+** for to write the compiler
+   * 这里需要良好的计划
+     因为这个编译器 在代码演化到某个阶段的时候 是会被抛弃的
+     [所谓 金蝉脱壳]
+   * 在这里我可以运用 common-lisp 所能提供的 尽可能丰富的 资源
+     而不用像在实现 vm 的时候一样
+     时刻维护把代码重写为汇编的容易性
+     这时所写的用于编译的函数也不会被重新映射为 cicada 的 primitive-function
+   * 这里的 cicada-rhapsody 是能够贡献于 common-lisp 社区的
+     [所以 我将会考虑 遵从 common-lisp 程序员 写代码的习俗]
+** the first version of the compiler (in cicada-rhapsody) & 象棋比喻
+   * 关于 vector-function 与 primitive-function 的接口
+     * 此二者的实现方式不同
+       但是它们的接口都将被编译器用到
+     * 所以先写编译器
+       看看需要什么样的接口
+   * 我发现 就像下棋[象棋]一样
+     你能同时考虑的步数越多
+     你的棋艺就越精湛
+     比如
+     之列 vector-function 与 primitive-function 的接口函数
+     就应该与使用这些接口的编译器一起被考虑
+     也就是说我同时能考虑到的 "步数" 仅仅是 两步 而已
+* todo cicada-vm
 ** [maybe] let modules be packages
 ** first version
    * without database of symbol usage
@@ -28,9 +105,9 @@
      (:module "ytool"
               :components
               ((:file "ytool")))
-     (:module "basic"
+     (:module "regular-common-lisp"
               :components
-              ((:file "basic")))
+              ((:file "regular-common-lisp")))
      (:module "little-tester"
               :components
               ((:file "little-tester")))
@@ -38,9 +115,9 @@
               :components
               ((:file "ytool.test"
                       :if-feature :with-little-test)))
-     (:module "basic.test" :pathname "basic"
+     (:module "regular-common-lisp.test" :pathname "regular-common-lisp"
               :components
-              ((:file "basic.test"
+              ((:file "regular-common-lisp.test"
                       :if-feature :with-little-test)))
      (:module "cicada-rhapsody"
               :components
@@ -69,7 +146,7 @@
      ;;                  :if-feature :with-little-test)))
      ))
   #+end_src
-* -----------------------------------
+* ===================================
 * test
 ** load-system & in-package & run-unit
    #+begin_src lisp
@@ -79,56 +156,30 @@
    (setf *print-pretty* t)
 
    (run-unit 'ytool)
-   (run-unit 'basic)
+   (run-unit 'regular-common-lisp)
    (run-unit 'cicada-rhapsody)
    (run-unit 'architecture)
    #+end_src
 ** ><
    #+begin_src lisp
-   ;; this is the first primitive-instruction
-   (define-primitive-instruction "primitive-function" "call"
-       ;; ><><>< should do title check
-       ;; 还有声明副作用的语法 如何
-       ;; 比如 对 return-stack 的副作用
-       (@ -- @)
-     (with (fetch#cicada-image
-            :address (add *cicada-object-size*
-                          (with (tos#return-stack)
-                            .value)))
-       ;; this means only primitive-instruction is handled now
-       (funcall (primitive-function->host-function .value))))
-
-   ;; * the argument of a primitive-function
-   ;;   should be fetched from the *argument-stack*
-   ;; * in the lisp's sense
-   ;;   the primitive-functions are all about side-effect
    (define-primitive-function "test" "kkk"
-       (@ <fixnum>
-          <fixnum>
-          <fixnum> <::var1
-          1        <::var2
-          <title>  <::var3
-          fixnum (title) <::var4
-          --
-          <fixnum> @)
+       (@ -- @)
      (cat (:to *standard-output*)
        ("kkk took what away?~%")))
 
    (save#cicada-image
     :address 0
     :title (string->title "primitive-instruction")
-    :value (o "primitive-function" "call"))
+    :value (with (ask :title (string->title "primitive-function")
+                      :name (string->name "call"))
+             .value))
 
    (save#cicada-image
     :address *cicada-object-size*
     :title (string->title "test")
-    :value
-    ;; (o "test" "kkk")
-    (o "fixnum" "add1"))
-
-   (push#argument-stack
-    :title (string->title "fixnum")
-    :value 0)
+    :value (with (ask :title (string->title "test")
+                      :name (string->name "kkk"))
+             .value))
 
    (push#return-stack
     :title (string->title "nevermind")
@@ -138,10 +189,5 @@
 
    (print#primitive-instruction-table)
    (print#primitive-function-table)
-
-   (list (with (tos#argument-stack)
-           .value)
-         (with (tos#argument-stack)
-           .title))
    #+end_src
 * ===================================

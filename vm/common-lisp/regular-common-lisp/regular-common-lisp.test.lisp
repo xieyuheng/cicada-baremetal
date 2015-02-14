@@ -1,6 +1,6 @@
 (in-package :cicada-vm)
 (deftest natural-number?
-    (basic)
+    (regular-common-lisp)
   (ensure
       (list (natural-number? 0)
             (natural-number? 1)
@@ -12,7 +12,7 @@
             nil
             nil)))
 (deftest shift#left
-    (basic)
+    (regular-common-lisp)
   (ensure
       (list (shift#left :number 10)
             (shift#left :step 2
@@ -22,7 +22,7 @@
             40)))
 
 (deftest shift#right
-    (basic)
+    (regular-common-lisp)
   (ensure
       (list (shift#right :number 64)
             (shift#right :step 2
@@ -31,7 +31,7 @@
       (list 32
             16)))
 (deftest fetch#bits
-    (basic)
+    (regular-common-lisp)
   (ensure
       (fetch#bits :bits #b0010
                   :size 1
@@ -39,7 +39,7 @@
       ==>
       1))
 (deftest fetch#bytes
-    (basic)
+    (regular-common-lisp)
   (ensure
       (list (fetch#bytes :bytes #xff  :index 0)
             (fetch#bytes :bytes #xff  :index 1)
@@ -51,7 +51,7 @@
         0
         1)))
 (deftest fetch#array
-    (basic)
+    (regular-common-lisp)
   (ensure
       (fetch#array
        :array (make-array '(1 1 1) :initial-element 666)
@@ -60,7 +60,7 @@
       666))
 
 (deftest save#array
-    (basic)
+    (regular-common-lisp)
   (ensure
       (fetch#array
        :array (save#array
@@ -71,7 +71,7 @@
       ==>
       258))
 (deftest map#vector--sub-vector
-    (basic)
+    (regular-common-lisp)
   (ensure
       (map#vector
        :width 2
@@ -82,7 +82,7 @@
       (list #(0 0) #(1 1))))
 
 (deftest map#vector--element
-    (basic)
+    (regular-common-lisp)
   (ensure
       (map#vector
        :width 1
@@ -92,7 +92,7 @@
       ==>
       (list 0 0)))
 (deftest fetch#byte-array
-    (basic)
+    (regular-common-lisp)
   (ensure
       (let ((k (make-array `(4)
                            :element-type '(unsigned-byte 8)
@@ -104,7 +104,7 @@
       257))
 
 (deftest fetch#byte-array--big-endian
-    (basic)
+    (regular-common-lisp)
   (ensure
       (let ((k (make-array `(4)
                            :element-type '(unsigned-byte 8)
@@ -117,7 +117,7 @@
       257))
 
 (deftest save#byte-array
-    (basic)
+    (regular-common-lisp)
   (ensure
       (let ((k (make-array `(4)
                            :element-type '(unsigned-byte 8)
@@ -133,7 +133,7 @@
       1234))
 
 (deftest save#byte-array--big-endian
-    (basic)
+    (regular-common-lisp)
   (ensure
       (let ((k (make-array `(4)
                            :element-type '(unsigned-byte 8)
@@ -150,7 +150,7 @@
       ==>
       1234))
 (deftest fetch#byte-vector
-    (basic)
+    (regular-common-lisp)
   (ensure
       (let ((k (make-array `(4)
                            :element-type '(unsigned-byte 8)
@@ -162,7 +162,7 @@
       257))
 
 (deftest save#byte-vector
-    (basic)
+    (regular-common-lisp)
   (ensure
       (let ((k (make-array `(4)
                            :element-type '(unsigned-byte 8)
@@ -177,7 +177,7 @@
       ==>
       1234))
 (deftest cat
-    (basic)
+    (regular-common-lisp)
   (ensure
       (cat ()
         ("~A" 123)
@@ -198,7 +198,7 @@
 ;;   (cat (:to *standard-output*)
 ;;     ("~A~%" x)))
 (deftest char#space?
-    (basic)
+    (regular-common-lisp)
   (ensure
       (list (char#space? #\newline)
             (char#space? #\space))
@@ -207,7 +207,7 @@
             t)))
 
 (deftest string#space?
-    (basic)
+    (regular-common-lisp)
   (ensure
       (list (string#space? " 123 ")
             (string#space? "  ")
@@ -217,7 +217,7 @@
             t
             t)))
 (deftest string->head#word
-    (basic)
+    (regular-common-lisp)
   (and (ensure
            (list (multiple-value-list (string->head#word " kkk took my baby away! "))
                  (multiple-value-list (string->head#word "k"))
@@ -243,7 +243,7 @@
 
 
 (deftest string->tail#word
-    (basic)
+    (regular-common-lisp)
   (ensure
       (list (string->tail#word " kkk took my baby away! ")
             (string->tail#word "just-kkk"))
@@ -253,7 +253,7 @@
 
 
 (deftest string->list#word
-    (basic)
+    (regular-common-lisp)
   (ensure
       (list (string->list#word " kkk took my baby away! ")
             (string->list#word " kkk")
@@ -267,7 +267,7 @@
             `nil
             `nil)))
 (deftest string->head#line
-    (basic)
+    (regular-common-lisp)
   (ensure
       (list (string->head#line "123")
             (string->head#line (format nil "~%123"))
@@ -279,7 +279,7 @@
 
 
 (deftest string->tail#line
-    (basic)
+    (regular-common-lisp)
   (ensure
       (list (string->tail#line "123")
             (string->tail#line (format nil "~%123"))
@@ -291,7 +291,7 @@
 
 
 (deftest string->list#line
-    (basic)
+    (regular-common-lisp)
   (ensure
       (string->list#line
        (cat (:postfix (cat () ("~%")))
@@ -312,7 +312,7 @@
         ""
         "")))
 (deftest string->head#char
-    (basic)
+    (regular-common-lisp)
   (and (ensure
            (list (multiple-value-list (string->head#char " kkk took my baby away! "))
                  (multiple-value-list (string->head#char "k"))
@@ -337,7 +337,7 @@
        ))
 
 (deftest string->tail#char
-    (basic)
+    (regular-common-lisp)
   (and (ensure
            (string->tail#char " kkk took my baby away! ")
            ==>
@@ -352,7 +352,7 @@
        ))
 
 (deftest string->list#char
-    (basic)
+    (regular-common-lisp)
   (ensure
       (list (string->list#char " kkk took my baby away! ")
             (string->list#char " kkk")
@@ -372,7 +372,7 @@
 (defun list? (x)
   (listp x))
 (deftest end-of-list
-    (basic)
+    (regular-common-lisp)
   (and (ensure
            (end-of-list '(1 2 3))
            ==>
@@ -386,7 +386,7 @@
            signals
            simple-error)))
 (deftest edit#line-list
-    (basic)
+    (regular-common-lisp)
   (ensure
       (edit#line-list
        :indent 2

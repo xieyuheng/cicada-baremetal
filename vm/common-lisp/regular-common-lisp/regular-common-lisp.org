@@ -1,15 +1,7 @@
-#+TITLE:  basic lib for common-lisp
+#+TITLE:  regular-common-lisp
 #+AUTHOR: 謝宇恆 / XIE Yuheng
 #+EMAIL:  xyheme@gmail.com
 
-* todo
-** maybe need a better fixnum?
-** argument type check for the following functions
-   * dup#string
-   * edit#line-list
-** dup
-   * uses make-string to re-define dup#string
-   * define dup for other datatype
 * ===================================
 * note
 ** respect
@@ -45,19 +37,19 @@
      use "." as its prefix
 * -----------------------------------
 * file header
-** basic.lisp
-   #+begin_src lisp :tangle basic.lisp
+** regular-common-lisp.lisp
+   #+begin_src lisp :tangle regular-common-lisp.lisp
    (in-package :cicada-vm)
    #+end_src
-** basic.test.lisp
-   #+begin_src lisp :tangle basic.test.lisp
+** regular-common-lisp.test.lisp
+   #+begin_src lisp :tangle regular-common-lisp.test.lisp
    (in-package :cicada-vm)
    #+end_src
 * -----------------------------------
 * variable
 ** ----------------------------------
 ** set!
-   #+begin_src lisp :tangle basic.lisp
+   #+begin_src lisp :tangle regular-common-lisp.lisp
    (defmacro set! (variable-name value)
      `(setf ,variable-name ,value))
    #+end_src
@@ -65,7 +57,7 @@
 * bool
 ** ----------------------------------
 ** predicate
-   #+begin_src lisp :tangle basic.lisp
+   #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun nil? (x)
      (null x))
 
@@ -77,7 +69,7 @@
    #+end_src
 ** ----------------------------------
 ** equal
-   #+begin_src lisp :tangle basic.lisp
+   #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun eq? (x y)
      (eq x y))
 
@@ -86,7 +78,7 @@
    #+end_src
 ** ----------------------------------
 ** constants
-   #+begin_src lisp :tangle basic.lisp
+   #+begin_src lisp :tangle regular-common-lisp.lisp
    (defparameter true t)
    (defparameter false nil)
    #+end_src
@@ -94,7 +86,7 @@
 * fixmun
 ** ----------------------------------
 ** predicate
-   #+begin_src lisp :tangle basic.lisp
+   #+begin_src lisp :tangle regular-common-lisp.lisp
    (defparameter *size#fixnum* 32) ;; unit bit
 
    (defun fixnum? (x)
@@ -118,9 +110,9 @@
           (<= 0 x)))
    #+end_src
 ** test
-   #+begin_src lisp :tangle basic.test.lisp
+   #+begin_src lisp :tangle regular-common-lisp.test.lisp
    (deftest natural-number?
-       (basic)
+       (regular-common-lisp)
      (ensure
          (list (natural-number? 0)
                (natural-number? 1)
@@ -134,7 +126,7 @@
    #+end_src
 ** ----------------------------------
 ** add & sub & mul & div
-   #+begin_src lisp :tangle basic.lisp
+   #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun add (x y) (+ x y))
    (defun sub (x y) (- x y))
    (defun mul (x y) (* x y))
@@ -149,17 +141,21 @@
    (defmacro sub1! (x) `(setf ,x (sub1 ,x)))
    (defmacro add2! (x) `(setf ,x (add2 ,x)))
    (defmacro sub2! (x) `(setf ,x (sub2 ,x)))
+
+   (defun neg (x) (- x))
+
+   (defun power (x y) (expt x y))
    #+end_src
 ** ----------------------------------
 ** natural-number->keyword
-   #+begin_src lisp :tangle basic.lisp
+   #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun natural-number->keyword (number)
      (intern (format nil "~A" number)
              :keyword))
    #+end_src
 ** ----------------------------------
 ** shift#[left|right]
-   #+begin_src lisp :tangle basic.lisp
+   #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun shift#left (&key
                         (step 1)
                         number)
@@ -174,9 +170,9 @@
         (expt 2 step)))
    #+end_src
 ** test
-   #+begin_src lisp :tangle basic.test.lisp
+   #+begin_src lisp :tangle regular-common-lisp.test.lisp
    (deftest shift#left
-       (basic)
+       (regular-common-lisp)
      (ensure
          (list (shift#left :number 10)
                (shift#left :step 2
@@ -186,7 +182,7 @@
                40)))
 
    (deftest shift#right
-       (basic)
+       (regular-common-lisp)
      (ensure
          (list (shift#right :number 64)
                (shift#right :step 2
@@ -199,7 +195,7 @@
 * bit
 ** ----------------------------------
 ** fetch & save
-   #+begin_src lisp :tangle basic.lisp
+   #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun fetch#bits (&key
                         bits
                         (size 1)
@@ -216,9 +212,9 @@
              value))
    #+end_src
 ** test
-   #+begin_src lisp :tangle basic.test.lisp
+   #+begin_src lisp :tangle regular-common-lisp.test.lisp
    (deftest fetch#bits
-       (basic)
+       (regular-common-lisp)
      (ensure
          (fetch#bits :bits #b0010
                      :size 1
@@ -230,7 +226,7 @@
 * byte
 ** ----------------------------------
 ** fetch & save
-   #+begin_src lisp :tangle basic.lisp
+   #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun fetch#bytes (&key
                          bytes
                          (size 1)
@@ -250,9 +246,9 @@
                 :index (* 8 index)))
    #+end_src
 ** test
-   #+begin_src lisp :tangle basic.test.lisp
+   #+begin_src lisp :tangle regular-common-lisp.test.lisp
    (deftest fetch#bytes
-       (basic)
+       (regular-common-lisp)
      (ensure
          (list (fetch#bytes :bytes #xff  :index 0)
                (fetch#bytes :bytes #xff  :index 1)
@@ -268,13 +264,13 @@
 * array
 ** ----------------------------------
 ** predicate
-   #+begin_src lisp :tangle basic.lisp
+   #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun array? (x)
      (arrayp x))
    #+end_src
 ** ----------------------------------
 ** fetch & save
-   #+begin_src lisp :tangle basic.lisp
+   #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun fetch#array (&key
                          array
                          index-vector)
@@ -295,9 +291,9 @@
                value)))
    #+end_src
 ** test
-   #+begin_src lisp :tangle basic.test.lisp
+   #+begin_src lisp :tangle regular-common-lisp.test.lisp
    (deftest fetch#array
-       (basic)
+       (regular-common-lisp)
      (ensure
          (fetch#array
           :array (make-array '(1 1 1) :initial-element 666)
@@ -306,7 +302,7 @@
          666))
 
    (deftest save#array
-       (basic)
+       (regular-common-lisp)
      (ensure
          (fetch#array
           :array (save#array
@@ -321,13 +317,13 @@
 * vector
 ** ----------------------------------
 ** predicate
-   #+begin_src lisp :tangle basic.lisp
+   #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun vector? (x)
      (vectorp x))
    #+end_src
 ** ----------------------------------
 ** make & fetch & save
-   #+begin_src lisp :tangle basic.lisp
+   #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun make#vector
        (&key
           length
@@ -384,7 +380,7 @@
    #+end_src
 ** ----------------------------------
 ** map
-   #+begin_src lisp :tangle basic.lisp
+   #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun map#vector
        (&key
           function
@@ -422,9 +418,9 @@
                      (add start width)))))))
    #+end_src
 ** test
-   #+begin_src lisp :tangle basic.test.lisp
+   #+begin_src lisp :tangle regular-common-lisp.test.lisp
    (deftest map#vector--sub-vector
-       (basic)
+       (regular-common-lisp)
      (ensure
          (map#vector
           :width 2
@@ -435,7 +431,7 @@
          (list #(0 0) #(1 1))))
 
    (deftest map#vector--element
-       (basic)
+       (regular-common-lisp)
      (ensure
          (map#vector
           :width 1
@@ -447,7 +443,7 @@
    #+end_src
 ** ----------------------------------
 ** list->vector & vector->list
-   #+begin_src lisp :tangle basic.lisp
+   #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun list->vector (list)
      (if (not (list? list))
          (error "the argument of (list->vector) must be a list")
@@ -463,7 +459,7 @@
 * byte-array
 ** ----------------------------------
 ** fetch & save
-   #+begin_src lisp :tangle basic.lisp
+   #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun fetch#byte-array
        (&key
           byte-array
@@ -714,9 +710,9 @@
        ))
    #+end_src
 ** test
-   #+begin_src lisp :tangle basic.test.lisp
+   #+begin_src lisp :tangle regular-common-lisp.test.lisp
    (deftest fetch#byte-array
-       (basic)
+       (regular-common-lisp)
      (ensure
          (let ((k (make-array `(4)
                               :element-type '(unsigned-byte 8)
@@ -728,7 +724,7 @@
          257))
 
    (deftest fetch#byte-array--big-endian
-       (basic)
+       (regular-common-lisp)
      (ensure
          (let ((k (make-array `(4)
                               :element-type '(unsigned-byte 8)
@@ -741,7 +737,7 @@
          257))
 
    (deftest save#byte-array
-       (basic)
+       (regular-common-lisp)
      (ensure
          (let ((k (make-array `(4)
                               :element-type '(unsigned-byte 8)
@@ -757,7 +753,7 @@
          1234))
 
    (deftest save#byte-array--big-endian
-       (basic)
+       (regular-common-lisp)
      (ensure
          (let ((k (make-array `(4)
                               :element-type '(unsigned-byte 8)
@@ -778,13 +774,13 @@
 * byte-vector
 ** ----------------------------------
 ** byte-vector?
-   #+begin_src lisp :tangle basic.lisp
+   #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun byte-vector? (x)
      (typep x '(vector (unsigned-byte 8))))
    #+end_src
 ** ----------------------------------
 ** fetch & save & copy
-   #+begin_src lisp :tangle basic.lisp
+   #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun fetch#byte-vector (&key
                                byte-vector
                                (size 1)
@@ -841,9 +837,9 @@
                           :counter (add1 counter)))))
    #+end_src
 ** test
-   #+begin_src lisp :tangle basic.test.lisp
+   #+begin_src lisp :tangle regular-common-lisp.test.lisp
    (deftest fetch#byte-vector
-       (basic)
+       (regular-common-lisp)
      (ensure
          (let ((k (make-array `(4)
                               :element-type '(unsigned-byte 8)
@@ -855,7 +851,7 @@
          257))
 
    (deftest save#byte-vector
-       (basic)
+       (regular-common-lisp)
      (ensure
          (let ((k (make-array `(4)
                               :element-type '(unsigned-byte 8)
@@ -874,13 +870,13 @@
 * stream
 ** ----------------------------------
 ** predicate
-   #+begin_src lisp :tangle basic.lisp
+   #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun stream? (x)
      (streamp x))
    #+end_src
 ** ----------------------------------
 ** read#char & read#line
-   #+begin_src lisp :tangle basic.lisp
+   #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun read#char (&key
                        (from *standard-input*)
                        (eof-as-error? t)
@@ -904,7 +900,7 @@
    #+end_src
 ** ----------------------------------
 ** cat
-   #+begin_src lisp :tangle basic.lisp
+   #+begin_src lisp :tangle regular-common-lisp.lisp
    ;; (cat (:to *standard-output*)
    ;;   ("~A" 123)
    ;;   ("~A" 456))
@@ -965,9 +961,9 @@
    ;;   ("~A" "   456   "))
    #+end_src
 ** test
-   #+begin_src lisp :tangle basic.test.lisp
+   #+begin_src lisp :tangle regular-common-lisp.test.lisp
    (deftest cat
-       (basic)
+       (regular-common-lisp)
      (ensure
          (cat ()
            ("~A" 123)
@@ -990,7 +986,7 @@
    #+end_src
 ** ----------------------------------
 ** >< file->buffer & buffer<-file
-   #+begin_src lisp :tangle basic.lisp
+   #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun file->buffer (&key
                          filename
                          buffer
@@ -1015,7 +1011,7 @@
    #+end_src
 ** ----------------------------------
 ** reader macro
-   #+begin_src lisp :tangle basic.lisp
+   #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun bind-char-to-reader
        (&key
           char
@@ -1054,7 +1050,7 @@
 * condition
 ** ----------------------------------
 ** orz
-   #+begin_src lisp :tangle basic.lisp
+   #+begin_src lisp :tangle regular-common-lisp.lisp
    (defmacro orz
        ((&key (to nil)
               (trim '())
@@ -1073,7 +1069,7 @@
 * char
 ** ----------------------------------
 ** predicate
-   #+begin_src lisp :tangle basic.lisp
+   #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun char? (x)
      (characterp x))
 
@@ -1087,7 +1083,7 @@
    #+end_src
 ** ----------------------------------
 ** char->code & code->char
-   #+begin_src lisp :tangle basic.lisp
+   #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun char->code (char)
      (char-code char))
 
@@ -1096,7 +1092,7 @@
    #+end_src
 ** ----------------------------------
 ** constants
-   #+begin_src lisp :tangle basic.lisp
+   #+begin_src lisp :tangle regular-common-lisp.lisp
    (defparameter *bar#square#string* "[")
    (defparameter *bar#square#char* (character *bar#square#string*))
    (defparameter *ket#square#string* "]")
@@ -1122,13 +1118,13 @@
 * symbol
 ** ----------------------------------
 ** predicate
-   #+begin_src lisp :tangle basic.lisp
+   #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun symbol? (x)
      (symbolp x))
    #+end_src
 ** ----------------------------------
 ** string->symbol & symbol->string
-   #+begin_src lisp :tangle basic.lisp
+   #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun symbol->string (symbol)
      (symbol-name symbol))
 
@@ -1137,7 +1133,7 @@
    #+end_src
 ** ----------------------------------
 ** put
-   #+begin_src lisp :tangle basic.lisp
+   #+begin_src lisp :tangle regular-common-lisp.lisp
    (defmacro put (symbol field-symbol value)
      `(setf (get ,symbol ,field-symbol) ,value))
    #+end_src
@@ -1145,7 +1141,7 @@
 * string
 ** ----------------------------------
 ** predicate
-   #+begin_src lisp :tangle basic.lisp
+   #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun string? (x)
      (stringp x))
 
@@ -1161,7 +1157,7 @@
    #+end_src
 ** ----------------------------------
 ** make & fetch & save
-   #+begin_src lisp :tangle basic.lisp
+   #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun make#string (&key
                          length
                          (initial-element *space#char*)
@@ -1191,7 +1187,7 @@
    #+end_src
 ** ----------------------------------
 ** dup#string
-   #+begin_src lisp :tangle basic.lisp
+   #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun dup#string (&key
                         (time 1)
                         string)
@@ -1205,9 +1201,9 @@
                          :string string)))))
    #+end_src
 ** test
-   #+begin_src lisp :tangle basic.test.lisp
+   #+begin_src lisp :tangle regular-common-lisp.test.lisp
    (deftest char#space?
-       (basic)
+       (regular-common-lisp)
      (ensure
          (list (char#space? #\newline)
                (char#space? #\space))
@@ -1216,7 +1212,7 @@
                t)))
 
    (deftest string#space?
-       (basic)
+       (regular-common-lisp)
      (ensure
          (list (string#space? " 123 ")
                (string#space? "  ")
@@ -1228,7 +1224,7 @@
    #+end_src
 ** ----------------------------------
 ** string->[head|tail|list]#word
-   #+begin_src lisp :tangle basic.lisp
+   #+begin_src lisp :tangle regular-common-lisp.lisp
    ;; interface:
    ;; (multiple-value-bind
    ;;       (head#word
@@ -1275,9 +1271,9 @@
               (string->list#word (string->tail#word string))))))
    #+end_src
 ** test
-   #+begin_src lisp :tangle basic.test.lisp
+   #+begin_src lisp :tangle regular-common-lisp.test.lisp
    (deftest string->head#word
-       (basic)
+       (regular-common-lisp)
      (and (ensure
               (list (multiple-value-list (string->head#word " kkk took my baby away! "))
                     (multiple-value-list (string->head#word "k"))
@@ -1303,7 +1299,7 @@
 
 
    (deftest string->tail#word
-       (basic)
+       (regular-common-lisp)
      (ensure
          (list (string->tail#word " kkk took my baby away! ")
                (string->tail#word "just-kkk"))
@@ -1313,7 +1309,7 @@
 
 
    (deftest string->list#word
-       (basic)
+       (regular-common-lisp)
      (ensure
          (list (string->list#word " kkk took my baby away! ")
                (string->list#word " kkk")
@@ -1329,7 +1325,7 @@
    #+end_src
 ** ----------------------------------
 ** string->[head|tail|list]#line
-   #+begin_src lisp :tangle basic.lisp
+   #+begin_src lisp :tangle regular-common-lisp.lisp
    ;; interface:
    ;; (multiple-value-bind
    ;;       (head#line
@@ -1368,9 +1364,9 @@
               (string->list#line (string->tail#line string))))))
    #+end_src
 ** test
-   #+begin_src lisp :tangle basic.test.lisp
+   #+begin_src lisp :tangle regular-common-lisp.test.lisp
    (deftest string->head#line
-       (basic)
+       (regular-common-lisp)
      (ensure
          (list (string->head#line "123")
                (string->head#line (format nil "~%123"))
@@ -1382,7 +1378,7 @@
 
 
    (deftest string->tail#line
-       (basic)
+       (regular-common-lisp)
      (ensure
          (list (string->tail#line "123")
                (string->tail#line (format nil "~%123"))
@@ -1394,7 +1390,7 @@
 
 
    (deftest string->list#line
-       (basic)
+       (regular-common-lisp)
      (ensure
          (string->list#line
           (cat (:postfix (cat () ("~%")))
@@ -1417,7 +1413,7 @@
    #+end_src
 ** ----------------------------------
 ** string->[head|end|tail|list]#char
-   #+begin_src lisp :tangle basic.lisp
+   #+begin_src lisp :tangle regular-common-lisp.lisp
    ;; interface:
    ;; (multiple-value-bind
    ;;       (head#char
@@ -1455,9 +1451,9 @@
               (string->list#char (string->tail#char string))))))
    #+end_src
 ** test
-   #+begin_src lisp :tangle basic.test.lisp
+   #+begin_src lisp :tangle regular-common-lisp.test.lisp
    (deftest string->head#char
-       (basic)
+       (regular-common-lisp)
      (and (ensure
               (list (multiple-value-list (string->head#char " kkk took my baby away! "))
                     (multiple-value-list (string->head#char "k"))
@@ -1482,7 +1478,7 @@
           ))
 
    (deftest string->tail#char
-       (basic)
+       (regular-common-lisp)
      (and (ensure
               (string->tail#char " kkk took my baby away! ")
               ==>
@@ -1497,7 +1493,7 @@
           ))
 
    (deftest string->list#char
-       (basic)
+       (regular-common-lisp)
      (ensure
          (list (string->list#char " kkk took my baby away! ")
                (string->list#char " kkk")
@@ -1516,13 +1512,13 @@
 * pathname
 ** ----------------------------------
 ** predicate
-   #+begin_src lisp :tangle basic.lisp
+   #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun pathname? (x)
      (pathnamep x))
    #+end_src
 ** ----------------------------------
 ** pathname->string & string->pathname
-   #+begin_src lisp :tangle basic.lisp
+   #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun pathname->string (pathname)
      (if (not (pathname? pathname))
          (error "the argument of (pathname->string) must be a pathname")
@@ -1537,7 +1533,7 @@
 * list
 ** ----------------------------------
 ** predicate
-   #+begin_src lisp :tangle basic.test.lisp
+   #+begin_src lisp :tangle regular-common-lisp.test.lisp
    (defun pair? (x)
      (consp x))
 
@@ -1546,7 +1542,7 @@
    #+end_src
 ** ----------------------------------
 ** end-of-list
-   #+begin_src lisp :tangle basic.lisp
+   #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun end-of-list (list)
      (cond
        ((not (pair? list))
@@ -1570,9 +1566,9 @@
          )))
    #+end_src
 ** test
-   #+begin_src lisp :tangle basic.test.lisp
+   #+begin_src lisp :tangle regular-common-lisp.test.lisp
    (deftest end-of-list
-       (basic)
+       (regular-common-lisp)
      (and (ensure
               (end-of-list '(1 2 3))
               ==>
@@ -1588,7 +1584,7 @@
    #+end_src
 ** ----------------------------------
 ** group
-   #+begin_src lisp :tangle basic.lisp
+   #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun group (list
                  &key
                    (number 2)
@@ -1601,7 +1597,7 @@
                          :number number)))))
    #+end_src
 ** find#record
-   #+begin_src lisp :tangle basic.lisp
+   #+begin_src lisp :tangle regular-common-lisp.lisp
    ;; (getf `(:one 111 :two 222 :three 333) :two)
 
    ;; (destructuring-bind (&key one two three)
@@ -1619,7 +1615,7 @@
    #+end_src
 ** ----------------------------------
 ** cons-many
-   #+begin_src lisp :tangle basic.lisp
+   #+begin_src lisp :tangle regular-common-lisp.lisp
    ;; (cons-many 1 2 '(3 4))
    ;; ==>
    ;; (cons 1
@@ -1645,13 +1641,13 @@
 * function
 ** ----------------------------------
 ** predicate
-   #+begin_src lisp :tangle basic.lisp
+   #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun function? (x)
      (functionp x))
    #+end_src
 ** ----------------------------------
 ** map-composite-function
-   #+begin_src lisp :tangle basic.lisp
+   #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun map-composite-function (function-list list)
      (help#reverse#map-composite-function
       (reverse function-list)
@@ -1671,7 +1667,7 @@
    #+end_src
 ** ----------------------------------
 ** multi return value
-   #+begin_src lisp :tangle basic.lisp
+   #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun return-zero-value ()
      (values))
 
@@ -1698,7 +1694,7 @@
    #+end_src
 ** ----------------------------------
 ** string->function & symbol->function
-   #+begin_src lisp :tangle basic.lisp
+   #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun string->function (string)
      (handler-case
          (symbol-function
@@ -1719,7 +1715,7 @@
    * actually string-list
      but the :indent only make sense
      when each string in the list is a line
-   #+begin_src lisp :tangle basic.lisp
+   #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun edit#line-list
        (&key
           line-list
@@ -1752,9 +1748,9 @@
               (error "the argument :print-to of (edit#line-list) must be a output stream")))))
    #+end_src
 ** test
-   #+begin_src lisp :tangle basic.test.lisp
+   #+begin_src lisp :tangle regular-common-lisp.test.lisp
    (deftest edit#line-list
-       (basic)
+       (regular-common-lisp)
      (ensure
          (edit#line-list
           :indent 2

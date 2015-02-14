@@ -2,28 +2,6 @@
 #+AUTHOR: 謝宇恆 / XIE Yuheng
 #+EMAIL:  xyheme@gmail.com
 
-* todo
-** to use instruction-return-stack
-** [how?] reduce dup code by better abstraction
-** [maybe] to find a better hash function
-** interface to cicada image buffer
-** type check of load-file
-   * the argument :file should be of path type
-** about io
-   * 總應該使用 record 來記錄 io
-     record 是可以被作爲一等公民處理的
-   * record 應該可以被過濾
-     設計數據結構的時候需要考慮這一點
-   * 並且 record 的順序是極端重要的
-   * io 要從鍵盤的輸入開始 而不使用舊的標準
-   * 輸入設備所產生的 record
-     將被作爲 消息 傳遞給 一個 底層的 loop
-     這在於 repl 並應該在回車的時候執行代碼
-     而應該有一個特殊的按鍵來控制代碼的執行
-     如果以 每次鍵盤的擊鍵爲輸入的話
-     repl 其實就是一個小型的文本編輯器了
-** write image file
-** parsing image file
 * ===================================
 * note
 ** architecture
@@ -407,21 +385,6 @@
           (orz ()
             ("can not ask for the object under the name as you wish~%")
             ("and the names under this title is too filled"))))))
-   #+end_src
-** o (>< to be remove)
-   * o let the .value be the main return value
-   #+begin_src lisp :tangle architecture.lisp
-   (defin o
-     .value
-     .title
-     .found?)
-
-   (defun o (title-string name-string)
-     (with (ask :title (string->title title-string)
-                :name (string->name name-string))
-           (values .value
-                   .title
-                   .found?)))
    #+end_src
 ** test
    #+begin_src lisp :tangle architecture.test.lisp
@@ -887,7 +850,7 @@
                        :index (add *cell-unit*
                                    address)))
    #+end_src
-** load cicada-image
+** load
    #+begin_src lisp :tangle architecture.lisp
    (progn
      (setf stream
