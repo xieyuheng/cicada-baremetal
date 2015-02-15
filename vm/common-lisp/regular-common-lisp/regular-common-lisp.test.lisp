@@ -385,6 +385,13 @@
            (end-of-list 3)
            signals
            simple-error)))
+(deftest find#record
+    (regular-common-lisp)
+  (ensure (find#record :two 666
+                       '((:one 111 :two 222 :three 333)
+                         (:one 666 :two 666 :three 666)))
+      ==>
+      '(:one 666 :two 666 :three 666)))
 (deftest edit#line-list
     (regular-common-lisp)
   (ensure

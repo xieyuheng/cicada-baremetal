@@ -561,62 +561,127 @@
 (defun print#name (name
                    &key (to t))
   (format to (name->string name)))
-(defparameter *size#cicada-image-buffer* 16)
-
 (setf (logical-pathname-translations "cicada")
       `(("**;*.*" "home:.cicada;**;*.*")))
 
-(defparameter *cicada-image-filename* "cicada:test.cicada-image")
+(defparameter *cicada-image#directory* nil)
+(defparameter *current-configuration#cicada-image* nil)
 
-(defparameter *cicada-image*
-  (make#vector :length (mul *size#cicada-image-buffer* *cicada-object-size*)
+(defun config#cicada-image
+    (&key
+       (configuration *current-configuration#cicada-image*))
+  (set! *cicada-image#directory*
+      (cat ()
+        ("cicada:~A;" (car configuration))))
+  (help ((defun config-section (section)           
+           (let* ((section-name
+                   (find#key :section-name section))
+                  (stream-ccd
+                   (open (cat ()
+                           (*cicada-image#directory*)
+                           ("~A;" section-name)
+                           ("~A.ccd" section-name))
+                         :direction :output
+                         :if-exists :supersede))
+                  (stream-meta
+                   (open (cat ()
+                           (*cicada-image#directory*)
+                           ("~A;" section-name)
+                           ("~A.meta" section-name))
+                         :direction :output
+                         :if-exists :supersede)))
+             (cat (:to stream-meta) ("~W" section))  
+             (close stream-ccd)
+             (close stream-meta))))
+    (mapcar (function config-section)
+            (cdr configuration))))
+
+(set! *cicada-image-configuration--test*
+    `("test-image"
+      (:section-name "test" :size 666)
+      (:section-name "vector-function-heap" :size ,(mul 6 1024))))
+
+(set! *current-configuration#cicada-image*
+    *cicada-image-configuration--test*)
+
+(config#cicada-image)
+(defparameter *size#cicada-memory* (mul 1024 1024))
+
+(defparameter *pointer#cicada-memory* 0)
+
+(defparameter *cicada-memory*
+  (make#vector :length (mul *size#cicada-memory* *cicada-object-size*)
                :element-type '(unsigned-byte 8)
                :initial-element 0))
-
-(defparameter *pointer#cicada-image-buffer* 0)
-(defun fetch-byte#cicada-image (&key address)
-  (fetch#byte-vector :byte-vector *cicada-image*
+(defun fetch-byte#cicada-memory (&key address)
+  (fetch#byte-vector :byte-vector *cicada-memory*
                      :size 1
                      :index address))
 
-(defun save-byte#cicada-image (&key address byte)
+(defun save-byte#cicada-memory (&key address byte)
   (save#byte-vector :value byte
-                    :byte-vector *cicada-image*
+                    :byte-vector *cicada-memory*
                     :size 1
                     :index address))
 
-(defin fetch#cicada-image
+(defin fetch#cicada-memory
   .title .value)
-(defun fetch#cicada-image (&key address)
-  (values (fetch#byte-vector :byte-vector *cicada-image*
+(defun fetch#cicada-memory (&key address)
+  (values (fetch#byte-vector :byte-vector *cicada-memory*
                              :size *cell-unit*
                              :index address)
-          (fetch#byte-vector :byte-vector *cicada-image*
+          (fetch#byte-vector :byte-vector *cicada-memory*
                              :size *cell-unit*
                              :index (add *cell-unit*
                                          address))))
 
-(defun save#cicada-image (&key address title value)
+(defun save#cicada-memory (&key address title value)
   (save#byte-vector :value title
-                    :byte-vector *cicada-image*
+                    :byte-vector *cicada-memory*
                     :size *cell-unit*
                     :index address)
   (save#byte-vector :value value
-                    :byte-vector *cicada-image*
+                    :byte-vector *cicada-memory*
                     :size *cell-unit*
                     :index (add *cell-unit*
                                 address)))
-(progn
-  (setf stream
-        (open *cicada-image-filename*
-              :direction :output
-              :if-exists :supersede))
-  (format stream "cicada test~%")
-  (close stream))
+(defparameter *data-section-record#cicada-memory* '())
+;; `((:offset 0
+;;            :section-name "vector-function-heap"
+;;            :size ,(mul 6 1024)))
 
+(defparameter *pointer#cicada-memory* 0)
 
-(file->buffer :filename *cicada-image-filename*
-              :buffer *cicada-image*)
+(defun load#cicada-image->cicada-memory ()
+  (help ((defun load-section (section)
+           (let ((section-name (find#key :section-name section))
+                 (section-size (find#key :size section))
+                 (section-offset *pointer#cicada-memory*))
+             (file->buffer
+              :filename (cat ()
+                          (*cicada-image#directory*)
+                          ("~A;" section-name)
+                          ("~A.ccd" section-name))
+              :buffer *cicada-memory*
+              :buffer-boundary#lower section-offset)
+             (set! *pointer#cicada-memory*
+                 (add *pointer#cicada-memory*
+                      section-size))
+             (values (append `(:offset ,section-offset)
+                             section)))))
+    (set! *data-section-record#cicada-memory* '())
+    (set! *pointer#cicada-memory* 0)
+    (set! *data-section-record#cicada-memory*        
+        (mapcar (function load-section)
+                (cdr *current-configuration#cicada-image*)))))
+(defun section-name->meta#cicada-memory (section-name)
+  (find#record :section-name section-name
+               *data-section-record#cicada-memory*))
+
+(defun section-name->offset#cicada-memory (section-name)
+  (find#key :offset
+            (find#record :section-name section-name
+                         *data-section-record#cicada-memory*)))
 (defparameter *size#return-stack* 1024)
 
 (defparameter *return-stack*
@@ -1004,7 +1069,7 @@
                 .value))
          (primitive-instruction
           ;; this means only primitive-instruction is handled now
-          (with (fetch#cicada-image
+          (with (fetch#cicada-memory
                  :address address#vector-function-body)
                 .value)))
     (funcall (primitive-instruction->host-function primitive-instruction))))

@@ -15,7 +15,7 @@
      low-level language as assembly
      and high-level language as common-lisp
    * an image file is as an executable [linkable] format
-   * when a image file is loaded to *cicada-image-buffer*
+   * when a image file is loaded to *cicada-memory*
      host language can provide many run-time supports
      but run-time independent compile must be supported too
    * when compiling to cicada language to image file
@@ -798,71 +798,163 @@
 * -----------------------------------
 * cicada-image
 ** note
-   * 這裏的設計可以非常豐富
+   * a image is a directory
+     one sub-directory will be viewed as 
+     one data section of the image
+   * in each sub-directory 
+     there is a ".meta" file for meta-data     
+     [actually ".meta" file is not used 
+     just read the *current-configuration*]
+   * and a ".ccd" file to be loaded
+     >< one data section could be 
+     implemented in any way
+   * but note that
+     the vm views the directory as a whole    
+     and the files in the directory
+     are not intended to be edited manually 
 ** allocation
    #+begin_src lisp :tangle architecture.lisp
-   (defparameter *size#cicada-image-buffer* 16)
-
    (setf (logical-pathname-translations "cicada")
          `(("**;*.*" "home:.cicada;**;*.*")))
 
-   (defparameter *cicada-image-filename* "cicada:test.cicada-image")
+   (defparameter *cicada-image#directory* nil)
+   #+end_src
+** config
+   * creat sub-directories and ".meta" files
+   #+begin_src lisp :tangle architecture.lisp
+   (defparameter *current-configuration#cicada-image* nil)
 
-   (defparameter *cicada-image*
-     (make#vector :length (mul *size#cicada-image-buffer* *cicada-object-size*)
+   (defun config#cicada-image
+       (&key
+          (configuration *current-configuration#cicada-image*))
+     (set! *cicada-image#directory*
+         (cat ()
+           ("cicada:~A;" (car configuration))))
+     (help ((defun config-section (section)           
+              (let* ((section-name
+                      (find#key :section-name section))
+                     (stream-ccd
+                      (open (cat ()
+                              (*cicada-image#directory*)
+                              ("~A;" section-name)
+                              ("~A.ccd" section-name))
+                            :direction :output
+                            :if-exists :supersede))
+                     (stream-meta
+                      (open (cat ()
+                              (*cicada-image#directory*)
+                              ("~A;" section-name)
+                              ("~A.meta" section-name))
+                            :direction :output
+                            :if-exists :supersede)))
+                (cat (:to stream-meta) ("~W" section))  
+                (close stream-ccd)
+                (close stream-meta))))
+       (mapcar (function config-section)
+               (cdr configuration))))
+
+   (set! *cicada-image-configuration--test*
+       `("test-image"
+         (:section-name "test" :size 666)
+         (:section-name "vector-function-heap" :size ,(mul 6 1024))))
+
+   (set! *current-configuration#cicada-image*
+       ,*cicada-image-configuration--test*)
+
+   (config#cicada-image)
+   #+end_src
+* cicada-memory
+** note
+   * every data section is denoted by a offset
+     offset will be setted when loading
+** allocation
+   #+begin_src lisp :tangle architecture.lisp
+   (defparameter *size#cicada-memory* (mul 1024 1024))
+
+   (defparameter *pointer#cicada-memory* 0)
+
+   (defparameter *cicada-memory*
+     (make#vector :length (mul *size#cicada-memory* *cicada-object-size*)
                   :element-type '(unsigned-byte 8)
-                  :initial-element 0))
-
-   (defparameter *pointer#cicada-image-buffer* 0)
+                  :initial-element 0))   
    #+end_src
 ** fetch & save
    #+begin_src lisp :tangle architecture.lisp
-   (defun fetch-byte#cicada-image (&key address)
-     (fetch#byte-vector :byte-vector *cicada-image*
+   (defun fetch-byte#cicada-memory (&key address)
+     (fetch#byte-vector :byte-vector *cicada-memory*
                         :size 1
                         :index address))
 
-   (defun save-byte#cicada-image (&key address byte)
+   (defun save-byte#cicada-memory (&key address byte)
      (save#byte-vector :value byte
-                       :byte-vector *cicada-image*
+                       :byte-vector *cicada-memory*
                        :size 1
                        :index address))
 
-   (defin fetch#cicada-image
+   (defin fetch#cicada-memory
      .title .value)
-   (defun fetch#cicada-image (&key address)
-     (values (fetch#byte-vector :byte-vector *cicada-image*
+   (defun fetch#cicada-memory (&key address)
+     (values (fetch#byte-vector :byte-vector *cicada-memory*
                                 :size *cell-unit*
                                 :index address)
-             (fetch#byte-vector :byte-vector *cicada-image*
+             (fetch#byte-vector :byte-vector *cicada-memory*
                                 :size *cell-unit*
                                 :index (add *cell-unit*
                                             address))))
 
-   (defun save#cicada-image (&key address title value)
+   (defun save#cicada-memory (&key address title value)
      (save#byte-vector :value title
-                       :byte-vector *cicada-image*
+                       :byte-vector *cicada-memory*
                        :size *cell-unit*
                        :index address)
      (save#byte-vector :value value
-                       :byte-vector *cicada-image*
+                       :byte-vector *cicada-memory*
                        :size *cell-unit*
                        :index (add *cell-unit*
                                    address)))
    #+end_src
-** load
+** load#cicada-image->cicada-memory
    #+begin_src lisp :tangle architecture.lisp
-   (progn
-     (setf stream
-           (open *cicada-image-filename*
-                 :direction :output
-                 :if-exists :supersede))
-     (format stream "cicada test~%")
-     (close stream))
+   (defparameter *data-section-record#cicada-memory* '())
+   ;; `((:offset 0
+   ;;            :section-name "vector-function-heap"
+   ;;            :size ,(mul 6 1024)))
 
+   (defparameter *pointer#cicada-memory* 0)
 
-   (file->buffer :filename *cicada-image-filename*
-                 :buffer *cicada-image*)
+   (defun load#cicada-image->cicada-memory ()
+     (help ((defun load-section (section)
+              (let ((section-name (find#key :section-name section))
+                    (section-size (find#key :size section))
+                    (section-offset *pointer#cicada-memory*))
+                (file->buffer
+                 :filename (cat ()
+                             (*cicada-image#directory*)
+                             ("~A;" section-name)
+                             ("~A.ccd" section-name))
+                 :buffer *cicada-memory*
+                 :buffer-boundary#lower section-offset)
+                (set! *pointer#cicada-memory*
+                    (add *pointer#cicada-memory*
+                         section-size))
+                (values (append `(:offset ,section-offset)
+                                section)))))
+       (set! *data-section-record#cicada-memory* '())
+       (set! *pointer#cicada-memory* 0)
+       (set! *data-section-record#cicada-memory*        
+           (mapcar (function load-section)
+                   (cdr *current-configuration#cicada-image*)))))
+   #+end_src
+** section-name->[*]#cicada-memory
+   #+begin_src lisp :tangle architecture.lisp
+   (defun section-name->meta#cicada-memory (section-name)
+     (find#record :section-name section-name
+                  ,*data-section-record#cicada-memory*))
+
+   (defun section-name->offset#cicada-memory (section-name)
+     (find#key :offset
+               (find#record :section-name section-name
+                            ,*data-section-record#cicada-memory*)))
    #+end_src
 * -----------------------------------
 * return-stack
@@ -1487,7 +1579,7 @@
                   .value))
            (primitive-instruction
             ;; this means only primitive-instruction is handled now
-            (with (fetch#cicada-image
+            (with (fetch#cicada-memory
                    :address address#vector-function-body)
                   .value)))
       (funcall (primitive-instruction->host-function primitive-instruction))))

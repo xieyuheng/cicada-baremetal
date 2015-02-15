@@ -921,20 +921,6 @@
          (cons (list (first list) (second list))
                (group (cddr list)
                       :number number)))))
-;; (getf `(:one 111 :two 222 :three 333) :two)
-
-;; (destructuring-bind (&key one two three)
-;;     `(:one 111 :two 222 :three 333)
-;;   (list three two one))
-
-(defun find#record (key-word value record)
-  (cond ((nil? record)
-         nil)
-        ((equal? (getf (car record) key-word)
-                 value)
-         (car record))
-        (:else
-         (find#record key-word value (cdr record)))))
 ;; (cons-many 1 2 '(3 4))
 ;; ==>
 ;; (cons 1
@@ -955,6 +941,23 @@
 
 ;; on error
 ;; (cons-many 1)
+;; (getf `(:one 111 :two 222 :three 333) :two)
+(defmacro find#key (key-word list)
+  `(getf ,list ,key-word))
+
+
+;; (destructuring-bind (&key one two three)
+;;     `(:one 111 :two 222 :three 333)
+;;   (list three two one))
+
+(defun find#record (key-word value record)
+  (cond ((nil? record)
+         nil)
+        ((equal? (find#key key-word (car record))
+                 value)
+         (car record))
+        (:else
+         (find#record key-word value (cdr record)))))
 (defun function? (x)
   (functionp x))
 (defun map-composite-function (function-list list)
@@ -976,26 +979,36 @@
 (defun return-zero-value ()
   (values))
 
-;; define-interface
-(defmacro defin
-    (function-name
-     &body
-       bounded-variable-list)
-  `(eval-when (:compile-toplevel :load-toplevel)
-     (put (quote ,function-name) (quote interface)
-          (quote ,bounded-variable-list))))
 
-(defmacro with (function-call &body body)
-  (let* ((function-name (car function-call))
-         (bounded-variable-list
-          (get function-name 'interface)))
-    (if (nil? bounded-variable-list)
+(defparameter *record#defin* nil)
+
+(defmacro defin ;; define-interface
+    (function-symbol
+     &body
+       interface-list)
+  `(eval-when (:compile-toplevel :load-toplevel :execute)
+     (set! *record#defin*
+         (cons
+          (append (list :function-symbol (quote ,function-symbol))
+                  (list :interface-list (quote ,interface-list)))
+          *record#defin*))))
+
+
+(defmacro with
+    ((function-symbol . function-body)
+     &body
+       form-body)
+  (let* ((interface-list
+          (find#key :interface-list
+                    (find#record :function-symbol function-symbol
+                                 *record#defin*))))
+    (if (nil? interface-list)
         (error (cat ()
-                 ("function: ~A have no interface" function-name)))
+                 ("function: ~A have no interface" function-symbol)))
         `(multiple-value-bind
-               ,bounded-variable-list
-             ,function-call
-           ,@body))))
+               ,interface-list
+             (,function-symbol . ,function-body)
+           ,@form-body))))
 (defun string->function (string)
   (handler-case
       (symbol-function

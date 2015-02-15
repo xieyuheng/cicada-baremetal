@@ -93,7 +93,7 @@
       ;; 还有声明副作用的语法 如何
       ;; 比如 对 return-stack 的副作用
       (@ -- @)
-    (with (fetch#cicada-image
+    (with (fetch#cicada-memory
            :address (add *cicada-object-size*
                          (with (tos#return-stack)
                            .value)))
