@@ -37,9 +37,9 @@
 (defun natural-number? (x)
   (and (integerp x)
        (<= 0 x)))
-(defun add (x y) (+ x y))
+(defmacro add (&body body) `(+ ,@body))
 (defun sub (x y) (- x y))
-(defun mul (x y) (* x y))
+(defmacro mul (&body body) `(* ,@body))
 (defun div (x y) (/ x y))
 
 (defun add1 (x) (+ x 1))
@@ -766,12 +766,12 @@
                       :string string)))))
 ;; interface:
 ;; (multiple-value-bind
-;;       (head#word
-;;        index-end-or-nil
-;;        index-start
-;;        string)
-;;     (string->head#word string)
-;;   ><><><)
+;;        (head#word
+;;         index-end-or-nil
+;;         index-start
+;;         string)
+;;      (string->head#word string)
+;;    ><><><)
 
 (defun string->head#word (string)
   (let* ((index-start
@@ -879,6 +879,114 @@
     (:else
      (cons (string->head#char string)
            (string->list#char (string->tail#char string))))))
+(defun next-word
+    (&key
+       string
+       cursor)
+  (let ((index-start
+         (position-if (lambda (char) (not (char#space? char)))
+                      string
+                      :start cursor)))
+    (cond ((nil? index-start)
+           (values :no-more-word
+                   cursor))
+          (:else
+           (let* ((index-end-or-nil
+                   (position-if (lambda (char) (char#space? char))
+                                string
+                                :start index-start))
+                  (index-end (if (nil? index-end-or-nil)
+                                 (length string)
+                                 index-end-or-nil)))
+             (values (subseq string
+                             index-start
+                             index-end)
+                     index-end))))))
+
+(defmacro next-word!
+    (&key
+       string
+       cursor)
+  `(multiple-value-bind (next-word next-cursor)
+       (next-word :string ,string
+                  :cursor ,cursor)
+     (set! ,cursor next-cursor)
+     next-word))
+
+
+
+(defun back-word
+    (&key
+       string
+       cursor)
+  (let ((pre-index-start
+         (position-if (lambda (char) (not (char#space? char)))
+                      string
+                      :end cursor
+                      :from-end t)))
+    (cond ((nil? pre-index-start)
+           (values :no-more-word
+                   cursor))
+          (:else
+           (let* ((index-start (add1 pre-index-start))
+                  (pre-index-end-or-nil
+                   (position-if (lambda (char) (char#space? char))
+                                string
+                                :end index-start
+                                :from-end t))
+                  (index-end (if (nil? pre-index-end-or-nil)
+                                 0
+                                 (add1 pre-index-end-or-nil))))
+             (values (subseq string
+                             index-end
+                             index-start)
+                     index-end))))))
+
+(defmacro back-word!
+    (&key
+       string
+       cursor)
+  `(multiple-value-bind (back-word back-cursor)
+       (back-word :string ,string
+                  :cursor ,cursor)
+     (set! ,cursor back-cursor)
+     back-word))
+
+
+
+(defun find-word
+    (&key
+       word
+       string
+       cursor)
+  (multiple-value-bind (next-word next-cursor)
+      (next-word :string string
+                 :cursor cursor)
+   (cond ((equal? next-word word)
+          (multiple-value-bind (back-word back-cursor)
+              (back-word :string string
+                         :cursor next-cursor)
+            back-cursor))
+         ((equal? next-word :no-more-word)
+          nil)
+         (:else
+          (find-word :word word
+                     :string string
+                     :cursor next-cursor)))))
+
+(defmacro find-word!
+    (&key
+       word
+       string
+       cursor)
+  `(let ((find-cursor (find-word :word ,word
+                                 :string ,string
+                                 :cursor ,cursor)))
+     (if (nil? find-cursor)
+         nil
+         (progn
+           (set! ,cursor find-cursor)
+           find-cursor))))
 (defun pathname? (x)
   (pathnamep x))
 (defun pathname->string (pathname)
@@ -893,10 +1001,9 @@
 (defun end-of-list (list)
   (cond
     ((not (pair? list))
-     (error "the argument of (end-of-list) must be a list"))
+     (error "the argument of (end-of-list) must be a list~%"))
     (:else
-     (help#loop#end-of-list list))
-    ))
+     (help#loop#end-of-list list))))
 
 (defun help#loop#end-of-list (list)
   (let ((cdr#list (cdr list)))
@@ -907,10 +1014,54 @@
        (error (concatenate
                'string
                "the argument of (end-of-list) must be not only a list~%"
-               "but also a proper-list")))
+               "but also a proper-list~%")))
       (:else
-       (help#loop#end-of-list cdr#list))
-      )))
+       (help#loop#end-of-list cdr#list)))))
+(defun set-car! (value list)
+  (cond
+    ((not (pair? list))
+     (error "the argument of (set-car!) must be a list~%"))
+    (:else
+     (setf (car list) value))))
+
+(defun set-cdr! (value list)
+  (cond
+    ((not (pair? list))
+     (error "the argument of (set-cdr!) must be a list~%"))
+    (:else
+     (setf (cdr list) value))))
+
+
+(defun set-end-cdr! (value list)
+  (cond
+    ((not (pair? list))
+     (error "the argument of (set-end-cdr!) must be a list~%"))
+    (:else
+     (help#loop#set-end-cdr! value list))))
+
+(defun help#loop#set-end-cdr! (value list)
+  (let ((cdr#list (cdr list)))
+    (cond
+      ((not (pair? cdr#list))
+       (set-cdr! value list))
+      (:else
+       (help#loop#set-end-cdr! value cdr#list)))))
+
+
+(defun set-end-car! (value list)
+  (cond
+    ((not (pair? list))
+     (error "the argument of (set-end-car!) must be a list~%"))
+    (:else
+     (help#loop#set-end-car! value list))))
+
+(defun help#loop#set-end-car! (value list)
+  (let ((cdr#list (cdr list)))
+    (cond
+      ((not (pair? cdr#list))
+       (set-car! value list))
+      (:else
+       (help#loop#set-end-car! value cdr#list)))))
 (defun group (list
               &key
                 (number 2)
@@ -953,6 +1104,8 @@
 (defun find#record (key-word value record)
   (cond ((nil? record)
          nil)
+        ((not (pair? (car record)))
+         (find#record key-word value (cdr record)))
         ((equal? (find#key key-word (car record))
                  value)
          (car record))

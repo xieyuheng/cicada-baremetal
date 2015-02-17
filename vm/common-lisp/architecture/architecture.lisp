@@ -563,125 +563,232 @@
   (format to (name->string name)))
 (setf (logical-pathname-translations "cicada")
       `(("**;*.*" "home:.cicada;**;*.*")))
-
-(defparameter *cicada-image#directory* nil)
-(defparameter *current-configuration#cicada-image* nil)
-
-(defun config#cicada-image
-    (&key
-       (configuration *current-configuration#cicada-image*))
-  (set! *cicada-image#directory*
-      (cat ()
-        ("cicada:~A;" (car configuration))))
-  (help ((defun config-section (section)           
-           (let* ((section-name
-                   (find#key :section-name section))
+(defun config#cicada-image (configuration-list)
+  (help ((defun config-section (configuration)
+           (let* ((image-name
+                   (find#key :image-name configuration))
+                  (section-name
+                   (find#key :section-name configuration))
+                  (section-meta
+                   (find#key :section-meta configuration))
                   (stream-ccd
                    (open (cat ()
-                           (*cicada-image#directory*)
+                           ("cicada:")
+                           ("~A;" image-name)
                            ("~A;" section-name)
                            ("~A.ccd" section-name))
                          :direction :output
                          :if-exists :supersede))
                   (stream-meta
                    (open (cat ()
-                           (*cicada-image#directory*)
+                           ("cicada:")
+                           ("~A;" image-name)
                            ("~A;" section-name)
                            ("~A.meta" section-name))
                          :direction :output
                          :if-exists :supersede)))
-             (cat (:to stream-meta) ("~W" section))  
+             (cat (:to stream-meta) ("~W" section-meta))
              (close stream-ccd)
              (close stream-meta))))
     (mapcar (function config-section)
-            (cdr configuration))))
+            configuration-list)))
 
-(set! *cicada-image-configuration--test*
-    `("test-image"
-      (:section-name "test" :size 666)
-      (:section-name "vector-function-heap" :size ,(mul 6 1024))))
-
-(set! *current-configuration#cicada-image*
-    *cicada-image-configuration--test*)
-
-(config#cicada-image)
+(config#cicada-image
+ `((:image-name "test-image"
+                :section-name "test"
+                :section-meta (:size 666))
+   (:image-name "test-image"
+                :section-name "vector-function-heap"
+                :section-meta (:size ,(mul 6 1024)))))
 (defparameter *size#cicada-memory* (mul 1024 1024))
 
-(defparameter *pointer#cicada-memory* 0)
+(defparameter *current-free-address#cicada-memory* 0)
 
 (defparameter *cicada-memory*
   (make#vector :length (mul *size#cicada-memory* *cicada-object-size*)
                :element-type '(unsigned-byte 8)
                :initial-element 0))
-(defun fetch-byte#cicada-memory (&key address)
-  (fetch#byte-vector :byte-vector *cicada-memory*
-                     :size 1
-                     :index address))
+(defparameter *data-section-record#cicada-memory*
+  `("data-section-record"))
+;; `((:section-offset 0
+;;    :section-name "vector-function-heap"
+;;    :image-name "><"
+;;    :section-meta (:size ,(mul 6 1024)))
+;;   ...)
 
-(defun save-byte#cicada-memory (&key address byte)
-  (save#byte-vector :value byte
-                    :byte-vector *cicada-memory*
-                    :size 1
-                    :index address))
+(defun load#cicada-section (&key image-name section-name)
+  (let* ((section-meta (let* ((meta-stream
+                               (open (cat ()
+                                       ("cicada:")
+                                       ("~A;" image-name)
+                                       ("~A;" section-name)
+                                       ("~A.meta" section-name))
+                                     :direction :input))
+                              (section-meta (read meta-stream)))
+                         (close meta-stream)
+                         (values section-meta)))
+         (section-size (find#key :size section-meta))
+         (section-offset *current-free-address#cicada-memory*))
+    (be :title (string->title section-name)
+        :name (string->name "offset")
+        :title#object (string->title "fixnum")
+        :value#object section-offset)
+    (file->buffer
+     :filename (cat ()
+                 ("cicada:")
+                 ("~A;" image-name)
+                 ("~A;" section-name)
+                 ("~A.ccd" section-name))
+     :buffer *cicada-memory*
+     :buffer-boundary#lower section-offset)
+    (set! *current-free-address#cicada-memory*
+        (add *current-free-address#cicada-memory*
+             section-size))
+    (set-end-car! (append `(:section-offset ,section-offset)
+                          `(:section-name   ,section-name)
+                          `(:image-name     ,image-name)
+                          `(:section-meta   ,section-meta))
+                  *data-section-record#cicada-memory*)))
 
-(defin fetch#cicada-memory
-  .title .value)
-(defun fetch#cicada-memory (&key address)
-  (values (fetch#byte-vector :byte-vector *cicada-memory*
-                             :size *cell-unit*
-                             :index address)
-          (fetch#byte-vector :byte-vector *cicada-memory*
-                             :size *cell-unit*
-                             :index (add *cell-unit*
-                                         address))))
-
-(defun save#cicada-memory (&key address title value)
-  (save#byte-vector :value title
-                    :byte-vector *cicada-memory*
-                    :size *cell-unit*
-                    :index address)
-  (save#byte-vector :value value
-                    :byte-vector *cicada-memory*
-                    :size *cell-unit*
-                    :index (add *cell-unit*
-                                address)))
-(defparameter *data-section-record#cicada-memory* '())
-;; `((:offset 0
-;;            :section-name "vector-function-heap"
-;;            :size ,(mul 6 1024)))
-
-(defparameter *pointer#cicada-memory* 0)
-
-(defun load#cicada-image->cicada-memory ()
-  (help ((defun load-section (section)
-           (let ((section-name (find#key :section-name section))
-                 (section-size (find#key :size section))
-                 (section-offset *pointer#cicada-memory*))
-             (file->buffer
-              :filename (cat ()
-                          (*cicada-image#directory*)
-                          ("~A;" section-name)
-                          ("~A.ccd" section-name))
-              :buffer *cicada-memory*
-              :buffer-boundary#lower section-offset)
-             (set! *pointer#cicada-memory*
-                 (add *pointer#cicada-memory*
-                      section-size))
-             (values (append `(:offset ,section-offset)
-                             section)))))
-    (set! *data-section-record#cicada-memory* '())
-    (set! *pointer#cicada-memory* 0)
-    (set! *data-section-record#cicada-memory*        
-        (mapcar (function load-section)
-                (cdr *current-configuration#cicada-image*)))))
-(defun section-name->meta#cicada-memory (section-name)
-  (find#record :section-name section-name
-               *data-section-record#cicada-memory*))
-
-(defun section-name->offset#cicada-memory (section-name)
-  (find#key :offset
+(load#cicada-section :image-name "test-image"
+                     :section-name "vector-function-heap")
+(defun cicada-section-name->meta (section-name)
+  (find#key :section-meta
             (find#record :section-name section-name
                          *data-section-record#cicada-memory*)))
+
+(defun cicada-section-name->offset (section-name)
+  (find#key :section-offset
+            (find#record :section-name section-name
+                         *data-section-record#cicada-memory*)))
+(defun fetch-byte#cicada-section
+    (&key
+       (section-offset nil)
+       (section-name nil)
+       address)
+  (cond ((not (nil? section-offset))
+         (fetch#byte-vector
+          :byte-vector *cicada-memory*
+          :size 1
+          :index (add address
+                      section-offset)))
+        ((not (nil? section-name))
+         (fetch#byte-vector
+          :byte-vector *cicada-memory*
+          :size 1
+          :index (add address
+                      (cicada-section-name->offset
+                       section-name))))
+        (:else
+         (orz ()
+           ("when calling (fetch-byte#cicada-section)~%")
+           ("one of is argument :section-offset or :section-name must NOT be nil~%")))))
+
+(defun save-byte#cicada-section
+    (&key
+       (section-offset nil)
+       (section-name nil)
+       address
+       byte)
+  (cond ((not (nil? section-offset))
+         (save#byte-vector
+          :value byte
+          :byte-vector *cicada-memory*
+          :size 1
+          :index (add address
+                      section-offset)))
+        ((not (nil? section-name))
+         (save#byte-vector
+          :value byte
+          :byte-vector *cicada-memory*
+          :size 1
+          :index (add address
+                      (cicada-section-name->offset
+                       section-name))))
+        (:else
+         (orz ()
+           ("when calling (save-byte#cicada-section)~%")
+           ("one of is argument :section-offset or :section-name must NOT be nil~%")))))
+
+(defin fetch#cicada-section
+  .title .value)
+(defun fetch#cicada-section
+    (&key
+       (section-offset nil)
+       (section-name nil)
+       address)
+  (cond ((not (nil? section-offset))
+         (values (fetch#byte-vector
+                  :byte-vector *cicada-memory*
+                  :size *cell-unit*
+                  :index (add address
+                              section-offset))
+                 (fetch#byte-vector
+                  :byte-vector *cicada-memory*
+                  :size *cell-unit*
+                  :index (add *cell-unit*
+                              address
+                              section-offset))))
+        ((not (nil? section-name))
+         (values (fetch#byte-vector
+                  :byte-vector *cicada-memory*
+                  :size *cell-unit*
+                  :index (add address
+                              (cicada-section-name->offset
+                               section-name)))
+                 (fetch#byte-vector
+                  :byte-vector *cicada-memory*
+                  :size *cell-unit*
+                  :index (add *cell-unit*
+                              address
+                              (cicada-section-name->offset
+                               section-name)))))
+        (:else
+         (orz ()
+           ("when calling (fetch#cicada-section)~%")
+           ("one of is argument :section-offset or :section-name must NOT be nil~%")))))
+
+(defun save#cicada-section
+    (&key
+       (section-offset nil)
+       (section-name nil)
+       address
+       title
+       value)
+  (cond ((not (nil? section-offset))
+         (save#byte-vector
+          :value title
+          :byte-vector *cicada-memory*
+          :size *cell-unit*
+          :index (add address
+                      section-offset))
+         (save#byte-vector
+          :value value
+          :byte-vector *cicada-memory*
+          :size *cell-unit*
+          :index (add *cell-unit*
+                      address
+                      section-offset)))
+        ((not (nil? section-name))
+         (save#byte-vector
+          :value title
+          :byte-vector *cicada-memory*
+          :size *cell-unit*
+          :index (add address
+                      (cicada-section-name->offset
+                       section-name)))
+         (save#byte-vector
+          :value value
+          :byte-vector *cicada-memory*
+          :size *cell-unit*
+          :index (add *cell-unit*
+                      address
+                      (cicada-section-name->offset
+                       section-name))))
+        (:else
+         (orz ()
+           ("when calling (save#cicada-section)~%")
+           ("one of is argument :section-offset or :section-name must NOT be nil~%")))))
 (defparameter *size#return-stack* 1024)
 
 (defparameter *return-stack*
@@ -771,7 +878,7 @@
            ("but here: ~%")
            ("index = ~A ~%" index)
            ("*pointer#return-stack* = ~A ~%" *pointer#return-stack*)))
-        ((equal? field :title)         
+        ((equal? field :title)
          (fetch#cicada-object-vector
           :field :title
           :cicada-object-vector *return-stack*
@@ -790,7 +897,7 @@
            ("but not ~A ~%" field)))))
 
 (defun save#return-stack
-    (&key       
+    (&key
        (title nil)
        (value nil)
        index)
@@ -897,7 +1004,7 @@
            ("but here: ~%")
            ("index = ~A ~%" index)
            ("*pointer#argument-stack* = ~A ~%" *pointer#argument-stack*)))
-        ((equal? field :title)         
+        ((equal? field :title)
          (fetch#cicada-object-vector
           :field :title
           :cicada-object-vector *argument-stack*
@@ -916,7 +1023,7 @@
            ("but not ~A ~%" field)))))
 
 (defun save#argument-stack
-    (&key       
+    (&key
        (title nil)
        (value nil)
        index)
@@ -1023,7 +1130,7 @@
            ("but here: ~%")
            ("index = ~A ~%" index)
            ("*pointer#frame-stack* = ~A ~%" *pointer#frame-stack*)))
-        ((equal? field :title)         
+        ((equal? field :title)
          (fetch#cicada-object-vector
           :field :title
           :cicada-object-vector *frame-stack*
@@ -1042,7 +1149,7 @@
            ("but not ~A ~%" field)))))
 
 (defun save#frame-stack
-    (&key       
+    (&key
        (title nil)
        (value nil)
        index)
@@ -1064,15 +1171,14 @@
 ;; this function defines the interface of primitive-instruction
 
 (defun execute-next-instruction ()
-  (let* ((address#vector-function-body
-          (with (tos#return-stack)
-                .value))
-         (primitive-instruction
-          ;; this means only primitive-instruction is handled now
-          (with (fetch#cicada-memory
-                 :address address#vector-function-body)
-                .value)))
-    (funcall (primitive-instruction->host-function primitive-instruction))))
+  (with (tos#return-stack)
+    (with (fetch#cicada-section
+           :section-offset (ask :title .title
+                                :name (string->name "offset"))
+           :address .value)
+      (funcall (primitive-instruction->host-function
+                ;; primitive-instruction
+                .value)))))
 (defmacro @ (&body body)
     `(let* ((cute-comment#list (quote ,body))
             (length (length cute-comment#list)))

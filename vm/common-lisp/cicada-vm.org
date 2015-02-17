@@ -170,31 +170,30 @@
        ("kkk took what away?~%")))
 
    (let ()
-
-     (save#cicada-memory
+     (save#cicada-section
+      :section-name "vector-function-heap"
       :address 0
       :title (string->title "primitive-instruction")
       :value (with (ask :title (string->title "primitive-function")
                         :name (string->name "call"))
                .value))
-  
-     (save#cicada-memory
+     (save#cicada-section
+      :section-name "vector-function-heap"
       :address *cicada-object-size*
       :title (string->title "test")
       :value (with (ask :title (string->title "test")
                         :name (string->name "kkk"))
                .value))
-
-
      (push#return-stack
       :title (string->title "nevermind")
       :value 0)
+     (execute-next-instruction))
 
-     (execute-next-instruction)
-
-     )
-
-   (print#primitive-instruction-table)
-   (print#primitive-function-table)
+   (let ()
+    (print#primitive-instruction-table)
+    (print#primitive-function-table)
+    (print#name-hash-table)
+    (print#title.name-table)
+    (values))
    #+end_src
 * ===================================

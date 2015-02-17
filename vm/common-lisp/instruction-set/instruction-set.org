@@ -93,12 +93,15 @@
       ;; 还有声明副作用的语法 如何
       ;; 比如 对 return-stack 的副作用
       (@ -- @)
-    (with (fetch#cicada-memory
-           :address (add *cicada-object-size*
-                         (with (tos#return-stack)
-                           .value)))
-      ;; this means only primitive-instruction is handled now
-      (funcall (primitive-function->host-function .value))))
+    (with (tos#return-stack)
+      (with (fetch#cicada-section
+             :section-offset (ask :title .title
+                                  :name (string->name "offset"))
+             :address (add *cicada-object-size*
+                           .value))
+        ;; this means that by now
+        ;; only primitive-instruction is handled
+        (funcall (primitive-function->host-function .value)))))
   #+end_src
 * return-stack
 * argument-stack
