@@ -428,6 +428,68 @@
               find-cursor-2))
       ==>
       (list 5 ";" 11)))
+(deftest next-word*!
+    (regular-common-lisp)
+  (ensure
+      (let* ((*string#cicada-interpreter* " (123) ")
+             (*cursor#cicada-interpreter* 0))
+        (list (next-word*!
+               :string *string#cicada-interpreter*
+               :cursor *cursor#cicada-interpreter*)
+              (next-word*!
+               :string *string#cicada-interpreter*
+               :cursor *cursor#cicada-interpreter*)
+              (next-word*!
+               :string *string#cicada-interpreter*
+               :cursor *cursor#cicada-interpreter*)
+              (next-word*!
+               :string *string#cicada-interpreter*
+               :cursor *cursor#cicada-interpreter*)))
+      ==>
+      (list "(" "123" ")" :no-more-word)))
+
+(deftest back-word*!
+    (regular-common-lisp)
+  (ensure
+      (let* ((*string#cicada-interpreter* " (123) ")
+             (*cursor#cicada-interpreter*
+              (length *string#cicada-interpreter*)))
+        (list (back-word*!
+               :string *string#cicada-interpreter*
+               :cursor *cursor#cicada-interpreter*)
+              (back-word*!
+               :string *string#cicada-interpreter*
+               :cursor *cursor#cicada-interpreter*)
+              (back-word*!
+               :string *string#cicada-interpreter*
+               :cursor *cursor#cicada-interpreter*)
+              (back-word*!
+               :string *string#cicada-interpreter*
+               :cursor *cursor#cicada-interpreter*)))
+      ==>
+      (list ")" "123" "(" :no-more-word)))
+
+(deftest find-word*!
+    (regular-common-lisp)
+  (ensure
+      (let* ((*string#cicada-interpreter* " 123 ; 456 (;) ")
+             (*cursor#cicada-interpreter* 0)
+             (find-cursor-1
+              (find-word*! :word ";"
+                           :string *string#cicada-interpreter*
+                           :cursor *cursor#cicada-interpreter*))
+             (next-word*
+              (next-word*! :string *string#cicada-interpreter*
+                           :cursor *cursor#cicada-interpreter*))
+             (find-cursor-2
+              (find-word*! :word ";"
+                           :string *string#cicada-interpreter*
+                           :cursor *cursor#cicada-interpreter*)))
+        (list find-cursor-1
+              next-word*
+              find-cursor-2))
+      ==>
+      (list 5 ";" 12)))
 (defun pair? (x)
   (consp x))
 

@@ -681,6 +681,18 @@
         (cond ((= code 32) t)
               ((= code 10) t)
               (:else nil)))))
+
+(defun char#bar-ket? (char)
+  (if (not (char? char))
+      (error "the argument of (char#bar-ket?) must be a char")
+      (or (equal? char #\<)
+          (equal? char #\>)
+          (equal? char #\()
+          (equal? char #\))
+          (equal? char #\[)
+          (equal? char #\])
+          (equal? char #\{)
+          (equal? char #\}))))
 (defun char->code (char)
   (char-code char))
 
@@ -982,6 +994,129 @@
   `(let ((find-cursor (find-word :word ,word
                                  :string ,string
                                  :cursor ,cursor)))
+     (if (nil? find-cursor)
+         nil
+         (progn
+           (set! ,cursor find-cursor)
+           find-cursor))))
+(defun next-word*
+    (&key
+       string
+       cursor)
+  (let ((index-start
+         (position-if (lambda (char) (not (char#space? char)))
+                      string
+                      :start cursor)))
+    (cond ((nil? index-start)
+           (values :no-more-word
+                   cursor))
+          ((char#bar-ket? (char string index-start))
+           (let ((index-end (add1 index-start)))
+             (values (subseq string
+                             index-start
+                             index-end)
+                     index-end)))
+          (:else           
+           (let* ((index-end-or-nil
+                   (position-if (lambda (char) (or (char#space? char)
+                                                   (char#bar-ket? char)))
+                                string
+                                :start index-start))
+                  (index-end (if (nil? index-end-or-nil)
+                                 (length string)
+                                 index-end-or-nil)))
+             (values (subseq string
+                             index-start
+                             index-end)
+                     index-end))))))
+
+(defmacro next-word*!
+    (&key
+       string
+       cursor)
+  `(multiple-value-bind (next-word* next-cursor)
+       (next-word* :string ,string
+                   :cursor ,cursor)
+     (set! ,cursor next-cursor)
+     next-word*))
+
+
+
+(defun back-word*
+    (&key
+       string
+       cursor)
+  (let ((pre-index-start
+         (position-if (lambda (char) (not (char#space? char)))
+                      string
+                      :end cursor
+                      :from-end t)))
+    (cond ((nil? pre-index-start)
+           (values :no-more-word
+                   cursor))
+          ((char#bar-ket? (char string pre-index-start))
+           (let* ((index-start (add1 pre-index-start))
+                  (index-end pre-index-start))
+             (values (subseq string                             
+                             index-end
+                             index-start)
+                     index-end)))
+          (:else
+           (let* ((index-start (add1 pre-index-start))
+                  (pre-index-end-or-nil
+                   (position-if (lambda (char) (or (char#space? char)
+                                                   (char#bar-ket? char)))
+                                string
+                                :end index-start
+                                :from-end t))
+                  (index-end (if (nil? pre-index-end-or-nil)
+                                 0
+                                 (add1 pre-index-end-or-nil))))
+             (values (subseq string
+                             index-end
+                             index-start)
+                     index-end))))))
+
+(defmacro back-word*!
+    (&key
+       string
+       cursor)
+  `(multiple-value-bind (back-word* back-cursor)
+       (back-word* :string ,string
+                   :cursor ,cursor)
+     (set! ,cursor back-cursor)
+     back-word*))
+
+
+
+(defun find-word*
+    (&key
+       word
+       string
+       cursor)
+  (multiple-value-bind (next-word* next-cursor)
+      (next-word* :string string
+                  :cursor cursor)
+    (cond ((equal? next-word* word)
+           (multiple-value-bind (back-word* back-cursor)
+               (back-word* :string string
+                           :cursor next-cursor)
+             back-cursor))
+          ((equal? next-word* :no-more-word)
+           nil)
+          (:else
+           (find-word* :word word
+                       :string string
+                       :cursor next-cursor)))))
+
+(defmacro find-word*!
+    (&key
+       word
+       string
+       cursor)
+  `(let ((find-cursor (find-word* :word ,word
+                                  :string ,string
+                                  :cursor ,cursor)))
      (if (nil? find-cursor)
          nil
          (progn

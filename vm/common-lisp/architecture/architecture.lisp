@@ -867,6 +867,8 @@
               :cicada-object-vector *return-stack*
               :index (sub1 *pointer#return-stack*))
              (sub1 *pointer#return-stack*)))))
+(defun empty?#return-stack ()
+  (zero? *pointer#return-stack*))
 (defun fetch#return-stack
     (&key
        index
@@ -993,6 +995,8 @@
               :cicada-object-vector *argument-stack*
               :index (sub1 *pointer#argument-stack*))
              (sub1 *pointer#argument-stack*)))))
+(defun empty?#argument-stack ()
+  (zero? *pointer#argument-stack*))
 (defun fetch#argument-stack
     (&key
        index
@@ -1119,6 +1123,8 @@
               :cicada-object-vector *frame-stack*
               :index (sub1 *pointer#frame-stack*))
              (sub1 *pointer#frame-stack*)))))
+(defun empty?#frame-stack ()
+  (zero? *pointer#frame-stack*))
 (defun fetch#frame-stack
     (&key
        index
@@ -1173,8 +1179,10 @@
 (defun execute-next-instruction ()
   (with (tos#return-stack)
     (with (fetch#cicada-section
-           :section-offset (ask :title .title
-                                :name (string->name "offset"))
+           :section-offset
+           (with (ask :title .title
+                      :name (string->name "offset"))
+             .value)
            :address .value)
       (funcall (primitive-instruction->host-function
                 ;; primitive-instruction

@@ -30,11 +30,11 @@
             :components
             ((:file "regular-common-lisp.test"
                     :if-feature :with-little-test)))
-   (:module "cicada-rhapsody"
-            :components
-            ((:file "cicada-rhapsody")
-             (:file "cicada-rhapsody.test"
-                    :if-feature :with-little-test)))
+   ;; (:module "cicada-rhapsody"
+   ;;          :components
+   ;;          ((:file "cicada-rhapsody")
+   ;;           (:file "cicada-rhapsody.test"
+   ;;                  :if-feature :with-little-test)))
    (:module "architecture"
             :components
             ((:file "architecture")

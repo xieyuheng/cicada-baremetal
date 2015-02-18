@@ -66,8 +66,10 @@
     (@ -- @)
   (with (tos#return-stack)
     (with (fetch#cicada-section
-           :section-offset (ask :title .title
-                                :name (string->name "offset"))
+           :section-offset
+           (with (ask :title .title
+                      :name (string->name "offset"))
+             .value)
            :address (add *cicada-object-size*
                          .value))
       ;; this means that by now

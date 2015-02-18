@@ -1196,6 +1196,11 @@
                  :index (sub1 *pointer#return-stack*))
                 (sub1 *pointer#return-stack*)))))
    #+end_src
+** empty?
+   #+begin_src lisp :tangle architecture.lisp
+   (defun empty?#return-stack ()
+     (zero? *pointer#return-stack*))
+   #+end_src
 ** save & fetch
    * these are interfaces to be used in common-lisp
    * note that
@@ -1379,6 +1384,11 @@
                  :cicada-object-vector *argument-stack*
                  :index (sub1 *pointer#argument-stack*))
                 (sub1 *pointer#argument-stack*)))))
+   #+end_src
+** empty?
+   #+begin_src lisp :tangle architecture.lisp
+   (defun empty?#argument-stack ()
+     (zero? *pointer#argument-stack*))
    #+end_src
 ** save & fetch
    * these are interfaces to be used in common-lisp
@@ -1566,6 +1576,11 @@
                  :index (sub1 *pointer#frame-stack*))
                 (sub1 *pointer#frame-stack*)))))
    #+end_src
+** empty?
+   #+begin_src lisp :tangle architecture.lisp
+   (defun empty?#frame-stack ()
+     (zero? *pointer#frame-stack*))
+   #+end_src
 ** save & fetch
    * these are interfaces to be used in common-lisp
    * note that
@@ -1683,8 +1698,10 @@
   (defun execute-next-instruction ()
     (with (tos#return-stack)
       (with (fetch#cicada-section
-             :section-offset (ask :title .title
-                                  :name (string->name "offset"))
+             :section-offset
+             (with (ask :title .title
+                        :name (string->name "offset"))
+               .value)
              :address .value)
         (funcall (primitive-instruction->host-function
                   ;; primitive-instruction
