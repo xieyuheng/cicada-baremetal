@@ -47,15 +47,12 @@
    #+end_src
 * -----------------------------------
 * variable
-** ----------------------------------
 ** set!
    #+begin_src lisp :tangle regular-common-lisp.lisp
    (defmacro set! (variable-name value)
      `(setf ,variable-name ,value))
    #+end_src
-** ----------------------------------
 * bool
-** ----------------------------------
 ** predicate
    #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun nil? (x)
@@ -67,7 +64,6 @@
    (defun false? (x)
      (eq nil x))
    #+end_src
-** ----------------------------------
 ** equal
    #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun eq? (x y)
@@ -76,13 +72,11 @@
    (defun equal? (x y)
      (equal x y))
    #+end_src
-** ----------------------------------
 ** constants
    #+begin_src lisp :tangle regular-common-lisp.lisp
    (defparameter true t)
    (defparameter false nil)
    #+end_src
-** ----------------------------------
 * fixmun
 ** ----------------------------------
 ** predicate
@@ -193,7 +187,6 @@
    #+end_src
 ** ----------------------------------
 * bit
-** ----------------------------------
 ** fetch & save
    #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun fetch#bits (&key
@@ -222,9 +215,7 @@
          ==>
          1))
    #+end_src
-** ----------------------------------
 * byte
-** ----------------------------------
 ** fetch & save
    #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun fetch#bytes (&key
@@ -260,15 +251,12 @@
            0
            1)))
    #+end_src
-** ----------------------------------
 * array
-** ----------------------------------
 ** predicate
    #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun array? (x)
      (arrayp x))
    #+end_src
-** ----------------------------------
 ** fetch & save
    #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun fetch#array (&key
@@ -313,7 +301,6 @@
          ==>
          258))
           #+end_src
-** ----------------------------------
 * vector
 ** ----------------------------------
 ** predicate
@@ -393,8 +380,9 @@
                              offset)
                         width)))
        (when (nil? number) (set! number length))
-       (help ((defun loop-collect (&key
-                                     (cursor 0))
+       (help ((defun loop-collect
+                  (&key
+                     (cursor 0))
                 (cond ((< cursor number)
                        (let ((value-to-collect
                               (if (equal? width 1)
@@ -457,7 +445,6 @@
    #+end_src
 ** ----------------------------------
 * byte-array
-** ----------------------------------
 ** fetch & save
    #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun fetch#byte-array
@@ -770,15 +757,12 @@
          ==>
          1234))
    #+end_src
-** ----------------------------------
 * byte-vector
-** ----------------------------------
 ** byte-vector?
    #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun byte-vector? (x)
      (typep x '(vector (unsigned-byte 8))))
    #+end_src
-** ----------------------------------
 ** fetch & save & copy
    #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun fetch#byte-vector (&key
@@ -866,15 +850,12 @@
          ==>
          1234))
    #+end_src
-** ----------------------------------
 * stream
-** ----------------------------------
 ** predicate
    #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun stream? (x)
      (streamp x))
    #+end_src
-** ----------------------------------
 ** read#char & read#line
    #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun read#char (&key
@@ -898,7 +879,7 @@
                 recursive-call-to-reader?))
 
    #+end_src
-** ----------------------------------
+* cat & orz
 ** cat
    #+begin_src lisp :tangle regular-common-lisp.lisp
    ;; (cat (:to *standard-output*)
@@ -960,6 +941,22 @@
    ;;   ("~A" "      123   ")
    ;;   ("~A" "   456   "))
    #+end_src
+** orz
+   #+begin_src lisp :tangle regular-common-lisp.lisp
+   (defmacro orz
+       ((&key (to nil)
+              (trim '())
+              prefix
+              postfix
+              letter)
+        &body form#list-of-list)
+     `(error (cat (:to ,to
+                       :trim ,trim
+                       :prefix ,prefix
+                       :postfix ,postfix
+                       :letter ,letter)
+               ,@form#list-of-list)))
+   #+end_src
 ** test
    #+begin_src lisp :tangle regular-common-lisp.test.lisp
    (deftest cat
@@ -984,88 +981,169 @@
    ;;   (cat (:to *standard-output*)
    ;;     ("~A~%" x)))
    #+end_src
-** ----------------------------------
-** >< file->buffer & buffer<-file
+* file
+** file->byte-vector! & byte-vector->file!
    #+begin_src lisp :tangle regular-common-lisp.lisp
-   (defun file->buffer (&key
-                         filename
-                         buffer
-                         (buffer-boundary#lower 0)
-                         (buffer-boundary#uper nil))
+   (defun file->byte-vector!
+       (&key
+          filename
+          byte-vector
+          (start 0)
+          (end nil))
      (cond ((not (string? filename))
-            (error (cat ()
-                     ("the argument :filename of (load-file)~%")
-                     ("must be a string"))))
-           ((not (byte-vector? buffer))
-            (error (cat ()
-                     ("the argument :buffer of (load-file)~%")
-                     ("must be a byte-vector"))))
+            (orz ()
+              ("the argument :filename of (file->byte-vector!)~%")
+              ("must be a string~%")))
+           ((not (byte-vector? byte-vector))
+            (orz ()
+              ("the argument :byte-vector of (file->byte-vector!)~%")
+              ("must be a byte-vector~%")))
            (:else
-            ;; return the index of the first byte of the buffer that was not updated
-            (read-sequence buffer
-                           (open filename
-                                 :element-type '(unsigned-byte 8)
-                                 :direction ':input)
-                           :start buffer-boundary#lower
-                           :end buffer-boundary#uper))))
+            (let* ((input-stream
+                    (open filename
+                          :element-type '(unsigned-byte 8)
+                          :direction :input))
+                   (end-index
+                    (read-sequence byte-vector
+                                   input-stream
+                                   :start start
+                                   :end end)))           
+              (close input-stream)
+              ;; return the index of the first byte of the byte-vector that was not updated           
+              (values end-index)))))
+
+
+   (defun byte-vector->file!
+       (&key
+          filename
+          byte-vector
+          (start 0)
+          (end nil))
+     (cond ((not (string? filename))
+            (orz ()
+              ("the argument :filename of (byte-vector->file!)~%")
+              ("must be a string~%")))
+           ((not (byte-vector? byte-vector))
+            (orz ()
+              ("the argument :byte-vector of (byte-vector->file!)~%")
+              ("must be a byte-vector~%")))
+           (:else
+            (let* ((output-stream
+                    (open filename
+                          :element-type '(unsigned-byte 8)
+                          :direction :output
+                          :if-exists :supersede)))
+              (write-sequence byte-vector
+                              output-stream
+                              :start start
+                              :end end)
+              (close output-stream)
+              (values :byte-vector->file!--ok)))))
+
+
+   ;; (defparameter *test-byte-vector*
+   ;;   (make#vector :length 16
+   ;;                :element-type '(unsigned-byte 8)
+   ;;                :initial-element 33))
+   ;; (byte-vector->file! :filename "home:test.org"
+   ;;                     :byte-vector *test-byte-vector*)
+   ;; (file->byte-vector! :filename "home:test.org"
+   ;;                     :byte-vector *test-byte-vector*)
    #+end_src
-** ----------------------------------
-** reader macro
+** file->string & string->file!
    #+begin_src lisp :tangle regular-common-lisp.lisp
-   (defun bind-char-to-reader
+   (defun file->string
        (&key
-          char
-          reader
-          (terminating? true)
-          (readtable *readtable*))
-     (set-macro-character char
-                          reader
-                          (not terminating?)
-                          readtable))
+          filename
+          (start 0)
+          (end nil))
+     (let ((char-vector (make#vector :length (mul 1024 1024)
+                                     :element-type '(char)
+                                     :initial-element *space#char*)))
+       (cond ((not (string? filename))
+              (orz ()
+                ("the argument :filename of (file->string)~%")
+                ("must be a string")))
+             (:else
+              (let* ((input-stream
+                      (open filename
+                            :direction :input))
+                     (end-index
+                      (read-sequence char-vector
+                                     input-stream
+                                     :start start
+                                     :end end))
+                     (sub-char-vector
+                      (subseq char-vector
+                              0
+                              end-index)))
+                (close input-stream)
+                (values (coerce sub-char-vector 'string)
+                        ;; return the index of the first byte of the char-vector that was not updated
+                        ;; as length of the string
+                        end-index))))))
 
-   (defun find-reader-from-char
+   (defun string->file!
        (&key
-          char
-          (readtable *readtable*))
-     (get-macro-character char readtable))
+          filename
+          string
+          (start 0)
+          (end nil))
+     (cond ((not (string? filename))
+            (orz ()
+              ("the argument :filename of (string->file!)~%")
+              ("must be a string~%")))
+           (:else
+            (let* ((output-stream
+                    (open filename
+                          :direction :output
+                          :if-exists :supersede)))
+              (write-sequence string
+                              output-stream
+                              :start start
+                              :end end)
+              (close output-stream)
+              (values :string->file!--ok)))))
 
-
-   (defun bind-two-char-to-reader
-       (&key
-          char1
-          char2
-          reader
-          (readtable *readtable*))
-     (set-dispatch-macro-character char1
-                                   char2
-                                   reader
-                                   readtable))
-
-   (defun find-reader-from-two-char (char1 char2)
-     (get-dispatch-macro-character char1
-                                   char2
-                                   readtable))
+   ;; (file->string :filename "home:test.org")
+   ;; (string->file! :filename "home:test.org" :string "666123")
    #+end_src
-** ----------------------------------
-* condition
-** ----------------------------------
-** orz
-   #+begin_src lisp :tangle regular-common-lisp.lisp
-   (defmacro orz
-       ((&key (to nil)
-              (trim '())
-              prefix
-              postfix
-              letter)
-        &body form#list-of-list)
-     `(error (cat (:to ,to
-                       :trim ,trim
-                       :prefix ,prefix
-                       :postfix ,postfix
-                       :letter ,letter)
-               ,@form#list-of-list)))
-   #+end_src
-** ----------------------------------
+* reader macro
+  #+begin_src lisp :tangle regular-common-lisp.lisp
+  (defun bind-char-to-reader
+      (&key
+         char
+         reader
+         (terminating? true)
+         (readtable *readtable*))
+    (set-macro-character char
+                         reader
+                         (not terminating?)
+                         readtable))
+
+  (defun find-reader-from-char
+      (&key
+         char
+         (readtable *readtable*))
+    (get-macro-character char readtable))
+
+
+  (defun bind-two-char-to-reader
+      (&key
+         char1
+         char2
+         reader
+         (readtable *readtable*))
+    (set-dispatch-macro-character char1
+                                  char2
+                                  reader
+                                  readtable))
+
+  (defun find-reader-from-two-char (char1 char2)
+    (get-dispatch-macro-character char1
+                                  char2
+                                  readtable))
+  #+end_src
 * char
 ** ----------------------------------
 ** predicate
@@ -1084,14 +1162,28 @@
    (defun char#bar-ket? (char)
      (if (not (char? char))
          (error "the argument of (char#bar-ket?) must be a char")
-         (or (equal? char #\<)
-             (equal? char #\>)
-             (equal? char #\()
+         (or (equal? char #\()
              (equal? char #\))
              (equal? char #\[)
              (equal? char #\])
              (equal? char #\{)
-             (equal? char #\}))))
+             (equal? char #\})
+             ;; <> are not viewed as bar-ket
+             ;; for we need to use them in arrow -> & <-
+             (equal? char #\<)
+             (equal? char #\>)
+             )))
+   #+end_src
+** test
+   #+begin_src lisp :tangle regular-common-lisp.test.lisp
+   (deftest char#space?
+       (regular-common-lisp)
+     (ensure
+         (list (char#space? #\newline)
+               (char#space? #\space))
+         ==>
+         (list t
+               t)))   
    #+end_src
 ** ----------------------------------
 ** char->code & code->char
@@ -1128,13 +1220,11 @@
    #+end_src
 ** ----------------------------------
 * symbol
-** ----------------------------------
 ** predicate
    #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun symbol? (x)
      (symbolp x))
    #+end_src
-** ----------------------------------
 ** string->symbol & symbol->string
    #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun symbol->string (symbol)
@@ -1143,13 +1233,11 @@
    (defun string->symbol (string)
      (intern string))
    #+end_src
-** ----------------------------------
 ** put
    #+begin_src lisp :tangle regular-common-lisp.lisp
    (defmacro put (symbol field-symbol value)
      `(setf (get ,symbol ,field-symbol) ,value))
    #+end_src
-** ----------------------------------
 * string
 ** ----------------------------------
 ** predicate
@@ -1166,6 +1254,19 @@
          (not (position-if
                (lambda (char) (not (char#space? char)))
                string))))
+   #+end_src
+** test
+   #+begin_src lisp :tangle regular-common-lisp.test.lisp
+   (deftest string#space?
+       (regular-common-lisp)
+     (ensure
+         (list (string#space? " 123 ")
+               (string#space? "  ")
+               (string#space? ""))
+         ==>
+         (list nil
+               t
+               t)))
    #+end_src
 ** ----------------------------------
 ** make & fetch & save
@@ -1200,39 +1301,38 @@
 ** ----------------------------------
 ** dup#string
    #+begin_src lisp :tangle regular-common-lisp.lisp
-   (defun dup#string (&key
-                        (time 1)
-                        string)
+   (defun dup#string
+       (&key
+          (time 1)
+          string)
+     (if (not (string? string))
+         (orz ()
+           ("the argument :string of (dup#string) must be a string~%"))
+         (help#dup#string :time time
+                          :string string)))
+
+   (defun help#dup#string
+       (&key
+          time
+          string)  
      (cond ((= 1 time)
             string)
            (:else
             (concatenate
              'string
              string
-             (dup#string :time (sub1 time)
-                         :string string)))))
+             (help#dup#string :time (sub1 time)
+                              :string string)))))
    #+end_src
 ** test
    #+begin_src lisp :tangle regular-common-lisp.test.lisp
-   (deftest char#space?
+   (deftest dup#string
        (regular-common-lisp)
      (ensure
-         (list (char#space? #\newline)
-               (char#space? #\space))
+         (dup#string :time 3
+                     :string "@")
          ==>
-         (list t
-               t)))
-
-   (deftest string#space?
-       (regular-common-lisp)
-     (ensure
-         (list (string#space? " 123 ")
-               (string#space? "  ")
-               (string#space? ""))
-         ==>
-         (list nil
-               t
-               t)))
+         "@@@"))
    #+end_src
 ** ----------------------------------
 ** string->[head|tail|list]#word
@@ -1522,7 +1622,7 @@
    #+end_src
 ** ----------------------------------
 ** note
-   * note that 
+   * note that
      cursor of "01234" can be 5
      which is at the end of the string
 ** [next|back|find]-word!
@@ -1721,7 +1821,7 @@
                                 index-start
                                 index-end)
                         index-end)))
-             (:else           
+             (:else
               (let* ((index-end-or-nil
                       (position-if (lambda (char) (or (char#space? char)
                                                       (char#bar-ket? char)))
@@ -1762,7 +1862,7 @@
              ((char#bar-ket? (char string pre-index-start))
               (let* ((index-start (add1 pre-index-start))
                      (index-end pre-index-start))
-                (values (subseq string                             
+                (values (subseq string
                                 index-end
                                 index-start)
                         index-end)))
@@ -1895,13 +1995,11 @@
    #+end_src
 ** ----------------------------------
 * pathname
-** ----------------------------------
 ** predicate
    #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun pathname? (x)
      (pathnamep x))
    #+end_src
-** ----------------------------------
 ** pathname->string & string->pathname
    #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun pathname->string (pathname)
@@ -1914,7 +2012,6 @@
          (error "the argument of (string->pathname) must be a string")
          (pathname string)))
    #+end_src
-** ----------------------------------
 * list
 ** ----------------------------------
 ** predicate
@@ -2108,13 +2205,11 @@
          '(:one 666 :two 666 :three 666)))
    #+end_src
 * function
-** ----------------------------------
 ** predicate
    #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun function? (x)
      (functionp x))
    #+end_src
-** ----------------------------------
 ** map-composite-function
    #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun map-composite-function (function-list list)
@@ -2134,7 +2229,6 @@
                  (cdr reversed-function-list)
                  list)))))
    #+end_src
-** ----------------------------------
 ** multi return value
    #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun return-zero-value ()
@@ -2171,7 +2265,6 @@
                 (,function-symbol . ,function-body)
               ,@form-body))))
    #+end_src
-** ----------------------------------
 ** string->function & symbol->function
    #+begin_src lisp :tangle regular-common-lisp.lisp
    (defun string->function (string)
@@ -2186,9 +2279,7 @@
      (string->function
       (symbol->string symbol)))
    #+end_src
-** ----------------------------------
 * line-list
-** ----------------------------------
 ** edit#line-list
    * note the order
    * actually string-list
@@ -2255,5 +2346,4 @@
    ;;  `("  123"
    ;;    "456  "))
    #+end_src
-** ----------------------------------
 * ===================================

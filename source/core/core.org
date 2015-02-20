@@ -1,0 +1,10 @@
+#+TITLE:  english core of cicada language 
+#+AUTHOR: 謝宇恆 / XIE Yuheng
+#+EMAIL:  xyheme@gmail.com
+
+* test
+  #+begin_src cicada :tangle english-core.cicada-source
+  : 
+    (<test> kkk)
+  ; (define-function)
+  #+end_src

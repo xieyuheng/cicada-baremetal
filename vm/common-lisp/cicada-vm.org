@@ -4,6 +4,7 @@
 
 * get the basic forth-style quick-test
   * the vm (the inner interpreter) is really working now
+* [compiler] do not use <> as bar-ket anymore
 * [compiler] the first version of the compiler
 ** for to write the compiler
    * 这个编译器 在代码演化到某个阶段时 会被抛弃
@@ -27,10 +28,8 @@
   * instruction-set will grow as needed
 * ===================================
 * todo regular-common-lisp
-** maybe need a better fixnum?
-** argument type check for the following functions
-   * dup#string
-   * edit#line-list
+** [maybe] optimize fixnum
+** [maybe] big number
 ** dup
    * uses make-string to re-define dup#string
    * define dup for other datatype
@@ -154,32 +153,13 @@
    (run-unit 'regular-common-lisp)
    (run-unit 'architecture)
    #+end_src
-** ><
+** print tables
    #+begin_src lisp
-   (define-primitive-function "test" "kkk"
-       (@ -- @)
-     (cat (:to *standard-output*)
-       ("kkk took what away?~%")))
-
-   (let ()
-     (cicada-compiler
-      "
-      :
-        (<test> kkk)
-      ; (define-function)
-
-      "
-      )
-     (push#return-stack
-      :title (string->title "vector-function-heap")
-      :value 0)
-     (execute-next-instruction))
-
    (let ()
      (print#primitive-instruction-table)
      (print#primitive-function-table)
      (print#name-hash-table)
      (print#title.name-table)
-     (values))
+     (values :ok))
    #+end_src
 * ===================================

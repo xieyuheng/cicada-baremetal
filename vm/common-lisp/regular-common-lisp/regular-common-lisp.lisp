@@ -188,8 +188,9 @@
                           offset)
                      width)))
     (when (nil? number) (set! number length))
-    (help ((defun loop-collect (&key
-                                  (cursor 0))
+    (help ((defun loop-collect
+               (&key
+                  (cursor 0))
              (cond ((< cursor number)
                     (let ((value-to-collect
                            (if (equal? width 1)
@@ -604,27 +605,139 @@
 ;;           :postfix (cat () ("~%")))
 ;;   ("~A" "      123   ")
 ;;   ("~A" "   456   "))
-(defun file->buffer (&key
-                      filename
-                      buffer
-                      (buffer-boundary#lower 0)
-                      (buffer-boundary#uper nil))
+(defmacro orz
+    ((&key (to nil)
+           (trim '())
+           prefix
+           postfix
+           letter)
+     &body form#list-of-list)
+  `(error (cat (:to ,to
+                    :trim ,trim
+                    :prefix ,prefix
+                    :postfix ,postfix
+                    :letter ,letter)
+            ,@form#list-of-list)))
+(defun file->byte-vector!
+    (&key
+       filename
+       byte-vector
+       (start 0)
+       (end nil))
   (cond ((not (string? filename))
-         (error (cat ()
-                  ("the argument :filename of (load-file)~%")
-                  ("must be a string"))))
-        ((not (byte-vector? buffer))
-         (error (cat ()
-                  ("the argument :buffer of (load-file)~%")
-                  ("must be a byte-vector"))))
+         (orz ()
+           ("the argument :filename of (file->byte-vector!)~%")
+           ("must be a string~%")))
+        ((not (byte-vector? byte-vector))
+         (orz ()
+           ("the argument :byte-vector of (file->byte-vector!)~%")
+           ("must be a byte-vector~%")))
         (:else
-         ;; return the index of the first byte of the buffer that was not updated
-         (read-sequence buffer
-                        (open filename
-                              :element-type '(unsigned-byte 8)
-                              :direction ':input)
-                        :start buffer-boundary#lower
-                        :end buffer-boundary#uper))))
+         (let* ((input-stream
+                 (open filename
+                       :element-type '(unsigned-byte 8)
+                       :direction :input))
+                (end-index
+                 (read-sequence byte-vector
+                                input-stream
+                                :start start
+                                :end end)))           
+           (close input-stream)
+           ;; return the index of the first byte of the byte-vector that was not updated           
+           (values end-index)))))
+
+
+(defun byte-vector->file!
+    (&key
+       filename
+       byte-vector
+       (start 0)
+       (end nil))
+  (cond ((not (string? filename))
+         (orz ()
+           ("the argument :filename of (byte-vector->file!)~%")
+           ("must be a string~%")))
+        ((not (byte-vector? byte-vector))
+         (orz ()
+           ("the argument :byte-vector of (byte-vector->file!)~%")
+           ("must be a byte-vector~%")))
+        (:else
+         (let* ((output-stream
+                 (open filename
+                       :element-type '(unsigned-byte 8)
+                       :direction :output
+                       :if-exists :supersede)))
+           (write-sequence byte-vector
+                           output-stream
+                           :start start
+                           :end end)
+           (close output-stream)
+           (values :byte-vector->file!--ok)))))
+
+
+;; (defparameter *test-byte-vector*
+;;   (make#vector :length 16
+;;                :element-type '(unsigned-byte 8)
+;;                :initial-element 33))
+;; (byte-vector->file! :filename "home:test.org"
+;;                     :byte-vector *test-byte-vector*)
+;; (file->byte-vector! :filename "home:test.org"
+;;                     :byte-vector *test-byte-vector*)
+(defun file->string
+    (&key
+       filename
+       (start 0)
+       (end nil))
+  (let ((char-vector (make#vector :length (mul 1024 1024)
+                                  :element-type '(char)
+                                  :initial-element *space#char*)))
+    (cond ((not (string? filename))
+           (orz ()
+             ("the argument :filename of (file->string)~%")
+             ("must be a string")))
+          (:else
+           (let* ((input-stream
+                   (open filename
+                         :direction :input))
+                  (end-index
+                   (read-sequence char-vector
+                                  input-stream
+                                  :start start
+                                  :end end))
+                  (sub-char-vector
+                   (subseq char-vector
+                           0
+                           end-index)))
+             (close input-stream)
+             (values (coerce sub-char-vector 'string)
+                     ;; return the index of the first byte of the char-vector that was not updated
+                     ;; as length of the string
+                     end-index))))))
+
+(defun string->file!
+    (&key
+       filename
+       string
+       (start 0)
+       (end nil))
+  (cond ((not (string? filename))
+         (orz ()
+           ("the argument :filename of (string->file!)~%")
+           ("must be a string~%")))
+        (:else
+         (let* ((output-stream
+                 (open filename
+                       :direction :output
+                       :if-exists :supersede)))
+           (write-sequence string
+                           output-stream
+                           :start start
+                           :end end)
+           (close output-stream)
+           (values :string->file!--ok)))))
+
+;; (file->string :filename "home:test.org")
+;; (string->file! :filename "home:test.org" :string "666123")
 (defun bind-char-to-reader
     (&key
        char
@@ -658,19 +771,6 @@
   (get-dispatch-macro-character char1
                                 char2
                                 readtable))
-(defmacro orz
-    ((&key (to nil)
-           (trim '())
-           prefix
-           postfix
-           letter)
-     &body form#list-of-list)
-  `(error (cat (:to ,to
-                    :trim ,trim
-                    :prefix ,prefix
-                    :postfix ,postfix
-                    :letter ,letter)
-            ,@form#list-of-list)))
 (defun char? (x)
   (characterp x))
 
@@ -685,14 +785,17 @@
 (defun char#bar-ket? (char)
   (if (not (char? char))
       (error "the argument of (char#bar-ket?) must be a char")
-      (or (equal? char #\<)
-          (equal? char #\>)
-          (equal? char #\()
+      (or (equal? char #\()
           (equal? char #\))
           (equal? char #\[)
           (equal? char #\])
           (equal? char #\{)
-          (equal? char #\}))))
+          (equal? char #\})
+          ;; <> are not viewed as bar-ket
+          ;; for we need to use them in arrow -> & <-
+          (equal? char #\<)
+          (equal? char #\>)
+          )))
 (defun char->code (char)
   (char-code char))
 
@@ -765,17 +868,28 @@
   (save#vector :value value
                :vector string
                :index index))
-(defun dup#string (&key
-                     (time 1)
-                     string)
+(defun dup#string
+    (&key
+       (time 1)
+       string)
+  (if (not (string? string))
+      (orz ()
+        ("the argument :string of (dup#string) must be a string~%"))
+      (help#dup#string :time time
+                       :string string)))
+
+(defun help#dup#string
+    (&key
+       time
+       string)  
   (cond ((= 1 time)
          string)
         (:else
          (concatenate
           'string
           string
-          (dup#string :time (sub1 time)
-                      :string string)))))
+          (help#dup#string :time (sub1 time)
+                           :string string)))))
 ;; interface:
 ;; (multiple-value-bind
 ;;        (head#word
@@ -1016,7 +1130,7 @@
                              index-start
                              index-end)
                      index-end)))
-          (:else           
+          (:else
            (let* ((index-end-or-nil
                    (position-if (lambda (char) (or (char#space? char)
                                                    (char#bar-ket? char)))
@@ -1057,7 +1171,7 @@
           ((char#bar-ket? (char string pre-index-start))
            (let* ((index-start (add1 pre-index-start))
                   (index-end pre-index-start))
-             (values (subseq string                             
+             (values (subseq string
                              index-end
                              index-start)
                      index-end)))

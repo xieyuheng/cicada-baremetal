@@ -205,7 +205,6 @@
       ==>
       (list t
             t)))
-
 (deftest string#space?
     (regular-common-lisp)
   (ensure
@@ -216,6 +215,13 @@
       (list nil
             t
             t)))
+(deftest dup#string
+    (regular-common-lisp)
+  (ensure
+      (dup#string :time 3
+                  :string "@")
+      ==>
+      "@@@"))
 (deftest string->head#word
     (regular-common-lisp)
   (and (ensure
