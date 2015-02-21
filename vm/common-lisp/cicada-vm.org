@@ -4,7 +4,8 @@
 
 * get the basic forth-style quick-test
   * the vm (the inner interpreter) is really working now
-* [compiler] do not use <> as bar-ket anymore
+* [compiler] function-header and the use of them
+* [compiler] instruction for vector-function call
 * [compiler] the first version of the compiler
 ** for to write the compiler
    * 这个编译器 在代码演化到某个阶段时 会被抛弃
@@ -35,6 +36,7 @@
    * define dup for other datatype
 * todo architecture
 ** to use instruction-return-stack
+** refine printers
 ** [how?] reduce dup code by better abstraction
 ** [maybe] to find a better hash function
 ** interface to cicada image buffer
@@ -140,26 +142,27 @@
      ;;                  :if-feature :with-little-test)))
      ))
   #+end_src
-* ===================================
+* -----------------------------------
+* note
+* -----------------------------------
 * test
-** load-system & in-package & run-unit
-   #+begin_src lisp
-   (asdf:load-system :cicada-vm)
+  #+begin_src lisp
+  (let ()
+    (asdf:load-system :cicada-vm)
 
-   (in-package :cicada-vm)
-   (setf *print-pretty* t)
+    (in-package :cicada-vm)
+    (setf *print-pretty* t))
 
-   (run-unit 'ytool)
-   (run-unit 'regular-common-lisp)
-   (run-unit 'architecture)
-   #+end_src
-** print tables
-   #+begin_src lisp
-   (let ()
-     (print#primitive-instruction-table)
-     (print#primitive-function-table)
-     (print#name-hash-table)
-     (print#title.name-table)
-     (values :ok))
-   #+end_src
+  (let ()
+    (run-unit 'ytool)
+    (run-unit 'regular-common-lisp)
+    (run-unit 'architecture))
+
+  (let ()
+    (print#primitive-instruction-table)
+    (print#primitive-function-table)
+    (print#name-hash-table)
+    (print#title.name-table)
+    (values :ok))
+  #+end_src
 * ===================================

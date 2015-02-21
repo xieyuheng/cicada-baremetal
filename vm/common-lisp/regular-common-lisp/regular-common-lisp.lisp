@@ -637,14 +637,14 @@
                  (open filename
                        :element-type '(unsigned-byte 8)
                        :direction :input))
-                (end-index
+                (end-address
                  (read-sequence byte-vector
                                 input-stream
                                 :start start
                                 :end end)))           
            (close input-stream)
            ;; return the index of the first byte of the byte-vector that was not updated           
-           (values end-index)))))
+           (values end-address)))))
 
 
 (defun byte-vector->file!
@@ -699,7 +699,7 @@
            (let* ((input-stream
                    (open filename
                          :direction :input))
-                  (end-index
+                  (end-address
                    (read-sequence char-vector
                                   input-stream
                                   :start start
@@ -707,12 +707,12 @@
                   (sub-char-vector
                    (subseq char-vector
                            0
-                           end-index)))
+                           end-address)))
              (close input-stream)
              (values (coerce sub-char-vector 'string)
                      ;; return the index of the first byte of the char-vector that was not updated
                      ;; as length of the string
-                     end-index))))))
+                     end-address))))))
 
 (defun string->file!
     (&key
@@ -793,8 +793,8 @@
           (equal? char #\})
           ;; <> are not viewed as bar-ket
           ;; for we need to use them in arrow -> & <-
-          (equal? char #\<)
-          (equal? char #\>)
+          ;; (equal? char #\<)
+          ;; (equal? char #\>)
           )))
 (defun char->code (char)
   (char-code char))

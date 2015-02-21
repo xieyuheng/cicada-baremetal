@@ -1,8 +1,4 @@
 (in-package :cicada-vm)
-(be :title (string->title "vector-function-heap")
-    :name (string->name "current-free-address")
-    :title#object (string->title "fixnum")
-    :value#object 0)
 (defun fetch#vector-function-body ())
 (defun save#vector-function-body ())
 (defun $source->section!
@@ -45,7 +41,8 @@
                                (if (nil? find-cursor)
                                    (orz ()
                                      ("when calling ($string->byte-vector)~%")
-                                     (": and ; as bar-ket must be balanced~%")))))
+                                     (": and ; as bar-ket must be balanced~%"))
+                                     find-cursor)))
                   (string (subseq *string$string->byte-vector*
                                   start-index
                                   end-index))
@@ -83,78 +80,66 @@
 (defparameter *string$define-function* "")
 (defparameter *cursor$define-function* 0)
 
-
 (defun $define-function
     (&key
        string)
   (set! *string$define-function* string)
   (set! *cursor$define-function* 0)
-  (help$define-function))
-
-(defun help$define-function ()
+  ($loop))
+(defun $loop ()
   (let ((next-word* (next-word*!
                      :string *string$define-function*
                      :cursor *cursor$define-function*)))
     (cond ((equal? "(" next-word*)
            ($function-call))
           ((equal? :no-more-word next-word*)
-           :help$define-function--ok)
+           :$loop--ok)
           (:else
            (orz ()
              ("when calling ($define-function)~%")
              ("the word in the body must be a function call but not ~A ~%" next-word*))))))
+(defun $save-object
+    (&key
+       title
+       name)
+  (with (ask :title title
+             :name  name)
+    (save#cicada-object-vector
+     :cicada-object-vector *byte-vector$string->byte-vector*
+     :address *current-free-address$string->byte-vector*
+     :title .title
+     :value .value))
+  (set! *current-free-address$string->byte-vector*
+      (add *current-free-address$string->byte-vector*
+           *cicada-object-size*)))
 (defun $function-call ()
   (let ((next-word* (next-word*!
                      :string *string$define-function*
                      :cursor *cursor$define-function*)))
-    (cond ((equal? "<" next-word*)
-           (let* ((next-word*-1 (next-word*!
-                                 :string *string$define-function*
-                                 :cursor *cursor$define-function*))
-                  (next-word*-2 (next-word*!
-                                 :string *string$define-function*
-                                 :cursor *cursor$define-function*))
-                  (next-word*-3 (next-word*!
-                                 :string *string$define-function*
-                                 :cursor *cursor$define-function*))
-                  (next-word*-4 (next-word*!
-                                 :string *string$define-function*
-                                 :cursor *cursor$define-function*))
-                  (function-title next-word*-1)
-                  (function-name next-word*-3))
-             (cond ((not (equal? ">" next-word*-2))
-                    (orz ()
-                      ("when calling ($define-function)~%")
-                      ("when calling ($function-call)~%")
-                      ("un-handled syntax inside <>~%")
-                      ("as follow: ~%~A" *string$define-function*)))
-                   ((not (equal? ")" next-word*-4))
+    (cond ((| string <a> ? | next-word*)
+           (let* ((function-title (| string <a> -> a | next-word*))
+                  (function-name
+                   (next-word*!
+                    :string *string$define-function*
+                    :cursor *cursor$define-function*))
+                  (end-ket
+                   (next-word*!
+                    :string *string$define-function*
+                    :cursor *cursor$define-function*)))
+             (cond ((not (equal? ")" end-ket))
                     (orz ()
                       ("when calling ($define-function)~%")
                       ("when calling ($function-call)~%")
                       ("un-handled syntax inside ()~%")
                       ("as follow: ~%~A" *string$define-function*)))
                    (:else
-                    (with (ask :title (string->title "primitive-function")
-                               :name  (string->name  "call"))
-                      (save#cicada-object-vector
-                       :cicada-object-vector *byte-vector$string->byte-vector*
-                       :address *current-free-address$string->byte-vector*
-                       :title .title
-                       :value .value))
-                    (set! *current-free-address$string->byte-vector*
-                        (add *current-free-address$string->byte-vector*
-                             *cicada-object-size*))
-                    (with (ask :title (string->title function-title)
-                               :name  (string->name  function-name))
-                      (save#cicada-object-vector
-                       :cicada-object-vector *byte-vector$string->byte-vector*
-                       :address *current-free-address$string->byte-vector*
-                       :title .title
-                       :value .value))
-                    (set! *current-free-address$string->byte-vector*
-                        (add *current-free-address$string->byte-vector*
-                             *cicada-object-size*))))))
+                    ($save-object
+                     :title (string->title "primitive-function")
+                     :name  (string->name  "call"))
+                    ($save-object
+                     :title (string->title function-title)
+                     :name  (string->name  function-name))
+                    ($loop)))))
           ((equal? :no-more-word next-word*)
            (orz ()
              ("when calling ($define-function)~%")

@@ -38,17 +38,38 @@
    (in-package :cicada-vm)
    #+end_src
 * -----------------------------------
+* note data in function
+** >< how about a variable of many types ?
+** >< how about side-effect ?
+** [ title name ]
+** body (bead)
+   * [ 0 size ] (unit : object)
+     the 0 is for coming back from body (for debug)
+   * [ title instruction ] [ title value ] maybe-more
+     maybe-more
+** named-local-variable
+   * [ number ]
+   * [ name ] [ title ]
+     maybe-more
+** inited-local-variable
+   * [ number ]
+   * [ name ] [ title value ]
+     maybe-more
+** unnamed-local-variable
+   * [ number ]
+   * [ title ]
+     maybe-more
+** return-object
+   * [ number ]
+   * [ title ]
+     maybe-more
 * vector-function-heap
-** note
-   * vector-function-heap is a data-section
-     one address is always relative to one data-section
-** variable
-   #+begin_src lisp :tangle compiler.lisp
-   (be :title (string->title "vector-function-heap")
-       :name (string->name "current-free-address")
-       :title#object (string->title "fixnum")
-       :value#object 0)
-   #+end_src
+** 記
+   * 編譯並不是直接編譯到 cicada-memory 的 vector-function-heap 中
+     [這一點與古典的 forth 不同]
+   * 反而
+     執行編譯任務的函數 $string->byte-vector
+     沒有對外部的副作用
 * vector-function
 ** 記
    * 函數體 中所保存的是線串碼[threaded-code][一串珠]
@@ -68,6 +89,14 @@
 ** note
    * use prefix $ to denote functions about compiling
    * file.cicada-source -> string -> byte-vector -> file.cicada-section
+** note calling-graph
+   #+begin_src lisp
+   ($source->section!
+    ($string->byte-vector
+     ($define-function
+      ($loop ($function-call ($loop))
+             ($>< ($loop))))))
+   #+end_src
 ** $source->section!
    #+begin_src lisp :tangle compiler.lisp
    (defun $source->section!
@@ -113,7 +142,8 @@
                                   (if (nil? find-cursor)
                                       (orz ()
                                         ("when calling ($string->byte-vector)~%")
-                                        (": and ; as bar-ket must be balanced~%")))))
+                                        (": and ; as bar-ket must be balanced~%"))
+                                        find-cursor)))
                      (string (subseq *string$string->byte-vector*
                                      start-index
                                      end-index))
@@ -159,26 +189,44 @@
    (defparameter *string$define-function* "")
    (defparameter *cursor$define-function* 0)
 
-
    (defun $define-function
        (&key
           string)
      (set! *string$define-function* string)
      (set! *cursor$define-function* 0)
-     (help$define-function))
-
-   (defun help$define-function ()
+     ($loop))
+   #+end_src
+** $loop
+   #+begin_src lisp :tangle compiler.lisp
+   (defun $loop ()
      (let ((next-word* (next-word*!
                         :string *string$define-function*
                         :cursor *cursor$define-function*)))
        (cond ((equal? "(" next-word*)
               ($function-call))
              ((equal? :no-more-word next-word*)
-              :help$define-function--ok)
+              :$loop--ok)
              (:else
               (orz ()
                 ("when calling ($define-function)~%")
                 ("the word in the body must be a function call but not ~A ~%" next-word*))))))
+   #+end_src
+** $save-object
+   #+begin_src lisp :tangle compiler.lisp
+   (defun $save-object
+       (&key
+          title
+          name)
+     (with (ask :title title
+                :name  name)
+       (save#cicada-object-vector
+        :cicada-object-vector *byte-vector$string->byte-vector*
+        :address *current-free-address$string->byte-vector*
+        :title .title
+        :value .value))
+     (set! *current-free-address$string->byte-vector*
+         (add *current-free-address$string->byte-vector*
+              ,*cicada-object-size*)))
    #+end_src
 ** $function-call
    * example:
@@ -188,54 +236,30 @@
      (let ((next-word* (next-word*!
                         :string *string$define-function*
                         :cursor *cursor$define-function*)))
-       (cond ((equal? "<" next-word*)
-              (let* ((next-word*-1 (next-word*!
-                                    :string *string$define-function*
-                                    :cursor *cursor$define-function*))
-                     (next-word*-2 (next-word*!
-                                    :string *string$define-function*
-                                    :cursor *cursor$define-function*))
-                     (next-word*-3 (next-word*!
-                                    :string *string$define-function*
-                                    :cursor *cursor$define-function*))
-                     (next-word*-4 (next-word*!
-                                    :string *string$define-function*
-                                    :cursor *cursor$define-function*))
-                     (function-title next-word*-1)
-                     (function-name next-word*-3))
-                (cond ((not (equal? ">" next-word*-2))
-                       (orz ()
-                         ("when calling ($define-function)~%")
-                         ("when calling ($function-call)~%")
-                         ("un-handled syntax inside <>~%")
-                         ("as follow: ~%~A" *string$define-function*)))
-                      ((not (equal? ")" next-word*-4))
+       (cond ((| string <a> ? | next-word*)
+              (let* ((function-title (| string <a> -> a | next-word*))
+                     (function-name
+                      (next-word*!
+                       :string *string$define-function*
+                       :cursor *cursor$define-function*))
+                     (end-ket
+                      (next-word*!
+                       :string *string$define-function*
+                       :cursor *cursor$define-function*)))
+                (cond ((not (equal? ")" end-ket))
                        (orz ()
                          ("when calling ($define-function)~%")
                          ("when calling ($function-call)~%")
                          ("un-handled syntax inside ()~%")
                          ("as follow: ~%~A" *string$define-function*)))
                       (:else
-                       (with (ask :title (string->title "primitive-function")
-                                  :name  (string->name  "call"))
-                         (save#cicada-object-vector
-                          :cicada-object-vector *byte-vector$string->byte-vector*
-                          :address *current-free-address$string->byte-vector*
-                          :title .title
-                          :value .value))
-                       (set! *current-free-address$string->byte-vector*
-                           (add *current-free-address$string->byte-vector*
-                                ,*cicada-object-size*))
-                       (with (ask :title (string->title function-title)
-                                  :name  (string->name  function-name))
-                         (save#cicada-object-vector
-                          :cicada-object-vector *byte-vector$string->byte-vector*
-                          :address *current-free-address$string->byte-vector*
-                          :title .title
-                          :value .value))
-                       (set! *current-free-address$string->byte-vector*
-                           (add *current-free-address$string->byte-vector*
-                                ,*cicada-object-size*))))))
+                       ($save-object
+                        :title (string->title "primitive-function")
+                        :name  (string->name  "call"))
+                       ($save-object
+                        :title (string->title function-title)
+                        :name  (string->name  function-name))
+                       ($loop)))))
              ((equal? :no-more-word next-word*)
               (orz ()
                 ("when calling ($define-function)~%")
@@ -250,45 +274,34 @@
                 ("un-handled syntax inside ()~%")
                 ("as follow: ~%~A" *string$define-function*))))))
    #+end_src
-** test
-   #+begin_src lisp
-   (let ()
-
-     (define-primitive-function "test" "kkk"
-         (@ -- @)
-       (cat (:to *standard-output*)
-         ("kkk took what away?~%")))
-
-     ($source->section!
-      :source-name "cicada:source;core;english-core.cicada-source"
-      :section-name "cicada:image;test-image;vector-function-heap;vector-function-heap.cicada-section")
-
-     (load#cicada-section
-      :image-name "test-image"
-      :section-name "vector-function-heap")
-
-     (push#return-stack
-      :title (string->title "vector-function-heap")
-      :value 0)
-
-     (execute-next-instruction)
-
-     )
-   #+end_src
 ** test cicada syntax
    #+begin_src cicada
-   : string->char
-     (* string[address, length] -- char *)
-     (* drop fetch-byte *)
-     get-char
-     xx|swap|x drop2
-     Exit
-   ; define-verb
-
    : (<string> ->char)
      (@ <string> -- <char> @)
      (char) (* drop fetch-byte *)
      (xx|swap|x) (drop 2)
    ; (define-verb)
    #+end_src
+* test
+  #+begin_src lisp
+  (let ()
+    (define-primitive-function "test" "kkk"
+        (@ -- @)
+      (cat (:to *standard-output*)
+        ("kkk took what away?~%")))
+    ($source->section!
+     :source-name
+     "cicada:source;core;english-core.cicada-source"
+     :section-name
+     "cicada:image;test-image;vector-function-heap;vector-function-heap.cicada-section")
+    (load#cicada-section
+     :image-name
+     "test-image"
+     :section-name
+     "vector-function-heap")
+    (push#return-stack
+     :title (string->title "vector-function-heap")
+     :value 0)
+    (execute-next-instruction))
+  #+end_src
 * ===================================

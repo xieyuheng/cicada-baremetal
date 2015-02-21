@@ -43,7 +43,7 @@
                                :size *cell-unit*
                                :index (add *cell-unit*
                                            address)))))
-        (:else 
+        (:else
          (orz ()
            ("when calling (save#cicada-object-vector)~%")
            ("the argument :index or :address must be not nil~%")))))
@@ -55,7 +55,7 @@
        cicada-object-vector
        (index nil)
        (address nil))
-  (cond ((not (nil? index))         
+  (cond ((not (nil? index))
          (cond ((equal? field :title)
                 (fetch#byte-vector :byte-vector cicada-object-vector
                                    :size *cell-unit*
@@ -72,7 +72,7 @@
                   ("when calling (fetch#cicada-object-vector)~%")
                   ("the argument :field must be :title or :value~%")
                   ("but not ~A ~%" field)))))
-        ((not (nil? address))         
+        ((not (nil? address))
          (cond ((equal? field :title)
                 (fetch#byte-vector :byte-vector cicada-object-vector
                                    :size *cell-unit*
@@ -87,7 +87,7 @@
                   ("when calling (fetch#cicada-object-vector)~%")
                   ("the argument :field must be :title or :value~%")
                   ("but not ~A ~%" field)))))
-        (:else 
+        (:else
          (orz ()
            ("when calling (fetch#cicada-object-vector)~%")
            ("the argument :index or :address must be not nil~%")))))
@@ -659,33 +659,34 @@
 ;;    :section-meta (:size ,(mul 6 1024)))
 ;;   ...)
 
-(defun load#cicada-section (&key image-name section-name)
-  (let* ((section-meta (let* ((meta-stream
-                               (open (cat ()
-                                       ("cicada:")
-                                       ("image;")
-                                       ("~A;" image-name)
-                                       ("~A;" section-name)
-                                       ("~A.cicada-section-meta" section-name))
-                                     :direction :input))
-                              (section-meta (read meta-stream)))
-                         (close meta-stream)
-                         (values section-meta)))
+(defun load#cicada-section
+    (&key
+       image-name
+       section-name)
+  (let* ((section-meta
+          (let* ((meta-stream
+                  (open (cat ()
+                          ("cicada:")
+                          ("image;")
+                          ("~A;" image-name)
+                          ("~A;" section-name)
+                          ("~A.cicada-section-meta" section-name))
+                        :direction :input))
+                 (section-meta (read meta-stream)))
+            (close meta-stream)
+            (values section-meta)))
          (section-size (find#key :size section-meta))
-         (section-offset *current-free-address#cicada-memory*))
-    (be :title (string->title section-name)
-        :name (string->name "offset")
-        :title#object (string->title "fixnum")
-        :value#object section-offset)
-    (file->byte-vector!
-     :filename (cat ()
-                 ("cicada:")
-                 ("image;")
-                 ("~A;" image-name)
-                 ("~A;" section-name)
-                 ("~A.cicada-section" section-name))
-     :byte-vector *cicada-memory*
-     :start section-offset)
+         (section-offset *current-free-address#cicada-memory*)
+         (end-address
+          (file->byte-vector!
+           :filename (cat ()
+                       ("cicada:")
+                       ("image;")
+                       ("~A;" image-name)
+                       ("~A;" section-name)
+                       ("~A.cicada-section" section-name))
+           :byte-vector *cicada-memory*
+           :start section-offset)))
     (set! *current-free-address#cicada-memory*
         (add *current-free-address#cicada-memory*
              section-size))
@@ -693,7 +694,20 @@
                           `(:section-name   ,section-name)
                           `(:image-name     ,image-name)
                           `(:section-meta   ,section-meta))
-                  *data-section-record#cicada-memory*)))
+                  *data-section-record#cicada-memory*)
+    (be :title (string->title section-name)
+        :name  (string->name "offset")
+        :title#object (string->title "fixnum")
+        :value#object section-offset)
+    (be :title (string->title section-name)
+        :name  (string->name "size")
+        :title#object (string->title "fixnum")
+        :value#object section-size)
+    (be :title (string->title section-name)
+        :name  (string->name "current-free-address")
+        :title#object (string->title "fixnum")
+        :value#object end-address)
+    (values :load#cicada-section--ok)))
 (defun cicada-section-name->meta (section-name)
   (find#key :section-meta
             (find#record :section-name section-name
@@ -714,6 +728,7 @@
           :size 1
           :index (add address
                       section-offset)))
+     
         ((not (nil? section-name))
          (fetch#byte-vector
           :byte-vector *cicada-memory*
@@ -721,10 +736,13 @@
           :index (add address
                       (cicada-section-name->offset
                        section-name))))
+     
         (:else
          (orz ()
            ("when calling (fetch-byte#cicada-section)~%")
            ("one of is argument :section-offset or :section-name must NOT be nil~%")))))
+
+
 
 (defun save-byte#cicada-section
     (&key
@@ -739,6 +757,7 @@
           :size 1
           :index (add address
                       section-offset)))
+     
         ((not (nil? section-name))
          (save#byte-vector
           :value byte
@@ -747,11 +766,11 @@
           :index (add address
                       (cicada-section-name->offset
                        section-name))))
+     
         (:else
          (orz ()
            ("when calling (save-byte#cicada-section)~%")
            ("one of is argument :section-offset or :section-name must NOT be nil~%")))))
-
 (defin fetch#cicada-section
   .title .value)
 (defun fetch#cicada-section
@@ -771,6 +790,7 @@
                   :index (add *cell-unit*
                               address
                               section-offset))))
+
         ((not (nil? section-name))
          (values (fetch#byte-vector
                   :byte-vector *cicada-memory*
@@ -785,10 +805,13 @@
                               address
                               (cicada-section-name->offset
                                section-name)))))
+
         (:else
          (orz ()
            ("when calling (fetch#cicada-section)~%")
            ("one of is argument :section-offset or :section-name must NOT be nil~%")))))
+
+
 
 (defun save#cicada-section
     (&key
@@ -811,6 +834,7 @@
           :index (add *cell-unit*
                       address
                       section-offset)))
+
         ((not (nil? section-name))
          (save#byte-vector
           :value title
@@ -827,6 +851,7 @@
                       address
                       (cicada-section-name->offset
                        section-name))))
+
         (:else
          (orz ()
            ("when calling (save#cicada-section)~%")
@@ -1253,20 +1278,32 @@
       false
       (equal? *<-package*
               (symbol-package symbol))))
-
-(defun | string <::a -> a | (string)
-  (cat (:letter :small)
-    (string)))
+(defun | string <a> ? | (string)
+  (if (not (string? string))
+      false
+      (and (>= (length string) 3)
+           (equal? (string->head#char string) #\<)
+           (equal? (string->end#char  string) #\>))))
 
 (defun | string <a> -> a | (string)
-  (cat (:trim
-        '(#\< #\>)
-        :letter :small)
-    (string)))
+  (if (not (| string <a> ? | string))
+      (orz ()
+        ("the argument of (| string <a> -> a |) must be a (| string <a> ? |)~%")
+        ("but not ~A ~%" string))
+      (subseq string 1 (sub1 (length string)))))
 
+(defun | string <: ? | (string)
+  (if (not (string? string))
+      false
+      (and (> (length string) 2)
+           (equal? (subseq string 0 2) "<:"))))
 
-
-
+(defun | string <:a -> a | (string)
+  (if (not (| string <: ? | string))
+      (orz ()
+        ("the argument of (| string <:a -> a |) must be a (| string <: ? | string)~%")
+        ("but not ~A ~%" string))
+      (subseq string 2)))
 (defun cute-comment->unnamed-local-variable (cute-comment)
   (let ((length (length cute-comment)))
     (help ((defun loop-collect (&key
@@ -1393,10 +1430,9 @@
                              ("the cursor is ~A ~%" cursor)))
                           ((| <a> ? | (sub1 cursor))
                            (cons-many (string->name
-                                       (| string <::a -> a |
-                                        (symbol->string
-                                         (fetch#vector :vector cute-comment
-                                                       :index cursor))))
+                                       (symbol->string
+                                        (fetch#vector :vector cute-comment
+                                                      :index cursor)))
                                       (string->title
                                        (| string <a> -> a |
                                         (symbol->string
@@ -1758,14 +1794,14 @@
        ("  * ~A ~A"
         (title->string title)
         (name->string name))
-       ("    unnamed-local-variable: [~A] ~A"
+       ("    unnamed-local-variable: (~A) ~A"
         (fetch#vector :vector unnamed-local-variable
                       :index 0)
         (map#vector :vector unnamed-local-variable
                     :offset 1
                     :function
                     (lambda (&key element) (title->string element))))
-       ("    named-local-variable:   [~A] ~A"
+       ("    named-local-variable:   (~A) ~A"
         (fetch#vector :vector named-local-variable
                       :index 0)
         (map#vector :vector named-local-variable
@@ -1779,7 +1815,7 @@
                             (name->string
                              (fetch#vector :vector sub-vector
                                            :index 0))))))
-       ("    return-object:          [~A] ~A"
+       ("    return-object:          (~A) ~A"
         (fetch#vector :vector return-object
                       :index 0)
         (map#vector :vector return-object
@@ -2050,14 +2086,14 @@
        ("  * ~A ~A"
         (title->string title)
         (name->string name))
-       ("    unnamed-local-variable: [~A] ~A"
+       ("    unnamed-local-variable: (~A) ~A"
         (fetch#vector :vector unnamed-local-variable
                       :index 0)
         (map#vector :vector unnamed-local-variable
                     :offset 1
                     :function
                     (lambda (&key element) (title->string element))))
-       ("    named-local-variable:   [~A] ~A"
+       ("    named-local-variable:   (~A) ~A"
         (fetch#vector :vector named-local-variable
                       :index 0)
         (map#vector :vector named-local-variable
@@ -2071,7 +2107,7 @@
                             (name->string
                              (fetch#vector :vector sub-vector
                                            :index 0))))))
-       ("    return-object:          [~A] ~A"
+       ("    return-object:          (~A) ~A"
         (fetch#vector :vector return-object
                       :index 0)
         (map#vector :vector return-object

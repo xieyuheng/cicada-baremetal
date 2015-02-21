@@ -114,7 +114,7 @@
                                   :size *cell-unit*
                                   :index (add *cell-unit*
                                               address)))))
-           (:else 
+           (:else
             (orz ()
               ("when calling (save#cicada-object-vector)~%")
               ("the argument :index or :address must be not nil~%")))))
@@ -126,7 +126,7 @@
           cicada-object-vector
           (index nil)
           (address nil))
-     (cond ((not (nil? index))         
+     (cond ((not (nil? index))
             (cond ((equal? field :title)
                    (fetch#byte-vector :byte-vector cicada-object-vector
                                       :size *cell-unit*
@@ -143,7 +143,7 @@
                      ("when calling (fetch#cicada-object-vector)~%")
                      ("the argument :field must be :title or :value~%")
                      ("but not ~A ~%" field)))))
-           ((not (nil? address))         
+           ((not (nil? address))
             (cond ((equal? field :title)
                    (fetch#byte-vector :byte-vector cicada-object-vector
                                       :size *cell-unit*
@@ -158,12 +158,49 @@
                      ("when calling (fetch#cicada-object-vector)~%")
                      ("the argument :field must be :title or :value~%")
                      ("but not ~A ~%" field)))))
-           (:else 
+           (:else
             (orz ()
               ("when calling (fetch#cicada-object-vector)~%")
               ("the argument :index or :address must be not nil~%")))))
    #+end_src
 * -----------------------------------
+* 記 各個表格
+** title.name-table
+   * 二維
+   * 語義爲姓名與物的綁定
+   * 索引爲零的 第一行 不用
+     索引即爲姓之編碼
+   * 每行爲一姓 行首存姓作爲名之值
+     (i 0) 存 (* name *)
+   * 一行中存從此姓之名與物之綁定
+     (i n) 存 (* name, object[title, value] *)
+** name-hash-table
+   * 一維
+   * 語義爲名之編碼
+     實現是字符串的散列函數
+     即 字符串 到 上界爲某一素數的自然數集
+     之間的假雙射
+   * 索引爲零的 第一行 不用
+     索引即爲名之編碼
+   * 每一行有二值
+     一爲字符串 一爲姓之索引
+     如若被使用 則字符串爲所編碼的字符
+     如若被用爲姓 則姓之索引之爲姓以此名爲名
+** primitive-instruction-table
+   * 一維
+   * 語義爲指令集
+   * 索引爲零的 第一行 不用
+   * 其每行之值 待定
+     但已知有 函數 姓 名
+** primitive-function-table
+   * 一維
+   * 語義爲原始函數集
+   * 索引爲零的 第一行 不用
+   * 其每行之值 待定
+     但已知有 函數 姓 名
+   * 可能完全與 primitive-instruction-table 相同
+     [那將是理想的設計]
+     當有差異的時候另行說明
 * title.name-table
 ** note
    * every object have a title
@@ -837,6 +874,50 @@
          "kkk took my baby away!"))
    #+end_src
 * -----------------------------------
+* 記
+** 引
+   1. cicada-image 是磁盤中的一個路徑[而不是一個文件]
+      路徑中的每個子路徑代表一個 cicada-section
+      ".cicada-section" 是 cicada-section 的內容
+      ".cicada-section-meta" 是 cicada-section 的屬性
+   2. 我把 各個 cicada-image 都保存在 "cicada:image;" 這個路徑下
+   3. cicada-memory 是一整塊線性的內存
+      它被劃分爲各個 section
+      每個 section 有自己的 offset
+      所有的地址都是相對於 section 而言的
+      也就是說
+      每個地址有姓
+      這個姓代表了它所屬的 section
+      沒有無姓的地址
+   4. 可以通過把 cicada-image 中的一個 section
+      加載到 cicada-memory 中
+      而使用掉某些內存 來實現所希望的數據結構
+   5. 多個 image 中的 section 可以被加載到同一個 cicada-memory 中
+      只要 section 不重名即可
+   6. 加載的過程中
+      每個 section 會被作爲一個姓 被添加到姓名表中
+      其下的名有
+      1) offset 
+         用來記錄這個 section 在 cicada-memory 中的位置
+      2) size
+         用來記錄這個 section 的大小
+      3) current-free-address 
+         用來記錄這個 section 的使用情況
+   7. 同時 vm 中也設置了一些變量和函數
+      來查詢對 cicada-memory 的使用情況
+      比如 *data-section-record#cicada-memory* 這個全局變量
+   8. 對 cicada-section 的 fetch & save 提供了一致的接口 
+** 例
+   1. vector-function-heap 是一個 section
+      [將來還會有 list-function-heap 等等]
+      其中有很多函數
+      每個函數作爲 vector 的長度不一樣
+   2. 比如 "cicada:source;core;" 路徑下的
+      "english-core.cicada-source"
+      就被編譯成一個 vector-function-heap
+   3. 加載一個 vector-function-heap 之後
+      把其中的一個 vector-function-body 的地址入 return-stack
+      然後就可以啓動 vm 了
 * cicada-image
 ** note
    * a image is a directory
@@ -845,7 +926,7 @@
    * in each sub-directory
      there is a ".cicada-section-meta" file for meta-data
    * and a ".cicada-section" file to be loaded
-     >< one data section could be
+     one data section could be
      implemented in any way
    * but note that
      the vm views the directory as a whole
@@ -926,33 +1007,34 @@
    ;;    :section-meta (:size ,(mul 6 1024)))
    ;;   ...)
 
-   (defun load#cicada-section (&key image-name section-name)
-     (let* ((section-meta (let* ((meta-stream
-                                  (open (cat ()
-                                          ("cicada:")
-                                          ("image;")
-                                          ("~A;" image-name)
-                                          ("~A;" section-name)
-                                          ("~A.cicada-section-meta" section-name))
-                                        :direction :input))
-                                 (section-meta (read meta-stream)))
-                            (close meta-stream)
-                            (values section-meta)))
+   (defun load#cicada-section
+       (&key
+          image-name
+          section-name)
+     (let* ((section-meta
+             (let* ((meta-stream
+                     (open (cat ()
+                             ("cicada:")
+                             ("image;")
+                             ("~A;" image-name)
+                             ("~A;" section-name)
+                             ("~A.cicada-section-meta" section-name))
+                           :direction :input))
+                    (section-meta (read meta-stream)))
+               (close meta-stream)
+               (values section-meta)))
             (section-size (find#key :size section-meta))
-            (section-offset *current-free-address#cicada-memory*))
-       (be :title (string->title section-name)
-           :name (string->name "offset")
-           :title#object (string->title "fixnum")
-           :value#object section-offset)
-       (file->byte-vector!
-        :filename (cat ()
-                    ("cicada:")
-                    ("image;")
-                    ("~A;" image-name)
-                    ("~A;" section-name)
-                    ("~A.cicada-section" section-name))
-        :byte-vector *cicada-memory*
-        :start section-offset)
+            (section-offset *current-free-address#cicada-memory*)
+            (end-address
+             (file->byte-vector!
+              :filename (cat ()
+                          ("cicada:")
+                          ("image;")
+                          ("~A;" image-name)
+                          ("~A;" section-name)
+                          ("~A.cicada-section" section-name))
+              :byte-vector *cicada-memory*
+              :start section-offset)))
        (set! *current-free-address#cicada-memory*
            (add *current-free-address#cicada-memory*
                 section-size))
@@ -960,7 +1042,20 @@
                              `(:section-name   ,section-name)
                              `(:image-name     ,image-name)
                              `(:section-meta   ,section-meta))
-                     ,*data-section-record#cicada-memory*)))
+                     ,*data-section-record#cicada-memory*)
+       (be :title (string->title section-name)
+           :name  (string->name "offset")
+           :title#object (string->title "fixnum")
+           :value#object section-offset)
+       (be :title (string->title section-name)
+           :name  (string->name "size")
+           :title#object (string->title "fixnum")
+           :value#object section-size)
+       (be :title (string->title section-name)
+           :name  (string->name "current-free-address")
+           :title#object (string->title "fixnum")
+           :value#object end-address)
+       (values :load#cicada-section--ok)))
    #+end_src
 ** cicada-section-name->[meta|offset]
    #+begin_src lisp :tangle architecture.lisp
@@ -974,7 +1069,8 @@
                (find#record :section-name section-name
                             ,*data-section-record#cicada-memory*)))
    #+end_src
-** fetch & save
+** fetch-byte & save-byte
+   * the argument :section-offset is used as an optimization
    #+begin_src lisp :tangle architecture.lisp
    (defun fetch-byte#cicada-section
        (&key
@@ -987,6 +1083,7 @@
              :size 1
              :index (add address
                          section-offset)))
+        
            ((not (nil? section-name))
             (fetch#byte-vector
              :byte-vector *cicada-memory*
@@ -994,10 +1091,13 @@
              :index (add address
                          (cicada-section-name->offset
                           section-name))))
+        
            (:else
             (orz ()
               ("when calling (fetch-byte#cicada-section)~%")
               ("one of is argument :section-offset or :section-name must NOT be nil~%")))))
+
+
 
    (defun save-byte#cicada-section
        (&key
@@ -1012,6 +1112,7 @@
              :size 1
              :index (add address
                          section-offset)))
+        
            ((not (nil? section-name))
             (save#byte-vector
              :value byte
@@ -1020,11 +1121,14 @@
              :index (add address
                          (cicada-section-name->offset
                           section-name))))
+        
            (:else
             (orz ()
               ("when calling (save-byte#cicada-section)~%")
-              ("one of is argument :section-offset or :section-name must NOT be nil~%")))))
-
+              ("one of is argument :section-offset or :section-name must NOT be nil~%")))))   
+   #+end_src
+** fetch & save
+   #+begin_src lisp :tangle architecture.lisp
    (defin fetch#cicada-section
      .title .value)
    (defun fetch#cicada-section
@@ -1044,6 +1148,7 @@
                      :index (add *cell-unit*
                                  address
                                  section-offset))))
+
            ((not (nil? section-name))
             (values (fetch#byte-vector
                      :byte-vector *cicada-memory*
@@ -1058,10 +1163,13 @@
                                  address
                                  (cicada-section-name->offset
                                   section-name)))))
+
            (:else
             (orz ()
               ("when calling (fetch#cicada-section)~%")
               ("one of is argument :section-offset or :section-name must NOT be nil~%")))))
+
+
 
    (defun save#cicada-section
        (&key
@@ -1084,6 +1192,7 @@
              :index (add *cell-unit*
                          address
                          section-offset)))
+
            ((not (nil? section-name))
             (save#byte-vector
              :value title
@@ -1100,6 +1209,7 @@
                          address
                          (cicada-section-name->offset
                           section-name))))
+
            (:else
             (orz ()
               ("when calling (save#cicada-section)~%")
@@ -1793,15 +1903,8 @@
           (make#vector :length length
                        :initial-contents cute-comment#list)))
    #+end_src
-** cute-comment->[*]
-   * the length of a cute-comment
-     at least will be 2 (@ -- @) ==> #(-- @)
-   * using trivial order to collect
-     I leave base-list there
-     to change the order when wished
-   * always have to protect the cursor
-     to let it does not over the cute-comment[vector]
-   * the length of -- be longer then one to be acceptable
+** predicate on symbol
+   * mainly to be used in common-lisp
    #+begin_src lisp :tangle architecture.lisp
    ;; note that
    ;;   (symbol->string '<::a)
@@ -1822,20 +1925,49 @@
          false
          (equal? *<-package*
                  (symbol-package symbol))))
-
-   (defun | string <::a -> a | (string)
-     (cat (:letter :small)
-       (string)))
+   #+end_src
+** predicate on string
+   * mainly to be used in cicada language
+   #+begin_src lisp :tangle architecture.lisp
+   (defun | string <a> ? | (string)
+     (if (not (string? string))
+         false
+         (and (>= (length string) 3)
+              (equal? (string->head#char string) #\<)
+              (equal? (string->end#char  string) #\>))))
 
    (defun | string <a> -> a | (string)
-     (cat (:trim
-           '(#\< #\>)
-           :letter :small)
-       (string)))
+     (if (not (| string <a> ? | string))
+         (orz ()
+           ("the argument of (| string <a> -> a |) must be a (| string <a> ? |)~%")
+           ("but not ~A ~%" string))
+         (subseq string 1 (sub1 (length string)))))
 
+   (defun | string <: ? | (string)
+     (if (not (string? string))
+         false
+         (and (> (length string) 2)
+              (equal? (subseq string 0 2) "<:"))))
 
-
-
+   (defun | string <:a -> a | (string)
+     (if (not (| string <: ? | string))
+         (orz ()
+           ("the argument of (| string <:a -> a |) must be a (| string <: ? | string)~%")
+           ("but not ~A ~%" string))
+         (subseq string 2)))
+   #+end_src
+** cute-comment->[*]
+   * in common-lisp
+     a cute-comment is a list of symbol
+   * the length of a cute-comment
+     at least will be 2 (@ -- @) ==> #(-- @)
+   * using trivial order to collect
+     I leave base-list there
+     to change the order when wished
+   * always have to protect the cursor
+     to let it does not over the cute-comment[vector]
+   * the length of -- be longer then one to be acceptable
+   #+begin_src lisp :tangle architecture.lisp
    (defun cute-comment->unnamed-local-variable (cute-comment)
      (let ((length (length cute-comment)))
        (help ((defun loop-collect (&key
@@ -1962,10 +2094,9 @@
                                 ("the cursor is ~A ~%" cursor)))
                              ((| <a> ? | (sub1 cursor))
                               (cons-many (string->name
-                                          (| string <::a -> a |
-                                           (symbol->string
-                                            (fetch#vector :vector cute-comment
-                                                          :index cursor))))
+                                          (symbol->string
+                                           (fetch#vector :vector cute-comment
+                                                         :index cursor)))
                                          (string->title
                                           (| string <a> -> a |
                                            (symbol->string
@@ -2123,6 +2254,22 @@
    ;;  (@ <fixnum>
    ;;     --
    ;;     @))
+   #+end_src
+** test
+   #+begin_src lisp :tangle architecture.test.lisp
+   (deftest | string <a> -> a |
+       (architecture)
+     (ensure
+         (| string <a> -> a | "<^-^>")
+         ==>
+         "^-^"))
+
+   (deftest | string <:a -> a |
+       (architecture)
+     (ensure
+         (| string <:a -> a | "<:^-^")
+         ==>
+         "^-^"))
    #+end_src
 * -----------------------------------
 * primitive-instruction-table
@@ -2359,14 +2506,14 @@
           ("  * ~A ~A"
            (title->string title)
            (name->string name))
-          ("    unnamed-local-variable: [~A] ~A"
+          ("    unnamed-local-variable: (~A) ~A"
            (fetch#vector :vector unnamed-local-variable
                          :index 0)
            (map#vector :vector unnamed-local-variable
                        :offset 1
                        :function
                        (lambda (&key element) (title->string element))))
-          ("    named-local-variable:   [~A] ~A"
+          ("    named-local-variable:   (~A) ~A"
            (fetch#vector :vector named-local-variable
                          :index 0)
            (map#vector :vector named-local-variable
@@ -2380,7 +2527,7 @@
                                (name->string
                                 (fetch#vector :vector sub-vector
                                               :index 0))))))
-          ("    return-object:          [~A] ~A"
+          ("    return-object:          (~A) ~A"
            (fetch#vector :vector return-object
                          :index 0)
            (map#vector :vector return-object
@@ -2676,14 +2823,14 @@
           ("  * ~A ~A"
            (title->string title)
            (name->string name))
-          ("    unnamed-local-variable: [~A] ~A"
+          ("    unnamed-local-variable: (~A) ~A"
            (fetch#vector :vector unnamed-local-variable
                          :index 0)
            (map#vector :vector unnamed-local-variable
                        :offset 1
                        :function
                        (lambda (&key element) (title->string element))))
-          ("    named-local-variable:   [~A] ~A"
+          ("    named-local-variable:   (~A) ~A"
            (fetch#vector :vector named-local-variable
                          :index 0)
            (map#vector :vector named-local-variable
@@ -2697,7 +2844,7 @@
                                (name->string
                                 (fetch#vector :vector sub-vector
                                               :index 0))))))
-          ("    return-object:          [~A] ~A"
+          ("    return-object:          (~A) ~A"
            (fetch#vector :vector return-object
                          :index 0)
            (map#vector :vector return-object
@@ -2777,44 +2924,4 @@
                      ("when using (define-primitive-function)~%")
                      ("the *primitive-function-table* must NOT be filled")))))))
    #+end_src
-* -----------------------------------
-* 記 各個表格
-** ----------------------------------
-** title.name-table
-   * 二維
-   * 語義爲姓名與物的綁定
-   * 索引爲零的 第一行 不用
-     索引即爲姓之編碼
-   * 每行爲一姓 行首存姓作爲名之值
-     (i 0) 存 (* name *)
-   * 一行中存從此姓之名與物之綁定
-     (i n) 存 (* name, object[title, value] *)
-** name-hash-table
-   * 一維
-   * 語義爲名之編碼
-     實現是字符串的散列函數
-     即 字符串 到 上界爲某一素數的自然數集
-     之間的假雙射
-   * 索引爲零的 第一行 不用
-     索引即爲名之編碼
-   * 每一行有二值
-     一爲字符串 一爲姓之索引
-     如若被使用 則字符串爲所編碼的字符
-     如若被用爲姓 則姓之索引之爲姓以此名爲名
-** primitive-instruction-table
-   * 一維
-   * 語義爲指令集
-   * 索引爲零的 第一行 不用
-   * 其每行之值 待定
-     但已知有 函數 姓 名
-** primitive-function-table
-   * 一維
-   * 語義爲原始函數集
-   * 索引爲零的 第一行 不用
-   * 其每行之值 待定
-     但已知有 函數 姓 名
-   * 可能完全與 primitive-instruction-table 相同
-     [那將是理想的設計]
-     當有差異的時候另行說明
-** ----------------------------------
 * ===================================

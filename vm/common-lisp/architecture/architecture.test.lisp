@@ -181,3 +181,16 @@
 
             147
             147)))
+(deftest | string <a> -> a |
+    (architecture)
+  (ensure
+      (| string <a> -> a | "<^-^>")
+      ==>
+      "^-^"))
+
+(deftest | string <:a -> a |
+    (architecture)
+  (ensure
+      (| string <:a -> a | "<:^-^")
+      ==>
+      "^-^"))
