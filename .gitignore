@@ -16,7 +16,17 @@
 */*/*/*.bin
 */*/*/*/*.bin
 
-image/
+*.ccd
+*/*.ccd
+*/*/*.ccd
+*/*/*/*.ccd
+*/*/*/*/*.ccd
+
+*.cicada-section
+*/*.cicada-section
+*/*/*.cicada-section
+*/*/*/*.cicada-section
+*/*/*/*/*.cicada-section
 
 old/vm/x86-64/linux/cicada
 old/vm/x86-64/baremetal/*.vmdk

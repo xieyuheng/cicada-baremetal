@@ -1266,14 +1266,14 @@
                "but also a proper-list~%")))
       (:else
        (help#loop#end-of-list cdr#list)))))
-(defun set-car! (value list)
+(defun set-car! (list value)
   (cond
     ((not (pair? list))
      (error "the argument of (set-car!) must be a list~%"))
     (:else
      (setf (car list) value))))
 
-(defun set-cdr! (value list)
+(defun set-cdr! (list value)
   (cond
     ((not (pair? list))
      (error "the argument of (set-cdr!) must be a list~%"))
@@ -1281,7 +1281,7 @@
      (setf (cdr list) value))))
 
 
-(defun set-end-cdr! (value list)
+(defun set-end-cdr! (list value)
   (cond
     ((not (pair? list))
      (error "the argument of (set-end-cdr!) must be a list~%"))
@@ -1292,12 +1292,12 @@
   (let ((cdr#list (cdr list)))
     (cond
       ((not (pair? cdr#list))
-       (set-cdr! value list))
+       (set-cdr! list value))
       (:else
        (help#loop#set-end-cdr! value cdr#list)))))
 
 
-(defun set-end-car! (value list)
+(defun set-end-car! (list value)
   (cond
     ((not (pair? list))
      (error "the argument of (set-end-car!) must be a list~%"))
@@ -1308,7 +1308,7 @@
   (let ((cdr#list (cdr list)))
     (cond
       ((not (pair? cdr#list))
-       (set-car! value list))
+       (set-car! list value))
       (:else
        (help#loop#set-end-car! value cdr#list)))))
 (defun group (list

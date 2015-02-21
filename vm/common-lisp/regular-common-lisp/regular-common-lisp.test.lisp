@@ -519,7 +519,7 @@
     (regular-common-lisp)
   (ensure
       (let ((list '(1 2 3)))
-        (set-end-cdr! 666 list)
+        (set-end-cdr! list 666)
         list)
       ==>
       '(1 2 3 . 666)))
@@ -528,7 +528,7 @@
     (regular-common-lisp)
   (ensure
       (let ((list '(1 2 3)))
-        (set-end-car! 666 list)
+        (set-end-car! list 666)
         list)
       ==>
       '(1 2 666)))

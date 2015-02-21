@@ -3,7 +3,7 @@
 #+EMAIL:  xyheme@gmail.com
 
 * test
-  #+begin_src cicada :tangle english-core.cicada-source
+  #+begin_src cicada :tangle english-core.iaa
   : 
     (<test> kkk)
     (<test> kkk)

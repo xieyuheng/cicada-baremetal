@@ -1,13 +1,13 @@
 (in-package :cicada-vm)
 (defun fetch#vector-function-body ())
 (defun save#vector-function-body ())
-(defun $source->section!
+(defun $iaa->ccd!
     (&key
-       source-name
-       section-name)
-  (let* ((string (file->string :filename source-name))
+       iaa
+       ccd)
+  (let* ((string (file->string :filename iaa))
          (byte-vector ($string->byte-vector :string string)))
-    (byte-vector->file! :filename section-name
+    (byte-vector->file! :filename ccd
                         :byte-vector byte-vector)))
 (defparameter *string$string->byte-vector* "")
 (defparameter *cursor$string->byte-vector* 0)
@@ -25,9 +25,9 @@
   (set! *string$string->byte-vector* string)
   (set! *cursor$string->byte-vector* 0)
   (set! *current-free-address$string->byte-vector* 0)
-  (help$string->byte-vector))
+  (loop$byte-vector))
 
-(defun help$string->byte-vector ()
+(defun loop$byte-vector ()
   (let ((next-word* (next-word*!
                      :string *string$string->byte-vector*
                      :cursor *cursor$string->byte-vector*)))
@@ -42,7 +42,7 @@
                                    (orz ()
                                      ("when calling ($string->byte-vector)~%")
                                      (": and ; as bar-ket must be balanced~%"))
-                                     find-cursor)))
+                                   find-cursor)))
                   (string (subseq *string$string->byte-vector*
                                   start-index
                                   end-index))
@@ -68,7 +68,7 @@
                       ("when calling ($string->byte-vector)~%")
                       ("the word after ; must be (define-function) but not ~A~A~A ~%"
                        next-word*-1 next-word*-2 next-word*-3)))))
-           (help$string->byte-vector))
+           (loop$byte-vector))
           ((equal? :no-more-word next-word*)
            (subseq *byte-vector$string->byte-vector*
                    0
@@ -85,15 +85,19 @@
        string)
   (set! *string$define-function* string)
   (set! *cursor$define-function* 0)
-  ($loop))
-(defun $loop ()
+  (loop$function-head)
+  (loop$function-body))
+(defun loop$function-head ()
+  )
+(defun loop$function-body ()
   (let ((next-word* (next-word*!
                      :string *string$define-function*
                      :cursor *cursor$define-function*)))
     (cond ((equal? "(" next-word*)
-           ($function-call))
+           ($function-call)
+           (loop$function-body))
           ((equal? :no-more-word next-word*)
-           :$loop--ok)
+           :loop$function-body--ok)
           (:else
            (orz ()
              ("when calling ($define-function)~%")
@@ -138,8 +142,7 @@
                      :name  (string->name  "call"))
                     ($save-object
                      :title (string->title function-title)
-                     :name  (string->name  function-name))
-                    ($loop)))))
+                     :name  (string->name  function-name))))))
           ((equal? :no-more-word next-word*)
            (orz ()
              ("when calling ($define-function)~%")

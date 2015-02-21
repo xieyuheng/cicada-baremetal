@@ -375,7 +375,7 @@
              :array *title.name-table*
              :index-vector `#(,title ,field))))
        (cond
-         ;; creat new
+         ;; create new
          ((zero? content-of-field)
           (save#array
            :value (vector name
@@ -513,7 +513,7 @@
          ((not (zero? index-for-title))
           index-for-title)
 
-         ;; creat-new
+         ;; create-new
          ((< *pointer#title.name-table*
              ,*size#title.name-table*)
           ;; now
@@ -762,20 +762,20 @@
 ** string->name
    #+begin_src lisp :tangle architecture.lisp
    (defun string->name (string)
-     (help#string->name#find-old-or-creat-new
+     (help#string->name#find-old-or-create-new
       :string string
       :index (mod (string->natural-number string)
                   ,*size#name-hash-table*)))
 
-   (defun help#string->name#find-old-or-creat-new
+   (defun help#string->name#find-old-or-create-new
        (&key
           string
           index
           (collision-level 0))
      (cond
-       ;; creat-new
+       ;; create-new
        ((not (name-hash-table-index#used? index))
-        (help#string->name#creat-new
+        (help#string->name#create-new
          :string string
          :index index
          :collision-level collision-level)
@@ -788,7 +788,7 @@
         index)
        ;; collision
        (:else
-        (help#string->name#find-old-or-creat-new
+        (help#string->name#find-old-or-create-new
          :string string
          :index (name-hash-table-index#next :index index)
          :collision-level (add1 collision-level)))
@@ -807,7 +807,7 @@
 
    (defparameter *name-hash-table#collision-record* '())
 
-   (defun help#string->name#creat-new
+   (defun help#string->name#create-new
        (&key
           string
           index
@@ -874,51 +874,17 @@
          "kkk took my baby away!"))
    #+end_src
 * -----------------------------------
-* 記
-** 引
-   1. cicada-image 是磁盤中的一個路徑[而不是一個文件]
-      路徑中的每個子路徑代表一個 cicada-section
-      ".cicada-section" 是 cicada-section 的內容
-      ".cicada-section-meta" 是 cicada-section 的屬性
-   2. 我把 各個 cicada-image 都保存在 "cicada:image;" 這個路徑下
-   3. cicada-memory 是一整塊線性的內存
-      它被劃分爲各個 section
-      每個 section 有自己的 offset
-      所有的地址都是相對於 section 而言的
-      也就是說
-      每個地址有姓
-      這個姓代表了它所屬的 section
-      沒有無姓的地址
-   4. 可以通過把 cicada-image 中的一個 section
-      加載到 cicada-memory 中
-      而使用掉某些內存 來實現所希望的數據結構
-   5. 多個 image 中的 section 可以被加載到同一個 cicada-memory 中
-      只要 section 不重名即可
-   6. 加載的過程中
-      每個 section 會被作爲一個姓 被添加到姓名表中
-      其下的名有
-      1) offset 
-         用來記錄這個 section 在 cicada-memory 中的位置
-      2) size
-         用來記錄這個 section 的大小
-      3) current-free-address 
-         用來記錄這個 section 的使用情況
-   7. 同時 vm 中也設置了一些變量和函數
-      來查詢對 cicada-memory 的使用情況
-      比如 *data-section-record#cicada-memory* 這個全局變量
-   8. 對 cicada-section 的 fetch & save 提供了一致的接口 
-** 例
-   1. vector-function-heap 是一個 section
-      [將來還會有 list-function-heap 等等]
-      其中有很多函數
-      每個函數作爲 vector 的長度不一樣
-   2. 比如 "cicada:source;core;" 路徑下的
-      "english-core.cicada-source"
-      就被編譯成一個 vector-function-heap
-   3. 加載一個 vector-function-heap 之後
-      把其中的一個 vector-function-body 的地址入 return-stack
-      然後就可以啓動 vm 了
 * cicada-image
+** 記
+   * cicada-image 的目的是把 對 cicada-memory 的配置 外化
+   * cicada-image 是磁盤中的一個路徑[而不是一個文件]
+     路徑中的每個子路徑代表一個 cicada-section
+     ".cicada-section" 是 cicada-section 的內容
+     ".cicada-section-meta" 是 cicada-section 的屬性
+     包括是否在加載時初始化這個數據區域
+     當需要初始化的時候 就將使用 ".cicada-section"
+     否則 ".cicada-section" 是沒有用的
+   * 我把 各個 cicada-image 都保存在 "cicada:image;" 這個路徑下
 ** note
    * a image is a directory
      one sub-directory will be viewed as
@@ -938,7 +904,7 @@
          `(("**;*.*" "home:cicada;**;*.*")))
    #+end_src
 ** config
-   * creat sub-directories and ".cicada-section-meta" files
+   * create sub-directories and ".cicada-section-meta" files
    #+begin_src lisp :tangle architecture.lisp
    (defun config#cicada-image (configuration-list)
      (help ((defun config-section (configuration)
@@ -948,15 +914,18 @@
                       (find#key :section-name configuration))
                      (section-meta
                       (find#key :section-meta configuration))
+                     (section-init?
+                      (find#key :init? section-meta))
                      (stream-cicada-section
-                      (open (cat ()
-                              ("cicada:")
-                              ("image;")
-                              ("~A;" image-name)
-                              ("~A;" section-name)
-                              ("~A.cicada-section" section-name))
-                            :direction :output
-                            :if-exists :supersede))
+                      (when (equal 'true section-init?)
+                        (open (cat ()
+                                ("cicada:")
+                                ("image;")
+                                ("~A;" image-name)
+                                ("~A;" section-name)
+                                ("~A.cicada-section" section-name))
+                              :direction :output
+                              :if-exists :supersede)))
                      (stream-meta
                       (open (cat ()
                               ("cicada:")
@@ -967,7 +936,8 @@
                             :direction :output
                             :if-exists :supersede)))
                 (cat (:to stream-meta) ("~W" section-meta))
-                (close stream-cicada-section)
+                (when (equal 'true section-init?)
+                  (close stream-cicada-section))
                 (close stream-meta))))
        (mapcar (function config-section)
                configuration-list)))
@@ -975,12 +945,25 @@
    (config#cicada-image
     `((:image-name "test-image"
                    :section-name "test"
-                   :section-meta (:size 666))
+                   :section-meta (:init?
+                                  true
+                                  :size 666))
       (:image-name "test-image"
                    :section-name "vector-function-heap"
-                   :section-meta (:size ,(mul 6 1024)))))
+                   :section-meta (:init?
+                                  false
+                                  :size ,(mul 6 1024)))))
    #+end_src
 * cicada-memory
+** 記
+   * cicada-memory 是一整塊線性的內存
+     它被劃分爲各個 section
+     每個 section 有自己的 offset
+     所有的地址都是相對於 section 而言的
+     也就是說
+     每個地址有姓
+     這個姓代表了它所屬的 section
+     沒有無姓的地址
 ** note
    * every data section is denoted by a offset
      offset will be setted when loading
@@ -996,7 +979,23 @@
                   :initial-element 0))
    #+end_src
 * cicada-section
-** load
+** 記
+   * 多個 image 中的 section 可以被加載到同一個 cicada-memory 中
+     只要 section 不重名即可
+   * 加載的過程中
+     每個 section 會被作爲一個姓 被添加到姓名表中
+     其下的名有
+     1) offset
+        用來記錄這個 section 在 cicada-memory 中的位置
+     2) size
+        用來記錄這個 section 的大小
+     3) current-free-address
+        用來記錄這個 section 的使用情況
+   * 同時 vm 中也設置了一些變量和函數
+     來查詢對 cicada-memory 的使用情況
+     比如 *data-section-record#cicada-memory* 這個全局變量
+   * 對 cicada-section 的 fetch & save 提供了一致的接口
+** create
    * the offset of a section is a variables under title
    #+begin_src lisp :tangle architecture.lisp
    (defparameter *data-section-record#cicada-memory*
@@ -1007,7 +1006,7 @@
    ;;    :section-meta (:size ,(mul 6 1024)))
    ;;   ...)
 
-   (defun load#cicada-section
+   (defun create#cicada-section
        (&key
           image-name
           section-name)
@@ -1023,26 +1022,31 @@
                     (section-meta (read meta-stream)))
                (close meta-stream)
                (values section-meta)))
-            (section-size (find#key :size section-meta))
+            (section-size  (find#key :size  section-meta))
+            (section-init? (find#key :init? section-meta))
             (section-offset *current-free-address#cicada-memory*)
             (end-address
-             (file->byte-vector!
-              :filename (cat ()
-                          ("cicada:")
-                          ("image;")
-                          ("~A;" image-name)
-                          ("~A;" section-name)
-                          ("~A.cicada-section" section-name))
-              :byte-vector *cicada-memory*
-              :start section-offset)))
+             (cond ((equal? 'false section-init?)
+                    0)
+                   ((equal? 'true section-init?)
+                    (file->byte-vector!
+                     :filename (cat ()
+                                 ("cicada:")
+                                 ("image;")
+                                 ("~A;" image-name)
+                                 ("~A;" section-name)
+                                 ("~A.cicada-section" section-name))
+                     :byte-vector *cicada-memory*
+                     :start section-offset)))))
        (set! *current-free-address#cicada-memory*
            (add *current-free-address#cicada-memory*
                 section-size))
-       (set-end-car! (append `(:section-offset ,section-offset)
-                             `(:section-name   ,section-name)
-                             `(:image-name     ,image-name)
-                             `(:section-meta   ,section-meta))
-                     ,*data-section-record#cicada-memory*)
+       (set-end-cdr! *data-section-record#cicada-memory*
+           (list
+            (list :section-offset section-offset
+                  :section-name   section-name
+                  :image-name     image-name
+                  :section-meta   section-meta)))
        (be :title (string->title section-name)
            :name  (string->name "offset")
            :title#object (string->title "fixnum")
@@ -1054,8 +1058,8 @@
        (be :title (string->title section-name)
            :name  (string->name "current-free-address")
            :title#object (string->title "fixnum")
-           :value#object end-address)
-       (values :load#cicada-section--ok)))
+           :value#object (sub end-address section-offset))
+       (values :create#cicada-section--ok)))
    #+end_src
 ** cicada-section-name->[meta|offset]
    #+begin_src lisp :tangle architecture.lisp
@@ -1068,6 +1072,32 @@
      (find#key :section-offset
                (find#record :section-name section-name
                             ,*data-section-record#cicada-memory*)))
+   #+end_src
+** load
+   * load to cicada-section
+   #+begin_src lisp :tangle architecture.lisp
+   (defun load#cicada-section
+       (&key
+          section-name
+          file-to-load)
+     (let* ((section-offset
+             (with (ask :title (string->title section-name)
+                        :name  (string->name "offset"))
+               .value))
+            (end-address 
+             (file->byte-vector!
+              :filename file-to-load
+              :byte-vector *cicada-memory*
+              :start section-offset))
+            (old-current-free-address
+             (ask :title (string->title section-name)
+                  :name  (string->name "current-free-address"))))
+       (be :title (string->title section-name)
+           :name  (string->name "current-free-address")
+           :title#object (string->title "fixnum")
+           :value#object (add old-current-free-address
+                              (sub end-address section-offset)))))
+
    #+end_src
 ** fetch-byte & save-byte
    * the argument :section-offset is used as an optimization
@@ -1083,7 +1113,7 @@
              :size 1
              :index (add address
                          section-offset)))
-        
+
            ((not (nil? section-name))
             (fetch#byte-vector
              :byte-vector *cicada-memory*
@@ -1091,7 +1121,7 @@
              :index (add address
                          (cicada-section-name->offset
                           section-name))))
-        
+
            (:else
             (orz ()
               ("when calling (fetch-byte#cicada-section)~%")
@@ -1112,7 +1142,7 @@
              :size 1
              :index (add address
                          section-offset)))
-        
+
            ((not (nil? section-name))
             (save#byte-vector
              :value byte
@@ -1121,11 +1151,11 @@
              :index (add address
                          (cicada-section-name->offset
                           section-name))))
-        
+
            (:else
             (orz ()
               ("when calling (save-byte#cicada-section)~%")
-              ("one of is argument :section-offset or :section-name must NOT be nil~%")))))   
+              ("one of is argument :section-offset or :section-name must NOT be nil~%")))))
    #+end_src
 ** fetch & save
    #+begin_src lisp :tangle architecture.lisp

@@ -228,7 +228,7 @@
           :array *title.name-table*
           :index-vector `#(,title ,field))))
     (cond
-      ;; creat new
+      ;; create new
       ((zero? content-of-field)
        (save#array
         :value (vector name
@@ -326,7 +326,7 @@
       ((not (zero? index-for-title))
        index-for-title)
 
-      ;; creat-new
+      ;; create-new
       ((< *pointer#title.name-table*
           *size#title.name-table*)
        ;; now
@@ -526,20 +526,20 @@
                   :step counter
                   :number (char->code head#char)))))))
 (defun string->name (string)
-  (help#string->name#find-old-or-creat-new
+  (help#string->name#find-old-or-create-new
    :string string
    :index (mod (string->natural-number string)
                *size#name-hash-table*)))
 
-(defun help#string->name#find-old-or-creat-new
+(defun help#string->name#find-old-or-create-new
     (&key
        string
        index
        (collision-level 0))
   (cond
-    ;; creat-new
+    ;; create-new
     ((not (name-hash-table-index#used? index))
-     (help#string->name#creat-new
+     (help#string->name#create-new
       :string string
       :index index
       :collision-level collision-level)
@@ -552,7 +552,7 @@
      index)
     ;; collision
     (:else
-     (help#string->name#find-old-or-creat-new
+     (help#string->name#find-old-or-create-new
       :string string
       :index (name-hash-table-index#next :index index)
       :collision-level (add1 collision-level)))
@@ -571,7 +571,7 @@
 
 (defparameter *name-hash-table#collision-record* '())
 
-(defun help#string->name#creat-new
+(defun help#string->name#create-new
     (&key
        string
        index
@@ -612,15 +612,18 @@
                    (find#key :section-name configuration))
                   (section-meta
                    (find#key :section-meta configuration))
+                  (section-init?
+                   (find#key :init? section-meta))
                   (stream-cicada-section
-                   (open (cat ()
-                           ("cicada:")
-                           ("image;")
-                           ("~A;" image-name)
-                           ("~A;" section-name)
-                           ("~A.cicada-section" section-name))
-                         :direction :output
-                         :if-exists :supersede))
+                   (when (equal 'true section-init?)
+                     (open (cat ()
+                             ("cicada:")
+                             ("image;")
+                             ("~A;" image-name)
+                             ("~A;" section-name)
+                             ("~A.cicada-section" section-name))
+                           :direction :output
+                           :if-exists :supersede)))
                   (stream-meta
                    (open (cat ()
                            ("cicada:")
@@ -631,7 +634,8 @@
                          :direction :output
                          :if-exists :supersede)))
              (cat (:to stream-meta) ("~W" section-meta))
-             (close stream-cicada-section)
+             (when (equal 'true section-init?)
+               (close stream-cicada-section))
              (close stream-meta))))
     (mapcar (function config-section)
             configuration-list)))
@@ -639,10 +643,14 @@
 (config#cicada-image
  `((:image-name "test-image"
                 :section-name "test"
-                :section-meta (:size 666))
+                :section-meta (:init?
+                               true
+                               :size 666))
    (:image-name "test-image"
                 :section-name "vector-function-heap"
-                :section-meta (:size ,(mul 6 1024)))))
+                :section-meta (:init?
+                               false
+                               :size ,(mul 6 1024)))))
 (defparameter *size#cicada-memory* (mul 1024 1024))
 
 (defparameter *current-free-address#cicada-memory* 0)
@@ -659,7 +667,7 @@
 ;;    :section-meta (:size ,(mul 6 1024)))
 ;;   ...)
 
-(defun load#cicada-section
+(defun create#cicada-section
     (&key
        image-name
        section-name)
@@ -675,26 +683,31 @@
                  (section-meta (read meta-stream)))
             (close meta-stream)
             (values section-meta)))
-         (section-size (find#key :size section-meta))
+         (section-size  (find#key :size  section-meta))
+         (section-init? (find#key :init? section-meta))
          (section-offset *current-free-address#cicada-memory*)
          (end-address
-          (file->byte-vector!
-           :filename (cat ()
-                       ("cicada:")
-                       ("image;")
-                       ("~A;" image-name)
-                       ("~A;" section-name)
-                       ("~A.cicada-section" section-name))
-           :byte-vector *cicada-memory*
-           :start section-offset)))
+          (cond ((equal? 'false section-init?)
+                 0)
+                ((equal? 'true section-init?)
+                 (file->byte-vector!
+                  :filename (cat ()
+                              ("cicada:")
+                              ("image;")
+                              ("~A;" image-name)
+                              ("~A;" section-name)
+                              ("~A.cicada-section" section-name))
+                  :byte-vector *cicada-memory*
+                  :start section-offset)))))
     (set! *current-free-address#cicada-memory*
         (add *current-free-address#cicada-memory*
              section-size))
-    (set-end-car! (append `(:section-offset ,section-offset)
-                          `(:section-name   ,section-name)
-                          `(:image-name     ,image-name)
-                          `(:section-meta   ,section-meta))
-                  *data-section-record#cicada-memory*)
+    (set-end-cdr! *data-section-record#cicada-memory*
+        (list
+         (list :section-offset section-offset
+               :section-name   section-name
+               :image-name     image-name
+               :section-meta   section-meta)))
     (be :title (string->title section-name)
         :name  (string->name "offset")
         :title#object (string->title "fixnum")
@@ -706,8 +719,8 @@
     (be :title (string->title section-name)
         :name  (string->name "current-free-address")
         :title#object (string->title "fixnum")
-        :value#object end-address)
-    (values :load#cicada-section--ok)))
+        :value#object (sub end-address section-offset))
+    (values :create#cicada-section--ok)))
 (defun cicada-section-name->meta (section-name)
   (find#key :section-meta
             (find#record :section-name section-name
@@ -717,6 +730,27 @@
   (find#key :section-offset
             (find#record :section-name section-name
                          *data-section-record#cicada-memory*)))
+(defun load#cicada-section
+    (&key
+       section-name
+       file-to-load)
+  (let* ((section-offset
+          (with (ask :title (string->title section-name)
+                     :name  (string->name "offset"))
+            .value))
+         (end-address 
+          (file->byte-vector!
+           :filename file-to-load
+           :byte-vector *cicada-memory*
+           :start section-offset))
+         (old-current-free-address
+          (ask :title (string->title section-name)
+               :name  (string->name "current-free-address"))))
+    (be :title (string->title section-name)
+        :name  (string->name "current-free-address")
+        :title#object (string->title "fixnum")
+        :value#object (add old-current-free-address
+                           (sub end-address section-offset)))))
 (defun fetch-byte#cicada-section
     (&key
        (section-offset nil)
@@ -728,7 +762,7 @@
           :size 1
           :index (add address
                       section-offset)))
-     
+
         ((not (nil? section-name))
          (fetch#byte-vector
           :byte-vector *cicada-memory*
@@ -736,7 +770,7 @@
           :index (add address
                       (cicada-section-name->offset
                        section-name))))
-     
+
         (:else
          (orz ()
            ("when calling (fetch-byte#cicada-section)~%")
@@ -757,7 +791,7 @@
           :size 1
           :index (add address
                       section-offset)))
-     
+
         ((not (nil? section-name))
          (save#byte-vector
           :value byte
@@ -766,7 +800,7 @@
           :index (add address
                       (cicada-section-name->offset
                        section-name))))
-     
+
         (:else
          (orz ()
            ("when calling (save-byte#cicada-section)~%")
