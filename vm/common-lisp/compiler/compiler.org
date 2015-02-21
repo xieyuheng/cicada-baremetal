@@ -89,6 +89,43 @@
 ** note
    * use prefix $ to denote functions about compiling
    * file.iaa -> string -> byte-vector -> file.ccd
+** load#ccd!
+   * ".ccd" is a directory 
+     files "title-name-info" and "data" are in it
+   * solve title-name object binding
+     and generate file "ready-to-load"
+     and call the low-level load#cicada-section
+   #+begin_src lisp :tangle compiler.lisp
+   (defun load#ccd!
+       (&key
+          section-name
+          from
+          (ccd nil)
+          (ccd-list nil))
+     (cond ((and (not (nil? ccd))
+                 (not (nil? ccd-list)))
+            (orz ()
+              ("when calling (load#ccd!)~%")
+              ("you can not use both of the arguments :ccd and :ccd-list~%")))
+           ((not (nil? ccd))
+            (load#cicada-section   
+             :section-name section-name
+             :from from
+             :file (cat ()
+                     ("~A.ccd;" ccd)
+                     ("data"))))        
+           ((not (nil? ccd-list))
+            (mapcar (lambda (ccd)
+                      (load#ccd                    
+                       :section-name section-name
+                       :from from
+                       :ccd ccd))
+                    ccd-list))
+           (:else
+            (orz ()
+              ("when calling (load#ccd!)~%")
+              ("one of the arguments :ccd or :ccd-list must be not nil~%")))))
+   #+end_src
 ** note calling-graph
    #+begin_src lisp
    ($iaa->ccd!
@@ -104,12 +141,36 @@
    #+begin_src lisp :tangle compiler.lisp
    (defun $iaa->ccd!
        (&key
-          iaa
-          ccd)
-     (let* ((string (file->string :filename iaa))
-            (byte-vector ($string->byte-vector :string string)))
-       (byte-vector->file! :filename ccd
-                           :byte-vector byte-vector)))
+          from
+          (iaa nil)
+          (iaa-list nil)
+          to)
+     (cond ((and (not (nil? iaa))
+                 (not (nil? iaa-list)))
+            (orz ()
+              ("when calling ($iaa->ccd!)~%")
+              ("you can not use both of the arguments :iaa and :iaa-list~%")))
+           ((not (nil? iaa))
+            (let* ((string (file->string :filename (cat ()
+                                                     (from)
+                                                     ("~A.iaa" iaa))))
+                   (byte-vector ($string->byte-vector :string string)))
+              (byte-vector->file! :filename (cat ()
+                                              (to)
+                                              ("~A.ccd;" iaa)
+                                              ("data"))
+                                  :byte-vector byte-vector)))
+           ((not (nil? iaa-list))
+            (mapcar (lambda (iaa)
+                      ($iaa->ccd!                    
+                       :from from
+                       :iaa iaa
+                       :to to))
+                    iaa-list))
+           (:else
+            (orz ()
+              ("when calling ($iaa->ccd!)~%")
+              ("one of the arguments :iaa or :iaa-list must be not nil~%")))))
    #+end_src
 ** $string->byte-vector
    #+begin_src lisp :tangle compiler.lisp
@@ -295,24 +356,30 @@
   #+begin_src lisp
   (let ()
     (create#cicada-section
-     :image-name "test-image"
+     :image-name "test"
      :section-name "test")
     (create#cicada-section
-     :image-name "test-image"
+     :image-name "test"
      :section-name "vector-function-heap")
     (define-primitive-function "test" "kkk"
         (@ -- @)
       (cat (:to *standard-output*)
         ("kkk took what away?~%")))
     ($iaa->ccd!
-     :iaa "cicada:source;core;english-core.iaa"
-     :ccd "cicada:source;core;english-core.ccd")
-    (load#cicada-section   
+     :from "cicada:source;core;"
+     :iaa "english-core"
+     :to "cicada:source;core;")
+    (load#ccd!
      :section-name "vector-function-heap"
-     :file-to-load "cicada:source;core;english-core.ccd")
+     :from "cicada:source;core;"
+     :ccd "english-core")
     (push#return-stack
      :title (string->title "vector-function-heap")
      :value 0)
+    (execute-next-instruction)
+    (push#return-stack
+     :title (string->title "vector-function-heap")
+     :value 32)
     (execute-next-instruction))
   #+end_src
 * ===================================

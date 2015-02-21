@@ -1,14 +1,67 @@
 (in-package :cicada-vm)
 (defun fetch#vector-function-body ())
 (defun save#vector-function-body ())
+(defun load#ccd!
+    (&key
+       section-name
+       from
+       (ccd nil)
+       (ccd-list nil))
+  (cond ((and (not (nil? ccd))
+              (not (nil? ccd-list)))
+         (orz ()
+           ("when calling (load#ccd!)~%")
+           ("you can not use both of the arguments :ccd and :ccd-list~%")))
+        ((not (nil? ccd))
+         (load#cicada-section   
+          :section-name section-name
+          :from from
+          :file (cat ()
+                  ("~A.ccd;" ccd)
+                  ("data"))))        
+        ((not (nil? ccd-list))
+         (mapcar (lambda (ccd)
+                   (load#ccd                    
+                    :section-name section-name
+                    :from from
+                    :ccd ccd))
+                 ccd-list))
+        (:else
+         (orz ()
+           ("when calling (load#ccd!)~%")
+           ("one of the arguments :ccd or :ccd-list must be not nil~%")))))
 (defun $iaa->ccd!
     (&key
-       iaa
-       ccd)
-  (let* ((string (file->string :filename iaa))
-         (byte-vector ($string->byte-vector :string string)))
-    (byte-vector->file! :filename ccd
-                        :byte-vector byte-vector)))
+       from
+       (iaa nil)
+       (iaa-list nil)
+       to)
+  (cond ((and (not (nil? iaa))
+              (not (nil? iaa-list)))
+         (orz ()
+           ("when calling ($iaa->ccd!)~%")
+           ("you can not use both of the arguments :iaa and :iaa-list~%")))
+        ((not (nil? iaa))
+         (let* ((string (file->string :filename (cat ()
+                                                  (from)
+                                                  ("~A.iaa" iaa))))
+                (byte-vector ($string->byte-vector :string string)))
+           (byte-vector->file! :filename (cat ()
+                                           (to)
+                                           ("~A.ccd;" iaa)
+                                           ("data"))
+                               :byte-vector byte-vector)))
+        ((not (nil? iaa-list))
+         (mapcar (lambda (iaa)
+                   ($iaa->ccd!                    
+                    :from from
+                    :iaa iaa
+                    :to to))
+                 iaa-list))
+        (:else
+         (orz ()
+           ("when calling ($iaa->ccd!)~%")
+           ("one of the arguments :iaa or :iaa-list must be not nil~%")))))
 (defparameter *string$string->byte-vector* "")
 (defparameter *cursor$string->byte-vector* 0)
 
