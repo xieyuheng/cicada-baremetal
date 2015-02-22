@@ -1,40 +1,9 @@
-#+AUTHOR:    XIE Yuheng
+#+AUTHOR:    謝宇恆 / XIE Yuheng
 #+EMAIL:     xyheme@gmail.com
 
 
-* what is cicada language ?
-  cicada language is a very simple programming language,
-  it is a stack-based and functional language,
-  the design of cicada is influenced by scheme and forth and joy and smalltalk.
+this fork of cicada-language's main repo
 
-* platforms and running
-  please do NOT use cicada language for now,
-  and waiting for my announcement about a stable version.
+reuse the code of the early version cicada-language 
 
-* documentations
-  http://cicada-language.github.io
-
-* open source project
-  https://github.com/cicada-language
-
-* about us
-  http://cicada-language.github.io/about-us
-
-* ------------------------------------
-* 何爲蟬語 ?
-  蟬語 是一個非常簡單的程序語言.
-  它是 一個以明顯地方式運用棧的 函數式編程語言.
-  蟬語 的設計靈感來源於 scheme 和 forth 和 joy 和 smalltalk.
-
-* 平臺 與 運行
-  請暫時**不要**使用蟬語,
-  請耐心等待我宣佈整個系統的設計已經穩定.
-
-* 文檔
-  http://cicada-language.github.io
-
-* 開源項目
-  https://github.com/cicada-language
-
-* 關於我們
-  http://cicada-language.github.io/about-us
+to teach how to implement a threaded-code interpreter

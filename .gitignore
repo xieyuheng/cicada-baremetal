@@ -4,5 +4,5 @@
 *.ccd
 *.cicada-section
 
-old/vm/x86-64/linux/cicada
-old/vm/x86-64/baremetal/*.vmdk
+vm/x86-64/linux/cicada
+vm/x86-64/baremetal/*.vmdk
