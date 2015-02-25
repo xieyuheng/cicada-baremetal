@@ -1,7 +1,6 @@
-#+TITLE: macro of cicada extensible virtual machine
-#+AUTHOR: XIE Yuheng
-#+EMAIL: xyheme@gmail.com
-
+#+TITLE:  macro of cicada extensible virtual machine
+#+AUTHOR: 謝宇恆 / XIE Yuheng
+#+EMAIL:  xyheme@gmail.com
 
 * ==================================================
 * macro
