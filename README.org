@@ -4,6 +4,4 @@
 
 this fork of cicada-language's main repo
 
-reuse the code of the early version cicada-language 
-
-to teach how to implement a threaded-code interpreter
+provides a view of the early version of cicada-language
