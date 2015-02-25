@@ -75,12 +75,12 @@ store word .length at (current_free_address$primitive_string_heap)
 current_free_address$primitive_string_heap = current_free_address$primitive_string_heap + 2
 
 repeat .length
-  virtual at 0
-     db string
-     load .char byte from (% - 1)
-  end virtual
-  store byte .char at (current_free_address$primitive_string_heap)
-  current_free_address$primitive_string_heap = current_free_address$primitive_string_heap + 1
+   virtual at 0
+      db string
+      load .char byte from (% - 1)
+   end virtual
+   store byte .char at (current_free_address$primitive_string_heap)
+   current_free_address$primitive_string_heap = current_free_address$primitive_string_heap + 1
 end repeat
 
 }
@@ -153,6 +153,7 @@ jo:
 
    }
 size$primitive_string_heap = 100 * 1024 ;; (byte)
+
 address$primitive_string_heap:
    times size$primitive_string_heap db 0
 explain$function:
@@ -182,17 +183,17 @@ address$argument_stack labeling
 address$return_stack labeling
    preserve 1024 * 1024 * bead_size
 define_function "little_test", little_test
-  xx V__ak
-  xx exit_with_TOS
-  xx exit
+   xx V__little_test_number
+   xx exit_with_TOS
+   xx exit
 
-define_variable "47", V__ak
-  xx 47
+define_variable "*little-test-number*", V__little_test_number
+   xx 7
 
 define_primitive_function "exit-with-TOS", exit_with_TOS
-    pop_argument_stack sys_1_rdi
-    mov sys_n_rax, syscall_exit
-    syscall
+   pop_argument_stack sys_1_rdi
+   mov sys_n_rax, syscall_exit
+   syscall
 size$un_initialized_memory = 64 * 1024 * 1024 ;; (byte)
 
 segment readable writeable

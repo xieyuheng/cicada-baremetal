@@ -9,16 +9,60 @@
    * use "jo" to denote bead
      and use "jojo" to denote a thread of beads
      [which reads like "珠珠" in Chinese]
-** naming convention in assembly code
-   1. using underline to compose big word from small words
-   2. using "$" as prefix and postfix separator
-   3. for jo name
-      * prefix "V__" for variable
-** naming convention in cicada-nymph code
-   1. for jo name
-      [maybe]
-      * borderfix "*" for variable
-      * borderfix "+" for constant
+* note intro
+** indirect-threaded-code interpreter
+* note simplification on feature
+** simplifications are for teaching purpose only
+** no mixfix-notation
+   * function call is "function" instead of "(function)"
+   * no such thing like
+     1 2 (add) = 1 (add 2) = (add 1 2)
+** no title-name-table
+   * and single name space
+** no type
+   * no type inference
+   * no dynamic type tag
+   * no static type declaration
+** global linked-list for naming
+   * not hash-table
+** no dynamic-memory-management
+   * no garbage-collectior
+* note syntax & semantic
+** compiler
+   * a macro is a function to be called at compile time
+     with a string to be compiled as one argument
+     and do side-effect to store data into memory
+     and return a shorter string
+     [this can be viewed as moving a cursor forward]
+   * the compiler is a macro dispatcher
+     it get next word and use predicates on word to do dispatch
+** convention in assembly code
+   * using underline to compose big word from small words
+   * using "$" as prefix and postfix separator
+   * indentation level = 3
+   * naming convention of jo
+     | convention   | jo type  |
+     |--------------+----------|
+     | prefix "V__" | variable |
+     | prefix "M__" | macro    |
+** convention in cicada-nymph code
+   * using dash to compose big word from small words
+   * using "," as prefix and postfix separator
+   * indentation style = free
+   * words are separated by space
+     except for bar-ket
+     every bar-ket is viewed as a word
+** syntax of cicada-nymph
+   | syntax          | semantic              |
+   |-----------------+-----------------------|
+   | borderfix "* *" | variable              |
+   | borderfix "+ +" | constant              |
+   | bar-ket ( )     |                       |
+   | bar-ket [ ]     |                       |
+   | bar-ket { }     | macro call            |
+   |                 | (for macros of which  |
+   |                 | the number of         |
+   |                 | arguments is not fix) |
 * -----------------------------------
 * prolog
 ** include linux header
@@ -35,7 +79,7 @@
    segment readable executable writeable
    #+end_src
 * -----------------------------------
-* macro
+* macro in assembly code
 ** misc
    #+begin_src fasm :tangle 1st-instar.fasm
    ;; in fasm, "dup" is a reserved word
@@ -128,12 +172,6 @@
    ;; initial link to point to 0 (as null)
    link = 0
    #+end_src
-** JO_TYPE encoding
-   #+begin_src fasm :tangle 1st-instar.fasm
-   JO_TYPE__function = 0
-   JO_TYPE__primitive_function = 1
-   JO_TYPE__variable = 2
-   #+end_src
 ** make_name_string
    * 2 bytes for length of name_string
    * note that
@@ -153,12 +191,12 @@
    current_free_address$primitive_string_heap = current_free_address$primitive_string_heap + 2
 
    repeat .length
-     virtual at 0
-        db string
-        load .char byte from (% - 1)
-     end virtual
-     store byte .char at (current_free_address$primitive_string_heap)
-     current_free_address$primitive_string_heap = current_free_address$primitive_string_heap + 1
+      virtual at 0
+         db string
+         load .char byte from (% - 1)
+      end virtual
+      store byte .char at (current_free_address$primitive_string_heap)
+      current_free_address$primitive_string_heap = current_free_address$primitive_string_heap + 1
    end repeat
 
    }
@@ -177,9 +215,6 @@
    link__#jo:
       xx link
       link = link__#jo
-
-   type__#jo:
-      xx JO_TYPE__function
 
    jo:
       xx explain$function
@@ -202,9 +237,6 @@
    link__#jo:
       xx link
       link = link__#jo
-
-   type__#jo:
-      xx JO_TYPE__primitive_function
 
    jo:
       xx assembly_code__#jo
@@ -235,9 +267,6 @@
       xx link
       link = link__#jo
 
-   type__#jo:
-      xx JO_TYPE__primitive_function
-
    jo:
       xx explain$variable
 
@@ -250,17 +279,18 @@
 * primitive_string_heap
   #+begin_src fasm :tangle 1st-instar.fasm
   size$primitive_string_heap = 100 * 1024 ;; (byte)
+
   address$primitive_string_heap:
      times size$primitive_string_heap db 0
   #+end_src
 * jo
-** note explain
-   * 尋求珠之意義
+** note
    * 注意
      每次經由 next 間接跳
      到這裏的詮釋者的時候
      rax 都保存着珠的值
      所以 rax 這個寄存器會被作爲某些詮釋者的參數
+   * 每個 jo 的類型對應一種解釋方式
 ** explain$function
    * 把由這個 function 類型的 珠
      所找到的 一串珠珠 入 return_stack
@@ -309,20 +339,36 @@
    address$return_stack labeling
       preserve 1024 * 1024 * bead_size
    #+end_src
+* special jo
+** note
+   * a special jo is not treated as function call
+   * the naming convention in assembly code of special jo
+     is the same as it of jo
+** literal
+** address
+** branch
+** false?branch
+* bool
+** note predicate
+   * predicates do NOT consume their arguments in argument_stack
+     instead they push a bool into argument_stack
+* fixnum
+* memory
+* macro in cicada-nymph
 * little_test
   #+begin_src fasm :tangle 1st-instar.fasm
   define_function "little_test", little_test
-    xx V__ak
-    xx exit_with_TOS
-    xx exit
+     xx V__little_test_number
+     xx exit_with_TOS
+     xx exit
 
-  define_variable "47", V__ak
-    xx 47
+  define_variable "*little-test-number*", V__little_test_number
+     xx 7
 
   define_primitive_function "exit-with-TOS", exit_with_TOS
-      pop_argument_stack sys_1_rdi
-      mov sys_n_rax, syscall_exit
-      syscall
+     pop_argument_stack sys_1_rdi
+     mov sys_n_rax, syscall_exit
+     syscall
   #+end_src
 * -----------------------------------
 * epilog
