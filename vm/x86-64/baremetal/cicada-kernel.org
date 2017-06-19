@@ -5,1346 +5,1346 @@
 
 * ==================================================
 * preface
-** bootloader
-*** note
-    1. when booting from USB
-       BIOS see it as floppy
-       "extended_read" is not implemented for it
-    2. I do not use FAT
-       the FAT header keeped in the source code
-       is just for to let BIOS views the USB as a floppy
-    3. this bootsector will load
-       cicada-kernel.bin from "LocationOfKernel_inFloppy"
-       use "mov ah, 2 ; int 13h"
-       only the first 2880 sectors (1440k)
-       can be loaded by this BIOS function
-    4. to enter unreal mode is to enable 32-bit offsets in real mode
-    5. about descriptor cache
-       To allow for fast accesses to segmented memory,
-       the x86 processor keeps a copy of each segment descriptor in a special descriptor cache.
-       This saves the processor from accessing the GDT for every memory access made.
-       The workings of this cache allows for some interesting side effects.
-*** implementation
-    #+begin_src fasm :tangle bootloader.fasm
-    loadKernel? equ yes
-    checkMagicNumberOfKernel? equ yes
+*** bootloader
+***** note
+      1. when booting from USB
+         BIOS see it as floppy
+         "extended_read" is not implemented for it
+      2. I do not use FAT
+         the FAT header keeped in the source code
+         is just for to let BIOS views the USB as a floppy
+      3. this bootsector will load
+         cicada-kernel.bin from "LocationOfKernel_inFloppy"
+         use "mov ah, 2 ; int 13h"
+         only the first 2880 sectors (1440k)
+         can be loaded by this BIOS function
+      4. to enter unreal mode is to enable 32-bit offsets in real mode
+      5. about descriptor cache
+         To allow for fast accesses to segmented memory,
+         the x86 processor keeps a copy of each segment descriptor in a special descriptor cache.
+         This saves the processor from accessing the GDT for every memory access made.
+         The workings of this cache allows for some interesting side effects.
+***** implementation
+      #+begin_src fasm :tangle bootloader.fasm
+      loadKernel? equ yes
+      checkMagicNumberOfKernel? equ yes
 
-    FirstSector = 0
+      FirstSector = 0
 
+      SizeOfKernel = 320 ;; unit :: k
+      LocationOfKernel_inFloppy = 128     ;; unit :: k
+      LocationOfKernel_inMemory = 32*1024 ;; unit :: b
+      MagicNumberOfKernel = 26881h
+
+      org 7c00h
+
+              jmp short start
+              nop
+
+      ;; basic information about the FAT file system
+
+      DiskNameString db "cicada  "
+      BytesPerSector = 512
+        dw BytesPerSector
+      SectorsPerCluster = 1
+        db SectorsPerCluster
+      ReservedSectors = 1
+        dw ReservedSectors
+        ;; to set this value to 1 is to reserve a sector for boot record
+        ;; this value is used to calculate the location for the first sector containing the FAT
+      NumberOfFAT = 2
+        db NumberOfFAT
+        ;; The usage of two copies are to prevent data loss if one or part of one FAT copy is corrupted
+      NumberOfEntriesInRootDir = 224
+        dw NumberOfEntriesInRootDir
+        ;; 224 * 32 equ 7168 equ 14 sectors to read
+      TotalNumberOfSectors = 2880
+        dw TotalNumberOfSectors
+      MediaDescriptor = 0f0h
+        db MediaDescriptor
+        ;;     Capacity     Physical Format
+        ;; F0  2.88 MB      3.5-inch, 2-sided, 36-sector
+        ;; F0  1.44 MB      3.5-inch, 2-sided, 18-sector
+        ;; F8  ?            Fixed disk
+        ;; F9  720 KB       3.5-inch, 2-sided, 9-sector
+        ;; F9  1.2 MB       5.25-inch, 2-sided, 15-sector
+        ;; FA  ?            ?
+        ;; FB  ?            ?
+        ;; FC  180 KB       5.25-inch, 1-sided, 9-sector
+        ;; FD  360 KB       5.25-inch, 2-sided, 9-sector
+        ;; FE  160 KB       5.25-inch, 1-sided, 8-sector
+        ;; FF  320 KB       5.25-inch, 2-sided, 8-sector
+      SectorsPerFAT = 9
+        dw SectorsPerFAT
+      SectorsPerTrack = 18 ;; 36/cylinder
+        AddressOfSectorsPerTrack: dw SectorsPerTrack
+      NumberOfHeads = 2
+        AddressOfNumberOfHeads: dw NumberOfHeads
+        ;; There is only one physical disk in a floppy disk and thus 2 sides - head 0 and head 1
+      HiddenSectors = 0
+        dd HiddenSectors
+        ;; When the volume is on a media that is partitioned,
+        ;; this value contains the number of sectors preceeding the first sector of the volume.
+      LargeSectors = 0
+        dd LargeSectors
+        ;; Number of LBA sectors
+      DriveNumber: dw 0
+        ;; This is the "int 13h" drive number of the drive
+        ;; The value 00h is used for the first floppy drive
+        ;; and the value 80h is used for the first harddrive
+      DriveSignature = 41
+        db DriveSignature
+        ;; or Extended Boot Signature
+        ;; If this byte contain a value of 29h equ 41
+        ;; it indicates that the following three fields are available
+      VolumeSerialNumber = 00000000h
+        dd VolumeSerialNumber
+        ;; 32 bit random number,
+      VolumeLabelString    db "cicada     " ;; 11 bytes
+      FileSystemNameString db "FAT12   "    ;; 8  bytes
+
+
+      start:
+              cli
+              mov [DriveNumber], dl           ; BIOS passes drive number in DL
+              xor ax, ax       ; make it zero
+              mov ds, ax
+              mov es, ax
+              mov fs, ax
+              mov gs, ax
+              mov ss, ax
+              mov sp, 7c00h
+
+              ;; * entering unreal mode *
+
+              push ds          ; save real mode
+
+              lgdt [gdtinfo]   ; load gdt register
+
+              mov eax, cr0     ; switch to pmode
+              or al, 00000001b
+              mov cr0, eax
+
+
+              ;; In protected mode
+              ;; the bits 3-15 in the segment register are an index into the descriptor table
+              mov bx, 1000b          ; select descriptor 1
+              mov ds, bx
+
+
+              and al, 11111110b      ; switch to rmode
+              mov cr0, eax
+
+
+              pop ds           ; get back old segment
+
+              ;; * end of entering unreal mode *
+
+              sti
+
+              ;; NOTE: A few early BIOSes are reported to improperly set DL
+              cmp dl, 0
+              je no_change
+              mov byte [DriveNumber], dl               ; Save boot device number
+              mov ah, 8                                ; Get drive parameters
+              int 13h
+              jc fatal_disk_error
+              and cx, 3fh                              ; Maximum sector number
+              mov word [AddressOfSectorsPerTrack], cx  ; Sector numbers start at 1
+              movzx dx, dh                             ; Maximum head number
+              add dx, 1                                ; Head numbers start at 0 - add 1 for total
+              mov word [AddressOfNumberOfHeads], dx
+      no_change:
+              mov eax, 0                               ; Needed for some older BIOSes
+
+              mov si, msg_Load
+              call print_string_16
+
+              ;; ; Enable the A20 gate
+              ;; set_A20:
+              ;;         in al, 0x64
+              ;;         test al, 0x02
+              ;;         jnz set_A20
+              ;;         mov al, 0xD1
+              ;;         out 0x64, al
+              ;; check_A20:
+              ;;         in al, 0x64
+              ;;         test al, 0x02
+              ;;         jnz check_A20
+              ;;         mov al, 0xDF
+              ;;         out 0x60, al
+
+      if loadKernel? eq yes
+              mov ebx, (LocationOfKernel_inFloppy * 2)
+              mov eax, (SizeOfKernel)*2
+              mov edi, LocationOfKernel_inMemory
+              call readsectors
+      end if
+
+      if checkMagicNumberOfKernel? eq yes
+              mov ebx, LocationOfKernel_inMemory + SizeOfKernel*1024 - 4
+              mov eax, [ebx]
+              cmp eax, MagicNumberOfKernel
+              jne magic_fail
+      end if
+
+              mov si, msg_LoadDone
+              call print_string_16
+
+              jmp 0x0000:LocationOfKernel_inMemory
+
+      magic_fail:
+              mov si, msg_MagicFail
+              call print_string_16
+      halt:
+              cli
+              hlt
+
+      ;------------------------------------------------------------------------------
+      ; read sectors from a disk to RAM, using LBA
+      ; IN:   EBX = starting sector index to read
+      ;       EAX = number of sectors to read
+      ;       EDI = memory location to store sectors
+      ; OUT:  EBX = EBX + number of sectors that were read
+      ;       EDI = EDI + (number of sectors read * 512)
+      readsectors:
+
+      .more:
+              call read_one_sector_to_SectorBuffer
+              jc .more
+              call copy_SectorBuffer_to_high_address
+
+              inc ebx
+
+              dec eax
+              cmp eax, 0
+              jne .more
+
+              ret
+      ;------------------------------------------------------------------------------
+
+      ;------------------------------------------------------------------------------
+      ; copy SectorBuffer to high address
+      ; IN:   EDI - high address
+      ; OUT:  EDI - the same EDI
+      copy_SectorBuffer_to_high_address:
+              push bx
+              push dx
+
+              xor bx, bx
+      .more:
+
+              mov dx, word [bx+SectorBuffer]
+              mov word [ds:edi], dx
+
+              inc bx
+              inc bx
+
+              inc edi
+              inc edi
+
+              cmp bx, 512
+              je .done
+              jmp .more
+
+      .done:
+              pop dx
+              pop bx
+
+              mov si, msg_Copying
+              call print_string_16
+
+              ret
+      ;------------------------------------------------------------------------------
+
+      ;------------------------------------------------------------------------------
+      ; Read a sector from a disk to SectorBuffer, using LBA
+      ; IN:   EBX - Low word of 64-bit DOS sector number
+      ; OUT:  EBX - Low word of sector (the same one)
+      read_one_sector_to_SectorBuffer:
+              push eax
+              push ebx
+              push ecx
+              push edx
+              push esi
+              push edi
+
+              mov ax, bx
+
+              ;; cl = sector
+              xor dx, dx
+              div word [AddressOfSectorsPerTrack]
+              ;; physical sectors start at 1
+              ;; physical cylinders start at 0
+              ;; physical head start at 0
+              inc dl
+              mov cl, dl
+
+              mov ax, bx
+
+              ;; dh = head
+              xor dx, dx
+              div word [AddressOfSectorsPerTrack]
+              xor dx, dx
+              div word [AddressOfNumberOfHeads]
+              mov dh, dl
+
+              ;; ch = cylinder
+              mov ch, al
+
+              mov al, 1                     ; one sector
+              mov dl, [DriveNumber]         ; from the Drive
+              mov bx, SectorBuffer          ; to SectorBuffer
+              mov ah, 2
+              int 13h
+
+              pop edi
+              pop esi
+              pop edx
+              pop ecx
+              pop ebx
+              pop eax
+
+              jnc @f                          ; jump if no error
+              mov si, msg_BIOS_read_error
+              call print_string_16
+              stc
+              ret
+
+      @@:
+              mov si, msg_Loading
+              call print_string_16
+              clc
+              ret
+      ;------------------------------------------------------------------------------
+
+      ;------------------------------------------------------------------------------
+      ; 16-bit function to print a string to the screen
+      ; IN:   SI - Address of start of string
+      print_string_16:                        ; Output string in SI to screen
+              pusha
+              mov ah, 0x0E                    ; int 0x10 teletype function
+      .repeat:
+              lodsb                           ; Get char from string
+              cmp al, 0
+              je .done                        ; If char is zero, end of string
+              int 0x10                        ; Otherwise, print it
+              jmp short .repeat
+      .done:
+              popa
+              ret
+      ;------------------------------------------------------------------------------
+
+      ;------------------------------------------------------------------------------
+      fatal_disk_error:
+          mov si, msg_fatal_disk_error
+          call print_string_16
+          cli
+          hlt
+      ;------------------------------------------------------------------------------
+
+      ;; -------------------------------------------------------
+      gdtinfo:
+         dw gdt_end - gdt - 1   ;last byte in table
+         dd gdt                 ;start of table
+
+      gdt:
+        ;;; descriptor-0 is always unused
+        dd 0,0
+        ;;; descriptor-1
+        ;; base-address :: 2,3,4,7 == 0
+        ;; limit        :: 0,1,l6  == 0fffffh
+        ;; flags        :: h6      == 1100b
+        ;; access       :: 5       == 10010010b
+        ;  0     1     2  3  4  5          6          7
+        db 0xff, 0xff, 0, 0, 0, 10010010b, 11001111b, 0
+      gdt_end:
+
+      ;; ----------------------------------------------------
+      msg_Load:       db "loading cicada", 13, 10, 0
+      msg_Loading:    db "*", 0
+      msg_Copying:    db "+", 0
+      msg_LoadDone:   db "done", 13, 10, "Executing", 0
+      msg_MagicFail:  db "magic fail", 13, 10, 0
+
+      msg_fatal_disk_error: db "fatal disk error", 0
+      msg_BIOS_read_error: db "X", 0
+
+      ;DriveNumber:    db 0x00
+      ;AddressOfSectorsPerTrack: dw 18
+      ;AddressOfNumberOfHeads: dw 2
+      ;; times 446-$+$$ db 0
+      ;; ;; one False partition table entry (16 bytes for one)
+      ;; ;; required by some BIOS vendors.
+      ;; db 0x80, 0x00, 0x01, 0x00
+      ;; db 0xEB, 0xFF, 0xFF, 0xFF
+      ;; db 0x00, 0x00, 0x00, 0x00
+      ;; db 0xFF, 0xFF, 0xFF, 0xFF
+
+      times 510-($-$$) db 0
+         db 0x55
+         db 0xAA
+
+      SectorBuffer: ;; 512 bytes buffer to read one sector at a time
+      #+end_src
+*** [OLD] bootloader
+***** note
+      1. this bootsector will load
+         cicada-kernel.bin from 2M
+         use "mov ah, 42h ; int 13h"
+      3. to enter unreal mode is to enable 32-bit offsets in real mode
+      4. about descriptor cache
+         To allow for fast accesses to segmented memory,
+         the x86 processor keeps a copy of each segment descriptor in a special descriptor cache.
+         This saves the processor from accessing the GDT for every memory access made.
+         The workings of this cache allows for some interesting side effects.
+***** implementation
+      #+begin_src fasm
+      checkMagicNumberOfKernel equ yes
+
+      FirstSector = 0
+
+      ;; for burn into sda6
+      ;; to test on real hardwares
+      ;FirstSector = 603666432
+
+      SizeOfKernel = 512 ;; unit :: k
+      LocationOfKernel = 32*1024
+      MagicNumberOfKernel = 26881h
+
+      org 7c00h           ; add to offsets
+              cli
+              mov [DriveNumber], dl           ; BIOS passes drive number in DL
+              xor ax, ax       ; make it zero
+              mov ds, ax
+              mov es, ax
+              mov fs, ax
+              mov gs, ax
+              mov ss, ax
+              mov sp, 7c00h
+
+              ;; ;; * entering unreal mode *
+              ;;
+              ;; push ds          ; save real mode
+              ;;
+              ;; lgdt [gdtinfo]   ; load gdt register
+              ;;
+              ;; mov eax, cr0     ; switch to pmode
+              ;; or al, 00000001b
+              ;; mov cr0, eax
+              ;;
+              ;;
+              ;; ;; In protected mode
+              ;; ;; the bits 3-15 in the segment register are an index into the descriptor table
+              ;; mov bx, 1000b          ; select descriptor 1
+              ;; mov ds, bx
+              ;;
+              ;;
+              ;; and al, 11111110b      ; switch to rmode
+              ;; mov cr0, eax
+              ;;
+              ;;
+              ;; pop ds           ; get back old segment
+              ;;
+              ;; ;; * end of entering unreal mode *
+
+              sti
+
+
+              mov si, msg_Load
+              call print_string_16
+
+              ;; ; Enable the A20 gate
+              ;; set_A20:
+              ;;         in al, 0x64
+              ;;         test al, 0x02
+              ;;         jnz set_A20
+              ;;         mov al, 0xD1
+              ;;         out 0x64, al
+              ;; check_A20:
+              ;;         in al, 0x64
+              ;;         test al, 0x02
+              ;;         jnz check_A20
+              ;;         mov al, 0xDF
+              ;;         out 0x60, al
+
+              ;; kernel is in Block-1 (offset is 2M)
+              mov ebx, (1*(2*1024))*2 + FirstSector
+              mov eax, (SizeOfKernel)*2
+              mov edi, LocationOfKernel
+              call readsectors
+
+      if checkMagicNumberOfKernel eq yes
+              mov ebx, LocationOfKernel + SizeOfKernel*1024 - 4
+              mov eax, [ebx]
+              cmp eax, MagicNumberOfKernel
+              jne magic_fail
+      end if
+
+              mov si, msg_LoadDone
+              call print_string_16
+
+
+              jmp 0x0000:LocationOfKernel
+
+
+
+
+      magic_fail:
+              mov si, msg_MagicFail
+              call print_string_16
+      halt:
+              cli
+              hlt
+
+
+
+
+      ;------------------------------------------------------------------------------
+      ; read sectors from a disk to RAM, using LBA
+      ; IN:   EBX = starting sector index to read
+      ;       EAX = number of sectors to read
+      ;       EDI = memory location to store sectors
+      ; OUT:  EBX = EBX + number of sectors that were read
+      ;       EDI = EDI + (number of sectors read * 512)
+      readsectors:
+
+      .more:
+              call read_one_sector_to_SectorBuffer
+              call copy_SectorBuffer_to_high_address
+
+              inc ebx
+
+              dec eax
+              cmp eax, 0
+              jne .more
+
+              ret
+      ;------------------------------------------------------------------------------
+
+
+
+
+      ;------------------------------------------------------------------------------
+      ; copy SectorBuffer to high address
+      ; IN:   EDI - high address
+      ; OUT:  EDI - the same EDI
+      copy_SectorBuffer_to_high_address:
+              push bx
+              push dx
+
+              xor bx, bx
+      .more:
+
+              mov dx, word [bx+SectorBuffer]
+              mov word [ds:edi], dx
+
+              inc bx
+              inc bx
+
+              inc edi
+              inc edi
+
+              cmp bx, 512
+              je .done
+              jmp .more
+
+      .done:
+              pop dx
+              pop bx
+
+              mov si, msg_Copying
+              call print_string_16
+
+              ret
+      ;------------------------------------------------------------------------------
+
+
+      ;------------------------------------------------------------------------------
+      ; Read a sector from a disk to SectorBuffer, using LBA
+      ; IN:   EBX - Low word of 64-bit DOS sector number
+      ; OUT:  EBX - Low word of sector (the same one)
+      read_one_sector_to_SectorBuffer:
+              push eax
+              push ebx
+              push ecx
+              push edx
+              push esi
+              push edi
+
+              ;; the following test shows that bx is enough
+              ;mov eax, ebx
+              ;xor ebx, ebx
+              ;mov bx, ax
+
+              mov di, sp                      ; remember parameter block end
+
+              ;; AH = 42h
+              ;; DL = drive number
+              ;; DS:SI -> disk address packet (see #00272)
+
+              ;; Return:
+              ;; CF clear if successful AH = 00h CF set on error AH = error code (see #00234)
+              ;; disk address packet's block count field set to number of blocks successfully transferred
+
+              ;; Format of disk address packet:
+              ;; Offset  Size    Description     (Table 00272)
+              ;; 00h    BYTE    size of packet (10h or 18h)
+              ;; 01h    BYTE    reserved (0)
+              ;; 02h    WORD    number of blocks to transfer
+              ;; 04h    DWORD   -> transfer buffer
+              ;; 08h    QWORD   starting absolute block number
+              ;; (for non-LBA devices, compute as
+              ;; (Cylinder*NumHeads + SelectedHead) * SectorPerTrack +
+              ;; SelectedSector - 1
+              ;; 10h    QWORD   (EDD-3.0, optional) 64-bit flat address of transfer buffer;
+              ;; used if DWORD at 04h is FFFFh:FFFFh
+
+              ;; push dword 0
+              ;; push dword SectorBuffer
+              push dword 0                    ; [C] sector number high 32bit
+              push ebx                        ; [8] sector number low 32bit
+              push word 0                     ; [6] buffer segment
+              push word SectorBuffer          ; [4] buffer offset
+              push word 1                     ; [2] number of blocks to transfer (max 007Fh for Phoenix EDD)1 sector
+              push word 10h                   ; [0] size of parameter block
+
+              mov si, sp
+              mov dl, [DriveNumber]
+              mov ah, 42h                     ; EXTENDED READ
+              int 0x13                        ; http://www.ctyme.com/intr/rb-0708.htm
+
+
+              mov [error_code], ah
+
+              mov sp, di                      ; remove parameter block from stack
+
+              pop edi
+              pop esi
+              pop edx
+              pop ecx
+              pop ebx
+              pop eax
+
+
+              jnc @f                          ; jump if no error
+
+              xor eax, eax
+              mov eax, [error_code]
+              mov edi, string_integer
+              call os_int_to_string
+              mov si, string_integer
+              call print_string_16
+              cli
+              hlt
+
+      @@:
+              mov si, msg_Loading
+              call print_string_16
+              ret
+      ;------------------------------------------------------------------------------
+
+
+      ;------------------------------------------------------------------------------
+      ; 16-bit function to print a string to the screen
+      ; IN:   SI - Address of start of string
+      print_string_16:                        ; Output string in SI to screen
+              pusha
+              mov ah, 0x0E                    ; int 0x10 teletype function
+      .repeat:
+              lodsb                           ; Get char from string
+              cmp al, 0
+              je .done                        ; If char is zero, end of string
+              int 0x10                        ; Otherwise, print it
+              jmp short .repeat
+      .done:
+              popa
+              ret
+      ;------------------------------------------------------------------------------
+
+
+      ;------------------------------------------------------------------------------
+      ; os_int_to_string -- Convert a binary interger into an string string
+      ;  IN:  EAX = binary integer
+      ;       EDI = location to store string
+      ; OUT:  EDI = pointer to end of string
+      ;       All other registers preserved
+      ; Min return value is 0 and max return value is 18446744073709551615 so your
+      ; string needs to be able to store at least 21 characters (20 for the number
+      ; and 1 for the string terminator).
+      ; Adapted from http://www.cs.usfca.edu/~cruse/cs210s09/rax2uint.s
+      os_int_to_string:
+              push edx
+              push ecx
+              push ebx
+              push eax
+
+              mov ebx, 10                             ; base of the decimal system
+              xor ecx, ecx                            ; number of digits generated
+      os_int_to_string_next_divide:
+              xor edx, edx                            ; eAX extended to (RDX,RAX)
+              div ebx                                 ; divide by the number-base
+              push edx                                ; save remainder on the stack
+              inc ecx                                 ; and count this remainder
+              cmp eax, 0x0                            ; was the quotient zero?
+              jne os_int_to_string_next_divide        ; no, do another division
+      os_int_to_string_next_digit:
+              pop edx                                 ; else pop recent remainder
+              add dl, '0'                             ; and convert to a numeral
+              mov [edi], dl                           ; store to memory-buffer
+              inc edi
+              loop os_int_to_string_next_digit        ; again for other remainders
+              mov al, 0x00
+              stosb                                   ; Store the null terminator at the end of the string
+
+              pop eax
+              pop ebx
+              pop ecx
+              pop edx
+              ret
+      ;------------------------------------------------------------------------------
+
+
+      ;; -------------------------------------------------------
+      gdtinfo:
+         dw gdt_end - gdt - 1   ;last byte in table
+         dd gdt                 ;start of table
+
+      gdt:
+        ;;; descriptor-0 is always unused
+        dd 0,0
+        ;;; descriptor-1
+        ;; base-address :: 2,3,4,7 == 0
+        ;; limit        :: 0,1,l6  == 0fffffh
+        ;; flags        :: h6      == 1100b
+        ;; access       :: 5       == 10010010b
+        ;  0     1     2  3  4  5          6          7
+        db 0xff, 0xff, 0, 0, 0, 10010010b, 11001111b, 0
+      gdt_end:
+
+      ;; ----------------------------------------------------
+      error_code:     dq 0
+      string_integer: db "0123456789", 0
+      msg_Load:       db "loading pure64", 13, 10, 0
+      msg_Loading:    db "*", 0
+      msg_Copying:    db "+", 0
+      msg_LoadDone:   db "done", 13, 10, "Executing", 0
+      msg_MagicFail:  db "magic fail", 13, 10, 0
+      DriveNumber:    db 0x00
+
+      ;; times 446-$+$$ db 0
+      ;; ;; one False partition table entry (16 bytes for one)
+      ;; ;; required by some BIOS vendors.
+      ;; db 0x80, 0x00, 0x01, 0x00
+      ;; db 0xEB, 0xFF, 0xFF, 0xFF
+      ;; db 0x00, 0x00, 0x00, 0x00
+      ;; db 0xFF, 0xFF, 0xFF, 0xFF
+
+      times 510-($-$$) db 0
+         db 0x55
+         db 0xAA
+
+      SectorBuffer: ;; 512 bytes buffer to read one sector at a time
+      #+end_src
+
+*** -------------------------------
+*** build cicada image
+    #+begin_src fasm :tangle cicada-image.fasm
     SizeOfKernel = 320 ;; unit :: k
     LocationOfKernel_inFloppy = 128     ;; unit :: k
     LocationOfKernel_inMemory = 32*1024 ;; unit :: b
     MagicNumberOfKernel = 26881h
 
-    org 7c00h
+    org 0
 
-            jmp short start
-            nop
+    file 'bootloader.bin'
+    times (LocationOfKernel_inFloppy * 1024) - ($-$$) db 0
 
-    ;; basic information about the FAT file system
-
-    DiskNameString db "cicada  "
-    BytesPerSector = 512
-      dw BytesPerSector
-    SectorsPerCluster = 1
-      db SectorsPerCluster
-    ReservedSectors = 1
-      dw ReservedSectors
-      ;; to set this value to 1 is to reserve a sector for boot record
-      ;; this value is used to calculate the location for the first sector containing the FAT
-    NumberOfFAT = 2
-      db NumberOfFAT
-      ;; The usage of two copies are to prevent data loss if one or part of one FAT copy is corrupted
-    NumberOfEntriesInRootDir = 224
-      dw NumberOfEntriesInRootDir
-      ;; 224 * 32 equ 7168 equ 14 sectors to read
-    TotalNumberOfSectors = 2880
-      dw TotalNumberOfSectors
-    MediaDescriptor = 0f0h
-      db MediaDescriptor
-      ;;     Capacity     Physical Format
-      ;; F0  2.88 MB      3.5-inch, 2-sided, 36-sector
-      ;; F0  1.44 MB      3.5-inch, 2-sided, 18-sector
-      ;; F8  ?            Fixed disk
-      ;; F9  720 KB       3.5-inch, 2-sided, 9-sector
-      ;; F9  1.2 MB       5.25-inch, 2-sided, 15-sector
-      ;; FA  ?            ?
-      ;; FB  ?            ?
-      ;; FC  180 KB       5.25-inch, 1-sided, 9-sector
-      ;; FD  360 KB       5.25-inch, 2-sided, 9-sector
-      ;; FE  160 KB       5.25-inch, 1-sided, 8-sector
-      ;; FF  320 KB       5.25-inch, 2-sided, 8-sector
-    SectorsPerFAT = 9
-      dw SectorsPerFAT
-    SectorsPerTrack = 18 ;; 36/cylinder
-      AddressOfSectorsPerTrack: dw SectorsPerTrack
-    NumberOfHeads = 2
-      AddressOfNumberOfHeads: dw NumberOfHeads
-      ;; There is only one physical disk in a floppy disk and thus 2 sides - head 0 and head 1
-    HiddenSectors = 0
-      dd HiddenSectors
-      ;; When the volume is on a media that is partitioned,
-      ;; this value contains the number of sectors preceeding the first sector of the volume.
-    LargeSectors = 0
-      dd LargeSectors
-      ;; Number of LBA sectors
-    DriveNumber: dw 0
-      ;; This is the "int 13h" drive number of the drive
-      ;; The value 00h is used for the first floppy drive
-      ;; and the value 80h is used for the first harddrive
-    DriveSignature = 41
-      db DriveSignature
-      ;; or Extended Boot Signature
-      ;; If this byte contain a value of 29h equ 41
-      ;; it indicates that the following three fields are available
-    VolumeSerialNumber = 00000000h
-      dd VolumeSerialNumber
-      ;; 32 bit random number,
-    VolumeLabelString    db "cicada     " ;; 11 bytes
-    FileSystemNameString db "FAT12   "    ;; 8  bytes
-
-
-    start:
-            cli
-            mov [DriveNumber], dl           ; BIOS passes drive number in DL
-            xor ax, ax       ; make it zero
-            mov ds, ax
-            mov es, ax
-            mov fs, ax
-            mov gs, ax
-            mov ss, ax
-            mov sp, 7c00h
-
-            ;; * entering unreal mode *
-
-            push ds          ; save real mode
-
-            lgdt [gdtinfo]   ; load gdt register
-
-            mov eax, cr0     ; switch to pmode
-            or al, 00000001b
-            mov cr0, eax
-
-
-            ;; In protected mode
-            ;; the bits 3-15 in the segment register are an index into the descriptor table
-            mov bx, 1000b          ; select descriptor 1
-            mov ds, bx
-
-
-            and al, 11111110b      ; switch to rmode
-            mov cr0, eax
-
-
-            pop ds           ; get back old segment
-
-            ;; * end of entering unreal mode *
-
-            sti
-
-            ;; NOTE: A few early BIOSes are reported to improperly set DL
-            cmp dl, 0
-            je no_change
-            mov byte [DriveNumber], dl               ; Save boot device number
-            mov ah, 8                                ; Get drive parameters
-            int 13h
-            jc fatal_disk_error
-            and cx, 3fh                              ; Maximum sector number
-            mov word [AddressOfSectorsPerTrack], cx  ; Sector numbers start at 1
-            movzx dx, dh                             ; Maximum head number
-            add dx, 1                                ; Head numbers start at 0 - add 1 for total
-            mov word [AddressOfNumberOfHeads], dx
-    no_change:
-            mov eax, 0                               ; Needed for some older BIOSes
-
-            mov si, msg_Load
-            call print_string_16
-
-            ;; ; Enable the A20 gate
-            ;; set_A20:
-            ;;         in al, 0x64
-            ;;         test al, 0x02
-            ;;         jnz set_A20
-            ;;         mov al, 0xD1
-            ;;         out 0x64, al
-            ;; check_A20:
-            ;;         in al, 0x64
-            ;;         test al, 0x02
-            ;;         jnz check_A20
-            ;;         mov al, 0xDF
-            ;;         out 0x60, al
-
-    if loadKernel? eq yes
-            mov ebx, (LocationOfKernel_inFloppy * 2)
-            mov eax, (SizeOfKernel)*2
-            mov edi, LocationOfKernel_inMemory
-            call readsectors
-    end if
-
-    if checkMagicNumberOfKernel? eq yes
-            mov ebx, LocationOfKernel_inMemory + SizeOfKernel*1024 - 4
-            mov eax, [ebx]
-            cmp eax, MagicNumberOfKernel
-            jne magic_fail
-    end if
-
-            mov si, msg_LoadDone
-            call print_string_16
-
-            jmp 0x0000:LocationOfKernel_inMemory
-
-    magic_fail:
-            mov si, msg_MagicFail
-            call print_string_16
-    halt:
-            cli
-            hlt
-
-    ;------------------------------------------------------------------------------
-    ; read sectors from a disk to RAM, using LBA
-    ; IN:   EBX = starting sector index to read
-    ;       EAX = number of sectors to read
-    ;       EDI = memory location to store sectors
-    ; OUT:  EBX = EBX + number of sectors that were read
-    ;       EDI = EDI + (number of sectors read * 512)
-    readsectors:
-
-    .more:
-            call read_one_sector_to_SectorBuffer
-            jc .more
-            call copy_SectorBuffer_to_high_address
-
-            inc ebx
-
-            dec eax
-            cmp eax, 0
-            jne .more
-
-            ret
-    ;------------------------------------------------------------------------------
-
-    ;------------------------------------------------------------------------------
-    ; copy SectorBuffer to high address
-    ; IN:   EDI - high address
-    ; OUT:  EDI - the same EDI
-    copy_SectorBuffer_to_high_address:
-            push bx
-            push dx
-
-            xor bx, bx
-    .more:
-
-            mov dx, word [bx+SectorBuffer]
-            mov word [ds:edi], dx
-
-            inc bx
-            inc bx
-
-            inc edi
-            inc edi
-
-            cmp bx, 512
-            je .done
-            jmp .more
-
-    .done:
-            pop dx
-            pop bx
-
-            mov si, msg_Copying
-            call print_string_16
-
-            ret
-    ;------------------------------------------------------------------------------
-
-    ;------------------------------------------------------------------------------
-    ; Read a sector from a disk to SectorBuffer, using LBA
-    ; IN:   EBX - Low word of 64-bit DOS sector number
-    ; OUT:  EBX - Low word of sector (the same one)
-    read_one_sector_to_SectorBuffer:
-            push eax
-            push ebx
-            push ecx
-            push edx
-            push esi
-            push edi
-
-            mov ax, bx
-
-            ;; cl = sector
-            xor dx, dx
-            div word [AddressOfSectorsPerTrack]
-            ;; physical sectors start at 1
-            ;; physical cylinders start at 0
-            ;; physical head start at 0
-            inc dl
-            mov cl, dl
-
-            mov ax, bx
-
-            ;; dh = head
-            xor dx, dx
-            div word [AddressOfSectorsPerTrack]
-            xor dx, dx
-            div word [AddressOfNumberOfHeads]
-            mov dh, dl
-
-            ;; ch = cylinder
-            mov ch, al
-
-            mov al, 1                     ; one sector
-            mov dl, [DriveNumber]         ; from the Drive
-            mov bx, SectorBuffer          ; to SectorBuffer
-            mov ah, 2
-            int 13h
-
-            pop edi
-            pop esi
-            pop edx
-            pop ecx
-            pop ebx
-            pop eax
-
-            jnc @f                          ; jump if no error
-            mov si, msg_BIOS_read_error
-            call print_string_16
-            stc
-            ret
-
-    @@:
-            mov si, msg_Loading
-            call print_string_16
-            clc
-            ret
-    ;------------------------------------------------------------------------------
-
-    ;------------------------------------------------------------------------------
-    ; 16-bit function to print a string to the screen
-    ; IN:   SI - Address of start of string
-    print_string_16:                        ; Output string in SI to screen
-            pusha
-            mov ah, 0x0E                    ; int 0x10 teletype function
-    .repeat:
-            lodsb                           ; Get char from string
-            cmp al, 0
-            je .done                        ; If char is zero, end of string
-            int 0x10                        ; Otherwise, print it
-            jmp short .repeat
-    .done:
-            popa
-            ret
-    ;------------------------------------------------------------------------------
-
-    ;------------------------------------------------------------------------------
-    fatal_disk_error:
-        mov si, msg_fatal_disk_error
-        call print_string_16
-        cli
-        hlt
-    ;------------------------------------------------------------------------------
-
-    ;; -------------------------------------------------------
-    gdtinfo:
-       dw gdt_end - gdt - 1   ;last byte in table
-       dd gdt                 ;start of table
-
-    gdt:
-      ;;; descriptor-0 is always unused
-      dd 0,0
-      ;;; descriptor-1
-      ;; base-address :: 2,3,4,7 == 0
-      ;; limit        :: 0,1,l6  == 0fffffh
-      ;; flags        :: h6      == 1100b
-      ;; access       :: 5       == 10010010b
-      ;  0     1     2  3  4  5          6          7
-      db 0xff, 0xff, 0, 0, 0, 10010010b, 11001111b, 0
-    gdt_end:
-
-    ;; ----------------------------------------------------
-    msg_Load:       db "loading cicada", 13, 10, 0
-    msg_Loading:    db "*", 0
-    msg_Copying:    db "+", 0
-    msg_LoadDone:   db "done", 13, 10, "Executing", 0
-    msg_MagicFail:  db "magic fail", 13, 10, 0
-
-    msg_fatal_disk_error: db "fatal disk error", 0
-    msg_BIOS_read_error: db "X", 0
-
-    ;DriveNumber:    db 0x00
-    ;AddressOfSectorsPerTrack: dw 18
-    ;AddressOfNumberOfHeads: dw 2
-    ;; times 446-$+$$ db 0
-    ;; ;; one False partition table entry (16 bytes for one)
-    ;; ;; required by some BIOS vendors.
-    ;; db 0x80, 0x00, 0x01, 0x00
-    ;; db 0xEB, 0xFF, 0xFF, 0xFF
-    ;; db 0x00, 0x00, 0x00, 0x00
-    ;; db 0xFF, 0xFF, 0xFF, 0xFF
-
-    times 510-($-$$) db 0
-       db 0x55
-       db 0xAA
-
-    SectorBuffer: ;; 512 bytes buffer to read one sector at a time
+    file 'cicada-kernel.bin'
+    times ((LocationOfKernel_inFloppy + SizeOfKernel) * 1024) - ($-$$) db 0
     #+end_src
-** [OLD] bootloader
-*** note
-    1. this bootsector will load
-       cicada-kernel.bin from 2M
-       use "mov ah, 42h ; int 13h"
-    3. to enter unreal mode is to enable 32-bit offsets in real mode
-    4. about descriptor cache
-       To allow for fast accesses to segmented memory,
-       the x86 processor keeps a copy of each segment descriptor in a special descriptor cache.
-       This saves the processor from accessing the GDT for every memory access made.
-       The workings of this cache allows for some interesting side effects.
-*** implementation
-    #+begin_src fasm
-    checkMagicNumberOfKernel equ yes
-
-    FirstSector = 0
-
-    ;; for burn into sda6
-    ;; to test on real hardwares
-    ;FirstSector = 603666432
-
-    SizeOfKernel = 512 ;; unit :: k
+*** -------------------------------
+*** about the size of and kernel
+    #+begin_src fasm :tangle cicada-kernel.fasm
+    SizeOfKernel = 320 ;; unit :: k
     LocationOfKernel = 32*1024
     MagicNumberOfKernel = 26881h
-
-    org 7c00h           ; add to offsets
-            cli
-            mov [DriveNumber], dl           ; BIOS passes drive number in DL
-            xor ax, ax       ; make it zero
-            mov ds, ax
-            mov es, ax
-            mov fs, ax
-            mov gs, ax
-            mov ss, ax
-            mov sp, 7c00h
-
-            ;; ;; * entering unreal mode *
-            ;;
-            ;; push ds          ; save real mode
-            ;;
-            ;; lgdt [gdtinfo]   ; load gdt register
-            ;;
-            ;; mov eax, cr0     ; switch to pmode
-            ;; or al, 00000001b
-            ;; mov cr0, eax
-            ;;
-            ;;
-            ;; ;; In protected mode
-            ;; ;; the bits 3-15 in the segment register are an index into the descriptor table
-            ;; mov bx, 1000b          ; select descriptor 1
-            ;; mov ds, bx
-            ;;
-            ;;
-            ;; and al, 11111110b      ; switch to rmode
-            ;; mov cr0, eax
-            ;;
-            ;;
-            ;; pop ds           ; get back old segment
-            ;;
-            ;; ;; * end of entering unreal mode *
-
-            sti
-
-
-            mov si, msg_Load
-            call print_string_16
-
-            ;; ; Enable the A20 gate
-            ;; set_A20:
-            ;;         in al, 0x64
-            ;;         test al, 0x02
-            ;;         jnz set_A20
-            ;;         mov al, 0xD1
-            ;;         out 0x64, al
-            ;; check_A20:
-            ;;         in al, 0x64
-            ;;         test al, 0x02
-            ;;         jnz check_A20
-            ;;         mov al, 0xDF
-            ;;         out 0x60, al
-
-            ;; kernel is in Block-1 (offset is 2M)
-            mov ebx, (1*(2*1024))*2 + FirstSector
-            mov eax, (SizeOfKernel)*2
-            mov edi, LocationOfKernel
-            call readsectors
-
-    if checkMagicNumberOfKernel eq yes
-            mov ebx, LocationOfKernel + SizeOfKernel*1024 - 4
-            mov eax, [ebx]
-            cmp eax, MagicNumberOfKernel
-            jne magic_fail
-    end if
-
-            mov si, msg_LoadDone
-            call print_string_16
-
-
-            jmp 0x0000:LocationOfKernel
-
-
-
-
-    magic_fail:
-            mov si, msg_MagicFail
-            call print_string_16
-    halt:
-            cli
-            hlt
-
-
-
-
-    ;------------------------------------------------------------------------------
-    ; read sectors from a disk to RAM, using LBA
-    ; IN:   EBX = starting sector index to read
-    ;       EAX = number of sectors to read
-    ;       EDI = memory location to store sectors
-    ; OUT:  EBX = EBX + number of sectors that were read
-    ;       EDI = EDI + (number of sectors read * 512)
-    readsectors:
-
-    .more:
-            call read_one_sector_to_SectorBuffer
-            call copy_SectorBuffer_to_high_address
-
-            inc ebx
-
-            dec eax
-            cmp eax, 0
-            jne .more
-
-            ret
-    ;------------------------------------------------------------------------------
-
-
-
-
-    ;------------------------------------------------------------------------------
-    ; copy SectorBuffer to high address
-    ; IN:   EDI - high address
-    ; OUT:  EDI - the same EDI
-    copy_SectorBuffer_to_high_address:
-            push bx
-            push dx
-
-            xor bx, bx
-    .more:
-
-            mov dx, word [bx+SectorBuffer]
-            mov word [ds:edi], dx
-
-            inc bx
-            inc bx
-
-            inc edi
-            inc edi
-
-            cmp bx, 512
-            je .done
-            jmp .more
-
-    .done:
-            pop dx
-            pop bx
-
-            mov si, msg_Copying
-            call print_string_16
-
-            ret
-    ;------------------------------------------------------------------------------
-
-
-    ;------------------------------------------------------------------------------
-    ; Read a sector from a disk to SectorBuffer, using LBA
-    ; IN:   EBX - Low word of 64-bit DOS sector number
-    ; OUT:  EBX - Low word of sector (the same one)
-    read_one_sector_to_SectorBuffer:
-            push eax
-            push ebx
-            push ecx
-            push edx
-            push esi
-            push edi
-
-            ;; the following test shows that bx is enough
-            ;mov eax, ebx
-            ;xor ebx, ebx
-            ;mov bx, ax
-
-            mov di, sp                      ; remember parameter block end
-
-            ;; AH = 42h
-            ;; DL = drive number
-            ;; DS:SI -> disk address packet (see #00272)
-
-            ;; Return:
-            ;; CF clear if successful AH = 00h CF set on error AH = error code (see #00234)
-            ;; disk address packet's block count field set to number of blocks successfully transferred
-
-            ;; Format of disk address packet:
-            ;; Offset  Size    Description     (Table 00272)
-            ;; 00h    BYTE    size of packet (10h or 18h)
-            ;; 01h    BYTE    reserved (0)
-            ;; 02h    WORD    number of blocks to transfer
-            ;; 04h    DWORD   -> transfer buffer
-            ;; 08h    QWORD   starting absolute block number
-            ;; (for non-LBA devices, compute as
-            ;; (Cylinder*NumHeads + SelectedHead) * SectorPerTrack +
-            ;; SelectedSector - 1
-            ;; 10h    QWORD   (EDD-3.0, optional) 64-bit flat address of transfer buffer;
-            ;; used if DWORD at 04h is FFFFh:FFFFh
-
-            ;; push dword 0
-            ;; push dword SectorBuffer
-            push dword 0                    ; [C] sector number high 32bit
-            push ebx                        ; [8] sector number low 32bit
-            push word 0                     ; [6] buffer segment
-            push word SectorBuffer          ; [4] buffer offset
-            push word 1                     ; [2] number of blocks to transfer (max 007Fh for Phoenix EDD)1 sector
-            push word 10h                   ; [0] size of parameter block
-
-            mov si, sp
-            mov dl, [DriveNumber]
-            mov ah, 42h                     ; EXTENDED READ
-            int 0x13                        ; http://www.ctyme.com/intr/rb-0708.htm
-
-
-            mov [error_code], ah
-
-            mov sp, di                      ; remove parameter block from stack
-
-            pop edi
-            pop esi
-            pop edx
-            pop ecx
-            pop ebx
-            pop eax
-
-
-            jnc @f                          ; jump if no error
-
-            xor eax, eax
-            mov eax, [error_code]
-            mov edi, string_integer
-            call os_int_to_string
-            mov si, string_integer
-            call print_string_16
-            cli
-            hlt
-
-    @@:
-            mov si, msg_Loading
-            call print_string_16
-            ret
-    ;------------------------------------------------------------------------------
-
-
-    ;------------------------------------------------------------------------------
-    ; 16-bit function to print a string to the screen
-    ; IN:   SI - Address of start of string
-    print_string_16:                        ; Output string in SI to screen
-            pusha
-            mov ah, 0x0E                    ; int 0x10 teletype function
-    .repeat:
-            lodsb                           ; Get char from string
-            cmp al, 0
-            je .done                        ; If char is zero, end of string
-            int 0x10                        ; Otherwise, print it
-            jmp short .repeat
-    .done:
-            popa
-            ret
-    ;------------------------------------------------------------------------------
-
-
-    ;------------------------------------------------------------------------------
-    ; os_int_to_string -- Convert a binary interger into an string string
-    ;  IN:  EAX = binary integer
-    ;       EDI = location to store string
-    ; OUT:  EDI = pointer to end of string
-    ;       All other registers preserved
-    ; Min return value is 0 and max return value is 18446744073709551615 so your
-    ; string needs to be able to store at least 21 characters (20 for the number
-    ; and 1 for the string terminator).
-    ; Adapted from http://www.cs.usfca.edu/~cruse/cs210s09/rax2uint.s
-    os_int_to_string:
-            push edx
-            push ecx
-            push ebx
-            push eax
-
-            mov ebx, 10                             ; base of the decimal system
-            xor ecx, ecx                            ; number of digits generated
-    os_int_to_string_next_divide:
-            xor edx, edx                            ; eAX extended to (RDX,RAX)
-            div ebx                                 ; divide by the number-base
-            push edx                                ; save remainder on the stack
-            inc ecx                                 ; and count this remainder
-            cmp eax, 0x0                            ; was the quotient zero?
-            jne os_int_to_string_next_divide        ; no, do another division
-    os_int_to_string_next_digit:
-            pop edx                                 ; else pop recent remainder
-            add dl, '0'                             ; and convert to a numeral
-            mov [edi], dl                           ; store to memory-buffer
-            inc edi
-            loop os_int_to_string_next_digit        ; again for other remainders
-            mov al, 0x00
-            stosb                                   ; Store the null terminator at the end of the string
-
-            pop eax
-            pop ebx
-            pop ecx
-            pop edx
-            ret
-    ;------------------------------------------------------------------------------
-
-
-    ;; -------------------------------------------------------
-    gdtinfo:
-       dw gdt_end - gdt - 1   ;last byte in table
-       dd gdt                 ;start of table
-
-    gdt:
-      ;;; descriptor-0 is always unused
-      dd 0,0
-      ;;; descriptor-1
-      ;; base-address :: 2,3,4,7 == 0
-      ;; limit        :: 0,1,l6  == 0fffffh
-      ;; flags        :: h6      == 1100b
-      ;; access       :: 5       == 10010010b
-      ;  0     1     2  3  4  5          6          7
-      db 0xff, 0xff, 0, 0, 0, 10010010b, 11001111b, 0
-    gdt_end:
-
-    ;; ----------------------------------------------------
-    error_code:     dq 0
-    string_integer: db "0123456789", 0
-    msg_Load:       db "loading pure64", 13, 10, 0
-    msg_Loading:    db "*", 0
-    msg_Copying:    db "+", 0
-    msg_LoadDone:   db "done", 13, 10, "Executing", 0
-    msg_MagicFail:  db "magic fail", 13, 10, 0
-    DriveNumber:    db 0x00
-
-    ;; times 446-$+$$ db 0
-    ;; ;; one False partition table entry (16 bytes for one)
-    ;; ;; required by some BIOS vendors.
-    ;; db 0x80, 0x00, 0x01, 0x00
-    ;; db 0xEB, 0xFF, 0xFF, 0xFF
-    ;; db 0x00, 0x00, 0x00, 0x00
-    ;; db 0xFF, 0xFF, 0xFF, 0xFF
-
-    times 510-($-$$) db 0
-       db 0x55
-       db 0xAA
-
-    SectorBuffer: ;; 512 bytes buffer to read one sector at a time
     #+end_src
-
-** -------------------------------
-** build cicada image
-   #+begin_src fasm :tangle cicada-image.fasm
-   SizeOfKernel = 320 ;; unit :: k
-   LocationOfKernel_inFloppy = 128     ;; unit :: k
-   LocationOfKernel_inMemory = 32*1024 ;; unit :: b
-   MagicNumberOfKernel = 26881h
-
-   org 0
-
-   file 'bootloader.bin'
-   times (LocationOfKernel_inFloppy * 1024) - ($-$$) db 0
-
-   file 'cicada-kernel.bin'
-   times ((LocationOfKernel_inFloppy + SizeOfKernel) * 1024) - ($-$$) db 0
-   #+end_src
-** -------------------------------
-** about the size of and kernel
-   #+begin_src fasm :tangle cicada-kernel.fasm
-   SizeOfKernel = 320 ;; unit :: k
-   LocationOfKernel = 32*1024
-   MagicNumberOfKernel = 26881h
-   #+end_src
-** equ
-   #+begin_src fasm :tangle cicada-kernel.fasm
-   ;; in fasm, "dup" is a reserved word
-   dup equ duplicate
-
-   ;; 64-bits
-   xx equ dq
-   Cell_width = 8
-
-
-   hereCode               equ align 16
-   hereInitializedData    equ ;; nothing
-
-
-   ;; about UnInitializedData
-
-   ;; all unit are byte
-   ;; LowestMemoryAddress always can be use to save value
-
-   ;; ==========================================
-   LowestMemoryAddress = 32*1024*1024
-   FirstLowestMemoryAddress = LowestMemoryAddress
-
-   labeling  equ = LowestMemoryAddress
-   preserve  equ LowestMemoryAddress = LowestMemoryAddress +
-
-   alignTo16InMemoryMap equ LowestMemoryAddress = LowestMemoryAddress + (16 - (LowestMemoryAddress mod 16))
-
-   hereUnInitializedData  equ alignTo16InMemoryMap
-   #+end_src
-** format header
-   #+begin_src fasm :tangle cicada-kernel.fasm
-   format binary
-   #+end_src
-** enter 64 bit mdoe of x86-64 CPU
-*** start16
-**** note
-     1. set up GDT in 16 bits mode
-     2. at the beginning
-        set stack to LocationOfKernel
-        it grows to lower address
-     3. then the LocationOfKernel == 32K
-        the code of start16
-        should not be larger then 32K
-        then, in 16 bits mode,
-        we can ignore the segment registers
-        ang just use the the first 64K
-**** implementation
-     #+begin_src fasm :tangle cicada-kernel.fasm
-     use16
-     org LocationOfKernel
-
-     start16:
-             cli
-
-             xor ax, ax
-             mov ds, ax
-             mov es, ax
-             mov fs, ax
-             mov gs, ax
-             mov ss, ax
-             mov sp, LocationOfKernel
-
-             ;; Make sure the screen is set to 80*25 text mode
-             mov ax, 3
-             int 0x10
-
-             ;; Disable blinking
-             mov ax, 0x1003
-             mov bx, 0x0000
-             int 0x10
-
-             ;; hide the hardware cursor
-             mov ax, 0x0200                  ; VIDEO - SET CURSOR POSITION
-             mov bx, 0x0000                  ; Page number
-             mov dx, 0x2000                  ; Row / Column
-             int 0x10
-
-             ;; enable the A20 gate
-             set_A20:
-                in al, 0x64
-                test al, 0x02
-                jnz set_A20
-                mov al, 0xD1
-                out 0x64, al
-             check_A20:
-                in al, 0x64
-                test al, 0x02
-                jnz check_A20
-                mov al, 0xDF
-                out 0x60, al
-
-             call init_VESA_VBE
-
-             lgdt    [cs:GDTR]
-
-             ;; switch to protected mode
-             mov     eax, cr0
-             bts     eax, 0                   ; bit-index-0 set
-             mov     cr0, eax
-
-             jmp     CODE_SELECTOR_32:start32
-     #+end_src
-**** ><
-     #+begin_src fasm :tangle no
-             mov edi, VBEModeInfoBlock       ; VBE data will be stored at this address
-             mov ax, 0x4F01                  ; GET SuperVGA MODE INFORMATION - http://www.ctyme.com/intr/rb-0274.htm
-             ; CX queries the mode, it should be in the form 0x41XX as bit 14 is set for LFB and bit 8 is set for VESA mode
-             ; 0x4112 is 640x480x24bit, 0x4129 should be 32bit
-             ; 0x4115 is 800x600x24bit, 0x412E should be 32bit
-             ; 0x4118 is 1024x768x24bit, 0x4138 should be 32bit
-             ; 0x411B is 1280x1024x24bit, 0x413D should be 32bit
-             ; 0x0103 (800x600x256) VBE 1.2+
-             mov cx, 0x0103                  ; Put your desired mode here
-             mov bx, cx                      ; Mode is saved to BX for the set command later
-             int 0x10
-
-             cmp ax, 0x004F                  ; Return value in AX should equal 0x004F if command supported and successful
-             jne VBEfail
-
-             cmp byte [VBEModeInfoBlock.BitsPerPixel], 24    ; Make sure this matches the number of bits for the mode!
-             ;cmp byte [VBEModeInfoBlock.BitsPerPixel], 32    ; Make sure this matches the number of bits for the mode!
-
-             jne VBEfail                     ; If set bit mode was unsuccessful then bail out
-
-             or bx, 0x4000                   ; Use linear/flat frame buffer model (set bit 14)
-             mov ax, 0x4F02                  ; SET SuperVGA VIDEO MODE - http://www.ctyme.com/intr/rb-0275.htm
-             int 0x10
-
-             cmp ax, 0x004F                  ; Return value in AX should equal 0x004F if supported and successful
-             jne VBEfail
-             jmp VBEdone
-
-     VBEfail:
-             mov si, msg_novesa
-             call print_string_16
-             xor ax, ax
-             mov byte [cfg_vesa], al         ; Clear the VESA config as it was not successful
-
-     VBEdone:
-             ret
-     #+end_src
-**** VESA/VBE
-     #+begin_src fasm :tangle cicada-kernel.fasm
-     ;; VESA :: Video Electronics Standards Association
-     ;; VBE :: VESA BIOS Extension
-     align 16
-     init_VESA_VBE:
-        mov di, VBEInfoBlock
-        mov ax, 4f00h
-        int 10h
-        mov word [VBEInfoBlock.ReturnStatus], ax
-
-        mov di, VBEModeInfoBlock
-        mov ax, 4f01h
-        int 10h
-        mov word [VBEModeInfoBlock.ReturnStatus], ax
-
-        ret
-
-     align 16
-     VBEInfoBlock.ReturnStatus:
-        rb 2
-
-     align 16
-     VBEInfoBlock:
-        rb 512
-
-
-     align 16
-     VBEModeInfoBlock.ReturnStatus:
-        rb 2
-     align 16
-     VBEModeInfoBlock:
-        rb 256
-
-     ;; VESA
-     ;; Mandatory information for all VBE revisions
-     VBEModeInfoBlock.ModeAttributes         = VBEModeInfoBlock + 0        ; DW - mode attributes
-     VBEModeInfoBlock.WinAAttributes         = VBEModeInfoBlock + 2        ; DB - window A attributes
-     VBEModeInfoBlock.WinBAttributes         = VBEModeInfoBlock + 3        ; DB - window B attributes
-     VBEModeInfoBlock.WinGranularity         = VBEModeInfoBlock + 4        ; DW - window granularity in KB
-     VBEModeInfoBlock.WinSize                = VBEModeInfoBlock + 6        ; DW - window size in KB
-     VBEModeInfoBlock.WinASegment            = VBEModeInfoBlock + 8        ; DW - window A start segment
-     VBEModeInfoBlock.WinBSegment            = VBEModeInfoBlock + 10       ; DW - window B start segment
-     VBEModeInfoBlock.WinFuncPtr             = VBEModeInfoBlock + 12       ; DD - real mode pointer to window function
-     VBEModeInfoBlock.BytesPerScanLine       = VBEModeInfoBlock + 16       ; DW - bytes per scan line
-     ;; Mandatory information for VBE 1.2 and above
-     VBEModeInfoBlock.XResolution            = VBEModeInfoBlock + 18       ; DW - horizontal resolution in pixels or characters
-     VBEModeInfoBlock.YResolution            = VBEModeInfoBlock + 20       ; DW - vertical resolution in pixels or characters
-     VBEModeInfoBlock.XCharSize              = VBEModeInfoBlock + 22       ; DB - character cell width in pixels
-     VBEModeInfoBlock.YCharSize              = VBEModeInfoBlock + 23       ; DB - character cell height in pixels
-     VBEModeInfoBlock.NumberOfPlanes         = VBEModeInfoBlock + 24       ; DB - number of memory planes
-     VBEModeInfoBlock.BitsPerPixel           = VBEModeInfoBlock + 25       ; DB - bits per pixel
-     VBEModeInfoBlock.NumberOfBanks          = VBEModeInfoBlock + 26       ; DB - number of banks
-     VBEModeInfoBlock.MemoryModel            = VBEModeInfoBlock + 27       ; DB - memory model type
-     VBEModeInfoBlock.BankSize               = VBEModeInfoBlock + 28       ; DB - bank size in KB
-     VBEModeInfoBlock.NumberOfImagePages     = VBEModeInfoBlock + 29       ; DB - number of image pages
-     VBEModeInfoBlock.Reserved               = VBEModeInfoBlock + 30       ; DB - reserved (0x00 for VBE 1.0-2.0, 0x01 for VBE 3.0)
-     ;; Direct Color fields (required for direct/6 and YUV/7 memory models)
-     VBEModeInfoBlock.RedMaskSize            = VBEModeInfoBlock + 31       ; DB - size of direct color red mask in bits
-     VBEModeInfoBlock.RedFieldPosition       = VBEModeInfoBlock + 32       ; DB - bit position of lsb of red mask
-     VBEModeInfoBlock.GreenMaskSize          = VBEModeInfoBlock + 33       ; DB - size of direct color green mask in bits
-     VBEModeInfoBlock.GreenFieldPosition     = VBEModeInfoBlock + 34       ; DB - bit position of lsb of green mask
-     VBEModeInfoBlock.BlueMaskSize           = VBEModeInfoBlock + 35       ; DB - size of direct color blue mask in bits
-     VBEModeInfoBlock.BlueFieldPosition      = VBEModeInfoBlock + 36       ; DB - bit position of lsb of blue mask
-     VBEModeInfoBlock.RsvdMaskSize           = VBEModeInfoBlock + 37       ; DB - size of direct color reserved mask in bits
-     VBEModeInfoBlock.RsvdFieldPosition      = VBEModeInfoBlock + 38       ; DB - bit position of lsb of reserved mask
-     VBEModeInfoBlock.DirectColorModeInfo    = VBEModeInfoBlock + 39       ; DB - direct color mode attributes
-     ;; Mandatory information for VBE 2.0 and above
-     VBEModeInfoBlock.PhysBasePtr            = VBEModeInfoBlock + 40       ; DD - physical address for flat memory frame buffer
-     VBEModeInfoBlock.Reserved1              = VBEModeInfoBlock + 44       ; DD - Reserved - always set to 0
-     VBEModeInfoBlock.Reserved2              = VBEModeInfoBlock + 48       ; DD - Reserved - always set to 0
-     #+end_src
-**** GDT
-     #+begin_src fasm :tangle cicada-kernel.fasm
-     align 16
-     GDTR:
-        dw GDT_END - GDT - 1                  ;; index of the last byte in table
-        dq GDT                                ;; linear address of GDT
-
-        ;; ;; base-address is a 32 bit value containing the linear address where the segment begins.
-        ;; ;; limit is a 20 bit value tells the maximum addressable unit (either in 1 byte units, or in pages)
-        ;; ;;   Hence, if you choose page granularity (4 KiB) in the flags
-        ;; ;;   and set the limit value to 0fffffh the segment will span the full 4 GiB address space
-        ;; ;; example :
-        ;; ;; base-address [32 bits] :: 2,3,4,7 == 0
-        ;; ;; limit        [20 bits] :: 0,1,l6  == 0fffffh
-        ;; ;; flags        [ 4 bits] :: h6      == 1100b
-        ;; ;; access       [ 8 bits] :: 5       == 10010010b
-        ;; ;  0     1     2  3  4  5          6          7
-        ;; db 0ffh, 0ffh, 0, 0, 0, 10010010b, 11001111b, 0
-
-        ;; for all of the following desciptors :
-        ;;  limit = 0fffffh,  base = 0h
-
-     align 16
-     GDT:
-        ;; descriptor-0 is always unused
-        dq 0
-        ;; descriptor-1
-        ;; flat data desciptor
-        ;;  flags = 1000b,  access = 10010010b ;; most accessible for data desciptor
-        db 0ffh, 0ffh, 0, 0, 0, 10010010b, 10001111b, 0
-        ;; descriptor-2
-        ;; 32 bits code desciptor
-        ;;  flags = 1100b,  access = 10011010b ;; most accessible for code desciptor
-        db 0ffh, 0ffh, 0, 0, 0, 10011010b, 11001111b, 0
-        ;; descriptor-3
-        ;; 64 bits code desciptor
-        ;; for long mode
-        ;; bit-index-1 of the flags of the GDT code desciptor must be set
-        ;; bit-index-2 of the flags of the GDT code desciptor must be clear (as it would be for a 16-bit code segment)
-        ;; so we have the following
-        ;;  flags = 0010b,  access = 10011010b ;; most accessible for code desciptor
-        db 0, 0, 0, 0, 0, 10011010b, 00100000b, 0
-        db 0, 0, 0, 0, 0, 10010010b, 00100000b, 0
-     GDT_END:
-
-     NULL_SELECTOR = 0
-     DATA_SELECTOR_32 = (1 shl 3)    ; flat data selector (ring 0)
-     CODE_SELECTOR_32 = (2 shl 3)    ; 32-bit code selector (ring 0)
-     CODE_SELECTOR_64 = (3 shl 3)    ; 64-bit code selector (ring 0)
-     DATA_SELECTOR_64 = (4 shl 3)    ; 64-bit code selector (ring 0)
-     #+end_src
-**** set the size of start16 to 31K
-     to do this is to make sure
-     that the code of start16 do not larger then 32K
-     actually I set the size of start16 to 31K
-     just for convenient
-     for the "jmp" at the end of start16
-     still has to address the label "start32"
-     #+begin_src fasm :tangle cicada-kernel.fasm
-     times (31 * 1024) - ($-$$) db 0
-     #+end_src
-*** start32
-**** note
-     1. set up paging in 32 bits mode
-     2.
-**** note about paging
-     1. paging : page translation
-     2. paging in pmode :
-        2 level 4k-table
-        1024 4-bytes-entries in a table
-        paging in lmode :
-        4 level 4k-table
-        512 8-bytes-entries in a table
-     3. for lmode from higher level to lower level we have :
-        PageTable4 -> PageTable3 -> PageTable2 -> PageTable1
-        [one address stored in a higher level table's entry]
-        is used to find [one address of a lower level table]
-        but the lowest 12 bits of [one address stored in a higher level table's entry]
-        are used as flags
-        for [one address of a lower level table's entry] must be align to 4k
-     4. according to the indexes of these tables
-        and the address stored under the entries of the indexes of these tables
-        MMU of processor calculates virtual address --> physical address
-        MMU :: memory management unit
-        so [one address stored in a PageTable1's entry]
-        is the final offset of the physical address
-     5. pmode :
-        1024 == 2 ^ 10
-        2 * 10 + 12 = 32
-        so, the physical address is 32 bits
-        lmode :
-        512 == 2 ^ 9
-        4 * 9 + 12 = 48
-        so, the physical address is 48 bits
-     6. in lmode :
-        |---------------------------+--------------------------------------|
-        |                           | the size of memory can be addressed  |
-        |---------------------------+--------------------------------------|
-        | one entry in a PageTable1 | 4K == 4 * 2^10 == 2 ^ 12             |
-        |---------------------------+--------------------------------------|
-        | one PageTable1            | 2M == 2 * 2^20 == 2 ^ (12 + 1*9)     |
-        | use 4K                    |                                      |
-        |---------------------------+--------------------------------------|
-        | one PageTable2            | 1G == 1 * 2^30 == 2 ^ (12 + 2*9)     |
-        | use 4K*4K                 |                                      |
-        |---------------------------+--------------------------------------|
-        | one PageTable3            | 512G == 521 * 2^30 == 2 ^ (12 + 3*9) |
-        |                           |                                      |
-        |---------------------------+--------------------------------------|
-        | one PageTable4            | 256T == 256 * 2^40 == 2 ^ (12 + 4*9) |
-        |                           |                                      |
-        |---------------------------+--------------------------------------|
-     7. one can enable 2M size page
-        by set the bit-index-7 of PageTable2
-        to make it becomes the lowest level of page table
-        how it works is easy to see
-**** implementation
-     #+begin_src fasm :tangle cicada-kernel.fasm
-     align 16
-     use32
-
-     start32:
-             ;; load 4 GB data descriptor to all data segment registers
-             mov     ax, DATA_SELECTOR_32
-             mov     ds, ax
-             mov     es, ax
-             mov     fs, ax
-             mov     gs, ax
-             mov     ss, ax
-
-             ;; about paging :
-             ;; make 4G identity page
-             ;; by setting up :
-             ;; 1 PageTable4 with 1 entries
-             ;; 1 PageTable3 with 4 entries
-             ;; 4 PageTable2 with 512 entries each
-             ;; 6*4K == 24K of memory are needed to set up these tables
-
-             SizeOfPageTable = 4*1024
-             SizeOfPage = 2*1024*1024
-             PageTable4 = 1*1024*1024
-             PageTable3 = PageTable4 + SizeOfPageTable
-             PageTable2 = PageTable3 + SizeOfPageTable
-
-             ;; clear 6*4k for paging tables
-             mov     edi, PageTable4
-             mov     ecx, (6*4*1024)/4     ; 4*1024 for one table
-             xor     eax, eax
-             rep     stosd
-
-             ;; make 1 PageTable4 with 1 entry
-             mov dword [PageTable4], PageTable3 + 00000111b
-
-             ;; make 1 PageTable3 with 4 entries
-             mov     edi, PageTable3
-             mov     eax, PageTable2 + 111b
-             mov     ecx, 4 ; number of entries
-     make_PageTable3_entries:
-             stosd
-             add     edi, 4
-             add     eax, SizeOfPageTable
-             loop    make_PageTable3_entries
-
-             ;; make 4 PageTable2 with 512 entries each
-             mov     edi, PageTable2
-             mov     eax, 0 + 10000111b
-             mov     ecx, 4*512 ; number of entries
-     make_PageTable2_entries:
-             stosd
-             add     edi, 4
-             add     eax, SizeOfPage
-             loop    make_PageTable2_entries
-
-             ;; load PageTable4 to cr3
-             mov     eax, PageTable4
-             mov     cr3, eax
-
-             ;; enable PAE :: physical address extensions
-             mov     eax, cr4
-             bts     eax, 5
-             mov     cr4, eax
-
-             ;; enable long mode by setting EFER MSR
-             ;; MSR :: model specific register
-             mov     ecx, 0C0000080h
-             rdmsr
-             bts     eax, 8
-             wrmsr
-
-             ;; enable paging
-             mov     eax, cr0
-             bts     eax, 31
-             mov     cr0, eax
-
-             ;; and then we are in 32 bits compatibility mode (which is part of lmode)
-             ;; must load a SELECTOR with which the flags are setted for lmode
-             ;; as the following "jmp" do :
-             mov     ax, CODE_SELECTOR_64
-             mov     ds, ax
-             mov     es, ax
-             mov     fs, ax
-             mov     gs, ax
-             mov     ax, DATA_SELECTOR_64
-             mov     ss, ax
-             jmp     CODE_SELECTOR_64:start64
-     #+end_src
-*** start64
-**** note
-     1. set up IDT in 64 bits mode
-**** implementation
-     #+begin_src fasm :tangle cicada-kernel.fasm
-     align 16
-     use64
-
-     start64:
-             ;; Flush Cache
-             wbinvd
-
-             ;; Enable Cache
-             mov rax, cr0
-             btr rax, 29                     ; resets (i.e. clear) No Write Thru (Bit 29)
-             btr rax, 30                     ; resets (i.e. clear) CD (Bit 30)
-             mov cr0, rax
-
-             ;; about PIC and IRQ
-             ;; ICW :: initialization command word (actually byte)
-
-             ;; ICW1
-             mov     al, 10001b
-             out     20h, al
-             mov     al, 10001b
-             out     0A0h, al
-
-             ;; ICW2
-             ;; IRQ 0-7: from interrupts 32
-             mov     al, 32
-             out     21h, al
-             ;; IRQ 8-15: from interrupts 32 + 8
-             mov     al, 32 + 8
-             out     0A1h, al
-
-             ;; ICW3
-             ;; connected PIC1 with PIC2
-             mov     al, 100b
-             out     21h, al
-             mov     al, 10b
-             out     0A1h, al
-
-             ;; ICW4
-             ;; x86 environment and manual EOI
-             mov     al, 1
-             out     21h, al
-             out     0A1h, al
-
-             ;; OCW :: operation control word (actually byte)
-             ;; OCW is used to enable/disable IRQ and to signal an interrupt is over
-
-             ;; enable IRQ 1:keyboard
-             in      al, 21h
-             mov     al, 11111101b
-             out     21h, al
-             in      al, 0A1h
-             mov     al, 11111111b
-             out     0A1h, al
-
-             ;; create IDT (at linear address 0)
-             ;; not like the GDT, the IDT is created by code at address 0
-             ;; an IDT entry is called a gate
-
-             ;; at first placeholder is used
-             ;; then one should call create_gate to creat each gate
-
-             xor     edi, edi
-
-             mov     ecx, 32
-     make_exception_gate_placeholders:
-             mov     esi, exception_gate_placeholder
-             movsq
-             movsq
-             loop    make_exception_gate_placeholders
-
-             mov     ecx, 256 - 32
-     make_interrupt_gate_placeholders:
-             mov     esi, interrupt_gate_placeholder
-             movsq
-             movsq
-             loop    make_interrupt_gate_placeholders
-
-             lidt    [IDTR]
-
-             jmp cicada_virtual_machine
-     #+end_src
-**** create_gate
-     #+begin_src fasm :tangle cicada-kernel.fasm
-     align 16
-     ; create_gate
-     ; rax = address of handler
-     ; rdi = gate # to configure
-     create_gate:
-             push rdi
-             push rax
-
-             shl rdi, 4                      ; quickly multiply rdi by 16
-             stosw                           ; store the low word (15..0)
-             shr rax, 16
-             add rdi, 4                      ; skip the gate marker
-             stosw                           ; store the high word (31..16)
-             shr rax, 16
-             stosd                           ; store the high dword (63..32)
-
-             pop rax
-             pop rdi
-             ret
-     #+end_src
-**** IDT
-     #+begin_src fasm :tangle cicada-kernel.fasm
-     align 16
-     IDTR:
-       dw 256*16 - 1 ;; index of the last byte in table
-       dq 0          ;; linear address of IDT
-
-     ;; not like the GDT, the IDT is created by code at address 0
-     ;; an IDT entry is called a gate
-     ;; the size of a gate in 64 bits mode is 16 bytes
-     ;; offset                [64 bits] :: 0,1,6,7,8,9,10,11 ==
-     ;; code-segment-selector [16 bits] :: 2,3 ==
-     ;; reserved              [ 8 bits] :: 4 == 0
-     ;; attributes-and-type   [ 8 bits] :: 5 ==
-     ;; reserved              [32 bits] :: 12,13,14,15,16 == 0
-
-     align 16
-     exception_gate_placeholder:
-       dw exception_placeholder and 0ffffh ;; 0,1
-       dw CODE_SELECTOR_64                 ;; 2,3
-       db 0                                ;; 4
-       ;db 10001110b                        ;; 5
-       db 10001111b                        ;; 5
-       dw exception_placeholder shr (2*8)  ;; 6,7,8,9
-       dd exception_placeholder shr (6*8)  ;; 10,11
-
-     align 16
-     interrupt_gate_placeholder:
-       dw interrupt_placeholder and 0ffffh ;; 0,1
-       dw CODE_SELECTOR_64                 ;; 2,3
-       db 0                                ;; 4
-       ;db 10001111b                        ;; 5
-       db 10001110b                        ;; 5
-       dw interrupt_placeholder shr (2*8)  ;; 6,7,8,9
-       dd interrupt_placeholder shr (6*8)  ;; 10,11
-
-     ;; ISR :: Interrupt Service Routine
-
-     align 16
-     exception_placeholder:
-             cli
-             hlt
-
-     align 16
-     interrupt_placeholder:
-             iretq
-     #+end_src
+*** equ
+    #+begin_src fasm :tangle cicada-kernel.fasm
+    ;; in fasm, "dup" is a reserved word
+    dup equ duplicate
+
+    ;; 64-bits
+    xx equ dq
+    Cell_width = 8
+
+
+    hereCode               equ align 16
+    hereInitializedData    equ ;; nothing
+
+
+    ;; about UnInitializedData
+
+    ;; all unit are byte
+    ;; LowestMemoryAddress always can be use to save value
+
+    ;; ==========================================
+    LowestMemoryAddress = 32*1024*1024
+    FirstLowestMemoryAddress = LowestMemoryAddress
+
+    labeling  equ = LowestMemoryAddress
+    preserve  equ LowestMemoryAddress = LowestMemoryAddress +
+
+    alignTo16InMemoryMap equ LowestMemoryAddress = LowestMemoryAddress + (16 - (LowestMemoryAddress mod 16))
+
+    hereUnInitializedData  equ alignTo16InMemoryMap
+    #+end_src
+*** format header
+    #+begin_src fasm :tangle cicada-kernel.fasm
+    format binary
+    #+end_src
+*** enter 64 bit mdoe of x86-64 CPU
+***** start16
+******* note
+        1. set up GDT in 16 bits mode
+        2. at the beginning
+           set stack to LocationOfKernel
+           it grows to lower address
+        3. then the LocationOfKernel == 32K
+           the code of start16
+           should not be larger then 32K
+           then, in 16 bits mode,
+           we can ignore the segment registers
+           ang just use the the first 64K
+******* implementation
+        #+begin_src fasm :tangle cicada-kernel.fasm
+        use16
+        org LocationOfKernel
+
+        start16:
+                cli
+
+                xor ax, ax
+                mov ds, ax
+                mov es, ax
+                mov fs, ax
+                mov gs, ax
+                mov ss, ax
+                mov sp, LocationOfKernel
+
+                ;; Make sure the screen is set to 80*25 text mode
+                mov ax, 3
+                int 0x10
+
+                ;; Disable blinking
+                mov ax, 0x1003
+                mov bx, 0x0000
+                int 0x10
+
+                ;; hide the hardware cursor
+                mov ax, 0x0200                  ; VIDEO - SET CURSOR POSITION
+                mov bx, 0x0000                  ; Page number
+                mov dx, 0x2000                  ; Row / Column
+                int 0x10
+
+                ;; enable the A20 gate
+                set_A20:
+                   in al, 0x64
+                   test al, 0x02
+                   jnz set_A20
+                   mov al, 0xD1
+                   out 0x64, al
+                check_A20:
+                   in al, 0x64
+                   test al, 0x02
+                   jnz check_A20
+                   mov al, 0xDF
+                   out 0x60, al
+
+                call init_VESA_VBE
+
+                lgdt    [cs:GDTR]
+
+                ;; switch to protected mode
+                mov     eax, cr0
+                bts     eax, 0                   ; bit-index-0 set
+                mov     cr0, eax
+
+                jmp     CODE_SELECTOR_32:start32
+        #+end_src
+******* ><
+        #+begin_src fasm :tangle no
+                mov edi, VBEModeInfoBlock       ; VBE data will be stored at this address
+                mov ax, 0x4F01                  ; GET SuperVGA MODE INFORMATION - http://www.ctyme.com/intr/rb-0274.htm
+                ; CX queries the mode, it should be in the form 0x41XX as bit 14 is set for LFB and bit 8 is set for VESA mode
+                ; 0x4112 is 640x480x24bit, 0x4129 should be 32bit
+                ; 0x4115 is 800x600x24bit, 0x412E should be 32bit
+                ; 0x4118 is 1024x768x24bit, 0x4138 should be 32bit
+                ; 0x411B is 1280x1024x24bit, 0x413D should be 32bit
+                ; 0x0103 (800x600x256) VBE 1.2+
+                mov cx, 0x0103                  ; Put your desired mode here
+                mov bx, cx                      ; Mode is saved to BX for the set command later
+                int 0x10
+
+                cmp ax, 0x004F                  ; Return value in AX should equal 0x004F if command supported and successful
+                jne VBEfail
+
+                cmp byte [VBEModeInfoBlock.BitsPerPixel], 24    ; Make sure this matches the number of bits for the mode!
+                ;cmp byte [VBEModeInfoBlock.BitsPerPixel], 32    ; Make sure this matches the number of bits for the mode!
+
+                jne VBEfail                     ; If set bit mode was unsuccessful then bail out
+
+                or bx, 0x4000                   ; Use linear/flat frame buffer model (set bit 14)
+                mov ax, 0x4F02                  ; SET SuperVGA VIDEO MODE - http://www.ctyme.com/intr/rb-0275.htm
+                int 0x10
+
+                cmp ax, 0x004F                  ; Return value in AX should equal 0x004F if supported and successful
+                jne VBEfail
+                jmp VBEdone
+
+        VBEfail:
+                mov si, msg_novesa
+                call print_string_16
+                xor ax, ax
+                mov byte [cfg_vesa], al         ; Clear the VESA config as it was not successful
+
+        VBEdone:
+                ret
+        #+end_src
+******* VESA/VBE
+        #+begin_src fasm :tangle cicada-kernel.fasm
+        ;; VESA :: Video Electronics Standards Association
+        ;; VBE :: VESA BIOS Extension
+        align 16
+        init_VESA_VBE:
+           mov di, VBEInfoBlock
+           mov ax, 4f00h
+           int 10h
+           mov word [VBEInfoBlock.ReturnStatus], ax
+
+           mov di, VBEModeInfoBlock
+           mov ax, 4f01h
+           int 10h
+           mov word [VBEModeInfoBlock.ReturnStatus], ax
+
+           ret
+
+        align 16
+        VBEInfoBlock.ReturnStatus:
+           rb 2
+
+        align 16
+        VBEInfoBlock:
+           rb 512
+
+
+        align 16
+        VBEModeInfoBlock.ReturnStatus:
+           rb 2
+        align 16
+        VBEModeInfoBlock:
+           rb 256
+
+        ;; VESA
+        ;; Mandatory information for all VBE revisions
+        VBEModeInfoBlock.ModeAttributes         = VBEModeInfoBlock + 0        ; DW - mode attributes
+        VBEModeInfoBlock.WinAAttributes         = VBEModeInfoBlock + 2        ; DB - window A attributes
+        VBEModeInfoBlock.WinBAttributes         = VBEModeInfoBlock + 3        ; DB - window B attributes
+        VBEModeInfoBlock.WinGranularity         = VBEModeInfoBlock + 4        ; DW - window granularity in KB
+        VBEModeInfoBlock.WinSize                = VBEModeInfoBlock + 6        ; DW - window size in KB
+        VBEModeInfoBlock.WinASegment            = VBEModeInfoBlock + 8        ; DW - window A start segment
+        VBEModeInfoBlock.WinBSegment            = VBEModeInfoBlock + 10       ; DW - window B start segment
+        VBEModeInfoBlock.WinFuncPtr             = VBEModeInfoBlock + 12       ; DD - real mode pointer to window function
+        VBEModeInfoBlock.BytesPerScanLine       = VBEModeInfoBlock + 16       ; DW - bytes per scan line
+        ;; Mandatory information for VBE 1.2 and above
+        VBEModeInfoBlock.XResolution            = VBEModeInfoBlock + 18       ; DW - horizontal resolution in pixels or characters
+        VBEModeInfoBlock.YResolution            = VBEModeInfoBlock + 20       ; DW - vertical resolution in pixels or characters
+        VBEModeInfoBlock.XCharSize              = VBEModeInfoBlock + 22       ; DB - character cell width in pixels
+        VBEModeInfoBlock.YCharSize              = VBEModeInfoBlock + 23       ; DB - character cell height in pixels
+        VBEModeInfoBlock.NumberOfPlanes         = VBEModeInfoBlock + 24       ; DB - number of memory planes
+        VBEModeInfoBlock.BitsPerPixel           = VBEModeInfoBlock + 25       ; DB - bits per pixel
+        VBEModeInfoBlock.NumberOfBanks          = VBEModeInfoBlock + 26       ; DB - number of banks
+        VBEModeInfoBlock.MemoryModel            = VBEModeInfoBlock + 27       ; DB - memory model type
+        VBEModeInfoBlock.BankSize               = VBEModeInfoBlock + 28       ; DB - bank size in KB
+        VBEModeInfoBlock.NumberOfImagePages     = VBEModeInfoBlock + 29       ; DB - number of image pages
+        VBEModeInfoBlock.Reserved               = VBEModeInfoBlock + 30       ; DB - reserved (0x00 for VBE 1.0-2.0, 0x01 for VBE 3.0)
+        ;; Direct Color fields (required for direct/6 and YUV/7 memory models)
+        VBEModeInfoBlock.RedMaskSize            = VBEModeInfoBlock + 31       ; DB - size of direct color red mask in bits
+        VBEModeInfoBlock.RedFieldPosition       = VBEModeInfoBlock + 32       ; DB - bit position of lsb of red mask
+        VBEModeInfoBlock.GreenMaskSize          = VBEModeInfoBlock + 33       ; DB - size of direct color green mask in bits
+        VBEModeInfoBlock.GreenFieldPosition     = VBEModeInfoBlock + 34       ; DB - bit position of lsb of green mask
+        VBEModeInfoBlock.BlueMaskSize           = VBEModeInfoBlock + 35       ; DB - size of direct color blue mask in bits
+        VBEModeInfoBlock.BlueFieldPosition      = VBEModeInfoBlock + 36       ; DB - bit position of lsb of blue mask
+        VBEModeInfoBlock.RsvdMaskSize           = VBEModeInfoBlock + 37       ; DB - size of direct color reserved mask in bits
+        VBEModeInfoBlock.RsvdFieldPosition      = VBEModeInfoBlock + 38       ; DB - bit position of lsb of reserved mask
+        VBEModeInfoBlock.DirectColorModeInfo    = VBEModeInfoBlock + 39       ; DB - direct color mode attributes
+        ;; Mandatory information for VBE 2.0 and above
+        VBEModeInfoBlock.PhysBasePtr            = VBEModeInfoBlock + 40       ; DD - physical address for flat memory frame buffer
+        VBEModeInfoBlock.Reserved1              = VBEModeInfoBlock + 44       ; DD - Reserved - always set to 0
+        VBEModeInfoBlock.Reserved2              = VBEModeInfoBlock + 48       ; DD - Reserved - always set to 0
+        #+end_src
+******* GDT
+        #+begin_src fasm :tangle cicada-kernel.fasm
+        align 16
+        GDTR:
+           dw GDT_END - GDT - 1                  ;; index of the last byte in table
+           dq GDT                                ;; linear address of GDT
+
+           ;; ;; base-address is a 32 bit value containing the linear address where the segment begins.
+           ;; ;; limit is a 20 bit value tells the maximum addressable unit (either in 1 byte units, or in pages)
+           ;; ;;   Hence, if you choose page granularity (4 KiB) in the flags
+           ;; ;;   and set the limit value to 0fffffh the segment will span the full 4 GiB address space
+           ;; ;; example :
+           ;; ;; base-address [32 bits] :: 2,3,4,7 == 0
+           ;; ;; limit        [20 bits] :: 0,1,l6  == 0fffffh
+           ;; ;; flags        [ 4 bits] :: h6      == 1100b
+           ;; ;; access       [ 8 bits] :: 5       == 10010010b
+           ;; ;  0     1     2  3  4  5          6          7
+           ;; db 0ffh, 0ffh, 0, 0, 0, 10010010b, 11001111b, 0
+
+           ;; for all of the following desciptors :
+           ;;  limit = 0fffffh,  base = 0h
+
+        align 16
+        GDT:
+           ;; descriptor-0 is always unused
+           dq 0
+           ;; descriptor-1
+           ;; flat data desciptor
+           ;;  flags = 1000b,  access = 10010010b ;; most accessible for data desciptor
+           db 0ffh, 0ffh, 0, 0, 0, 10010010b, 10001111b, 0
+           ;; descriptor-2
+           ;; 32 bits code desciptor
+           ;;  flags = 1100b,  access = 10011010b ;; most accessible for code desciptor
+           db 0ffh, 0ffh, 0, 0, 0, 10011010b, 11001111b, 0
+           ;; descriptor-3
+           ;; 64 bits code desciptor
+           ;; for long mode
+           ;; bit-index-1 of the flags of the GDT code desciptor must be set
+           ;; bit-index-2 of the flags of the GDT code desciptor must be clear (as it would be for a 16-bit code segment)
+           ;; so we have the following
+           ;;  flags = 0010b,  access = 10011010b ;; most accessible for code desciptor
+           db 0, 0, 0, 0, 0, 10011010b, 00100000b, 0
+           db 0, 0, 0, 0, 0, 10010010b, 00100000b, 0
+        GDT_END:
+
+        NULL_SELECTOR = 0
+        DATA_SELECTOR_32 = (1 shl 3)    ; flat data selector (ring 0)
+        CODE_SELECTOR_32 = (2 shl 3)    ; 32-bit code selector (ring 0)
+        CODE_SELECTOR_64 = (3 shl 3)    ; 64-bit code selector (ring 0)
+        DATA_SELECTOR_64 = (4 shl 3)    ; 64-bit code selector (ring 0)
+        #+end_src
+******* set the size of start16 to 31K
+        to do this is to make sure
+        that the code of start16 do not larger then 32K
+        actually I set the size of start16 to 31K
+        just for convenient
+        for the "jmp" at the end of start16
+        still has to address the label "start32"
+        #+begin_src fasm :tangle cicada-kernel.fasm
+        times (31 * 1024) - ($-$$) db 0
+        #+end_src
+***** start32
+******* note
+        1. set up paging in 32 bits mode
+        2.
+******* note about paging
+        1. paging : page translation
+        2. paging in pmode :
+           2 level 4k-table
+           1024 4-bytes-entries in a table
+           paging in lmode :
+           4 level 4k-table
+           512 8-bytes-entries in a table
+        3. for lmode from higher level to lower level we have :
+           PageTable4 -> PageTable3 -> PageTable2 -> PageTable1
+           [one address stored in a higher level table's entry]
+           is used to find [one address of a lower level table]
+           but the lowest 12 bits of [one address stored in a higher level table's entry]
+           are used as flags
+           for [one address of a lower level table's entry] must be align to 4k
+        4. according to the indexes of these tables
+           and the address stored under the entries of the indexes of these tables
+           MMU of processor calculates virtual address --> physical address
+           MMU :: memory management unit
+           so [one address stored in a PageTable1's entry]
+           is the final offset of the physical address
+        5. pmode :
+           1024 == 2 ^ 10
+           2 * 10 + 12 = 32
+           so, the physical address is 32 bits
+           lmode :
+           512 == 2 ^ 9
+           4 * 9 + 12 = 48
+           so, the physical address is 48 bits
+        6. in lmode :
+           |---------------------------+--------------------------------------|
+           |                           | the size of memory can be addressed  |
+           |---------------------------+--------------------------------------|
+           | one entry in a PageTable1 | 4K == 4 * 2^10 == 2 ^ 12             |
+           |---------------------------+--------------------------------------|
+           | one PageTable1            | 2M == 2 * 2^20 == 2 ^ (12 + 1*9)     |
+           | use 4K                    |                                      |
+           |---------------------------+--------------------------------------|
+           | one PageTable2            | 1G == 1 * 2^30 == 2 ^ (12 + 2*9)     |
+           | use 4K*4K                 |                                      |
+           |---------------------------+--------------------------------------|
+           | one PageTable3            | 512G == 521 * 2^30 == 2 ^ (12 + 3*9) |
+           |                           |                                      |
+           |---------------------------+--------------------------------------|
+           | one PageTable4            | 256T == 256 * 2^40 == 2 ^ (12 + 4*9) |
+           |                           |                                      |
+           |---------------------------+--------------------------------------|
+        7. one can enable 2M size page
+           by set the bit-index-7 of PageTable2
+           to make it becomes the lowest level of page table
+           how it works is easy to see
+******* implementation
+        #+begin_src fasm :tangle cicada-kernel.fasm
+        align 16
+        use32
+
+        start32:
+                ;; load 4 GB data descriptor to all data segment registers
+                mov     ax, DATA_SELECTOR_32
+                mov     ds, ax
+                mov     es, ax
+                mov     fs, ax
+                mov     gs, ax
+                mov     ss, ax
+
+                ;; about paging :
+                ;; make 4G identity page
+                ;; by setting up :
+                ;; 1 PageTable4 with 1 entries
+                ;; 1 PageTable3 with 4 entries
+                ;; 4 PageTable2 with 512 entries each
+                ;; 6*4K == 24K of memory are needed to set up these tables
+
+                SizeOfPageTable = 4*1024
+                SizeOfPage = 2*1024*1024
+                PageTable4 = 1*1024*1024
+                PageTable3 = PageTable4 + SizeOfPageTable
+                PageTable2 = PageTable3 + SizeOfPageTable
+
+                ;; clear 6*4k for paging tables
+                mov     edi, PageTable4
+                mov     ecx, (6*4*1024)/4     ; 4*1024 for one table
+                xor     eax, eax
+                rep     stosd
+
+                ;; make 1 PageTable4 with 1 entry
+                mov dword [PageTable4], PageTable3 + 00000111b
+
+                ;; make 1 PageTable3 with 4 entries
+                mov     edi, PageTable3
+                mov     eax, PageTable2 + 111b
+                mov     ecx, 4 ; number of entries
+        make_PageTable3_entries:
+                stosd
+                add     edi, 4
+                add     eax, SizeOfPageTable
+                loop    make_PageTable3_entries
+
+                ;; make 4 PageTable2 with 512 entries each
+                mov     edi, PageTable2
+                mov     eax, 0 + 10000111b
+                mov     ecx, 4*512 ; number of entries
+        make_PageTable2_entries:
+                stosd
+                add     edi, 4
+                add     eax, SizeOfPage
+                loop    make_PageTable2_entries
+
+                ;; load PageTable4 to cr3
+                mov     eax, PageTable4
+                mov     cr3, eax
+
+                ;; enable PAE :: physical address extensions
+                mov     eax, cr4
+                bts     eax, 5
+                mov     cr4, eax
+
+                ;; enable long mode by setting EFER MSR
+                ;; MSR :: model specific register
+                mov     ecx, 0C0000080h
+                rdmsr
+                bts     eax, 8
+                wrmsr
+
+                ;; enable paging
+                mov     eax, cr0
+                bts     eax, 31
+                mov     cr0, eax
+
+                ;; and then we are in 32 bits compatibility mode (which is part of lmode)
+                ;; must load a SELECTOR with which the flags are setted for lmode
+                ;; as the following "jmp" do :
+                mov     ax, CODE_SELECTOR_64
+                mov     ds, ax
+                mov     es, ax
+                mov     fs, ax
+                mov     gs, ax
+                mov     ax, DATA_SELECTOR_64
+                mov     ss, ax
+                jmp     CODE_SELECTOR_64:start64
+        #+end_src
+***** start64
+******* note
+        1. set up IDT in 64 bits mode
+******* implementation
+        #+begin_src fasm :tangle cicada-kernel.fasm
+        align 16
+        use64
+
+        start64:
+                ;; Flush Cache
+                wbinvd
+
+                ;; Enable Cache
+                mov rax, cr0
+                btr rax, 29                     ; resets (i.e. clear) No Write Thru (Bit 29)
+                btr rax, 30                     ; resets (i.e. clear) CD (Bit 30)
+                mov cr0, rax
+
+                ;; about PIC and IRQ
+                ;; ICW :: initialization command word (actually byte)
+
+                ;; ICW1
+                mov     al, 10001b
+                out     20h, al
+                mov     al, 10001b
+                out     0A0h, al
+
+                ;; ICW2
+                ;; IRQ 0-7: from interrupts 32
+                mov     al, 32
+                out     21h, al
+                ;; IRQ 8-15: from interrupts 32 + 8
+                mov     al, 32 + 8
+                out     0A1h, al
+
+                ;; ICW3
+                ;; connected PIC1 with PIC2
+                mov     al, 100b
+                out     21h, al
+                mov     al, 10b
+                out     0A1h, al
+
+                ;; ICW4
+                ;; x86 environment and manual EOI
+                mov     al, 1
+                out     21h, al
+                out     0A1h, al
+
+                ;; OCW :: operation control word (actually byte)
+                ;; OCW is used to enable/disable IRQ and to signal an interrupt is over
+
+                ;; enable IRQ 1:keyboard
+                in      al, 21h
+                mov     al, 11111101b
+                out     21h, al
+                in      al, 0A1h
+                mov     al, 11111111b
+                out     0A1h, al
+
+                ;; create IDT (at linear address 0)
+                ;; not like the GDT, the IDT is created by code at address 0
+                ;; an IDT entry is called a gate
+
+                ;; at first placeholder is used
+                ;; then one should call create_gate to creat each gate
+
+                xor     edi, edi
+
+                mov     ecx, 32
+        make_exception_gate_placeholders:
+                mov     esi, exception_gate_placeholder
+                movsq
+                movsq
+                loop    make_exception_gate_placeholders
+
+                mov     ecx, 256 - 32
+        make_interrupt_gate_placeholders:
+                mov     esi, interrupt_gate_placeholder
+                movsq
+                movsq
+                loop    make_interrupt_gate_placeholders
+
+                lidt    [IDTR]
+
+                jmp cicada_virtual_machine
+        #+end_src
+******* create_gate
+        #+begin_src fasm :tangle cicada-kernel.fasm
+        align 16
+        ; create_gate
+        ; rax = address of handler
+        ; rdi = gate # to configure
+        create_gate:
+                push rdi
+                push rax
+
+                shl rdi, 4                      ; quickly multiply rdi by 16
+                stosw                           ; store the low word (15..0)
+                shr rax, 16
+                add rdi, 4                      ; skip the gate marker
+                stosw                           ; store the high word (31..16)
+                shr rax, 16
+                stosd                           ; store the high dword (63..32)
+
+                pop rax
+                pop rdi
+                ret
+        #+end_src
+******* IDT
+        #+begin_src fasm :tangle cicada-kernel.fasm
+        align 16
+        IDTR:
+          dw 256*16 - 1 ;; index of the last byte in table
+          dq 0          ;; linear address of IDT
+
+        ;; not like the GDT, the IDT is created by code at address 0
+        ;; an IDT entry is called a gate
+        ;; the size of a gate in 64 bits mode is 16 bytes
+        ;; offset                [64 bits] :: 0,1,6,7,8,9,10,11 ==
+        ;; code-segment-selector [16 bits] :: 2,3 ==
+        ;; reserved              [ 8 bits] :: 4 == 0
+        ;; attributes-and-type   [ 8 bits] :: 5 ==
+        ;; reserved              [32 bits] :: 12,13,14,15,16 == 0
+
+        align 16
+        exception_gate_placeholder:
+          dw exception_placeholder and 0ffffh ;; 0,1
+          dw CODE_SELECTOR_64                 ;; 2,3
+          db 0                                ;; 4
+          ;db 10001110b                        ;; 5
+          db 10001111b                        ;; 5
+          dw exception_placeholder shr (2*8)  ;; 6,7,8,9
+          dd exception_placeholder shr (6*8)  ;; 10,11
+
+        align 16
+        interrupt_gate_placeholder:
+          dw interrupt_placeholder and 0ffffh ;; 0,1
+          dw CODE_SELECTOR_64                 ;; 2,3
+          db 0                                ;; 4
+          ;db 10001111b                        ;; 5
+          db 10001110b                        ;; 5
+          dw interrupt_placeholder shr (2*8)  ;; 6,7,8,9
+          dd interrupt_placeholder shr (6*8)  ;; 10,11
+
+        ;; ISR :: Interrupt Service Routine
+
+        align 16
+        exception_placeholder:
+                cli
+                hlt
+
+        align 16
+        interrupt_placeholder:
+                iretq
+        #+end_src
 * ==================================================
 * include macro
   #+begin_src fasm :tangle cicada-kernel.fasm
@@ -1419,92 +1419,92 @@
   Size_of_initial_files_to_load = ($ - Initial_files_to_load) ;; unit :: byte
   #+end_src
 * interrupt
-** closeInterrupt & openInterrupt
-   #+begin_src fasm :tangle cicada-kernel.fasm
-   def_assembly_code "close-interrupt", closeInterrupt
-      ;; (* -- *)
-      cli
-      next
+*** closeInterrupt & openInterrupt
+    #+begin_src fasm :tangle cicada-kernel.fasm
+    def_assembly_code "close-interrupt", closeInterrupt
+       ;; (* -- *)
+       cli
+       next
 
-   def_assembly_code "open-interrupt", openInterrupt
-      ;; (* -- *)
-      sti
-      next
-   #+end_src
-** createGate
-   #+begin_src fasm :tangle cicada-kernel.fasm
-   def_assembly_code "create-gate", createGate
-      ;; (* gate number to configure, address of handler -- *)
-      pop_argument_stack rax
-      pop_argument_stack rdi
-      shl rdi, 4     ; quickly multiply rdi by 16
-      stosw          ; store the low word (15..0)
-      shr rax, 16
-      add rdi, 4     ; skip the gate marker
-      stosw          ; store the high word (31..16)
-      shr rax, 16
-      stosd          ; store the high dword (63..32)
-      next
-   #+end_src
-** barekeyboard & createBarekeyboard
-   #+begin_src fasm :tangle cicada-kernel.fasm
-   ; -----------------------------------------------------------------------------
-   ; keyboard interrupt. IRQ 0x01, INT 0x21
-   ; This IRQ runs whenever there is input on the keyboard
+    def_assembly_code "open-interrupt", openInterrupt
+       ;; (* -- *)
+       sti
+       next
+    #+end_src
+*** createGate
+    #+begin_src fasm :tangle cicada-kernel.fasm
+    def_assembly_code "create-gate", createGate
+       ;; (* gate number to configure, address of handler -- *)
+       pop_argument_stack rax
+       pop_argument_stack rdi
+       shl rdi, 4     ; quickly multiply rdi by 16
+       stosw          ; store the low word (15..0)
+       shr rax, 16
+       add rdi, 4     ; skip the gate marker
+       stosw          ; store the high word (31..16)
+       shr rax, 16
+       stosd          ; store the high dword (63..32)
+       next
+    #+end_src
+*** barekeyboard & createBarekeyboard
+    #+begin_src fasm :tangle cicada-kernel.fasm
+    ; -----------------------------------------------------------------------------
+    ; keyboard interrupt. IRQ 0x01, INT 0x21
+    ; This IRQ runs whenever there is input on the keyboard
 
-   hereUnInitializedData
-   ;; ------------------------------------------
-   ;; should be big enough, for no size error check
-   SizeOfScancodeQueue = 1024
+    hereUnInitializedData
+    ;; ------------------------------------------
+    ;; should be big enough, for no size error check
+    SizeOfScancodeQueue = 1024
 
-   ScancodeQueue labeling
-           preserve SizeOfScancodeQueue
-
-
-   align 16
-   barekeyboard:
-           push rax
-           push rcx
-
-           xor rax, rax
-           in al, 0x60
-
-           mov rcx, [FrontOfScancodeQueue]
-           mov byte [ScancodeQueue + rcx], al
-           inc rcx
-           cmp rcx, SizeOfScancodeQueue
-           jne @f
-           xor rcx, rcx
-   @@:
-           mov [FrontOfScancodeQueue], rcx
-
-           ;; the interrupt is over
-           mov al, 20h
-           out 20h, al
-           ;call os_smp_wakeup_all          ; A terrible hack
-
-           pop rcx
-           pop rax
-
-           iretq
+    ScancodeQueue labeling
+            preserve SizeOfScancodeQueue
 
 
-   ;; two indexes of the array as pointers
-   ;; Rear < Front
-   align 16
-   RearOfScancodeQueue:  dq 0
-   align 16
-   FrontOfScancodeQueue: dq 1
+    align 16
+    barekeyboard:
+            push rax
+            push rcx
 
-   def_verb "create-barekeyboard", createBarekeyboard
-      ;; (* -- *)
-      ;; create the function to handle keyboard interrupt
-      xx _literal, 32+1
-      xx _literal, barekeyboard
-      xx createGate
-      xx Exit
-   def_verb_end createBarekeyboard
-   #+end_src
+            xor rax, rax
+            in al, 0x60
+
+            mov rcx, [FrontOfScancodeQueue]
+            mov byte [ScancodeQueue + rcx], al
+            inc rcx
+            cmp rcx, SizeOfScancodeQueue
+            jne @f
+            xor rcx, rcx
+    @@:
+            mov [FrontOfScancodeQueue], rcx
+
+            ;; the interrupt is over
+            mov al, 20h
+            out 20h, al
+            ;call os_smp_wakeup_all          ; A terrible hack
+
+            pop rcx
+            pop rax
+
+            iretq
+
+
+    ;; two indexes of the array as pointers
+    ;; Rear < Front
+    align 16
+    RearOfScancodeQueue:  dq 0
+    align 16
+    FrontOfScancodeQueue: dq 1
+
+    def_verb "create-barekeyboard", createBarekeyboard
+       ;; (* -- *)
+       ;; create the function to handle keyboard interrupt
+       xx _literal, 32+1
+       xx _literal, barekeyboard
+       xx createGate
+       xx Exit
+    def_verb_end createBarekeyboard
+    #+end_src
 * configureColorPalette
   #+begin_src fasm :tangle cicada-kernel.fasm
   Palette:
@@ -1566,866 +1566,866 @@
          next
   #+end_src
 * IO
-** read_byte
-*** note
-    - 尽可能详尽地 不做转换地 用 keyboard scan code 记录用户的击键
-      形成一层抽象 将具体的转码工作交给另一层次的函数去做
-    - barekeyboard
-      每一次 按键 和 释键 都会调用这个 子程
-      并且相应的 keyboard scan code 被保存到 ScancodeQueue
-      这里还没有 char 的语义
-    - inputKey
-      从 ScancodeQueue 中取出一个 被缓冲的 Scancode
-    - inputChar
-      利用 ScancodeQueue 里保存的信息 形成 char 的语义的
-      这样做之后 对从键盘输入的信息的处理就能变得非常灵活
-      对 keyboard layout 的更换非常灵活
-      非常的 baremetal
-      形成某种 char 的语义 只是更高层的函数所能完成的任务之一而已
-    - inputLine
-      这里是基本的输入接口
-      需要 echo
-      并且 包含一些编辑功能
-    - read_byte
-      这里需要一个全局变量
-      来切换 当前被读的 buffer 的位置
-      ScancodeQueue 已经形成了一次 buffering 了
-      再在 read_byte 中形成一次 buffering 也许不合理
-      read_byte 的特点在于
-      这个函数所读写的地方取决于
-      [Current_reading + Cell_width] 和 [Reading_boundary + Cell_width] 这两个全局变量
-      因为 调用 read_byte 的函数所看到的 read_byte 是被静态编译到函数体中的
-      所以 要想 方便的实现 evalString 这个函数
-      就有必要 使用这两个全局变量 来控制 read_byte 所读取的位置
-*** ScancodeQueue
-    #+begin_src fasm :tangle cicada-kernel.fasm
-    def_assembly_code "empty?scan-code-queue", empty?ScancodeQueue
-       ;; (* -- True or False *)
-       mov rax, [RearOfScancodeQueue]
-       mov rbx, [FrontOfScancodeQueue]
-       inc rax
-       cmp rax, SizeOfScancodeQueue
-       jne @f
-       xor rax, rax
-        @@:
-       xor rcx, rcx
-       cmp rax, rbx
-       jne @f
-       inc rcx
-        @@:
-       push_argument_stack rcx
-       next
-
-    def_assembly_code "in-scan-code-queue", inScancodeQueue
-       ;; (* Scancode -- *)
-       pop_argument_stack rax
-       mov rcx, [FrontOfScancodeQueue]
-       mov byte [ScancodeQueue + rcx], al
-       inc rcx
-       cmp rcx, SizeOfScancodeQueue
-       jne @f
-       xor rcx, rcx
-        @@:
-       mov [FrontOfScancodeQueue], rcx
-       next
-
-    def_assembly_code "out-scan-code-queue", outScancodeQueue
-       ;; (* -- Scancode *)
-       mov rcx, [RearOfScancodeQueue]
-       inc rcx
-       cmp rcx, SizeOfScancodeQueue
-       jne @f
-       xor rcx, rcx
-        @@:
-       mov [RearOfScancodeQueue], rcx
-       xor rax, rax
-       mov al, byte [ScancodeQueue + rcx]
-       push_argument_stack rax
-       next
-
-    def_assembly_code "halt", halt
-       ;; (* -- *)
-       hlt
-       next
-    #+end_src
-*** inputKey
-    #+begin_src fasm :tangle cicada-kernel.fasm
-    def_verb "input-key", inputKey
-       ;; (* -- Scancode *)
-       ;; when ScancodeQueue is empty
-       ;; call"halt" to wait for more keystroke
-       ;; note that, when you type fast
-       ;; one "halt" maybe breaked by many interrupt events
-       xx empty?ScancodeQueue, _false?branch, 4
-       xx   halt, _branch, -5
-       xx outScancodeQueue
-       xx Exit
-    def_verb_end inputKey
-    #+end_src
-*** inputChar
-    #+begin_src fasm :tangle cicada-kernel.fasm
-    ;; 1. handle special Scancode first
-    ;;    then call scancodeToASCII
-    ;; 2. the first special Scancode to handle
-    ;;    is about left_shift
-    ;; 3. when scancodeToASCII returns Zero
-    ;;    this scancode is special
-    ;;    call inputKey to get another scancode
-    ;;    to escape it
-    ;; 4. little by little
-    ;;    handle these special scancode been escaped
-    def_verb "input-char", inputChar
-       ;; (* -- ASCII char *)
-       xx inputKey
-       xx dup, scancodeIsLeftShift?, _false?branch, 5
-       xx   toggleLeftShift
-       xx   drop, _branch, -8  ;; inputKey
-       xx dup, _literal, 128, greater_than?, _false?branch, 4
-       xx   drop, _branch, -17 ;; inputKey
-       xx scancodeToASCII
-       xx dup, zero?, _false?branch, 4
-       xx   drop, _branch, -25 ;; inputKey
-       xx Exit
-    def_verb_end inputChar
-
-
-    def_verb "scan-code-is-left-shift?", scancodeIsLeftShift?
-       ;; (* scancode -- True or False*)
-       xx dup
-       xx _literal, 42, equal?, _false?branch, 4
-       xx   drop, True
-       xx   Exit
-       xx _literal, 128, subtraction
-       xx _literal, 42, equal?, _false?branch, 3
-       xx   True
-       xx   Exit
-       xx False
-       xx Exit
-    def_verb_end scancodeIsLeftShift?
-
-
-    ;; 1. a global variable about left_shift
-    ;;    is checked by the folloing function
-    ;; 2. whether the scancode is able to convert to ASCII
-    ;;    is not decided by "scancodeToASCII"
-    ;;    but by "inputChar"
-    def_assembly_code "scan-code->ASCII", scancodeToASCII
-       ;; (* scancode -- ASCII char or Zero *)
-       pop_argument_stack rax
-       mov rbx, [StateOfLeftShift + Cell_width]
-       test rbx, rbx
-       jz @f
-       xor rcx, rcx
-       mov cl, byte [BarekeyboardLayout_Upper + rax]
-       push_argument_stack rcx
-       next
-        @@:
-       xor rcx, rcx
-       mov cl, byte [BarekeyboardLayout_Lower + rax]
-       push_argument_stack rcx
-       next
-
-
-    def_noun "State-of-left-shift", StateOfLeftShift
-      xx  0
-    def_noun_end StateOfLeftShift
-
-
-    def_assembly_code "toggle-left-shift", toggleLeftShift
-       ;; (* -- *)
-       mov rax, [StateOfLeftShift + Cell_width]
-       test rax, rax
-       jz @f
-       xor rax, rax
-       mov [StateOfLeftShift + Cell_width], rax
-       next
-        @@:
-       inc rax
-       mov [StateOfLeftShift + Cell_width], rax
-       next
-
-
-    ;; BarekeyboardLayout
-    ;; and it will be interesting to design new layout
-
-    BarekeyboardLayout_Lower:
-    ;;================================
-      db 0 ;; 0:[no such scancode]
-    ;;================================
-    ;; 1                                                                      14
-    db ASCII_esc, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', ASCII_backspace
-    ;; 15                                                                     28
-    db ASCII_tab, 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', ASCII_newline
-    ;;================================
-      db 0 ;; 29:[left_ctrl]
-    ;;================================
-    ;; 30                                                40
-    db 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', "'"
-    ;; 41
-    db '`'
-    ;;================================
-      db 0 ;; 42:[left_shift]
-    ;;================================
-    ;; 43                                                53
-    db '\', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/'
-    ;;================================
-      db 0 ;; 54:[right_shift]
-      db 0 ;; 55(224):[print screen & system request]
-      db 0 ;; 56:[left_alt]
-    ;;================================
-    ;; 57
-    db ASCII_space
-    ;;================================
-      db 0 ;; 58:[caps_lock]
-    ;;================================
-      rb (128 - 58)
-    ;;================================
-
-    BarekeyboardLayout_Upper:
-    ;;================================
-      db 0 ;; 0:[no such scancode]
-    ;;================================
-    ;; 1                                                                      14
-    db ASCII_esc, '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+', ASCII_backspace
-    ;; 15                                                                     28
-    db ASCII_tab, 'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '{', '}', ASCII_newline
-    ;;================================
-      db 0 ;; 29:[left_ctrl]
-    ;;================================
-    ;; 30                                                40
-    db 'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ':', '"'
-    ;; 41
-    db '~'
-    ;;================================
-      db 0 ;; 42:[left_shift]
-    ;;================================
-    ;; 43                                                53
-    db '|', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', '<', '>', '?'
-    ;;================================
-      db 0 ;; 54:[right_shift]
-      db 0 ;; 55(224):[print screen & system request]
-      db 0 ;; 56:[left_alt]
-    ;;================================
-    ;; 57
-    db ASCII_space
-    ;;================================
-      db 0 ;; 58:[caps_lock]
-    ;;================================
-      rb (128 - 58)
-    ;;================================
-
-
-    ;; --------------------------------------
-    ;; test
-
-    ;; def_verb "test_inputChar", test_inputChar
-    ;;    xx inputChar, write_byte, _branch, -3
-    ;;    xx Exit
-    ;; def_verb_end test_inputChar
-    #+end_src
-*** inputLine
-    #+begin_src fasm :tangle cicada-kernel.fasm
-    ;; 1. this function is like a little editor
-    ;;    with a buffer of which the size is max length
-    ;; 2. input is echoed here, so output functions are needed
-    ;; 3. the concept of cursor is introduced here
-    ;; 4. some editing features are implemented
-    ;; 5. the most important thing is that
-    ;;    before a user meets "max length"
-    ;;    a "linefeed" must be meeted
-    ;;    and this "linefeed" is counted into the length of the string
-    ;;    that returned by "inputLine"
-    def_verb "input-line", inputLine
-       ;; (* [address, max length] -- string[address, actual length] *)
-       xx dup2 ;; leave address and to calculate actual length
-       xx _literal, '_', write_byte, decrementCursor
-
-       ;; (* address, max length, [address, length] *)
-       xx inputChar
-
-       ;; (* address, max length, [address, length], ASCII char *)
-       xx dup, _literal, ASCII_backspace
-       xx equal?, _false?branch, 24
-       xx   drop
-       xx   dup, xoverxxx, equal?, _false?branch, 3
-       xx     _branch, -14 ;; inputChar
-       xx   _literal, ' ', write_byte, decrementCursor
-       ;;   clear the '_', the cursor, leaved by every writed chars
-       xx   decrementCursor
-       ;;   write the new cursor
-       xx   _literal, '_', write_byte, decrementCursor
-       xx   add1, swap
-       xx   sub1, swap
-       xx   _branch, -29 ;; inputChar
-
-       ;; (* address, max length, [address, length], ASCII char *)
-       xx over, zero?, _false?branch, 4
-       ;;   if really meet max length
-       ;;   type any key should sent a little warn (but this is not implemented)
-       ;;   even type enter key will NOT "Exit" this function
-       xx   drop
-       ;;   (* address, max length, [address, length] *)
-       xx   _branch, -36 ;; inputChar
-
-       ;; (* address, max length, [address, length], ASCII char *)
-       ;; "Exit" only on "newline"
-       xx dup, _literal, ASCII_newline
-       xx equal?, _false?branch, 17
-       xx   _literal, ' ', write_byte, decrementCursor
-       ;;   clear the '_', the cursor, leaved by every writed chars
-       xx   dup, write_byte
-       xx   xoverxx, save_byte
-       xx   sub1, swap
-       xx   add1, swap
-       ;;   (* address, max length, [address, length] *)
-       xx   swap, drop
-       xx   subtraction
-       xx   Exit
-
-       ;; (* address, max length, [address, length], ASCII char *)
-       xx dup, write_byte
-       xx _literal, '_', write_byte, decrementCursor
-       ;; leave a '_' after every writed chars as cursor
-       xx xoverxx, save_byte
-       xx sub1, swap
-       xx add1, swap
-       ;; (* address, max length, [address, length] *)
-       xx _branch, -72 ;; inputChar
-
-    def_verb_end inputLine
-    #+end_src
 *** read_byte
+***** note
+      - 尽可能详尽地 不做转换地 用 keyboard scan code 记录用户的击键
+        形成一层抽象 将具体的转码工作交给另一层次的函数去做
+      - barekeyboard
+        每一次 按键 和 释键 都会调用这个 子程
+        并且相应的 keyboard scan code 被保存到 ScancodeQueue
+        这里还没有 char 的语义
+      - inputKey
+        从 ScancodeQueue 中取出一个 被缓冲的 Scancode
+      - inputChar
+        利用 ScancodeQueue 里保存的信息 形成 char 的语义的
+        这样做之后 对从键盘输入的信息的处理就能变得非常灵活
+        对 keyboard layout 的更换非常灵活
+        非常的 baremetal
+        形成某种 char 的语义 只是更高层的函数所能完成的任务之一而已
+      - inputLine
+        这里是基本的输入接口
+        需要 echo
+        并且 包含一些编辑功能
+      - read_byte
+        这里需要一个全局变量
+        来切换 当前被读的 buffer 的位置
+        ScancodeQueue 已经形成了一次 buffering 了
+        再在 read_byte 中形成一次 buffering 也许不合理
+        read_byte 的特点在于
+        这个函数所读写的地方取决于
+        [Current_reading + Cell_width] 和 [Reading_boundary + Cell_width] 这两个全局变量
+        因为 调用 read_byte 的函数所看到的 read_byte 是被静态编译到函数体中的
+        所以 要想 方便的实现 evalString 这个函数
+        就有必要 使用这两个全局变量 来控制 read_byte 所读取的位置
+***** ScancodeQueue
+      #+begin_src fasm :tangle cicada-kernel.fasm
+      def_assembly_code "empty?scan-code-queue", empty?ScancodeQueue
+         ;; (* -- True or False *)
+         mov rax, [RearOfScancodeQueue]
+         mov rbx, [FrontOfScancodeQueue]
+         inc rax
+         cmp rax, SizeOfScancodeQueue
+         jne @f
+         xor rax, rax
+          @@:
+         xor rcx, rcx
+         cmp rax, rbx
+         jne @f
+         inc rcx
+          @@:
+         push_argument_stack rcx
+         next
+
+      def_assembly_code "in-scan-code-queue", inScancodeQueue
+         ;; (* Scancode -- *)
+         pop_argument_stack rax
+         mov rcx, [FrontOfScancodeQueue]
+         mov byte [ScancodeQueue + rcx], al
+         inc rcx
+         cmp rcx, SizeOfScancodeQueue
+         jne @f
+         xor rcx, rcx
+          @@:
+         mov [FrontOfScancodeQueue], rcx
+         next
+
+      def_assembly_code "out-scan-code-queue", outScancodeQueue
+         ;; (* -- Scancode *)
+         mov rcx, [RearOfScancodeQueue]
+         inc rcx
+         cmp rcx, SizeOfScancodeQueue
+         jne @f
+         xor rcx, rcx
+          @@:
+         mov [RearOfScancodeQueue], rcx
+         xor rax, rax
+         mov al, byte [ScancodeQueue + rcx]
+         push_argument_stack rax
+         next
+
+      def_assembly_code "halt", halt
+         ;; (* -- *)
+         hlt
+         next
+      #+end_src
+***** inputKey
+      #+begin_src fasm :tangle cicada-kernel.fasm
+      def_verb "input-key", inputKey
+         ;; (* -- Scancode *)
+         ;; when ScancodeQueue is empty
+         ;; call"halt" to wait for more keystroke
+         ;; note that, when you type fast
+         ;; one "halt" maybe breaked by many interrupt events
+         xx empty?ScancodeQueue, _false?branch, 4
+         xx   halt, _branch, -5
+         xx outScancodeQueue
+         xx Exit
+      def_verb_end inputKey
+      #+end_src
+***** inputChar
+      #+begin_src fasm :tangle cicada-kernel.fasm
+      ;; 1. handle special Scancode first
+      ;;    then call scancodeToASCII
+      ;; 2. the first special Scancode to handle
+      ;;    is about left_shift
+      ;; 3. when scancodeToASCII returns Zero
+      ;;    this scancode is special
+      ;;    call inputKey to get another scancode
+      ;;    to escape it
+      ;; 4. little by little
+      ;;    handle these special scancode been escaped
+      def_verb "input-char", inputChar
+         ;; (* -- ASCII char *)
+         xx inputKey
+         xx dup, scancodeIsLeftShift?, _false?branch, 5
+         xx   toggleLeftShift
+         xx   drop, _branch, -8  ;; inputKey
+         xx dup, _literal, 128, greater_than?, _false?branch, 4
+         xx   drop, _branch, -17 ;; inputKey
+         xx scancodeToASCII
+         xx dup, zero?, _false?branch, 4
+         xx   drop, _branch, -25 ;; inputKey
+         xx Exit
+      def_verb_end inputChar
+
+
+      def_verb "scan-code-is-left-shift?", scancodeIsLeftShift?
+         ;; (* scancode -- True or False*)
+         xx dup
+         xx _literal, 42, equal?, _false?branch, 4
+         xx   drop, True
+         xx   Exit
+         xx _literal, 128, subtraction
+         xx _literal, 42, equal?, _false?branch, 3
+         xx   True
+         xx   Exit
+         xx False
+         xx Exit
+      def_verb_end scancodeIsLeftShift?
+
+
+      ;; 1. a global variable about left_shift
+      ;;    is checked by the folloing function
+      ;; 2. whether the scancode is able to convert to ASCII
+      ;;    is not decided by "scancodeToASCII"
+      ;;    but by "inputChar"
+      def_assembly_code "scan-code->ASCII", scancodeToASCII
+         ;; (* scancode -- ASCII char or Zero *)
+         pop_argument_stack rax
+         mov rbx, [StateOfLeftShift + Cell_width]
+         test rbx, rbx
+         jz @f
+         xor rcx, rcx
+         mov cl, byte [BarekeyboardLayout_Upper + rax]
+         push_argument_stack rcx
+         next
+          @@:
+         xor rcx, rcx
+         mov cl, byte [BarekeyboardLayout_Lower + rax]
+         push_argument_stack rcx
+         next
+
+
+      def_noun "State-of-left-shift", StateOfLeftShift
+        xx  0
+      def_noun_end StateOfLeftShift
+
+
+      def_assembly_code "toggle-left-shift", toggleLeftShift
+         ;; (* -- *)
+         mov rax, [StateOfLeftShift + Cell_width]
+         test rax, rax
+         jz @f
+         xor rax, rax
+         mov [StateOfLeftShift + Cell_width], rax
+         next
+          @@:
+         inc rax
+         mov [StateOfLeftShift + Cell_width], rax
+         next
+
+
+      ;; BarekeyboardLayout
+      ;; and it will be interesting to design new layout
+
+      BarekeyboardLayout_Lower:
+      ;;================================
+        db 0 ;; 0:[no such scancode]
+      ;;================================
+      ;; 1                                                                      14
+      db ASCII_esc, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', ASCII_backspace
+      ;; 15                                                                     28
+      db ASCII_tab, 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', ASCII_newline
+      ;;================================
+        db 0 ;; 29:[left_ctrl]
+      ;;================================
+      ;; 30                                                40
+      db 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', "'"
+      ;; 41
+      db '`'
+      ;;================================
+        db 0 ;; 42:[left_shift]
+      ;;================================
+      ;; 43                                                53
+      db '\', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/'
+      ;;================================
+        db 0 ;; 54:[right_shift]
+        db 0 ;; 55(224):[print screen & system request]
+        db 0 ;; 56:[left_alt]
+      ;;================================
+      ;; 57
+      db ASCII_space
+      ;;================================
+        db 0 ;; 58:[caps_lock]
+      ;;================================
+        rb (128 - 58)
+      ;;================================
+
+      BarekeyboardLayout_Upper:
+      ;;================================
+        db 0 ;; 0:[no such scancode]
+      ;;================================
+      ;; 1                                                                      14
+      db ASCII_esc, '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+', ASCII_backspace
+      ;; 15                                                                     28
+      db ASCII_tab, 'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '{', '}', ASCII_newline
+      ;;================================
+        db 0 ;; 29:[left_ctrl]
+      ;;================================
+      ;; 30                                                40
+      db 'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ':', '"'
+      ;; 41
+      db '~'
+      ;;================================
+        db 0 ;; 42:[left_shift]
+      ;;================================
+      ;; 43                                                53
+      db '|', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', '<', '>', '?'
+      ;;================================
+        db 0 ;; 54:[right_shift]
+        db 0 ;; 55(224):[print screen & system request]
+        db 0 ;; 56:[left_alt]
+      ;;================================
+      ;; 57
+      db ASCII_space
+      ;;================================
+        db 0 ;; 58:[caps_lock]
+      ;;================================
+        rb (128 - 58)
+      ;;================================
+
+
+      ;; --------------------------------------
+      ;; test
+
+      ;; def_verb "test_inputChar", test_inputChar
+      ;;    xx inputChar, write_byte, _branch, -3
+      ;;    xx Exit
+      ;; def_verb_end test_inputChar
+      #+end_src
+***** inputLine
+      #+begin_src fasm :tangle cicada-kernel.fasm
+      ;; 1. this function is like a little editor
+      ;;    with a buffer of which the size is max length
+      ;; 2. input is echoed here, so output functions are needed
+      ;; 3. the concept of cursor is introduced here
+      ;; 4. some editing features are implemented
+      ;; 5. the most important thing is that
+      ;;    before a user meets "max length"
+      ;;    a "linefeed" must be meeted
+      ;;    and this "linefeed" is counted into the length of the string
+      ;;    that returned by "inputLine"
+      def_verb "input-line", inputLine
+         ;; (* [address, max length] -- string[address, actual length] *)
+         xx dup2 ;; leave address and to calculate actual length
+         xx _literal, '_', write_byte, decrementCursor
+
+         ;; (* address, max length, [address, length] *)
+         xx inputChar
+
+         ;; (* address, max length, [address, length], ASCII char *)
+         xx dup, _literal, ASCII_backspace
+         xx equal?, _false?branch, 24
+         xx   drop
+         xx   dup, xoverxxx, equal?, _false?branch, 3
+         xx     _branch, -14 ;; inputChar
+         xx   _literal, ' ', write_byte, decrementCursor
+         ;;   clear the '_', the cursor, leaved by every writed chars
+         xx   decrementCursor
+         ;;   write the new cursor
+         xx   _literal, '_', write_byte, decrementCursor
+         xx   add1, swap
+         xx   sub1, swap
+         xx   _branch, -29 ;; inputChar
+
+         ;; (* address, max length, [address, length], ASCII char *)
+         xx over, zero?, _false?branch, 4
+         ;;   if really meet max length
+         ;;   type any key should sent a little warn (but this is not implemented)
+         ;;   even type enter key will NOT "Exit" this function
+         xx   drop
+         ;;   (* address, max length, [address, length] *)
+         xx   _branch, -36 ;; inputChar
+
+         ;; (* address, max length, [address, length], ASCII char *)
+         ;; "Exit" only on "newline"
+         xx dup, _literal, ASCII_newline
+         xx equal?, _false?branch, 17
+         xx   _literal, ' ', write_byte, decrementCursor
+         ;;   clear the '_', the cursor, leaved by every writed chars
+         xx   dup, write_byte
+         xx   xoverxx, save_byte
+         xx   sub1, swap
+         xx   add1, swap
+         ;;   (* address, max length, [address, length] *)
+         xx   swap, drop
+         xx   subtraction
+         xx   Exit
+
+         ;; (* address, max length, [address, length], ASCII char *)
+         xx dup, write_byte
+         xx _literal, '_', write_byte, decrementCursor
+         ;; leave a '_' after every writed chars as cursor
+         xx xoverxx, save_byte
+         xx sub1, swap
+         xx add1, swap
+         ;; (* address, max length, [address, length] *)
+         xx _branch, -72 ;; inputChar
+
+      def_verb_end inputLine
+      #+end_src
+***** read_byte
+      #+begin_src fasm :tangle cicada-kernel.fasm
+      hereUnInitializedData
+      ;; ------------------------------------------
+      Size_of_input_buffer = 3*1024*1024
+
+      Input_buffer labeling
+              preserve Size_of_input_buffer
+      End_of_input_buffer labeling
+
+
+      def_noun "Size-of-input-buffer",  _Size_of_input_buffer
+        xx   Size_of_input_buffer
+      def_noun_end  _Size_of_input_buffer
+
+      def_noun "Input-buffer",        _Input_buffer
+        xx           Input_buffer
+      def_noun_end        _Input_buffer
+
+      def_noun "End-of-input-buffer",   TheEnd_of_input_buffer
+        xx    End_of_input_buffer
+      def_noun_end   TheEnd_of_input_buffer
+
+
+      ;; 1. two global variables for reading
+      ;;    I can easily support `evalString' by change these two variables
+      ;; 2. note that, there is no char in the address of a "Reading_boundary"
+      ;;    an example of "Reading_boundary" is "End_of_input_buffer"
+      ;; 3. when "Current_reading" == "Reading_boundary"
+      ;;    for the function "read_byte"
+      ;;    we need to reset it to read from "Input_buffer"
+      ;;    and call "inputLine" to fetch more chars
+      ;;    and loop back
+      def_noun "Current-reading", Current_reading
+        xx   Input_buffer
+      def_noun_end Current_reading
+
+      def_noun "Reading-boundary", Reading_boundary
+        xx  Input_buffer
+      def_noun_end Reading_boundary
+
+
+      def_verb "read-byte", read_byte
+         ;; (*  -- char *)
+         xx Current_reading
+         xx Reading_boundary
+         xx less_than?, _false?branch, 8
+         ;;   there is still some chars in the Input_buffer
+         ;;   (or any other buffer) to be processed
+         xx   Current_reading, fetch_byte
+         xx   _literal, 1, _address, Current_reading, add_save
+         xx   Exit
+         ;; all chars in Input_buffer
+         ;; (or any other buffer) have been processed
+         xx notReadingFromInput_buffer?, _false?branch, 5
+         ;;   add blank at the end
+         ;;   otherwise,  when the a string not ending with blank
+         ;;   "evalString" will not work correctly
+         xx   _literal, ASCII_linefeed
+         xx   toReadFromInput_buffer
+         xx   Exit
+         ;; when "Current_reading" == "Reading_boundary"
+         ;; we need to reset it to read from "Input_buffer"
+         ;; and call "inputLine" to fetch more chars
+         ;; and loop back
+         xx toReadFromInput_buffer
+         xx _Input_buffer, _Size_of_input_buffer
+         xx openInterrupt
+         xx inputLine
+         xx closeInterrupt
+         ;; set Reading_boundary ==
+         ;;     Input_buffer + length of string that was inputed
+         xx _address, Reading_boundary, add_save
+         xx drop
+         xx _branch, -31
+      def_verb_end read_byte
+
+      def_verb "not-reading-from-input-buffer?", notReadingFromInput_buffer?
+         ;; (* -- True of False *)
+         xx Current_reading
+         xx TheEnd_of_input_buffer, greater_than?, _false?branch, 3
+         xx   True
+         xx   Exit
+         xx Current_reading
+         xx _Input_buffer, less_than?, _false?branch, 3
+         xx   True
+         xx   Exit
+         xx False
+         xx Exit
+      def_verb_end notReadingFromInput_buffer?
+
+      def_verb "to-read-from-input-buffer", toReadFromInput_buffer
+         ;; (* -- *)
+         xx _Input_buffer, _address, Current_reading, save
+         xx _Input_buffer, _address, Reading_boundary, save
+         xx Exit
+      def_verb_end toReadFromInput_buffer
+      #+end_src
+*** Screen & ScreenBuffer & Cursor
+***** ScreenBuffer
+      #+begin_src fasm :tangle cicada-kernel.fasm
+      ;; the size of a ScreenBuffer is equal to the size of the screen
+      ;; which is 80*25*2
+
+      hereUnInitializedData
+      ;; ------------------------------------------
+      ;; the size of a ScreenBuffer is equal to the size of the screen
+      ;; which is 80*25*2 bytes
+      ;; and cursor and ScreenBuffer are in the same structure
+      ;; the size of its cursor is 2 bytes
+      SizeOfScreenBuffer = 80*25*2
+      SizeOfCursor = 8
+
+      Cursor0_InAssembly labeling
+              preserve SizeOfCursor
+      ScreenBuffer0_InAssembly labeling
+              preserve SizeOfScreenBuffer
+
+      def_noun "screen-buffer-0", ScreenBuffer0
+        xx  ScreenBuffer0_InAssembly
+      def_noun_end ScreenBuffer0
+
+
+      def_assembly_code "scroll-screen-buffer", scrollScreenBuffer
+         ;; (* screen buffer[address] -- *)
+         ;; scrolls a screen Buffer up by one line
+         ;; Default_back_color_of_char should be used
+         pop_argument_stack rdi              ; Start of video text memory for row 1
+         mov rsi, rdi
+         add rsi, 0xA0                   ; Start of video text memory for row 2
+         cld ;; clear the direction flag as we want to increment through memory
+         xor rcx, rcx
+         mov cx, (80 * 24)
+         rep movsw                       ; Copy the Character and Attribute
+         ; Clear the last line in video memory
+         mov bl, byte [Default_back_color_of_char + Cell_width]
+         shl bl, 4
+         mov ah, byte [Default_fore_color_of_char + Cell_width]
+         or ah, bl
+         mov al, ' '
+         mov cx, 80
+         rep stosw                       ; Store word in AX to RDI, RCX times
+         next
+
+      def_assembly_code "clear-screen-buffer", clearScreenBuffer
+         ;; (* screen buffer[address] -- *)
+         pop_argument_stack rdi              ; Address for start of frame buffer
+         cld ;; clear the direction flag as we want to increment through memory
+         mov bl, byte [Default_back_color_of_char + Cell_width]
+         shl bl, 4
+         mov ah, byte [Default_fore_color_of_char + Cell_width]
+         or ah, bl
+         mov al, ' '
+         xor rcx, rcx
+         mov cx, (80 * 25)
+         rep stosw                       ; Clear the screen. Store word in AX to RDI, RCX times
+         next
+      #+end_src
+***** Screen
+      #+begin_src fasm :tangle cicada-kernel.fasm
+      def_assembly_code "update-screen", updateScreen
+         ;; (* screen buffer[address] -- *)
+         ;; print a screen buffer to screen
+         pop_argument_stack rsi
+         cld ;; clear the direction flag as we want to increment through memory
+         mov rdi, 0xb8000
+         mov cx, 2000                    ; 80 x 25
+         rep movsw
+         next
+
+
+      def_noun "Current-screen-buffer", Current_screen_buffer
+        xx  ScreenBuffer0_InAssembly
+      def_noun_end Current_screen_buffer
+
+
+      def_verb "scroll-screen", scrollScreen
+         ;; (* -- *)
+         ;; scrolls a screen Buffer up by one line
+         ;; Default_back_color_of_char should be used
+         xx Current_screen_buffer
+         xx dup, scrollScreenBuffer
+         xx updateScreen
+         xx Exit
+      def_verb_end scrollScreen
+
+      def_verb "clear-screen", clearScreen
+         ;; (* -- *)
+         xx Current_screen_buffer
+         xx dup, clearScreenBuffer
+         xx updateScreen
+         xx Exit
+      def_verb_end clearScreen
+      #+end_src
+***** Cursor
+      #+begin_src fasm :tangle cicada-kernel.fasm
+      def_noun "Number-of-columns-of-screen", NumberOfColumnsOfScreen
+        xx  80
+      def_noun_end NumberOfColumnsOfScreen
+
+      def_noun "Number-of-rows-of-screen", NumberOfRowsOfScreen
+        xx  25
+      def_noun_end NumberOfRowsOfScreen
+
+      def_noun "Number-of-chars-of-screen", NumberOfCharsOfScreen
+        xx  80*25
+      def_noun_end NumberOfCharsOfScreen
+
+
+      def_verb "get-current-cursor-address", getCurrentCursorAddress
+         ;; (* -- CurrentCursor[address] *)
+         xx Current_screen_buffer
+         xx sub8
+         xx Exit
+      def_verb_end getCurrentCursorAddress
+
+      def_verb "reset-current-cursor", resetCurrentCursor
+         ;; (* -- *)
+         xx _literal, 0, getCurrentCursorAddress, save
+         xx Exit
+      def_verb_end resetCurrentCursor
+
+      ;; start from 1 to 25
+      def_verb "get-current-cursor-row", getCurrentCursorRow
+         ;; (* -- row *)
+         xx getCurrentCursorAddress, fetch
+         xx NumberOfColumnsOfScreen, moddiv
+         xx swap, drop, add1
+         xx Exit
+      def_verb_end getCurrentCursorRow
+
+      ;; start from 1 to 80
+      def_verb "get-current-cursor-column", getCurrentCursorColumn
+         ;; (* -- column *)
+         xx getCurrentCursorAddress, fetch
+         xx NumberOfColumnsOfScreen, moddiv
+         xx drop, add1
+         xx Exit
+      def_verb_end getCurrentCursorColumn
+
+
+      def_verb "increment-cursor", incrementCursor
+         ;; (* -- *)
+         xx getCurrentCursorAddress, fetch, add1
+         xx NumberOfCharsOfScreen, equal?, _false?branch, 6
+         xx   scrollScreen
+         xx   NumberOfColumnsOfScreen, getCurrentCursorAddress, sub_save
+         xx   Exit
+         xx _literal, 1, getCurrentCursorAddress, add_save
+         xx Exit
+      def_verb_end incrementCursor
+
+      def_verb "decrement-cursor", decrementCursor
+         ;; (* -- *)
+         xx getCurrentCursorAddress, fetch
+         xx zero?, _false?branch, 2
+         xx   Exit
+         xx _literal, 1, getCurrentCursorAddress, sub_save
+         xx Exit
+      def_verb_end decrementCursor
+      #+end_src
+*** write-byte
+***** putCharWithColor & putChar
+      #+begin_src fasm :tangle cicada-kernel.fasm
+      ;; text mode (aka. mode 0) -- the most simple output
+      ;; (one can not support UTF-8 in text mode)
+      ;; direct memory access to a linear address start at 0xb8000
+      ;; 80 cols * 25 rows * 2 bytes
+      ;; - The second byte is an ASCII char
+      ;; - The first byte of the 2 bytes is split into forecolor & backcolor
+
+      ;; Bit 76543210
+      ;;     ||||||||
+      ;;     |||||^^^-fore color
+      ;;     ||||^----fore color bright bit
+      ;;     |^^^-----back color
+      ;;     ^--------back color bright bit (or enables blinking text)
+
+      ;;   0 : Black               0+8 : Dark Gray
+      ;;   1 : Blue                1+8 : Light Blue
+      ;;   2 : Green               2+8 : Light Green
+      ;;   3 : Cyan                3+8 : Light Cyan
+      ;;   4 : Red                 4+8 : Light Red
+      ;;   5 : Magenta             5+8 : Light Magenta
+      ;;   6 : Brown               6+8 : Yellow
+      ;;   7 : Light Gray          7+8 : White
+
+      def_noun "Black-char"    ,     BlackChar
+        xx           0
+      def_noun_end         BlackChar
+
+      def_noun "Blue-char"    ,     BlueChar
+        xx            1
+      def_noun_end         BlueChar
+
+      def_noun "Green-char"    ,     GreenChar
+        xx           2
+      def_noun_end         GreenChar
+
+      def_noun "Cyan-char"    ,     CyanChar
+        xx            3
+      def_noun_end         CyanChar
+
+      def_noun "Red-char"    ,     RedChar
+        xx             4
+      def_noun_end         RedChar
+
+      def_noun "Magenta-char"    ,     MagentaChar
+        xx         5
+      def_noun_end         MagentaChar
+
+      def_noun "Brown-char"    ,     BrownChar
+        xx           6
+      def_noun_end         BrownChar
+
+      def_noun "Light-gray-char"    ,     LightGrayChar
+        xx      7
+      def_noun_end         LightGrayChar
+
+
+      def_noun "Dark-gray-char"  ,     DarkGrayChar
+        xx        0+8
+      def_noun_end       DarkGrayChar
+
+      def_noun "Light-blue-char"  ,     LightBlueChar
+        xx       1+8
+      def_noun_end       LightBlueChar
+
+      def_noun "Light-green-char"  ,     LightGreenChar
+        xx      2+8
+      def_noun_end       LightGreenChar
+
+      def_noun "Light-cyan-char"  ,     LightCyanChar
+        xx       3+8
+      def_noun_end       LightCyanChar
+
+      def_noun "Light-redchar"  ,     LightRedChar
+        xx         4+8
+      def_noun_end       LightRedChar
+
+      def_noun "Light-magenta-char"  ,     LightMagentaChar
+        xx    5+8
+      def_noun_end       LightMagentaChar
+
+      def_noun "Yellow-char"  ,     YellowChar
+        xx           6+8
+      def_noun_end       YellowChar
+
+      def_noun "White-char"  ,     WhiteChar
+        xx            7+8
+      def_noun_end       WhiteChar
+
+
+
+      def_assembly_code "put-char-with-color", putCharWithColor
+         ;; (* char, back color, fore color -- *)
+         ;; put a ASCII char with color to the position of the cursor
+         ;; but can not handle ASCII_linefeed as my wish
+         pop_argument_stack rcx
+         pop_argument_stack rbx
+         pop_argument_stack rax
+
+         shl rbx, 4
+         or rbx, rcx
+         ;; Store the color into AH so STOSW can be used later on
+         mov ah, bl
+
+         push rax
+
+
+         mov rdx, [Current_screen_buffer + Cell_width]
+         mov ax, [rdx - 8]
+
+         shl ax, 1                       ; multiply by 2
+
+         mov rbx, rax                    ; Save the row/col offset
+         mov rdi, rdx                    ; Address of the screen buffer
+         add rdi, rax                    ; screen buffer is needed to scroll the screen
+
+
+         pop rax
+
+         stosw                           ; Write the character and attribute to screen buffer
+
+         mov rdi, 0xb8000
+         add rdi, rbx
+         stosw                           ; Write the character and attribute to screen
+
+         next
+
+
+      ;;   0 : Black               0+8 : Dark Gray
+      ;;   1 : Blue                1+8 : Light Blue
+      ;;   2 : Green               2+8 : Light Green
+      ;;   3 : Cyan                3+8 : Light Cyan
+      ;;   4 : Red                 4+8 : Light Red
+      ;;   5 : Magenta             5+8 : Light Magenta
+      ;;   6 : Brown               6+8 : Yellow
+      ;;   7 : Light Gray          7+8 : White
+      def_noun "Default-back-color-of-char", Default_back_color_of_char
+        xx  0+8
+      def_noun_end Default_back_color_of_char
+
+      def_noun "Default-fore-color-of-char", Default_fore_color_of_char
+        xx  7+8
+      def_noun_end Default_fore_color_of_char
+
+
+      def_verb "put-char", putChar
+         ;; (* char -- *)
+         xx Default_back_color_of_char
+         xx Default_fore_color_of_char
+         xx putCharWithColor
+         xx Exit
+      def_verb_end putChar
+      #+end_src
+***** printNewline
+      #+begin_src fasm :tangle cicada-kernel.fasm
+      def_verb "print-newline", printNewline
+         ;; (* -- *)
+         xx getCurrentCursorRow
+         xx NumberOfRowsOfScreen, equal?, _false?branch, 7
+         xx   scrollScreen
+         xx   getCurrentCursorColumn, sub1
+         xx   getCurrentCursorAddress, sub_save
+         xx   Exit
+         xx NumberOfColumnsOfScreen
+         xx getCurrentCursorColumn, sub1, subtraction
+         xx getCurrentCursorAddress, add_save
+         xx Exit
+      def_verb_end printNewline
+      #+end_src
+***** write_byte_with_color & write_byte
+      #+begin_src fasm :tangle cicada-kernel.fasm
+      def_verb "write-byte-with-color", write_byte_with_color
+         ;; (* char, back color, fore color --  *)
+         xx xoverxx, _literal, ASCII_linefeed
+         xx equal?, _false?branch, 5
+         xx   drop2, drop, printNewline
+         xx   Exit
+         xx putCharWithColor
+         xx incrementCursor
+         xx Exit
+      def_verb_end write_byte_with_color
+
+
+      def_verb "write-byte", write_byte
+         ;; (* char --  *)
+         xx dup, _literal, ASCII_linefeed
+         xx equal?, _false?branch, 4
+         xx   drop, printNewline
+         xx   Exit
+         xx putChar
+         xx incrementCursor
+         xx Exit
+      def_verb_end write_byte
+      #+end_src
+*** print_string
     #+begin_src fasm :tangle cicada-kernel.fasm
-    hereUnInitializedData
-    ;; ------------------------------------------
-    Size_of_input_buffer = 3*1024*1024
-
-    Input_buffer labeling
-            preserve Size_of_input_buffer
-    End_of_input_buffer labeling
-
-
-    def_noun "Size-of-input-buffer",  _Size_of_input_buffer
-      xx   Size_of_input_buffer
-    def_noun_end  _Size_of_input_buffer
-
-    def_noun "Input-buffer",        _Input_buffer
-      xx           Input_buffer
-    def_noun_end        _Input_buffer
-
-    def_noun "End-of-input-buffer",   TheEnd_of_input_buffer
-      xx    End_of_input_buffer
-    def_noun_end   TheEnd_of_input_buffer
-
-
-    ;; 1. two global variables for reading
-    ;;    I can easily support `evalString' by change these two variables
-    ;; 2. note that, there is no char in the address of a "Reading_boundary"
-    ;;    an example of "Reading_boundary" is "End_of_input_buffer"
-    ;; 3. when "Current_reading" == "Reading_boundary"
-    ;;    for the function "read_byte"
-    ;;    we need to reset it to read from "Input_buffer"
-    ;;    and call "inputLine" to fetch more chars
-    ;;    and loop back
-    def_noun "Current-reading", Current_reading
-      xx   Input_buffer
-    def_noun_end Current_reading
-
-    def_noun "Reading-boundary", Reading_boundary
-      xx  Input_buffer
-    def_noun_end Reading_boundary
-
-
-    def_verb "read-byte", read_byte
-       ;; (*  -- char *)
-       xx Current_reading
-       xx Reading_boundary
-       xx less_than?, _false?branch, 8
-       ;;   there is still some chars in the Input_buffer
-       ;;   (or any other buffer) to be processed
-       xx   Current_reading, fetch_byte
-       xx   _literal, 1, _address, Current_reading, add_save
+    def_verb "print-string", print_string
+       ;; (* string[address, length] -- *)
+       xx dup, zero?, _false?branch, 3
+       xx   drop2
        xx   Exit
-       ;; all chars in Input_buffer
-       ;; (or any other buffer) have been processed
-       xx notReadingFromInput_buffer?, _false?branch, 5
-       ;;   add blank at the end
-       ;;   otherwise,  when the a string not ending with blank
-       ;;   "evalString" will not work correctly
-       xx   _literal, ASCII_linefeed
-       xx   toReadFromInput_buffer
-       xx   Exit
-       ;; when "Current_reading" == "Reading_boundary"
-       ;; we need to reset it to read from "Input_buffer"
-       ;; and call "inputLine" to fetch more chars
-       ;; and loop back
-       xx toReadFromInput_buffer
-       xx _Input_buffer, _Size_of_input_buffer
-       xx openInterrupt
-       xx inputLine
-       xx closeInterrupt
-       ;; set Reading_boundary ==
-       ;;     Input_buffer + length of string that was inputed
-       xx _address, Reading_boundary, add_save
-       xx drop
-       xx _branch, -31
-    def_verb_end read_byte
-
-    def_verb "not-reading-from-input-buffer?", notReadingFromInput_buffer?
-       ;; (* -- True of False *)
-       xx Current_reading
-       xx TheEnd_of_input_buffer, greater_than?, _false?branch, 3
-       xx   True
-       xx   Exit
-       xx Current_reading
-       xx _Input_buffer, less_than?, _false?branch, 3
-       xx   True
-       xx   Exit
-       xx False
-       xx Exit
-    def_verb_end notReadingFromInput_buffer?
-
-    def_verb "to-read-from-input-buffer", toReadFromInput_buffer
-       ;; (* -- *)
-       xx _Input_buffer, _address, Current_reading, save
-       xx _Input_buffer, _address, Reading_boundary, save
-       xx Exit
-    def_verb_end toReadFromInput_buffer
+       xx sub1, swap
+       xx dup, fetch_byte, write_byte
+       xx add1, swap
+       xx _branch, -14
+    def_verb_end print_string
     #+end_src
-** Screen & ScreenBuffer & Cursor
-*** ScreenBuffer
-    #+begin_src fasm :tangle cicada-kernel.fasm
-    ;; the size of a ScreenBuffer is equal to the size of the screen
-    ;; which is 80*25*2
-
-    hereUnInitializedData
-    ;; ------------------------------------------
-    ;; the size of a ScreenBuffer is equal to the size of the screen
-    ;; which is 80*25*2 bytes
-    ;; and cursor and ScreenBuffer are in the same structure
-    ;; the size of its cursor is 2 bytes
-    SizeOfScreenBuffer = 80*25*2
-    SizeOfCursor = 8
-
-    Cursor0_InAssembly labeling
-            preserve SizeOfCursor
-    ScreenBuffer0_InAssembly labeling
-            preserve SizeOfScreenBuffer
-
-    def_noun "screen-buffer-0", ScreenBuffer0
-      xx  ScreenBuffer0_InAssembly
-    def_noun_end ScreenBuffer0
-
-
-    def_assembly_code "scroll-screen-buffer", scrollScreenBuffer
-       ;; (* screen buffer[address] -- *)
-       ;; scrolls a screen Buffer up by one line
-       ;; Default_back_color_of_char should be used
-       pop_argument_stack rdi              ; Start of video text memory for row 1
-       mov rsi, rdi
-       add rsi, 0xA0                   ; Start of video text memory for row 2
-       cld ;; clear the direction flag as we want to increment through memory
-       xor rcx, rcx
-       mov cx, (80 * 24)
-       rep movsw                       ; Copy the Character and Attribute
-       ; Clear the last line in video memory
-       mov bl, byte [Default_back_color_of_char + Cell_width]
-       shl bl, 4
-       mov ah, byte [Default_fore_color_of_char + Cell_width]
-       or ah, bl
-       mov al, ' '
-       mov cx, 80
-       rep stosw                       ; Store word in AX to RDI, RCX times
-       next
-
-    def_assembly_code "clear-screen-buffer", clearScreenBuffer
-       ;; (* screen buffer[address] -- *)
-       pop_argument_stack rdi              ; Address for start of frame buffer
-       cld ;; clear the direction flag as we want to increment through memory
-       mov bl, byte [Default_back_color_of_char + Cell_width]
-       shl bl, 4
-       mov ah, byte [Default_fore_color_of_char + Cell_width]
-       or ah, bl
-       mov al, ' '
-       xor rcx, rcx
-       mov cx, (80 * 25)
-       rep stosw                       ; Clear the screen. Store word in AX to RDI, RCX times
-       next
-    #+end_src
-*** Screen
-    #+begin_src fasm :tangle cicada-kernel.fasm
-    def_assembly_code "update-screen", updateScreen
-       ;; (* screen buffer[address] -- *)
-       ;; print a screen buffer to screen
-       pop_argument_stack rsi
-       cld ;; clear the direction flag as we want to increment through memory
-       mov rdi, 0xb8000
-       mov cx, 2000                    ; 80 x 25
-       rep movsw
-       next
-
-
-    def_noun "Current-screen-buffer", Current_screen_buffer
-      xx  ScreenBuffer0_InAssembly
-    def_noun_end Current_screen_buffer
-
-
-    def_verb "scroll-screen", scrollScreen
-       ;; (* -- *)
-       ;; scrolls a screen Buffer up by one line
-       ;; Default_back_color_of_char should be used
-       xx Current_screen_buffer
-       xx dup, scrollScreenBuffer
-       xx updateScreen
-       xx Exit
-    def_verb_end scrollScreen
-
-    def_verb "clear-screen", clearScreen
-       ;; (* -- *)
-       xx Current_screen_buffer
-       xx dup, clearScreenBuffer
-       xx updateScreen
-       xx Exit
-    def_verb_end clearScreen
-    #+end_src
-*** Cursor
-    #+begin_src fasm :tangle cicada-kernel.fasm
-    def_noun "Number-of-columns-of-screen", NumberOfColumnsOfScreen
-      xx  80
-    def_noun_end NumberOfColumnsOfScreen
-
-    def_noun "Number-of-rows-of-screen", NumberOfRowsOfScreen
-      xx  25
-    def_noun_end NumberOfRowsOfScreen
-
-    def_noun "Number-of-chars-of-screen", NumberOfCharsOfScreen
-      xx  80*25
-    def_noun_end NumberOfCharsOfScreen
-
-
-    def_verb "get-current-cursor-address", getCurrentCursorAddress
-       ;; (* -- CurrentCursor[address] *)
-       xx Current_screen_buffer
-       xx sub8
-       xx Exit
-    def_verb_end getCurrentCursorAddress
-
-    def_verb "reset-current-cursor", resetCurrentCursor
-       ;; (* -- *)
-       xx _literal, 0, getCurrentCursorAddress, save
-       xx Exit
-    def_verb_end resetCurrentCursor
-
-    ;; start from 1 to 25
-    def_verb "get-current-cursor-row", getCurrentCursorRow
-       ;; (* -- row *)
-       xx getCurrentCursorAddress, fetch
-       xx NumberOfColumnsOfScreen, moddiv
-       xx swap, drop, add1
-       xx Exit
-    def_verb_end getCurrentCursorRow
-
-    ;; start from 1 to 80
-    def_verb "get-current-cursor-column", getCurrentCursorColumn
-       ;; (* -- column *)
-       xx getCurrentCursorAddress, fetch
-       xx NumberOfColumnsOfScreen, moddiv
-       xx drop, add1
-       xx Exit
-    def_verb_end getCurrentCursorColumn
-
-
-    def_verb "increment-cursor", incrementCursor
-       ;; (* -- *)
-       xx getCurrentCursorAddress, fetch, add1
-       xx NumberOfCharsOfScreen, equal?, _false?branch, 6
-       xx   scrollScreen
-       xx   NumberOfColumnsOfScreen, getCurrentCursorAddress, sub_save
-       xx   Exit
-       xx _literal, 1, getCurrentCursorAddress, add_save
-       xx Exit
-    def_verb_end incrementCursor
-
-    def_verb "decrement-cursor", decrementCursor
-       ;; (* -- *)
-       xx getCurrentCursorAddress, fetch
-       xx zero?, _false?branch, 2
-       xx   Exit
-       xx _literal, 1, getCurrentCursorAddress, sub_save
-       xx Exit
-    def_verb_end decrementCursor
-    #+end_src
-** write-byte
-*** putCharWithColor & putChar
-    #+begin_src fasm :tangle cicada-kernel.fasm
-    ;; text mode (aka. mode 0) -- the most simple output
-    ;; (one can not support UTF-8 in text mode)
-    ;; direct memory access to a linear address start at 0xb8000
-    ;; 80 cols * 25 rows * 2 bytes
-    ;; - The second byte is an ASCII char
-    ;; - The first byte of the 2 bytes is split into forecolor & backcolor
-
-    ;; Bit 76543210
-    ;;     ||||||||
-    ;;     |||||^^^-fore color
-    ;;     ||||^----fore color bright bit
-    ;;     |^^^-----back color
-    ;;     ^--------back color bright bit (or enables blinking text)
-
-    ;;   0 : Black               0+8 : Dark Gray
-    ;;   1 : Blue                1+8 : Light Blue
-    ;;   2 : Green               2+8 : Light Green
-    ;;   3 : Cyan                3+8 : Light Cyan
-    ;;   4 : Red                 4+8 : Light Red
-    ;;   5 : Magenta             5+8 : Light Magenta
-    ;;   6 : Brown               6+8 : Yellow
-    ;;   7 : Light Gray          7+8 : White
-
-    def_noun "Black-char"    ,     BlackChar
-      xx           0
-    def_noun_end         BlackChar
-
-    def_noun "Blue-char"    ,     BlueChar
-      xx            1
-    def_noun_end         BlueChar
-
-    def_noun "Green-char"    ,     GreenChar
-      xx           2
-    def_noun_end         GreenChar
-
-    def_noun "Cyan-char"    ,     CyanChar
-      xx            3
-    def_noun_end         CyanChar
-
-    def_noun "Red-char"    ,     RedChar
-      xx             4
-    def_noun_end         RedChar
-
-    def_noun "Magenta-char"    ,     MagentaChar
-      xx         5
-    def_noun_end         MagentaChar
-
-    def_noun "Brown-char"    ,     BrownChar
-      xx           6
-    def_noun_end         BrownChar
-
-    def_noun "Light-gray-char"    ,     LightGrayChar
-      xx      7
-    def_noun_end         LightGrayChar
-
-
-    def_noun "Dark-gray-char"  ,     DarkGrayChar
-      xx        0+8
-    def_noun_end       DarkGrayChar
-
-    def_noun "Light-blue-char"  ,     LightBlueChar
-      xx       1+8
-    def_noun_end       LightBlueChar
-
-    def_noun "Light-green-char"  ,     LightGreenChar
-      xx      2+8
-    def_noun_end       LightGreenChar
-
-    def_noun "Light-cyan-char"  ,     LightCyanChar
-      xx       3+8
-    def_noun_end       LightCyanChar
-
-    def_noun "Light-redchar"  ,     LightRedChar
-      xx         4+8
-    def_noun_end       LightRedChar
-
-    def_noun "Light-magenta-char"  ,     LightMagentaChar
-      xx    5+8
-    def_noun_end       LightMagentaChar
-
-    def_noun "Yellow-char"  ,     YellowChar
-      xx           6+8
-    def_noun_end       YellowChar
-
-    def_noun "White-char"  ,     WhiteChar
-      xx            7+8
-    def_noun_end       WhiteChar
-
-
-
-    def_assembly_code "put-char-with-color", putCharWithColor
-       ;; (* char, back color, fore color -- *)
-       ;; put a ASCII char with color to the position of the cursor
-       ;; but can not handle ASCII_linefeed as my wish
-       pop_argument_stack rcx
-       pop_argument_stack rbx
-       pop_argument_stack rax
-
-       shl rbx, 4
-       or rbx, rcx
-       ;; Store the color into AH so STOSW can be used later on
-       mov ah, bl
-
-       push rax
-
-
-       mov rdx, [Current_screen_buffer + Cell_width]
-       mov ax, [rdx - 8]
-
-       shl ax, 1                       ; multiply by 2
-
-       mov rbx, rax                    ; Save the row/col offset
-       mov rdi, rdx                    ; Address of the screen buffer
-       add rdi, rax                    ; screen buffer is needed to scroll the screen
-
-
-       pop rax
-
-       stosw                           ; Write the character and attribute to screen buffer
-
-       mov rdi, 0xb8000
-       add rdi, rbx
-       stosw                           ; Write the character and attribute to screen
-
-       next
-
-
-    ;;   0 : Black               0+8 : Dark Gray
-    ;;   1 : Blue                1+8 : Light Blue
-    ;;   2 : Green               2+8 : Light Green
-    ;;   3 : Cyan                3+8 : Light Cyan
-    ;;   4 : Red                 4+8 : Light Red
-    ;;   5 : Magenta             5+8 : Light Magenta
-    ;;   6 : Brown               6+8 : Yellow
-    ;;   7 : Light Gray          7+8 : White
-    def_noun "Default-back-color-of-char", Default_back_color_of_char
-      xx  0+8
-    def_noun_end Default_back_color_of_char
-
-    def_noun "Default-fore-color-of-char", Default_fore_color_of_char
-      xx  7+8
-    def_noun_end Default_fore_color_of_char
-
-
-    def_verb "put-char", putChar
-       ;; (* char -- *)
-       xx Default_back_color_of_char
-       xx Default_fore_color_of_char
-       xx putCharWithColor
-       xx Exit
-    def_verb_end putChar
-    #+end_src
-*** printNewline
-    #+begin_src fasm :tangle cicada-kernel.fasm
-    def_verb "print-newline", printNewline
-       ;; (* -- *)
-       xx getCurrentCursorRow
-       xx NumberOfRowsOfScreen, equal?, _false?branch, 7
-       xx   scrollScreen
-       xx   getCurrentCursorColumn, sub1
-       xx   getCurrentCursorAddress, sub_save
-       xx   Exit
-       xx NumberOfColumnsOfScreen
-       xx getCurrentCursorColumn, sub1, subtraction
-       xx getCurrentCursorAddress, add_save
-       xx Exit
-    def_verb_end printNewline
-    #+end_src
-*** write_byte_with_color & write_byte
-    #+begin_src fasm :tangle cicada-kernel.fasm
-    def_verb "write-byte-with-color", write_byte_with_color
-       ;; (* char, back color, fore color --  *)
-       xx xoverxx, _literal, ASCII_linefeed
-       xx equal?, _false?branch, 5
-       xx   drop2, drop, printNewline
-       xx   Exit
-       xx putCharWithColor
-       xx incrementCursor
-       xx Exit
-    def_verb_end write_byte_with_color
-
-
-    def_verb "write-byte", write_byte
-       ;; (* char --  *)
-       xx dup, _literal, ASCII_linefeed
-       xx equal?, _false?branch, 4
-       xx   drop, printNewline
-       xx   Exit
-       xx putChar
-       xx incrementCursor
-       xx Exit
-    def_verb_end write_byte
-    #+end_src
-** print_string
-   #+begin_src fasm :tangle cicada-kernel.fasm
-   def_verb "print-string", print_string
-      ;; (* string[address, length] -- *)
-      xx dup, zero?, _false?branch, 3
-      xx   drop2
-      xx   Exit
-      xx sub1, swap
-      xx dup, fetch_byte, write_byte
-      xx add1, swap
-      xx _branch, -14
-   def_verb_end print_string
-   #+end_src
-** >< file
+*** >< file
 * include threaded code
   #+begin_src fasm :tangle cicada-kernel.fasm
   include "../threaded-code.inc"
   #+end_src
 * misc
-** reboot
-   #+begin_src fasm :tangle cicada-kernel.fasm
-   def_assembly_code "reboot", reboot
-          ;; (* -- *)
-   .loop:
-          in al, 0x64
-          test al, 00000010b              ; Wait for an empty Input Buffer ???
-          jne .loop
-          mov al, 0xFE
-          out 0x64, al                    ; Send the reboot call to the keyboard controller
-          jmp .loop
-   #+end_src
-** assemblyDebug
-   #+begin_src fasm :tangle cicada-kernel.fasm
-   def_verb ".", print_little_number
-          xx _literal, '0'
-          xx addition, write_byte
-          xx _literal, 32
-          xx write_byte
-          xx _literal, 32
-          xx write_byte
-          xx Exit
-   def_verb_end print_little_number
-   #+end_src
-** VESA VBE
-   #+begin_src fasm :tangle cicada-kernel.fasm
-   def_noun "Address-of-VBE-info-block", Assembly_VBEInfoBlock
-      xx  VBEInfoBlock
-   def_noun_end Assembly_VBEInfoBlock
-   #+end_src
+*** reboot
+    #+begin_src fasm :tangle cicada-kernel.fasm
+    def_assembly_code "reboot", reboot
+           ;; (* -- *)
+    .loop:
+           in al, 0x64
+           test al, 00000010b              ; Wait for an empty Input Buffer ???
+           jne .loop
+           mov al, 0xFE
+           out 0x64, al                    ; Send the reboot call to the keyboard controller
+           jmp .loop
+    #+end_src
+*** assemblyDebug
+    #+begin_src fasm :tangle cicada-kernel.fasm
+    def_verb ".", print_little_number
+           xx _literal, '0'
+           xx addition, write_byte
+           xx _literal, 32
+           xx write_byte
+           xx _literal, 32
+           xx write_byte
+           xx Exit
+    def_verb_end print_little_number
+    #+end_src
+*** VESA VBE
+    #+begin_src fasm :tangle cicada-kernel.fasm
+    def_noun "Address-of-VBE-info-block", Assembly_VBEInfoBlock
+       xx  VBEInfoBlock
+    def_noun_end Assembly_VBEInfoBlock
+    #+end_src
 * ending
-** User_data_area
-   #+begin_src fasm :tangle cicada-kernel.fasm
-   hereUnInitializedData
-   ;; ------------------------------------------
-   User_data_area labeling
-   End_of_user_data_area = 1*1024*1024*1024
+*** User_data_area
+    #+begin_src fasm :tangle cicada-kernel.fasm
+    hereUnInitializedData
+    ;; ------------------------------------------
+    User_data_area labeling
+    End_of_user_data_area = 1*1024*1024*1024
 
-   def_noun "User-data-area", _User_data_area
-      xx  User_data_area
-   def_noun_end _User_data_area
+    def_noun "User-data-area", _User_data_area
+       xx  User_data_area
+    def_noun_end _User_data_area
 
-   def_noun "End-of-user-data-area", _End_of_user_data_area
-      xx  End_of_user_data_area
-   def_noun_end _End_of_user_data_area
-   #+end_src
-** Latest_word_in_assembly
-   #+begin_src fasm :tangle cicada-kernel.fasm
-   ;; this word helps to initialize First_word_in_dictionary
-   def_noun "Latest-word-in-assembly", Latest_word_in_assembly
-      xx  0
-   def_noun_end Latest_word_in_assembly
-   #+end_src
-** set the size & the magic number
-   #+begin_src fasm :tangle cicada-kernel.fasm
-   times (SizeOfKernel * 1024) - ($-$$) - 4 db 0
-   dd MagicNumberOfKernel  ;; 4 bytes
-   #+end_src
+    def_noun "End-of-user-data-area", _End_of_user_data_area
+       xx  End_of_user_data_area
+    def_noun_end _End_of_user_data_area
+    #+end_src
+*** Latest_word_in_assembly
+    #+begin_src fasm :tangle cicada-kernel.fasm
+    ;; this word helps to initialize First_word_in_dictionary
+    def_noun "Latest-word-in-assembly", Latest_word_in_assembly
+       xx  0
+    def_noun_end Latest_word_in_assembly
+    #+end_src
+*** set the size & the magic number
+    #+begin_src fasm :tangle cicada-kernel.fasm
+    times (SizeOfKernel * 1024) - ($-$$) - 4 db 0
+    dd MagicNumberOfKernel  ;; 4 bytes
+    #+end_src
 * ==================================================

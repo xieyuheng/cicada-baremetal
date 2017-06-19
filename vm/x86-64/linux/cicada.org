@@ -5,74 +5,74 @@
 
 * ==================================================
 * preface
-** include linux header
-   #+begin_src fasm :tangle cicada.fasm
-   include "../../../include/linux-header.inc"
-   #+end_src
-** [one segments version] equ
-   #+begin_src fasm
-   ;; in fasm, "dup" is a reserved word
-   dup equ duplicate
+*** include linux header
+    #+begin_src fasm :tangle cicada.fasm
+    include "../../../include/linux-header.inc"
+    #+end_src
+*** [one segments version] equ
+    #+begin_src fasm
+    ;; in fasm, "dup" is a reserved word
+    dup equ duplicate
 
-   ;; 64-bits
-   xx equ dq
-   Cell_width = 8
+    ;; 64-bits
+    xx equ dq
+    Cell_width = 8
 
-   ;; ><><><
-   ;; the following comment-out-ed segment headers
-   ;; are for the bugs of fasm
-   ;; and for to support early version of compiler
-   ;; which does not support ELF
+    ;; ><><><
+    ;; the following comment-out-ed segment headers
+    ;; are for the bugs of fasm
+    ;; and for to support early version of compiler
+    ;; which does not support ELF
 
-   ;; for ELF
-   hereCode               equ ; segment readable executable
-   hereInitializedData    equ ; segment readable writeable
+    ;; for ELF
+    hereCode               equ ; segment readable executable
+    hereInitializedData    equ ; segment readable writeable
 
-   ;; about UnInitializedData
-   labeling  equ :
-   preserve  equ rb
+    ;; about UnInitializedData
+    labeling  equ :
+    preserve  equ rb
 
-   hereUnInitializedData  equ ; segment readable writeable
-   #+end_src
-** equ
-   #+begin_src fasm :tangle cicada.fasm
-   ;; in fasm, "dup" is a reserved word
-   dup equ duplicate
+    hereUnInitializedData  equ ; segment readable writeable
+    #+end_src
+*** equ
+    #+begin_src fasm :tangle cicada.fasm
+    ;; in fasm, "dup" is a reserved word
+    dup equ duplicate
 
-   ;; 64-bits
-   xx equ dq
-   Cell_width = 8
-
-
-   hereCode               equ align 16
-   hereInitializedData    equ ;; nothing
+    ;; 64-bits
+    xx equ dq
+    Cell_width = 8
 
 
-   ;; about UnInitializedData
+    hereCode               equ align 16
+    hereInitializedData    equ ;; nothing
 
-   ;; all unit are byte
-   ;; LowestMemoryAddress always can be use to save value
 
-   ;; ==========================================
-   LowestMemoryAddress = TheLowestMemoryAddress
-   FirstLowestMemoryAddress = LowestMemoryAddress
+    ;; about UnInitializedData
 
-   labeling  equ = LowestMemoryAddress
-   preserve  equ LowestMemoryAddress = LowestMemoryAddress +
+    ;; all unit are byte
+    ;; LowestMemoryAddress always can be use to save value
 
-   alignTo16InMemoryMap equ LowestMemoryAddress = LowestMemoryAddress + (16 - (LowestMemoryAddress mod 16))
+    ;; ==========================================
+    LowestMemoryAddress = TheLowestMemoryAddress
+    FirstLowestMemoryAddress = LowestMemoryAddress
 
-   hereUnInitializedData  equ alignTo16InMemoryMap
-   #+end_src
-** format header
-   #+begin_src fasm :tangle cicada.fasm
-   format elf64 executable 3
-   #+end_src
-** entry
-   #+begin_src fasm :tangle cicada.fasm
-   entry cicada_virtual_machine
-   segment readable executable writeable
-   #+end_src
+    labeling  equ = LowestMemoryAddress
+    preserve  equ LowestMemoryAddress = LowestMemoryAddress +
+
+    alignTo16InMemoryMap equ LowestMemoryAddress = LowestMemoryAddress + (16 - (LowestMemoryAddress mod 16))
+
+    hereUnInitializedData  equ alignTo16InMemoryMap
+    #+end_src
+*** format header
+    #+begin_src fasm :tangle cicada.fasm
+    format elf64 executable 3
+    #+end_src
+*** entry
+    #+begin_src fasm :tangle cicada.fasm
+    entry cicada_virtual_machine
+    segment readable executable writeable
+    #+end_src
 * ==================================================
 * *include macro*
   #+begin_src fasm :tangle cicada.fasm
@@ -126,786 +126,786 @@
   Size_of_initial_files_to_load = ($ - Initial_files_to_load) ;; unit :: byte
   #+end_src
 * IO
-** ioctl for terminal
-   #+begin_src fasm :tangle cicada.fasm
-   ;; /usr/include/asm-generic/termbits.h
-   ;; /usr/include/asm-generic/ioctls.h
-
-   VMIN = 6
-
-   ICRNL   =       0000400o
-   IXON    =       0002000o
-   ICANON  =       0000002o
-   ISIG    =       0000001o
-   ECHO    =       0000010o
-
-
-   hereUnInitializedData
-
-   termios:
-   termios.c_iflag:       rd 1
-   termios.c_oflag:       rd 1
-   termios.c_cflag:       rd 1
-   termios.c_lflag:       rd 1
-   termios.c_line:        rb 1
-   termios.c_cc:          rb 19 ;; NCCS
-   termios_size = ($ - termios)
-
-   termios_orig:
-   termios_orig.c_iflag:       rd 1
-   termios_orig.c_oflag:       rd 1
-   termios_orig.c_cflag:       rd 1
-   termios_orig.c_lflag:       rd 1
-   termios_orig.c_line:        rb 1
-   termios_orig.c_cc:          rb 19 ;; NCCS
-
-
-   ScreenSize:  rw 1
-
-
-   def_assembly_code "set-terminal-to-read-key", setTerminalToReadKey
-      ;; (* -- *)
-      mov sys_3_rdx, termios_orig ;; termios or WinSize structure ptr
-      mov sys_2_rsi, 5401h        ;; TERMIOS_GET, TCGETS
-      mov sys_1_rdi, STDIN
-      mov sys_n_rax, syscall_ioctl
-      syscall
-
-      mov rsi, termios_orig
-      mov rdi, termios
-      mov rcx, termios_size
-      cld
-      rep movsb
-
-      mov byte [termios.c_cc + VMIN], 1
-      ;; icanon off, isig (^C) off, echo off
-      and byte [termios.c_lflag + 0], ((- ICANON) and (- ISIG) and (- ECHO))
-      ;; ixon off,   icrnl off
-      and byte [termios.c_iflag + 1], ((- (IXON shr 8)) or (- (ICRNL shr 8)))
-      mov rdx, termios     ;; termios or WinSize structure ptr
-      mov sys_2_rsi, 5402h ;; TERMIOS_SET, TCSETS
-      mov sys_1_rdi, STDIN
-      mov sys_n_rax, syscall_ioctl
-      syscall
-      next
-
-
-   def_assembly_code "set-terminal-back-to-read-line", setTerminalBackToReadLine
-      ;; (* -- *)
-      mov sys_3_rdx, termios_orig ;; termios or WinSize structure ptr
-      mov sys_2_rsi, 5402h ;; TERMIOS_SET, TCSETS
-      mov sys_1_rdi, STDIN
-      mov sys_n_rax, syscall_ioctl
-      syscall
-      next
-
-
-   def_assembly_code "get-screen-size", getScreenSize
-      ;; (* -- rows, cols *)
-      mov sys_3_rdx, ScreenSize
-      ;; [ScreenSize] == for example col=88,row=26 :: 00880026
-      mov sys_2_rsi, 5413h ;; TERMIOS_WSIZE, TIOCGWINSZ
-      mov sys_1_rdi, STDIN
-      mov sys_n_rax, syscall_ioctl
-      syscall
-      ;; xor rax, rax
-      mov ax, word[ScreenSize]
-      push_argument_stack rax
-      mov ax, word[ScreenSize + 2]
-      push_argument_stack rax
-      next
-   #+end_src
-** read-byte
-   #+begin_src fasm :tangle cicada.fasm
-   Size_of_input_buffer = 3*1024*1024
-
-   hereUnInitializedData
-   Input_buffer labeling
-      preserve Size_of_input_buffer
-   End_of_input_buffer labeling
-
-
-   def_noun "Size-of-input-buffer",  _Size_of_input_buffer
-      xx   Size_of_input_buffer
-   def_noun_end  _Size_of_input_buffer
-
-   def_noun "Input-buffer",        _Input_buffer
-      xx           Input_buffer
-   def_noun_end        _Input_buffer
-
-   def_noun "End-of-input-buffer",   _End_of_input_buffer
-      xx    End_of_input_buffer
-   def_noun_end   _End_of_input_buffer
-
-
-   ;; 1. two global variables for reading
-   ;;    I can easily support `evalString' by change these two variables
-   ;; 2. note that, there is no char in the address of a "Reading_boundary"
-   ;;    an example of "Reading_boundary" is "End_of_input_buffer"
-   ;; 3. when "Current_reading" == "Reading_boundary"
-   ;;    for the function "read_byte"
-   ;;    we need to reset it to read from "Input_buffer"
-   ;;    and call "inputLine" to fetch more chars
-   ;;    and loop back
-   def_noun "Current-reading", Current_reading
-      xx   Input_buffer
-   def_noun_end Current_reading
-
-   def_noun "Reading-boundary", Reading_boundary
-      xx  Input_buffer
-   def_noun_end Reading_boundary
-
-
-   def_assembly_code "read-byte", read_byte
-      ;; read a char from stdin, return it into the ArgumentStack as following
-      ;; (*  -- char *)
-      ;; read_byte calls the Linux read system call to fill Input_buffer
-      ;; The other thing that read_byte does is
-      ;; if it detects that stdin has closed, it exits the program
-      ;; which is why when you hit C-d, the system exits
-      call _read_byte
-      ;; _read_byte will save the return value in rax
-      push_argument_stack rax
-      next
-
-   _read_byte:
-      ;; r8 is a helper-register for "cmp"
-      mov r8, [Current_reading + Cell_width]
-      cmp r8, [Reading_boundary + Cell_width]
-      ;-- IF: [Current_reading + Cell_width] < [Reading_boundary + Cell_width]
-      ;-- WK: there is still some chars in the Input_buffer to be processed
-      jl read_byte_stillSomeChars
-      ;-- EL: [Current_reading + Cell_width] >= [Reading_boundary + Cell_width]
-      ;-- WK: all chars in Input_buffer have been processed
-      mov rax, End_of_input_buffer
-      cmp r8, rax
-      jg read_byte_addBlankAtTheEnding
-      mov rax, Input_buffer
-      cmp r8, rax
-      jl read_byte_addBlankAtTheEnding
-      jmp read_byte_fetchMoreCharsFromStdinToInput_buffer
-   read_byte_addBlankAtTheEnding:
-      ;; otherwise,  when the a string not ending with blank
-      ;; `evalString' will not work correctly
-      mov rax, Input_buffer
-      mov [Current_reading + Cell_width], rax
-      mov [Reading_boundary + Cell_width], rax
-      xor rax, rax
-      mov al, 10
-      ret
-   read_byte_stillSomeChars:
-      ;; for the following will just uses the al part of rax
-      ;; it is necessary to clear rax
-      xor rax, rax
-      ;-- DO: fetch a char from Input_buffer to rax
-      ;-- NT: after _read_byte return rax will be push_argument_stack
-      mov al, byte[r8]
-      ;-- DO: increment [Current_reading + Cell_width]
-      inc r8
-      mov [Current_reading + Cell_width], r8
-      ret
-   ;; note that, in the following subroutine
-   ;; set [Current_reading + Cell_width]  == Input_buffer
-   ;; set [Reading_boundary + Cell_width] == Input_buffer + length of string that was input (NULL not counted)
-   read_byte_fetchMoreCharsFromStdinToInput_buffer:
-      ;; read to fetch more input chars from STDIN to Input_buffer
-      mov sys_3_rdx,     Size_of_input_buffer    ;; max length to be read
-      mov sys_2_rsi,     Input_buffer        ;; buffer address
-      ;; reset [Current_reading + Cell_width] to Input_buffer
-      mov [Current_reading + Cell_width], sys_2_rsi
-      xor sys_1_rdi,     sys_1_rdi          ;; stdin
-      mov sys_n_rax,     syscall_read
-      syscall
-      ;; the return value of syscall read
-      ;; is a count of the number of bytes transferred
-      test rax, rax
-      ;-- IF: rax <= 0
-      ;-- WK: there is an error or it is end of input
-      ;-- DO: exit
-      jz read_byte_exit
-      js read_byte_exit
-      ;-- EL: rax > 0
-      ;-- WK: there are some chars has been fetched by syscall read
-      ;-- DO: set [Reading_boundary + Cell_width] to the right place
-      ;--     Reading_boundary = Input_buffer + the count of the number of bytes transferred
-      ;-- NT: sys_2_rsi = Input_buffer
-      ;--     rax = the count of the number of bytes transferred
-      add sys_2_rsi, rax
-      mov [Reading_boundary + Cell_width], sys_2_rsi
-      ;-- DO: jump back
-      jmp _read_byte
-
-
-   read_byte_exit:
-      ;; exit with exit code = the value syscall_read returned
-      xor sys_1_rdi, sys_1_rdi
-      mov sys_n_rax, syscall_exit
-      syscall
-   #+end_src
-** write-byte
-   #+begin_src fasm :tangle cicada.fasm
-   hereInitializedData
-   ScratchUsedByWriteChar:
-      rb 1
-
-   def_assembly_code "write-byte", write_byte
-      ;; ( char --  ) write a char to stdin
-      ;; just calls the Linux write system call
-      pop_argument_stack rax
-      call _write_byte
-      next
-
-   _write_byte:
-      mov sys_1_rdi, 1 ;; stdout
-      ;; write can not just write the char in al to stdout
-      ;; write needs the address of the byte to write
-      mov [ScratchUsedByWriteChar], al
-      mov sys_2_rsi, ScratchUsedByWriteChar  ;; address
-      mov sys_3_rdx, 1                       ;; max length to be write, just 1
-      mov sys_n_rax, syscall_write
-      syscall
-      ret
-   #+end_src
-** print-string
-   #+begin_src fasm :tangle cicada.fasm
-   def_verb "print-string", print_string
-      ;; (* string[address, length] -- *)
-      xx dup, zero?, _false?branch, 3
-      xx   drop2
-      xx   Exit
-      xx sub1, swap
-      xx dup, fetch_byte, write_byte
-      xx add1, swap
-      xx print_string
-      xx Exit
-   def_verb_end print_string
-   #+end_src
-** file
-*** note about error
-    1. just use "js" to report a general error
-*** buffer->file,with-error
+*** ioctl for terminal
     #+begin_src fasm :tangle cicada.fasm
-    ;; buffer->file,with-error == string->file,with-error
+    ;; /usr/include/asm-generic/termbits.h
+    ;; /usr/include/asm-generic/ioctls.h
 
-    def_verb "buffer->file,with-error", buffer_to_file__with_error
-       ;; (* string[address, length], file-name-string[address, length] --
-       ;;    [number of char] or [negate number on error] *)
-       xx string_to_file__with_error
-       xx Exit
-    def_verb_end buffer_to_file__with_error
+    VMIN = 6
 
-    ;;
-    def_assembly_code "string->file,with-error", string_to_file__with_error
-       ;; (* string[address, length], file-name-string[address, length] --
-       ;;    [number of char] or [negate number on error] *)
-       pop_argument_stack rcx
-       pop_argument_stack rsi
-       pop_argument_stack r8
-       pop_argument_stack r9
-       call _string_to_file__with_error
+    ICRNL   =       0000400o
+    IXON    =       0002000o
+    ICANON  =       0000002o
+    ISIG    =       0000001o
+    ECHO    =       0000010o
+
+
+    hereUnInitializedData
+
+    termios:
+    termios.c_iflag:       rd 1
+    termios.c_oflag:       rd 1
+    termios.c_cflag:       rd 1
+    termios.c_lflag:       rd 1
+    termios.c_line:        rb 1
+    termios.c_cc:          rb 19 ;; NCCS
+    termios_size = ($ - termios)
+
+    termios_orig:
+    termios_orig.c_iflag:       rd 1
+    termios_orig.c_oflag:       rd 1
+    termios_orig.c_cflag:       rd 1
+    termios_orig.c_lflag:       rd 1
+    termios_orig.c_line:        rb 1
+    termios_orig.c_cc:          rb 19 ;; NCCS
+
+
+    ScreenSize:  rw 1
+
+
+    def_assembly_code "set-terminal-to-read-key", setTerminalToReadKey
+       ;; (* -- *)
+       mov sys_3_rdx, termios_orig ;; termios or WinSize structure ptr
+       mov sys_2_rsi, 5401h        ;; TERMIOS_GET, TCGETS
+       mov sys_1_rdi, STDIN
+       mov sys_n_rax, syscall_ioctl
+       syscall
+
+       mov rsi, termios_orig
+       mov rdi, termios
+       mov rcx, termios_size
+       cld
+       rep movsb
+
+       mov byte [termios.c_cc + VMIN], 1
+       ;; icanon off, isig (^C) off, echo off
+       and byte [termios.c_lflag + 0], ((- ICANON) and (- ISIG) and (- ECHO))
+       ;; ixon off,   icrnl off
+       and byte [termios.c_iflag + 1], ((- (IXON shr 8)) or (- (ICRNL shr 8)))
+       mov rdx, termios     ;; termios or WinSize structure ptr
+       mov sys_2_rsi, 5402h ;; TERMIOS_SET, TCSETS
+       mov sys_1_rdi, STDIN
+       mov sys_n_rax, syscall_ioctl
+       syscall
        next
 
-    _string_to_file__with_error:
-       ;; copy file-name as a null-terminal string
-       mov rdi, NameBufferOfString_to_file__with_error
-       rep movsb
-       xor rax, rax
-       mov byte [rdi], al
 
-       ;; 打开文件 & 必要的时候创造新文件 & 每次都覆盖文件已有的内容
-       ;; 当文件路径不存在的时候不会创造路径 而出错
-       mov     sys_3_rdx, 110100100b   ;; 文件的权限 644 改为别的值的时候会出问题
-       mov     sys_2_rsi, open_readAndWrite or open_creat or open_rewrite
-       mov     sys_1_rdi, NameBufferOfString_to_file__with_error
-       mov     sys_n_rax, syscall_open
+    def_assembly_code "set-terminal-back-to-read-line", setTerminalBackToReadLine
+       ;; (* -- *)
+       mov sys_3_rdx, termios_orig ;; termios or WinSize structure ptr
+       mov sys_2_rsi, 5402h ;; TERMIOS_SET, TCSETS
+       mov sys_1_rdi, STDIN
+       mov sys_n_rax, syscall_ioctl
        syscall
-
-       mov     qword [FileHandleOfString_to_file__with_error], rax
-
-       or      rax, rax
-       js      _string_to_file_meetError
-
-       ;; string->file
-       mov     sys_3_rdx, r8
-       mov     sys_2_rsi, r9
-       mov     sys_1_rdi, qword [FileHandleOfString_to_file__with_error]
-       mov     sys_n_rax, syscall_write
-       syscall
-
-       or      rax, rax
-       js      _string_to_file_meetError
-
-       mov     r10, rax
-
-       ;; 关闭文件
-       mov     sys_1_rdi, qword [FileHandleOfString_to_file__with_error]
-       mov     sys_n_rax, syscall_close
-       syscall
-
-       or      rax, rax
-       js      _string_to_file_meetError
-
-       pop_argument_stack r10
-
-       ret
-
-    _string_to_file_meetError:
-       push_argument_stack rax
-
-       ret
-
-
-    FileHandleOfString_to_file__with_error:
-       dq 0
-    NameBufferOfString_to_file__with_error:
-       rb 1024
-    #+end_src
-*** file->buffer,with-error
-    #+begin_src fasm :tangle cicada.fasm
-    ;; file->buffer,with-error == file->string,with-error
-
-    def_verb "file->buffer,with-error", file_to_buffer__with_error
-       ;; (* file-name-string[address, length], string[address, length] --
-       ;;    [number of char] or [negate number on error] *)
-       xx file_to_string__with_error
-       xx Exit
-    def_verb_end file_to_buffer__with_error
-
-
-    def_assembly_code "file->string,with-error", file_to_string__with_error
-       ;; (* file-name-string[address, length], string[address, length] --
-       ;;    [number of char] or [negate number on error] *)
-       pop_argument_stack r8
-       pop_argument_stack r9
-       pop_argument_stack rcx
-       pop_argument_stack rsi
-       call _file_to_string__with_error
        next
 
-    _file_to_string__with_error:
-       ;; copy file-name as a null-terminal string
-       mov rdi, NameBufferOfFileToString__with_error
-       rep movsb
-       xor rax, rax
-       mov byte [rdi], al
 
-       ;; read only
-       mov     sys_2_rsi, open_read
-       mov     sys_1_rdi, NameBufferOfFileToString__with_error
-       mov     sys_n_rax, syscall_open
+    def_assembly_code "get-screen-size", getScreenSize
+       ;; (* -- rows, cols *)
+       mov sys_3_rdx, ScreenSize
+       ;; [ScreenSize] == for example col=88,row=26 :: 00880026
+       mov sys_2_rsi, 5413h ;; TERMIOS_WSIZE, TIOCGWINSZ
+       mov sys_1_rdi, STDIN
+       mov sys_n_rax, syscall_ioctl
        syscall
-
-       mov     qword [FileHandleOfFileToString__with_error], rax
-
-       or      rax, rax
-       js      _file_to_string_meetError
-
-       ;; lseek is for to make reposition read/write file offset
-       ;; seek_set       the offset is set to offset bytes
-       ;; seek_current   the offset is set to its current location plus offset bytes
-       ;; seek_end       the offset is set to the size of the file plus offset bytes
-       mov     sys_3_rdx, seek_set
-       xor     sys_2_rsi, sys_2_rsi  ;; offset
-       mov     sys_1_rdi, qword [FileHandleOfFileToString__with_error]
-       mov     sys_n_rax, syscall_lseek
-       syscall
-
-       or      rax, rax
-       js      _file_to_string_meetError
-
-       ;; file->string
-       mov     sys_3_rdx, r8
-       mov     sys_2_rsi, r9
-       mov     sys_1_rdi, qword [FileHandleOfFileToString__with_error]
-       mov     sys_n_rax, syscall_read
-       syscall
-
-       or      rax, rax
-       js      _file_to_string_meetError
-
-       mov     r10, rax
-
-       ;; 关闭文件
-       mov     sys_1_rdi, qword [FileHandleOfFileToString__with_error]
-       mov     sys_n_rax, syscall_close
-       syscall
-
-       or      rax, rax
-       js      _file_to_string_meetError
-
-       push_argument_stack r10
-
-       ret
-
-    _file_to_string_meetError:
+       ;; xor rax, rax
+       mov ax, word[ScreenSize]
        push_argument_stack rax
-
-       ret
-
-
-    FileHandleOfFileToString__with_error:
-       dq 0
-    NameBufferOfFileToString__with_error:
-       rb 1024
+       mov ax, word[ScreenSize + 2]
+       push_argument_stack rax
+       next
     #+end_src
+*** read-byte
+    #+begin_src fasm :tangle cicada.fasm
+    Size_of_input_buffer = 3*1024*1024
+
+    hereUnInitializedData
+    Input_buffer labeling
+       preserve Size_of_input_buffer
+    End_of_input_buffer labeling
+
+
+    def_noun "Size-of-input-buffer",  _Size_of_input_buffer
+       xx   Size_of_input_buffer
+    def_noun_end  _Size_of_input_buffer
+
+    def_noun "Input-buffer",        _Input_buffer
+       xx           Input_buffer
+    def_noun_end        _Input_buffer
+
+    def_noun "End-of-input-buffer",   _End_of_input_buffer
+       xx    End_of_input_buffer
+    def_noun_end   _End_of_input_buffer
+
+
+    ;; 1. two global variables for reading
+    ;;    I can easily support `evalString' by change these two variables
+    ;; 2. note that, there is no char in the address of a "Reading_boundary"
+    ;;    an example of "Reading_boundary" is "End_of_input_buffer"
+    ;; 3. when "Current_reading" == "Reading_boundary"
+    ;;    for the function "read_byte"
+    ;;    we need to reset it to read from "Input_buffer"
+    ;;    and call "inputLine" to fetch more chars
+    ;;    and loop back
+    def_noun "Current-reading", Current_reading
+       xx   Input_buffer
+    def_noun_end Current_reading
+
+    def_noun "Reading-boundary", Reading_boundary
+       xx  Input_buffer
+    def_noun_end Reading_boundary
+
+
+    def_assembly_code "read-byte", read_byte
+       ;; read a char from stdin, return it into the ArgumentStack as following
+       ;; (*  -- char *)
+       ;; read_byte calls the Linux read system call to fill Input_buffer
+       ;; The other thing that read_byte does is
+       ;; if it detects that stdin has closed, it exits the program
+       ;; which is why when you hit C-d, the system exits
+       call _read_byte
+       ;; _read_byte will save the return value in rax
+       push_argument_stack rax
+       next
+
+    _read_byte:
+       ;; r8 is a helper-register for "cmp"
+       mov r8, [Current_reading + Cell_width]
+       cmp r8, [Reading_boundary + Cell_width]
+       ;-- IF: [Current_reading + Cell_width] < [Reading_boundary + Cell_width]
+       ;-- WK: there is still some chars in the Input_buffer to be processed
+       jl read_byte_stillSomeChars
+       ;-- EL: [Current_reading + Cell_width] >= [Reading_boundary + Cell_width]
+       ;-- WK: all chars in Input_buffer have been processed
+       mov rax, End_of_input_buffer
+       cmp r8, rax
+       jg read_byte_addBlankAtTheEnding
+       mov rax, Input_buffer
+       cmp r8, rax
+       jl read_byte_addBlankAtTheEnding
+       jmp read_byte_fetchMoreCharsFromStdinToInput_buffer
+    read_byte_addBlankAtTheEnding:
+       ;; otherwise,  when the a string not ending with blank
+       ;; `evalString' will not work correctly
+       mov rax, Input_buffer
+       mov [Current_reading + Cell_width], rax
+       mov [Reading_boundary + Cell_width], rax
+       xor rax, rax
+       mov al, 10
+       ret
+    read_byte_stillSomeChars:
+       ;; for the following will just uses the al part of rax
+       ;; it is necessary to clear rax
+       xor rax, rax
+       ;-- DO: fetch a char from Input_buffer to rax
+       ;-- NT: after _read_byte return rax will be push_argument_stack
+       mov al, byte[r8]
+       ;-- DO: increment [Current_reading + Cell_width]
+       inc r8
+       mov [Current_reading + Cell_width], r8
+       ret
+    ;; note that, in the following subroutine
+    ;; set [Current_reading + Cell_width]  == Input_buffer
+    ;; set [Reading_boundary + Cell_width] == Input_buffer + length of string that was input (NULL not counted)
+    read_byte_fetchMoreCharsFromStdinToInput_buffer:
+       ;; read to fetch more input chars from STDIN to Input_buffer
+       mov sys_3_rdx,     Size_of_input_buffer    ;; max length to be read
+       mov sys_2_rsi,     Input_buffer        ;; buffer address
+       ;; reset [Current_reading + Cell_width] to Input_buffer
+       mov [Current_reading + Cell_width], sys_2_rsi
+       xor sys_1_rdi,     sys_1_rdi          ;; stdin
+       mov sys_n_rax,     syscall_read
+       syscall
+       ;; the return value of syscall read
+       ;; is a count of the number of bytes transferred
+       test rax, rax
+       ;-- IF: rax <= 0
+       ;-- WK: there is an error or it is end of input
+       ;-- DO: exit
+       jz read_byte_exit
+       js read_byte_exit
+       ;-- EL: rax > 0
+       ;-- WK: there are some chars has been fetched by syscall read
+       ;-- DO: set [Reading_boundary + Cell_width] to the right place
+       ;--     Reading_boundary = Input_buffer + the count of the number of bytes transferred
+       ;-- NT: sys_2_rsi = Input_buffer
+       ;--     rax = the count of the number of bytes transferred
+       add sys_2_rsi, rax
+       mov [Reading_boundary + Cell_width], sys_2_rsi
+       ;-- DO: jump back
+       jmp _read_byte
+
+
+    read_byte_exit:
+       ;; exit with exit code = the value syscall_read returned
+       xor sys_1_rdi, sys_1_rdi
+       mov sys_n_rax, syscall_exit
+       syscall
+    #+end_src
+*** write-byte
+    #+begin_src fasm :tangle cicada.fasm
+    hereInitializedData
+    ScratchUsedByWriteChar:
+       rb 1
+
+    def_assembly_code "write-byte", write_byte
+       ;; ( char --  ) write a char to stdin
+       ;; just calls the Linux write system call
+       pop_argument_stack rax
+       call _write_byte
+       next
+
+    _write_byte:
+       mov sys_1_rdi, 1 ;; stdout
+       ;; write can not just write the char in al to stdout
+       ;; write needs the address of the byte to write
+       mov [ScratchUsedByWriteChar], al
+       mov sys_2_rsi, ScratchUsedByWriteChar  ;; address
+       mov sys_3_rdx, 1                       ;; max length to be write, just 1
+       mov sys_n_rax, syscall_write
+       syscall
+       ret
+    #+end_src
+*** print-string
+    #+begin_src fasm :tangle cicada.fasm
+    def_verb "print-string", print_string
+       ;; (* string[address, length] -- *)
+       xx dup, zero?, _false?branch, 3
+       xx   drop2
+       xx   Exit
+       xx sub1, swap
+       xx dup, fetch_byte, write_byte
+       xx add1, swap
+       xx print_string
+       xx Exit
+    def_verb_end print_string
+    #+end_src
+*** file
+***** note about error
+      1. just use "js" to report a general error
+***** buffer->file,with-error
+      #+begin_src fasm :tangle cicada.fasm
+      ;; buffer->file,with-error == string->file,with-error
+
+      def_verb "buffer->file,with-error", buffer_to_file__with_error
+         ;; (* string[address, length], file-name-string[address, length] --
+         ;;    [number of char] or [negate number on error] *)
+         xx string_to_file__with_error
+         xx Exit
+      def_verb_end buffer_to_file__with_error
+
+      ;;
+      def_assembly_code "string->file,with-error", string_to_file__with_error
+         ;; (* string[address, length], file-name-string[address, length] --
+         ;;    [number of char] or [negate number on error] *)
+         pop_argument_stack rcx
+         pop_argument_stack rsi
+         pop_argument_stack r8
+         pop_argument_stack r9
+         call _string_to_file__with_error
+         next
+
+      _string_to_file__with_error:
+         ;; copy file-name as a null-terminal string
+         mov rdi, NameBufferOfString_to_file__with_error
+         rep movsb
+         xor rax, rax
+         mov byte [rdi], al
+
+         ;; 打开文件 & 必要的时候创造新文件 & 每次都覆盖文件已有的内容
+         ;; 当文件路径不存在的时候不会创造路径 而出错
+         mov     sys_3_rdx, 110100100b   ;; 文件的权限 644 改为别的值的时候会出问题
+         mov     sys_2_rsi, open_readAndWrite or open_creat or open_rewrite
+         mov     sys_1_rdi, NameBufferOfString_to_file__with_error
+         mov     sys_n_rax, syscall_open
+         syscall
+
+         mov     qword [FileHandleOfString_to_file__with_error], rax
+
+         or      rax, rax
+         js      _string_to_file_meetError
+
+         ;; string->file
+         mov     sys_3_rdx, r8
+         mov     sys_2_rsi, r9
+         mov     sys_1_rdi, qword [FileHandleOfString_to_file__with_error]
+         mov     sys_n_rax, syscall_write
+         syscall
+
+         or      rax, rax
+         js      _string_to_file_meetError
+
+         mov     r10, rax
+
+         ;; 关闭文件
+         mov     sys_1_rdi, qword [FileHandleOfString_to_file__with_error]
+         mov     sys_n_rax, syscall_close
+         syscall
+
+         or      rax, rax
+         js      _string_to_file_meetError
+
+         pop_argument_stack r10
+
+         ret
+
+      _string_to_file_meetError:
+         push_argument_stack rax
+
+         ret
+
+
+      FileHandleOfString_to_file__with_error:
+         dq 0
+      NameBufferOfString_to_file__with_error:
+         rb 1024
+      #+end_src
+***** file->buffer,with-error
+      #+begin_src fasm :tangle cicada.fasm
+      ;; file->buffer,with-error == file->string,with-error
+
+      def_verb "file->buffer,with-error", file_to_buffer__with_error
+         ;; (* file-name-string[address, length], string[address, length] --
+         ;;    [number of char] or [negate number on error] *)
+         xx file_to_string__with_error
+         xx Exit
+      def_verb_end file_to_buffer__with_error
+
+
+      def_assembly_code "file->string,with-error", file_to_string__with_error
+         ;; (* file-name-string[address, length], string[address, length] --
+         ;;    [number of char] or [negate number on error] *)
+         pop_argument_stack r8
+         pop_argument_stack r9
+         pop_argument_stack rcx
+         pop_argument_stack rsi
+         call _file_to_string__with_error
+         next
+
+      _file_to_string__with_error:
+         ;; copy file-name as a null-terminal string
+         mov rdi, NameBufferOfFileToString__with_error
+         rep movsb
+         xor rax, rax
+         mov byte [rdi], al
+
+         ;; read only
+         mov     sys_2_rsi, open_read
+         mov     sys_1_rdi, NameBufferOfFileToString__with_error
+         mov     sys_n_rax, syscall_open
+         syscall
+
+         mov     qword [FileHandleOfFileToString__with_error], rax
+
+         or      rax, rax
+         js      _file_to_string_meetError
+
+         ;; lseek is for to make reposition read/write file offset
+         ;; seek_set       the offset is set to offset bytes
+         ;; seek_current   the offset is set to its current location plus offset bytes
+         ;; seek_end       the offset is set to the size of the file plus offset bytes
+         mov     sys_3_rdx, seek_set
+         xor     sys_2_rsi, sys_2_rsi  ;; offset
+         mov     sys_1_rdi, qword [FileHandleOfFileToString__with_error]
+         mov     sys_n_rax, syscall_lseek
+         syscall
+
+         or      rax, rax
+         js      _file_to_string_meetError
+
+         ;; file->string
+         mov     sys_3_rdx, r8
+         mov     sys_2_rsi, r9
+         mov     sys_1_rdi, qword [FileHandleOfFileToString__with_error]
+         mov     sys_n_rax, syscall_read
+         syscall
+
+         or      rax, rax
+         js      _file_to_string_meetError
+
+         mov     r10, rax
+
+         ;; 关闭文件
+         mov     sys_1_rdi, qword [FileHandleOfFileToString__with_error]
+         mov     sys_n_rax, syscall_close
+         syscall
+
+         or      rax, rax
+         js      _file_to_string_meetError
+
+         push_argument_stack r10
+
+         ret
+
+      _file_to_string_meetError:
+         push_argument_stack rax
+
+         ret
+
+
+      FileHandleOfFileToString__with_error:
+         dq 0
+      NameBufferOfFileToString__with_error:
+         rb 1024
+      #+end_src
 * [not tangle when push] C foreign function call
-** elf
-   #+begin_src fasm
+*** elf
+    #+begin_src fasm
 
-   macro Elf32_Sym name,value,size,bind,type,other,shndx
-   {
-    dd name+0
-    dd value+0
-    dd size+0
-    db (bind+0) shl 4 + (type+0)
-    db other+0
-    dw shndx+0
-   }
+    macro Elf32_Sym name,value,size,bind,type,other,shndx
+    {
+     dd name+0
+     dd value+0
+     dd size+0
+     db (bind+0) shl 4 + (type+0)
+     db other+0
+     dw shndx+0
+    }
 
-   virtual at 0
-    Elf32_Sym
-    sizeof.Elf32_Sym = $
-   end virtual
+    virtual at 0
+     Elf32_Sym
+     sizeof.Elf32_Sym = $
+    end virtual
 
-   macro Elf32_Rel offset,symbol,type
-   {
-     dd offset+0
-     dd (symbol+0) shl 8 + (type+0)
-   }
+    macro Elf32_Rel offset,symbol,type
+    {
+      dd offset+0
+      dd (symbol+0) shl 8 + (type+0)
+    }
 
-   virtual at 0
-    Elf32_Rel
-    sizeof.Elf32_Rel = $
-   end virtual
+    virtual at 0
+     Elf32_Rel
+     sizeof.Elf32_Rel = $
+    end virtual
 
-   macro Elf32_Rela offset,symbol,type,addend
-   {
-     dd offset+0
-     dd (symbol+0) shl 8 + (type+0)
-     dd addend+0
-   }
+    macro Elf32_Rela offset,symbol,type,addend
+    {
+      dd offset+0
+      dd (symbol+0) shl 8 + (type+0)
+      dd addend+0
+    }
 
-   virtual at 0
-    Elf32_Rela
-    sizeof.Elf32_Rela = $
-   end virtual
+    virtual at 0
+     Elf32_Rela
+     sizeof.Elf32_Rela = $
+    end virtual
 
-   macro Elf64_Sym name,value,size,bind,type,other,shndx
-   {
-    dd name+0
-    db (bind+0) shl 4 + (type+0)
-    db other+0
-    dw shndx+0
-    dq value+0
-    dq size+0
-   }
+    macro Elf64_Sym name,value,size,bind,type,other,shndx
+    {
+     dd name+0
+     db (bind+0) shl 4 + (type+0)
+     db other+0
+     dw shndx+0
+     dq value+0
+     dq size+0
+    }
 
-   virtual at 0
-    Elf64_Sym
-    sizeof.Elf64_Sym = $
-   end virtual
+    virtual at 0
+     Elf64_Sym
+     sizeof.Elf64_Sym = $
+    end virtual
 
-   macro Elf64_Rel offset,symbol,type
-   {
-     dq offset+0
-     dq (symbol+0) shl 32 + (type+0)
-   }
+    macro Elf64_Rel offset,symbol,type
+    {
+      dq offset+0
+      dq (symbol+0) shl 32 + (type+0)
+    }
 
-   virtual at 0
-    Elf64_Rel
-    sizeof.Elf64_Rel = $
-   end virtual
+    virtual at 0
+     Elf64_Rel
+     sizeof.Elf64_Rel = $
+    end virtual
 
-   macro Elf64_Rela offset,symbol,type,addend
-   {
-     dq offset+0
-     dq (symbol+0) shl 32 + (type+0)
-     dq addend+0
-   }
+    macro Elf64_Rela offset,symbol,type,addend
+    {
+      dq offset+0
+      dq (symbol+0) shl 32 + (type+0)
+      dq addend+0
+    }
 
-   virtual at 0
-    Elf64_Rela
-    sizeof.Elf64_Rela = $
-   end virtual
+    virtual at 0
+     Elf64_Rela
+     sizeof.Elf64_Rela = $
+    end virtual
 
-   DT_NULL    = 0
-   DT_NEEDED  = 1
-   DT_HASH    = 4
-   DT_STRTAB  = 5
-   DT_SYMTAB  = 6
-   DT_RELA    = 7
-   DT_RELASZ  = 8
-   DT_RELAENT = 9
-   DT_STRSZ   = 10
-   DT_SYMENT  = 11
-   DT_REL     = 17
-   DT_RELSZ   = 18
-   DT_RELENT  = 19
+    DT_NULL    = 0
+    DT_NEEDED  = 1
+    DT_HASH    = 4
+    DT_STRTAB  = 5
+    DT_SYMTAB  = 6
+    DT_RELA    = 7
+    DT_RELASZ  = 8
+    DT_RELAENT = 9
+    DT_STRSZ   = 10
+    DT_SYMENT  = 11
+    DT_REL     = 17
+    DT_RELSZ   = 18
+    DT_RELENT  = 19
 
-   STB_LOCAL  = 0
-   STB_GLOBAL = 1
-   STB_WEAK   = 2
+    STB_LOCAL  = 0
+    STB_GLOBAL = 1
+    STB_WEAK   = 2
 
-   STT_NOTYPE  = 0
-   STT_OBJECT  = 1
-   STT_FUNC    = 2
-   STT_SECTION = 3
-   STT_FILE    = 4
+    STT_NOTYPE  = 0
+    STT_OBJECT  = 1
+    STT_FUNC    = 2
+    STT_SECTION = 3
+    STT_FILE    = 4
 
-   R_386_NONE     = 0
-   R_386_32          = 1
-   R_386_PC32        = 2
-   R_386_GOT32       = 3
-   R_386_PLT32       = 4
-   R_386_COPY        = 5
-   R_386_GLOB_DAT = 6
-   R_386_JMP_SLOT = 7
-   R_386_RELATIVE = 8
-   R_386_GOTOFF      = 9
-   R_386_GOTPC       = 10
+    R_386_NONE     = 0
+    R_386_32          = 1
+    R_386_PC32        = 2
+    R_386_GOT32       = 3
+    R_386_PLT32       = 4
+    R_386_COPY        = 5
+    R_386_GLOB_DAT = 6
+    R_386_JMP_SLOT = 7
+    R_386_RELATIVE = 8
+    R_386_GOTOFF      = 9
+    R_386_GOTPC       = 10
 
-   R_X86_64_NONE      = 0
-   R_X86_64_64           = 1
-   R_X86_64_PC32      = 2
-   R_X86_64_GOT32     = 3
-   R_X86_64_PLT32     = 4
-   R_X86_64_COPY      = 5
-   R_X86_64_GLOB_DAT  = 6
-   R_X86_64_JUMP_SLOT = 7
-   R_X86_64_RELATIVE  = 8
-   R_X86_64_GOTPCREL  = 9
-   R_X86_64_32           = 10
-   R_X86_64_32S          = 11
-   R_X86_64_16           = 12
-   R_X86_64_PC16      = 13
-   R_X86_64_8            = 14
-   R_X86_64_PC8          = 15
-   R_X86_64_DPTMOD64  = 16
-   R_X86_64_DTPOFF64  = 17
-   R_X86_64_TPOFF64   = 18
-   R_X86_64_TLSGD     = 19
-   R_X86_64_TLSLD     = 20
-   R_X86_64_DTPOFF32  = 21
-   R_X86_64_GOTTPOFF  = 22
-   R_X86_64_TPOFF32   = 23
-   R_X86_64_PC64      = 24
-   R_X86_64_GOTOFF64  = 25
-   R_X86_64_GOTPC32   = 26
-   #+end_src
-** interpreter & needed & import
-   #+begin_src fasm
-   macro interpreter [library]
-   {
-    segment interpreter readable
-    db library,0
-   }
-
-
-   macro needed [library]
-   {
-    local str
-    match needed,needed@dynamic \{ define needed@dynamic needed,str:library \}
-    match ,needed@dynamic \{ define needed@dynamic str:library \}
-   }
+    R_X86_64_NONE      = 0
+    R_X86_64_64           = 1
+    R_X86_64_PC32      = 2
+    R_X86_64_GOT32     = 3
+    R_X86_64_PLT32     = 4
+    R_X86_64_COPY      = 5
+    R_X86_64_GLOB_DAT  = 6
+    R_X86_64_JUMP_SLOT = 7
+    R_X86_64_RELATIVE  = 8
+    R_X86_64_GOTPCREL  = 9
+    R_X86_64_32           = 10
+    R_X86_64_32S          = 11
+    R_X86_64_16           = 12
+    R_X86_64_PC16      = 13
+    R_X86_64_8            = 14
+    R_X86_64_PC8          = 15
+    R_X86_64_DPTMOD64  = 16
+    R_X86_64_DTPOFF64  = 17
+    R_X86_64_TPOFF64   = 18
+    R_X86_64_TLSGD     = 19
+    R_X86_64_TLSLD     = 20
+    R_X86_64_DTPOFF32  = 21
+    R_X86_64_GOTTPOFF  = 22
+    R_X86_64_TPOFF32   = 23
+    R_X86_64_PC64      = 24
+    R_X86_64_GOTOFF64  = 25
+    R_X86_64_GOTPC32   = 26
+    #+end_src
+*** interpreter & needed & import
+    #+begin_src fasm
+    macro interpreter [library]
+    {
+     segment interpreter readable
+     db library,0
+    }
 
 
-   define needed@dynamic
+    macro needed [library]
+    {
+     local str
+     match needed,needed@dynamic \{ define needed@dynamic needed,str:library \}
+     match ,needed@dynamic \{ define needed@dynamic str:library \}
+    }
 
 
-   macro import [name]
-   {
-    common
-     local strtab,strsz,symtab,rel,relsz,hash
-     segment dynamic readable
-     match needed,needed@dynamic
-     \{ irp item,needed \\{ match str:library,item \\\{ dq DT_NEEDED,str-strtab \\\} \\} \}
-     dq DT_STRTAB,strtab
-     dq DT_STRSZ,strsz
-     dq DT_SYMTAB,symtab
-     dq DT_SYMENT,sizeof.Elf64_Sym
-     dq DT_RELA,rela
-     dq DT_RELASZ,relasz
-     dq DT_RELAENT,sizeof.Elf64_Rela
-     dq DT_HASH,hash
-     dq DT_NULL,0
-     segment readable writeable
-     symtab: Elf64_Sym
-    forward
-     local fstr
-     Elf64_Sym fstr-strtab,0,0,STB_GLOBAL,STT_FUNC,0,0
-    common
-     rela:
-     local counter
-     counter = 1
-    forward
-      Elf64_Rela name,counter,R_X86_64_64
-      counter = counter+1
-    common
-     relasz = $-rela
-     hash:
-     dd 1,counter
-     dd 0
-     repeat counter
-      if %=counter
-       dd 0
-      else
-       dd %
-      end if
-     end repeat
-     strtab db 0
-    forward
-     fstr db `name,0
-    common
-     match needed,needed@dynamic
-     \{ irp item,needed \\{ match str:library,item \\\{ str db library,0 \\\} \\} \}
-     strsz = $-strtab
-    forward
-     name dq 0
-   }
-   #+end_src
-** ccall
-   #+begin_src fasm
-   macro fun_arg counter, arg
-   {
-      if      counter = 1
-         mov rdi, arg
-      else if counter = 2
-         mov rsi, arg
-      else if counter = 3
-         mov rdx, arg
-      else if counter = 4
-         mov rcx, arg
-      else if counter = 5
-         mov r8, arg
-      else if counter = 6
-         mov r9, arg
-      else
-         err ;; the macro "ccall" can handles 6 arguments at most
-      end if
-   }
+    define needed@dynamic
 
 
-   macro ccall function, [arg]
-   {
-      common
-         local counter
-         counter = 0
+    macro import [name]
+    {
+     common
+      local strtab,strsz,symtab,rel,relsz,hash
+      segment dynamic readable
+      match needed,needed@dynamic
+      \{ irp item,needed \\{ match str:library,item \\\{ dq DT_NEEDED,str-strtab \\\} \\} \}
+      dq DT_STRTAB,strtab
+      dq DT_STRSZ,strsz
+      dq DT_SYMTAB,symtab
+      dq DT_SYMENT,sizeof.Elf64_Sym
+      dq DT_RELA,rela
+      dq DT_RELASZ,relasz
+      dq DT_RELAENT,sizeof.Elf64_Rela
+      dq DT_HASH,hash
+      dq DT_NULL,0
+      segment readable writeable
+      symtab: Elf64_Sym
+     forward
+      local fstr
+      Elf64_Sym fstr-strtab,0,0,STB_GLOBAL,STT_FUNC,0,0
+     common
+      rela:
+      local counter
+      counter = 1
+     forward
+       Elf64_Rela name,counter,R_X86_64_64
+       counter = counter+1
+     common
+      relasz = $-rela
+      hash:
+      dd 1,counter
+      dd 0
+      repeat counter
+       if %=counter
+        dd 0
+       else
+        dd %
+       end if
+      end repeat
+      strtab db 0
+     forward
+      fstr db `name,0
+     common
+      match needed,needed@dynamic
+      \{ irp item,needed \\{ match str:library,item \\\{ str db library,0 \\\} \\} \}
+      strsz = $-strtab
+     forward
+      name dq 0
+    }
+    #+end_src
+*** ccall
+    #+begin_src fasm
+    macro fun_arg counter, arg
+    {
+       if      counter = 1
+          mov rdi, arg
+       else if counter = 2
+          mov rsi, arg
+       else if counter = 3
+          mov rdx, arg
+       else if counter = 4
+          mov rcx, arg
+       else if counter = 5
+          mov r8, arg
+       else if counter = 6
+          mov r9, arg
+       else
+          err ;; the macro "ccall" can handles 6 arguments at most
+       end if
+    }
 
-      forward
-         if ~ arg eq
-         counter = counter + 1
-         fun_arg counter, arg
-         end if
 
-      common
+    macro ccall function, [arg]
+    {
+       common
+          local counter
+          counter = 0
 
-         push r15
-         push r14
-         push r13
+       forward
+          if ~ arg eq
+          counter = counter + 1
+          fun_arg counter, arg
+          end if
 
-         mov  rbp, rsp
+       common
 
-         ;; aligning stack to 16 is required
-         ;; by the ABI of System V X86_64
-         and  rsp, -16
+          push r15
+          push r14
+          push r13
 
-         ;call function
-         call qword [function]
+          mov  rbp, rsp
 
-         mov rsp, rbp
+          ;; aligning stack to 16 is required
+          ;; by the ABI of System V X86_64
+          and  rsp, -16
 
-         pop r13
-         pop r14
-         pop r15
+          ;call function
+          call qword [function]
 
-   }
-   #+end_src
-** set ld :: link editor
-   #+begin_src fasm
-   interpreter '/lib64/ld-linux-x86-64.so.2'
-   #+end_src
-** libs & functions
-   #+begin_src fasm
-   needed 'libcicada-dynamic-loader.so'
-   import load_shared_lib
-   #+end_src
-** cicada-dynamic-loader
-   #+begin_src fasm
-   def_assembly_code "cicada-dynamic-loader", _load_shared_lib
-      ;; (* -- *)
-      ccall load_shared_lib
-      next
+          mov rsp, rbp
 
-   def_verb "t", t
-      xx _load_shared_lib
-      xx Exit
-   def_verb_end t
-   #+end_src
+          pop r13
+          pop r14
+          pop r15
+
+    }
+    #+end_src
+*** set ld :: link editor
+    #+begin_src fasm
+    interpreter '/lib64/ld-linux-x86-64.so.2'
+    #+end_src
+*** libs & functions
+    #+begin_src fasm
+    needed 'libcicada-dynamic-loader.so'
+    import load_shared_lib
+    #+end_src
+*** cicada-dynamic-loader
+    #+begin_src fasm
+    def_assembly_code "cicada-dynamic-loader", _load_shared_lib
+       ;; (* -- *)
+       ccall load_shared_lib
+       next
+
+    def_verb "t", t
+       xx _load_shared_lib
+       xx Exit
+    def_verb_end t
+    #+end_src
 * *include threaded code*
   #+begin_src fasm :tangle cicada.fasm
   include "../threaded-code.inc"
   #+end_src
 * misc
-** assemblyDebug
-   #+begin_src fasm :tangle cicada.fasm
-   def_verb ".", print_little_number
-      xx _literal, '0'
-      xx addition, write_byte
-      xx _literal, 32
-      xx write_byte
-      xx _literal, 32
-      xx write_byte
-      xx Exit
-   def_verb_end print_little_number
+*** assemblyDebug
+    #+begin_src fasm :tangle cicada.fasm
+    def_verb ".", print_little_number
+       xx _literal, '0'
+       xx addition, write_byte
+       xx _literal, 32
+       xx write_byte
+       xx _literal, 32
+       xx write_byte
+       xx Exit
+    def_verb_end print_little_number
 
-   def_assembly_code "exitWithTOS", exitWithTOS
-      pop_argument_stack sys_1_rdi
-      mov sys_n_rax, syscall_exit
-      syscall
+    def_assembly_code "exitWithTOS", exitWithTOS
+       pop_argument_stack sys_1_rdi
+       mov sys_n_rax, syscall_exit
+       syscall
 
 
-   def_verb "assemblyDebug", assemblyDebug
-      xx read_phrase
-      xx print_string
-      xx _branch, -3
+    def_verb "assemblyDebug", assemblyDebug
+       xx read_phrase
+       xx print_string
+       xx _branch, -3
 
-        .read_phrase:
-        xx read_phrase
-        xx eval_phrase
-        xx _branch, (.read_phrase-$)/Cell_width
+         .read_phrase:
+         xx read_phrase
+         xx eval_phrase
+         xx _branch, (.read_phrase-$)/Cell_width
 
-      xx exitWithTOS
-   def_verb_end assemblyDebug
-   #+end_src
+       xx exitWithTOS
+    def_verb_end assemblyDebug
+    #+end_src
 * ending
-** User_data_area
-   #+begin_src fasm :tangle cicada.fasm
-   Size_of_user_data_area = 64 * 1024 * 1024 ;; unit : byte
+*** User_data_area
+    #+begin_src fasm :tangle cicada.fasm
+    Size_of_user_data_area = 64 * 1024 * 1024 ;; unit : byte
 
-   hereUnInitializedData
-   ;; ------------------------------------------
-   User_data_area labeling
-   End_of_user_data_area = TheLowestMemoryAddress + Size_of_user_data_area
+    hereUnInitializedData
+    ;; ------------------------------------------
+    User_data_area labeling
+    End_of_user_data_area = TheLowestMemoryAddress + Size_of_user_data_area
 
-   def_noun "User-data-area", _User_data_area
-      xx  User_data_area
-   def_noun_end _User_data_area
+    def_noun "User-data-area", _User_data_area
+       xx  User_data_area
+    def_noun_end _User_data_area
 
-   def_noun "End-of-user-data-area", _End_of_user_data_area
-      xx  End_of_user_data_area
-   def_noun_end _End_of_user_data_area
-   #+end_src
-** Latest_word_in_assembly
-   #+begin_src fasm :tangle cicada.fasm
-   ;; this word helps to initialize First_word_in_dictionary
-   def_noun "Latest-word-in-assembly", Latest_word_in_assembly
-      xx  0
-   def_noun_end Latest_word_in_assembly
-   #+end_src
-** LowestMemoryAddress
-   #+begin_src fasm :tangle cicada.fasm
-   segment readable writeable
-   TheLowestMemoryAddress:
-      rb Size_of_user_data_area
-   #+end_src
+    def_noun "End-of-user-data-area", _End_of_user_data_area
+       xx  End_of_user_data_area
+    def_noun_end _End_of_user_data_area
+    #+end_src
+*** Latest_word_in_assembly
+    #+begin_src fasm :tangle cicada.fasm
+    ;; this word helps to initialize First_word_in_dictionary
+    def_noun "Latest-word-in-assembly", Latest_word_in_assembly
+       xx  0
+    def_noun_end Latest_word_in_assembly
+    #+end_src
+*** LowestMemoryAddress
+    #+begin_src fasm :tangle cicada.fasm
+    segment readable writeable
+    TheLowestMemoryAddress:
+       rb Size_of_user_data_area
+    #+end_src
 * ==================================================
