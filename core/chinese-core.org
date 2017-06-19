@@ -1101,7 +1101,7 @@
    #+end_src
 * --------------------------------------------------
 * *測試*
-  #+begin_src cicada
+  #+begin_src cicada-language
   夫 階乘 (* n -- n! *)
      復 一乎 則
         已矣
@@ -1146,7 +1146,7 @@
   ok
   #+end_src
 * *測試*
-  #+begin_src cicada
+  #+begin_src cicada-language
   夫 .12 (* 1 2 -- *)
      2 ==
      則
@@ -1235,7 +1235,7 @@
    ok
    #+end_src
 ** 八位組串爲很多短橫線乎
-   #+begin_src cicada :tangle chinese-core.cicada
+   #+begin_src cicada-language :tangle chinese-core.cicada
    夫 八位組串爲很多短橫線乎
       (* 八位組串[地址, 長度] -- 真 或 假 *)
       0 入木答棧 (* 計數 短橫線 之個數 *)
